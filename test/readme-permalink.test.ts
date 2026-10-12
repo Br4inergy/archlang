@@ -43,6 +43,7 @@ import { b64urlToBytes, srcFromHash } from "../playground/src/share.js";
  */
 const DOCS = [
   "README.md",
+  "docs/overview.md",
   "SKILL.md",
   "llms.txt",
   "docs-site/index.md",

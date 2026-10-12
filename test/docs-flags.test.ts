@@ -26,6 +26,7 @@ import { buildManifest } from "../src/manifest.js";
 /** Hand-maintained docs that carry `arch …` invocations. Generated files are covered by `check:drift`. */
 const DOCS = [
   "README.md",
+  "docs/overview.md",
   "llms.txt",
   "SKILL.md",
   "AGENTS.md",

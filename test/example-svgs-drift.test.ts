@@ -20,9 +20,14 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { archPath, README_SVGS, readExampleSource, renderExampleSvg, svgPath } from "../scripts/gen-example-svgs.js";
 
-/** Every `./examples/<name>.svg` the README references as an image or a link. */
+/**
+ * Every `examples/<name>.svg` the README or the overview references as an image or a link.
+ * The README is one screen and embeds a single drawing; the rest of the curated set is
+ * embedded by `docs/overview.md` (as `../examples/<name>.svg`, which the pattern also matches).
+ */
 function readmeSvgReferences(): string[] {
-  const readme = readFileSync("README.md", "utf8");
+  const readme = `${readFileSync("README.md", "utf8")}
+${readFileSync("docs/overview.md", "utf8")}`;
   const names = new Set<string>();
   for (const m of readme.matchAll(/\.\/examples\/([A-Za-z0-9_-]+)\.svg/g)) names.add(m[1]!);
   return [...names].sort();
