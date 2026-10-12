@@ -19,11 +19,11 @@ Write a floor plan as text. Get a precise, dimensioned drawing back.
 
 <br>
 
-<!-- FILM PLACEHOLDER
-     Chan: edit this file on github.com, delete this whole comment, and drag the
-     ArchLang film (68 s, 16:9 .mp4) into the editor at this spot. GitHub turns
-     the upload into a player. Leave one blank line above and below it.
--->
+
+
+https://github.com/user-attachments/assets/a60f3174-6a8c-4a42-b24a-fac030d39627
+
+
 
 ## Try it
 
