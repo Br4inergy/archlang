@@ -418,4 +418,25 @@ export interface Scene {
    * gets here. See `src/view/`.
    */
   view?: import("./view/camera.js").ViewName;
+  /**
+   * The walls the `wallFill`/`wallFace` nodes were lowered from, in a canonical order
+   * (`toScene` sets it on a plan with walls; see {@link SceneWall}). **Export metadata, never drawn**: no backend draws from
+   * it — the drawing is the nodes. It exists for an export that must know WHICH wall drew a
+   * face, which the joined outline no longer says: the DXF re-files the wall nodes onto its
+   * exterior and interior wall layers through `classifyWallSet` (`src/wall-lowering.ts`).
+   * Absent on a hand-built Scene, whose wall nodes then export exactly as before.
+   */
+  walls?: readonly SceneWall[];
 }
+
+/**
+ * A wall as {@link Scene.walls} carries it: what the joinery reads (band, hatch, the
+ * openings cut through it — each only its `at`/`width`) plus the `category` an export
+ * classifies by. Plain data with no id and none of the resolver's bookkeeping, listed in a
+ * canonical order (`sceneWalls`, `src/wall-lowering.ts`), so two plans that draw the same
+ * walls carry the same list.
+ */
+export type SceneWall = Pick<
+  import("./ir.js").RWall,
+  "category" | "thickness" | "points" | "arcs" | "closed" | "material" | "hatchScale" | "hatchAngle" | "openings"
+>;

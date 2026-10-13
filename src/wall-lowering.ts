@@ -26,16 +26,54 @@
  * `emitRegion` produced.
  */
 
+import type { Point } from "./ast.js";
 import type { Opening, RWall } from "./ir.js";
 import type { RenderCtx } from "./registry.js";
-import type { SceneNode } from "./scene.js";
+import type { PathLoop, SceneNode, ScenePrim, SceneWall } from "./scene.js";
 import { MITER_LIMIT } from "./scene.js";
 import type { HatchSpec } from "./hatches.js";
-import { hatchKey, hatchOf, patternId } from "./hatches.js";
+import { hatchesUsed, hatchKey, hatchOf, patternId } from "./hatches.js";
 import { PointInterner, loopBBox, openingCut, wallBand } from "./geometry/band.js";
 import type { EdgeLoop } from "./geometry/band.js";
 import type { JoineryCut, JoineryResult, JoineryWall } from "./geometry/joinery.js";
-import { bandBBox, emitLoops, joinWalls, loopsToPolygons } from "./geometry/joinery.js";
+import { bandBBox, emitLoops, joinWalls, loopsToPolygons, toPathLoop } from "./geometry/joinery.js";
+
+/** What the joinery reads of a wall: its band, its hatch and the openings cut through it.
+ *  `id` is optional because the joinery only ever prints it in a diagnostic. */
+export type JoinableWall = Pick<
+  RWall,
+  "thickness" | "points" | "arcs" | "closed" | "material" | "hatchScale" | "hatchAngle" | "openings"
+> & { id?: string };
+
+/**
+ * A plan's walls as {@link Scene.walls} carries them: each projected to a {@link SceneWall}
+ * (the joinery's inputs plus `category`; an opening is only the `at`/`width` it cuts), in a
+ * CANONICAL order — sorted by that content, not by statement order.
+ *
+ * Canonical because a Scene is a drawing, and two plans that draw the same walls must carry
+ * the same list: placing a storey as a component reorders its statements and draws exactly
+ * the same thing (the T0 tier of `test/equivariance-storeys-scene.test.ts`). The order only
+ * breaks thickest-wins TIES when an export re-joins the list, which re-files geometry and
+ * never moves it: `toDxf` refines a wall node only when the re-join reproduces it exactly.
+ */
+export function sceneWalls(walls: readonly RWall[]): SceneWall[] {
+  const keyed = walls.map((w) => {
+    const s: SceneWall = {
+      category: w.category,
+      thickness: w.thickness,
+      points: w.points,
+      ...(w.arcs ? { arcs: w.arcs } : {}),
+      closed: w.closed,
+      material: w.material,
+      hatchScale: w.hatchScale,
+      hatchAngle: w.hatchAngle,
+      openings: w.openings.map((o) => ({ at: o.at, width: o.width })),
+    };
+    return { s, k: JSON.stringify(s) };
+  });
+  keyed.sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0));
+  return keyed.map((x) => x.s);
+}
 
 /** One opening's cut volume, joined back to the wall it was cut from. */
 export interface JoinedCut {
@@ -73,7 +111,11 @@ export interface JoinedWallSet {
  * Pure and deterministic: one {@link PointInterner} for the whole call (see `joinWalls`
  * for why that matters), no clock, no randomness, no Map-order dependence.
  */
-export function joinWallSet(walls: readonly RWall[], groupKeys: readonly string[]): JoinedWallSet | null {
+export function joinWallSet<W extends JoinableWall>(
+  walls: readonly W[],
+  groupKeys: readonly string[],
+  split?: { faceOf: (w: W) => string; faces: readonly string[] },
+): JoinedWallSet | null {
   if (walls.length === 0) return null;
   const intern = new PointInterner();
   const jwalls: JoineryWall[] = [];
@@ -85,9 +127,10 @@ export function joinWallSet(walls: readonly RWall[], groupKeys: readonly string[
     if (loops.length > 0) {
       jwalls.push({
         index: i,
-        id: w.id,
+        id: w.id ?? "",
         thickness: w.thickness,
         group: hatchKey(hatchOf(w)),
+        ...(split ? { face: split.faceOf(w) } : {}),
         loops,
         bbox: bandBBox(loops),
       });
@@ -104,7 +147,53 @@ export function joinWallSet(walls: readonly RWall[], groupKeys: readonly string[
     }
   }
   if (jwalls.length === 0) return null;
-  return { result: joinWalls(jwalls, cuts, groupKeys), cuts: joined };
+  return { result: joinWalls(jwalls, cuts, groupKeys, split?.faces), cuts: joined };
+}
+
+/**
+ * A wall set's drawing, partitioned by a per-wall CLASS — for an export that files walls on
+ * separate layers (the DXF's exterior and interior wall layers). Never on the drawing path:
+ * the Scene is drawn by {@link lowerWallSet} alone.
+ *
+ * `outline` and each `fills[].region` are exactly what {@link lowerWallSet} puts on its
+ * nodes (same join, same emission), so a caller can recognise the nodes it is refining by
+ * equality and leave anything else alone. `byClass` and `faces` partition those two: one
+ * joinery call, read off the same ownership (`JoinerySplit`), so the split can only ever
+ * re-file what is drawn, never draw something else.
+ */
+export interface ClassedWallSet {
+  outline: ScenePrim | null;
+  fills: Array<{ hatch: HatchSpec; region: Point[][]; byClass: Array<{ cls: string; region: Point[][] }> }>;
+  /** Per class, in `classes` order: the outline's runs whose solid that class owns. */
+  faces: Array<{ cls: string; runs: PathLoop[] }>;
+}
+
+export function classifyWallSet(
+  walls: readonly SceneWall[],
+  classOf: (w: SceneWall) => string,
+  classes: readonly string[],
+): ClassedWallSet | null {
+  const hatches = hatchesUsed(walls);
+  const joined = joinWallSet(walls, hatches.map(hatchKey), { faceOf: classOf, faces: classes });
+  const split = joined?.result.split;
+  if (!joined || !split) return null;
+  const result = joined.result;
+  return {
+    outline: result.outline.length > 0 ? emitLoops(result.outline) : null,
+    fills: hatches.map((hatch) => {
+      const k = hatchKey(hatch);
+      const fill = result.fills.find((f) => f.group === k);
+      return {
+        hatch,
+        region: loopsToPolygons(fill?.loops ?? []),
+        byClass: classes.map((cls) => ({
+          cls,
+          region: loopsToPolygons(split.fills.find((f) => f.group === k && f.face === cls)?.loops ?? []),
+        })),
+      };
+    }),
+    faces: split.faces.map((f) => ({ cls: f.face, runs: f.runs.map(toPathLoop) })),
+  };
 }
 
 /**

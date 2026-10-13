@@ -19,7 +19,7 @@ import { add, mul, normal, segmentsOfWall, sub, unit } from "./geometry.js";
 import { arcPointAt, diameterText, radiusText } from "./geometry/arc.js";
 import type { Point } from "./ast.js";
 import { hatchesUsed } from "./hatches.js";
-import { lowerWallSet } from "./wall-lowering.js";
+import { lowerWallSet, sceneWalls } from "./wall-lowering.js";
 import type { SideGeom } from "./facade.js";
 import { SIDES, cleanTicks, facadeAt, facadeOpenings, measureExtent, openingsBySide, sideGeoms } from "./facade.js";
 import { anchorChromeToSheet, dimReach, layoutChrome } from "./chrome-layout.js";
@@ -932,6 +932,8 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
     hatches,
     chrome,
     ...(sheet ? { sheet } : {}),
+    // Export metadata for the DXF wall-layer split (see `Scene.walls`); no backend draws it.
+    ...(ir.walls.length > 0 ? { walls: sceneWalls(ir.walls) } : {}),
     // Opt-in accessibility metadata (ADR 0007 pattern): carry the accessible
     // <title>/<desc> text onto the Scene only when asked, so the SVG backend can emit
     // them. An explicit `accTitle`/`accDescr` (plan-level keywords) overrides the

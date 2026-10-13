@@ -2640,6 +2640,17 @@ warning: `W_CJK_FONT_MISSING` when the CJK package was left out (e.g.
 `--omit=optional`), `W_GLYPH_UNSUPPORTED` for any other script (Thai, Arabic, …).
 SVG output is unaffected either way: it uses the viewer's own fonts.
 
+**DXF units and layers.** The DXF is ASCII, headed AutoCAD 2000 (`AC1015`), and declares
+its unit: `$INSUNITS` 4 (millimetres) and `$MEASUREMENT` 1 (metric), so a CAD program
+inserts the plan at true size. Every entity sits on an AIA layer (`A-DOOR`, `A-GLAZ`,
+`A-FLOR`, `A-ANNO-DIMS`, …). Walls go on two: a wall of category `exterior` on
+`A-WALL-EXTR`, every other wall on `A-WALL-INTR`, so you can freeze the partitions and
+keep the envelope. That is the rule the rest of ArchLang uses for an outside wall (an
+`exterior` host's door opens to the outside, a roof follows the closed `exterior` ring),
+so name the envelope `exterior`. Where walls join, the thicker wall owns the junction,
+as it does in the drawing. The split moves no line: each layer holds its walls' share of
+the same joined outline and poché the SVG draws.
+
 The **TXT** backend draws the plan as an ASCII/Unicode grid — no image, no binary, no
 dependency. It exists so a text-only agent (or a terminal) can *see* the layout at a
 glance; tune it with `--cols <n>` and `--charset unicode|ascii`.
