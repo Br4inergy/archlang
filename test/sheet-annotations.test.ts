@@ -348,6 +348,20 @@ describe("NOTES — a fixed column: text adds rows, never width", () => {
     expect(wrapNote("", 5)).toEqual([""]);
   });
 
+  it("a cut never starts a line with a combining mark (it stays on its base letter)", () => {
+    const lines = wrapNote("é".repeat(20), 5);
+    expect(lines.join("")).toBe("é".repeat(20));
+    for (const line of lines) expect(line).not.toMatch(/^[̀-ͯ]/);
+  });
+
+  it("counting stops at the cap: a 2,000,000-character note costs one past the cap to count", () => {
+    expect(noteLineCount(["z".repeat(2_000_000)])).toBe(MAX_NOTE_LINES + 1);
+    expect(noteLineCount(["a b"], 1)).toBe(1);
+    // …and the count agrees with the drawn lines below the cap.
+    const note = "word ".repeat(300);
+    expect(noteLineCount([note])).toBe(wrapNote(note).length);
+  });
+
   it("a 254-character note on the example sheet wraps, is counted by the fit, and does not grow the A3 page", () => {
     const note = Array.from({ length: 40 }, (_, i) => `word${i}`)
       .join(" ")
@@ -429,6 +443,31 @@ describe("tags — clear of every other opening on the wall", () => {
     expect(overlaps(tagBox(c1!), drawnBox(nodes, "d2"))).toBe(false);
     expect(overlaps(tagBox(c2!), drawnBox(nodes, "d1"))).toBe(false);
     expect(overlaps(tagBox(c1!), tagBox(c2!))).toBe(false);
+  });
+
+  it("three 900 doors at 1000 pitch, mixed hands: no tag on another door's ink or on another tag", () => {
+    // The red-team round-2 case: every first-row place conflicts somewhere, and the tag must
+    // still find an ink-free place rather than trade one conflict for another.
+    const src = ADJ.replace(
+      /\n {2}door id=d1[^\n]*\n {2}door id=d2[^\n]*/,
+      "\n  door id=d1 on p at 1500 width 900 hinge right swing in\n  door id=d2 on p at 2500 width 900 hinge left swing out\n  door id=d3 on p at 3500 width 900 hinge right swing in",
+    );
+    const { scene, errors } = compile(src, { noCache: true, annotate: true });
+    expect(errors).toEqual([]);
+    const nodes = scene!.nodes;
+    const tags = nodes
+      .filter((n) => n.layer === "annotations" && n.prim.t === "circle")
+      .map((n) => n.prim as { center: { x: number; y: number }; r: number })
+      .map((c) => ({ x0: c.center.x - c.r, x1: c.center.x + c.r, y0: c.center.y - c.r, y1: c.center.y + c.r }));
+    expect(tags).toHaveLength(3);
+    const overlaps = (a: (typeof tags)[number], b: (typeof tags)[number]) =>
+      a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+    const ids = ["d1", "d2", "d3"];
+    tags.forEach((t, i) => {
+      for (const [j, id] of ids.entries())
+        if (j !== i) expect(overlaps(t, drawnBox(nodes, id)), `D0${i + 1} on ${id}`).toBe(false);
+      for (const [j, o] of tags.entries()) if (j !== i) expect(overlaps(t, o)).toBe(false);
+    });
   });
 
   it("with the neighbour removed, D01 keeps its first choice — the avoidance only moves a tag that must move", () => {

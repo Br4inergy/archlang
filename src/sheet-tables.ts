@@ -396,12 +396,33 @@ const ROOMS_CELL_CHARS = charsIn(COL_ROOMS);
  */
 export const MAX_NOTE_LINES = 200;
 
-/** Where to cut `s` at or before `i` without splitting a UTF-16 surrogate pair (a lone half
- *  is not well-formed text in any backend); never 0 when `i` is not, so a cut always advances. */
-const cutAt = (s: string, i: number): number => {
-  if (i <= 0 || i >= s.length) return i;
-  const c = s.charCodeAt(i - 1);
-  return c >= 0xd800 && c <= 0xdbff ? (i > 1 ? i - 1 : i + 1) : i;
+/**
+ * A UTF-16 unit a line must not START with: the low half of a surrogate pair (a lone half is
+ * not well-formed text in any backend) or a combining mark (it would sit on nothing). The
+ * combining blocks are the common ones — Combining Diacritical Marks and their Extended and
+ * Supplement blocks, those for symbols, and the half marks.
+ */
+const continues = (c: number): boolean =>
+  (c >= 0xdc00 && c <= 0xdfff) ||
+  (c >= 0x0300 && c <= 0x036f) ||
+  (c >= 0x1ab0 && c <= 0x1aff) ||
+  (c >= 0x1dc0 && c <= 0x1dff) ||
+  (c >= 0x20d0 && c <= 0x20ff) ||
+  (c >= 0xfe20 && c <= 0xfe2f);
+
+/**
+ * Where to cut `s` at or before `i` (and after `from`) so the next piece does not start with a
+ * {@link continues} unit; if no such cut exists after `from`, the first one past `i`, so a cut
+ * always advances.
+ */
+const cutAt = (s: string, i: number, from = 0): number => {
+  if (i <= from || i >= s.length) return i;
+  let c = i;
+  while (c > from + 1 && continues(s.charCodeAt(c))) c--;
+  if (!continues(s.charCodeAt(c))) return c;
+  c = i;
+  while (c < s.length && continues(s.charCodeAt(c))) c++;
+  return c;
 };
 
 /** `s` cut to `max` characters, the cut marked with `...` (ASCII, like every table cell). */
@@ -409,36 +430,72 @@ const clip = (s: string, max: number): string =>
   s.length <= max ? s : `${s.slice(0, cutAt(s, Math.max(0, max - 3)))}...`;
 
 /**
- * One note word-wrapped to {@link NOTE_LINE_CHARS}: a `\n` always breaks; otherwise lines
- * break at spaces (U+0020), runs of spaces collapse, and a word longer than a whole line is
- * cut into line-length pieces. Linear in the note's length.
+ * Walk a note's wrapped lines WITHOUT building them: `line(ranges)` is called once per drawn
+ * line with the `[start, end)` ranges of its words in `note` (absent, nothing is collected),
+ * and the walk stops as soon as `limit` lines have been counted. A `\n` always breaks; otherwise
+ * lines break at spaces (U+0020), runs of spaces collapse, and a word longer than a whole line is
+ * cut into line-length pieces (never before a {@link continues} unit). Returns the count, so a
+ * note past the cap costs the cap, not its length.
  */
-export function wrapNote(note: string, width = NOTE_LINE_CHARS): string[] {
-  const out: string[] = [];
-  for (const para of note.split("\n")) {
-    let line = "";
-    for (const word of para.split(" ")) {
-      if (word === "") continue;
-      let w = word;
-      while (w.length > width) {
-        if (line !== "") {
-          out.push(line);
-          line = "";
-        }
-        const cut = cutAt(w, width);
-        out.push(w.slice(0, cut));
-        w = w.slice(cut);
+function scanNote(note: string, width: number, limit: number, line?: (ranges: [number, number][]) => void): number {
+  let count = 0;
+  let words: [number, number][] = [];
+  let len = 0;
+  const flush = (): boolean => {
+    count++;
+    line?.(words);
+    words = [];
+    len = 0;
+    return count >= limit;
+  };
+  let p = 0;
+  while (p <= note.length) {
+    const nl = note.indexOf("\n", p);
+    const end = nl < 0 ? note.length : nl;
+    let i = p;
+    while (i < end) {
+      if (note.charCodeAt(i) === 0x20) {
+        i++;
+        continue;
       }
-      if (w === "") continue;
-      if (line === "") line = w;
-      else if (line.length + 1 + w.length <= width) line += ` ${w}`;
-      else {
-        out.push(line);
-        line = w;
+      let we = note.indexOf(" ", i);
+      if (we < 0 || we > end) we = end;
+      let ws = i;
+      i = we;
+      while (we - ws > width) {
+        if (len > 0 && flush()) return count;
+        const cut = cutAt(note, ws + width, ws);
+        words = [[ws, cut]];
+        len = cut - ws;
+        if (flush()) return count;
+        ws = cut;
+      }
+      if (we === ws) continue;
+      if (len === 0) {
+        words = [[ws, we]];
+        len = we - ws;
+      } else if (len + 1 + (we - ws) <= width) {
+        words.push([ws, we]);
+        len += 1 + (we - ws);
+      } else {
+        if (flush()) return count;
+        words = [[ws, we]];
+        len = we - ws;
       }
     }
-    out.push(line);
+    if (flush()) return count;
+    if (nl < 0) break;
+    p = nl + 1;
   }
+  return count;
+}
+
+/** One note word-wrapped to {@link NOTE_LINE_CHARS} (see {@link scanNote}). */
+export function wrapNote(note: string, width = NOTE_LINE_CHARS): string[] {
+  const out: string[] = [];
+  scanNote(note, width, Number.POSITIVE_INFINITY, (ranges) =>
+    out.push(ranges.map(([a, b]) => note.slice(a, b)).join(" ")),
+  );
   return out;
 }
 /** Gap between the two tables when both are drawn. */
@@ -462,9 +519,20 @@ export const legendRowCount = (entries: number): number => 1 + entries;
 export const openingRowCount = (openings: number): number => 2 + openings;
 /** The NOTES table's drawn lines, per note, as {@link wrapNote} wraps them. */
 const noteLines = (notes: readonly string[]): string[][] => notes.map((s) => wrapNote(s));
-/** How many wrapped lines the NOTES draw — what {@link MAX_NOTE_LINES} bounds. */
-export const noteLineCount = (notes: readonly string[]): number => noteLines(notes).reduce((s, l) => s + l.length, 0);
-/** The NOTES table: caption plus one row per wrapped line. */
+/**
+ * How many wrapped lines the NOTES draw — what {@link MAX_NOTE_LINES} bounds — counted
+ * without building a line, and only up to `limit` (one past the cap by default): a note past
+ * the cap costs the cap to count, not its length.
+ */
+export function noteLineCount(notes: readonly string[], limit = MAX_NOTE_LINES + 1): number {
+  let n = 0;
+  for (const s of notes) {
+    n += scanNote(s, NOTE_LINE_CHARS, limit - n);
+    if (n >= limit) return n;
+  }
+  return n;
+}
+/** The NOTES table: caption plus one row per wrapped line (counted up to one past the cap). */
 export const notesRowCount = (notes: readonly string[]): number => 1 + noteLineCount(notes);
 
 /**
@@ -639,7 +707,7 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
     );
     const noW = refDim * NOTES_NO;
     const w = noW + refDim * NOTES_TEXT;
-    const h = tableRowsHeight(refDim, notesRowCount(notesData));
+    const h = tableRowsHeight(refDim, 1 + lines.length);
     notes = { x0: x, y0: top, w, h, rowH, fs, pad: w * 0.02, caption: "NOTES", noW, lines };
     x += w;
     bottom = Math.max(bottom, top + h);

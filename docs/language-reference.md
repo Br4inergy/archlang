@@ -2072,11 +2072,13 @@ A tag's position comes from the opening's own wall: a window's sits just inside,
 face that has floor (so never among the dimension chains outside); a door's sits beside
 the doorway, past the hinge jamb (or, for a sliding kind, the jamb opposite where the
 panel parks) and off a face with floor, so it is out of the passage and outside the
-leaf's quarter-disc. A tag must also clear every other opening on its wall (its span, out
-to its width past each face) and every tag already placed there, so when its first place
-is taken it tries the other jamb, then the other face; if every place is taken it uses the
-one with the fewest conflicts. Tags do not yet step around furniture, or a wall (and its
-openings) that meets the jamb.
+leaf's quarter-disc. A tag must also be clear of everything else on the storey — every
+opening as far as it draws, every wall's poché, the furniture, dimension and axis lines and
+every tag already placed — so when its first place is taken it tries the other jamb, then
+the other face, then one tag-depth further out, and takes the first place that is clear.
+If none is, it keeps its first place (or the first that at least clears the other tags):
+a tag never trades one conflict for another, and two tags never overlap. A room's name
+under a tag is moved by the label pass instead, once it is buried far enough.
 
 **`notes "…"`** draws the sheet's general notes as a numbered **NOTES** table in source
 order; a statement may carry several strings and repeated statements append. The text

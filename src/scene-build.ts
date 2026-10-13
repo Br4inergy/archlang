@@ -833,7 +833,7 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
   // `schedule openings` — a tag beside every door and window (`opening-schedule.ts`), placed
   // from each opening's own wall. Before the label pass, so a room name moves off a tag
   // rather than sitting on it; nothing is emitted without the opt-in.
-  if (ir.openingSchedule) nodes.push(...openingTagNodes(ir.elements, theme, sizes));
+  if (ir.openingSchedule) nodes.push(...openingTagNodes(ir.elements, theme, sizes, nodes));
 
   // Obstacle-aware area labels (`src/label-placement.ts`). It has to run HERE — after the
   // walls are lowered and after `dims auto` has emitted its numbers — because a dimension

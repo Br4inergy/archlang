@@ -9,6 +9,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { compile, format } from "../src/index.js";
+import { parse } from "../src/parser.js";
+import { planFromJson, planToJson } from "../src/plan-json.js";
 import type { Theme } from "../src/theme.js";
 import { DEFAULT_THEME, resolveStyleKey, STYLE_KEYS, STYLE_KINDS, styleKeyFor } from "../src/theme.js";
 
@@ -26,6 +28,35 @@ describe("T5.2 — formatter is idempotent", () => {
       const once = format(readExample(name));
       const twice = format(once);
       expect(twice).toBe(once);
+    });
+  }
+});
+
+describe("the newer sheet strings are a fixed point for ANY text (`number`, `revision`, `notes`)", () => {
+  // The lexer reads back only `\"`, `\\` and `\n`; any other control character must reach
+  // the source raw, which `escapeStr` does and `JSON.stringify` does not (`\t` would come back
+  // as `t`). The idempotence law above runs over the examples only, which hold none of these.
+  const payloads: Record<string, string> = {
+    tab: "A\t101",
+    cr: "A\r101",
+    soh: "A\u0001101",
+    loneSurrogate: "A\ud83d101",
+    quoteBackslash: 'A"\\101',
+    braces: "A{1}01",
+    newline: "A\n101",
+  };
+  const lit = (s: string): string => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+  for (const [name, v] of Object.entries(payloads)) {
+    it(`${name}: format(format(x)) === format(x), and the value survives fmt and Plan JSON`, () => {
+      const src = `plan "P" {\n  units mm\n  notes "${lit(v)}"\n  room id=r at (0,0) size 3000x3000\n  title { number "${lit(v)}" revision "${lit(v)}" }\n}\n`;
+      expect(parse(src).plan!.title).toMatchObject({ number: v, revision: v });
+      const once = format(src);
+      expect(format(once)).toBe(once);
+      const p = parse(once).plan!;
+      expect(p.title).toMatchObject({ number: v, revision: v });
+      expect(p.notes).toEqual([v]);
+      const back = planFromJson(planToJson(src).json);
+      expect(back.ast?.title).toMatchObject({ number: v, revision: v });
     });
   }
 });

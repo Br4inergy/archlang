@@ -144,8 +144,8 @@ export function drawBudgetDiagnostic(
     return {
       severity: "error",
       message:
-        `The \`notes\` wrap to ${noteLines} lines of ${NOTE_LINE_CHARS} characters, past the ${MAX_NOTE_LINES} a sheet ` +
-        "may draw; shorten them, or keep the long text in a separate document and reference it in one note",
+        `The \`notes\` wrap to more than ${MAX_NOTE_LINES} lines of ${NOTE_LINE_CHARS} characters, the most a ` +
+        "sheet may draw; shorten them, or keep the long text in a separate document and reference it in one note",
       code: "E_DRAWING_LIMIT",
       ...(headerSpan ? { span: headerSpan } : {}),
     };

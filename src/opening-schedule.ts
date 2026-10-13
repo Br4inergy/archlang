@@ -28,28 +28,47 @@
  *   the jamb is the hinge jamb, or for a non-hinged kind the jamb opposite where the panel
  *   parks.
  *
- * Those are the FIRST choices. A tag must also clear every other opening on its wall (its
- * span along the wall, out to its width — the passage and a leaf's quarter-disc — past each
- * face, or a thickness for a window) and every tag already placed there, so each tag tries
- * its candidates in order (a door: both jambs on its preferred face, then on the other face;
- * a window: centred, then beside each jamb, then the other face) and takes the first that is
- * clear, or the one with the fewest conflicts when none is.
+ * Those are the FIRST choices. A tag must also be clear of everything else on its storey —
+ * every opening as far as it draws (a leaf's quarter-disc, a panel, a sill nose; the passage
+ * itself only to the faces), every straight wall's poché, everything already drawn (furniture,
+ * stairs, dimension and axis lines and numbers) and every tag already placed — so each tag
+ * tries its candidates in order (a door: both jambs on its preferred face, then on the other
+ * face, then one tag-depth further out on the preferred face; a window: centred, beside each
+ * jamb, the other face, then the preferred face one tag-depth further out) and takes the
+ * first that is clear. When none is, it takes the first that at least clears every other tag,
+ * else its first choice: a tag never trades one conflict for another. The work is bounded
+ * (a grid of obstacles, a capped probe per candidate), so it is linear in the tags.
  *
- * What it does not do: avoid furniture, or a perpendicular wall (and the openings and tags
- * on it) within a tag's width of the jamb. That is a general collision pass, not a
- * derivation from the opening.
+ * What it does not do: step past a room's name (the label pass moves the name instead, once
+ * it is buried far enough), or find room where every candidate is taken — the corpus guard
+ * (`test/opening-tags-corpus.test.ts`) pins each such tag.
  *
  * Text is ASCII (`D01`, `hinged`, `left`, a dash for "none"), so the PNG backend's bundled
  * font draws all of it; numbers print through {@link fmt2}.
  */
 
 import type { Point } from "./ast.js";
-import type { RDoor, ResolvedElement, ROpening, RRoom, RVoid, RWindow } from "./ir.js";
+import type { RDoor, ResolvedElement, ROpening, RRoom, RVoid, RWall, RWindow } from "./ir.js";
 import type { RenderSizes, SceneNode } from "./scene.js";
 import type { Theme } from "./theme.js";
-import { add, doorSwing, mul, normal, segmentDirAt, sub, wallFaceProbes } from "./geometry.js";
+import type { WallSegment } from "./geometry.js";
+import {
+  add,
+  distPointToWallSegment,
+  doorSwing,
+  mul,
+  normal,
+  segmentDirAt,
+  segmentsOfWall,
+  sub,
+  wallFaceProbes,
+} from "./geometry.js";
 import { connectorConnection, DEFAULT_TOL, EXTERIOR_NODE, pointInRoomBox, type RoomBox, roomBox } from "./analyze.js";
 import { textWidth } from "./text-metrics.js";
+import { primBBox } from "./label-placement.js";
+import { ROOF_LAYER } from "./elements/roof.js";
+import { OUTDOOR_LAYERS } from "./elements/outdoor.js";
+import { SILL_PROJECTION } from "./elements/window.js";
 import { fmt2 } from "./num-format.js";
 
 /** One DOOR & WINDOW SCHEDULE line. Every cell is the string drawn. */
@@ -171,60 +190,186 @@ function tagFrame(text: string, fs: number): { r: number; hw: number; hh: number
 }
 
 /**
- * What a tag must stay off, for one opening, in that opening's own frame: `u` along its
- * wall (the tangent at the opening), `v` across it (the left normal). The zone spans the
- * opening along the wall — and, for a `barn` door, the panel parked beside it on the
- * `slide` side — and reaches `reach` past the wall's centreline on both faces: an opening's
- * width for a door or a cased opening (the passage, and a hinged leaf's quarter-disc, whose
- * radius is that width), one wall thickness for a window (its sill nose).
+ * Something a tag must not cover, as a box in its OWN frame: `u` along `dir` from `at`
+ * spanning `[lo, hi]`, `v` across it (along `n`, the left normal) reaching `plus` on the `+n`
+ * side and `minus` on the `-n` side. Three kinds share the shape:
+ *
+ * - an **opening**: its span along the wall (and, for a `barn` door, the panel parked beside
+ *   it on the `slide` side). Past each face it reaches only as far as it DRAWS: a hinged leaf,
+ *   a bifold or a garage projection its own width on the face it opens into; a barn panel a
+ *   wall thickness there; a window its sill nose on the face with no floor; everything else —
+ *   the passage itself, a sliding or pocket panel inside the wall, a cased opening — stops
+ *   half a stand-off past the face, so a tag standing off that face beside it is clear;
+ * - a straight **wall segment**: its centreline band, half its thickness each side — the
+ *   poché a tag must not sit in (a perpendicular wall at a jamb, a party wall);
+ * - a placed **tag**: its bounding box, so no two tags overlap.
  */
-interface Zone {
+interface Obstacle {
   at: Point;
   dir: Point;
   n: Point;
   lo: number;
   hi: number;
-  reach: number;
-  /** The opening it belongs to — a window's own zone is not an obstacle to its own tag,
-   *  which sits in front of it by design. */
-  owner: ResolvedElement;
+  plus: number;
+  minus: number;
+  /** Set on a curved wall segment, which is tested by distance instead of by its frame. */
+  arc?: WallSegment;
+  half?: number;
+  /** De-duplicates an obstacle met in several grid cells of one query. */
+  seen: number;
 }
 
-function zoneOf(o: RDoor | RWindow | ROpening): Zone | null {
+/** The axis-aligned bounds of an obstacle, for the grid. */
+function obstacleBounds(o: Obstacle): { minX: number; minY: number; maxX: number; maxY: number } {
+  if (o.arc) {
+    const r = o.arc.arc!.r + (o.half ?? 0);
+    const c = o.arc.arc!.center;
+    return { minX: c.x - r, minY: c.y - r, maxX: c.x + r, maxY: c.y + r };
+  }
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const u of [o.lo, o.hi])
+    for (const v of [o.plus, -o.minus]) {
+      xs.push(o.at.x + o.dir.x * u + o.n.x * v);
+      ys.push(o.at.y + o.dir.y * u + o.n.y * v);
+    }
+  return { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) };
+}
+
+/** An opening's obstacle; `floorSide` is the face with floor (`0` for both or neither). */
+function openingObstacle(o: RDoor | RWindow | ROpening, floorSide: 1 | -1 | 0, gap: number): Obstacle | null {
   const seg = o.host;
   if (!seg) return null;
   const dir = segmentDirAt(seg, o.at);
-  const hw = o.width / 2;
-  let lo = -hw;
-  let hi = hw;
-  if (o.kind === "door" && o.doorKind === "barn") {
-    if (o.slide === "right") hi += o.width;
-    else lo -= o.width;
+  const h = seg.thickness / 2;
+  const passage = h + gap / 2;
+  let lo = -o.width / 2;
+  let hi = o.width / 2;
+  let plus = passage;
+  let minus = passage;
+  if (o.kind === "door") {
+    const kind = o.doorKind ?? "hinged";
+    const face: 1 | -1 = o.swing === "in" ? 1 : -1;
+    let reach = 0;
+    if (kind === "hinged" || kind === "bifold" || kind === "garage") reach = h + o.width;
+    else if (kind === "barn") {
+      reach = h + seg.thickness;
+      if (o.slide === "right") hi += o.width;
+      else lo -= o.width;
+    }
+    if (reach > 0) {
+      if (face === 1) plus = Math.max(plus, reach);
+      else minus = Math.max(minus, reach);
+    }
+  } else if (o.kind === "window" && floorSide !== 0) {
+    // The sill nose stands proud of the face with no floor, by `SILL_PROJECTION` of the wall.
+    const sill = h + seg.thickness * SILL_PROJECTION;
+    if (floorSide === 1) minus = Math.max(minus, sill);
+    else plus = Math.max(plus, sill);
   }
-  const reach = seg.thickness / 2 + (o.kind === "window" ? seg.thickness : o.width);
-  return { at: o.at, dir, n: normal(dir), lo, hi, reach, owner: o };
+  return { at: o.at, dir, n: normal(dir), lo, hi, plus, minus, seen: 0 };
 }
 
-/** An axis-aligned box a placed tag occupies (a circle's bounding square, or the box). */
-interface Box {
-  x0: number;
-  y0: number;
-  x1: number;
-  y1: number;
+/** A straight band `half` either side of `a`→`b` (a wall's poché, a drawn line's stroke). */
+function bandObstacle(a: Point, b: Point, half: number): Obstacle | null {
+  const d = sub(b, a);
+  const len = Math.hypot(d.x, d.y);
+  if (!(len > 0)) return null;
+  const dir = { x: d.x / len, y: d.y / len };
+  return { at: a, dir, n: normal(dir), lo: 0, hi: len, plus: half, minus: half, seen: 0 };
 }
 
-/** Does a tag centred at `c`, reaching `ext(u)` along any unit `u`, touch the zone? Tested
- *  in the zone's own frame — exact for a window's box and conservative for a door's circle. */
-function hitsZone(c: Point, ext: (u: Point) => number, z: Zone): boolean {
-  const d = sub(c, z.at);
-  const u = d.x * z.dir.x + d.y * z.dir.y;
-  const v = d.x * z.n.x + d.y * z.n.y;
-  const eu = ext(z.dir);
-  const ev = ext(z.n);
-  return u + eu > z.lo && u - eu < z.hi && Math.abs(v) - ev < z.reach;
+/** A wall segment's obstacle: its poché band (a curved one by distance, see {@link covers}). */
+function wallObstacle(s: WallSegment): Obstacle | null {
+  const half = s.thickness / 2;
+  if (s.arc)
+    return { at: s.a, dir: { x: 1, y: 0 }, n: { x: 0, y: 1 }, lo: 0, hi: 0, plus: 0, minus: 0, arc: s, half, seen: 0 };
+  return bandObstacle(s.a, s.b, half);
 }
 
-const boxesOverlap = (a: Box, b: Box): boolean => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+/** Does a tag centred at `c`, reaching `ext(u)` along any unit `u` (and `radius` at most),
+ *  cover the obstacle? Exact for a box in a straight frame; a curved wall by distance. */
+function covers(c: Point, ext: (u: Point) => number, radius: number, o: Obstacle): boolean {
+  if (o.arc) return distPointToWallSegment(c, o.arc) < (o.half ?? 0) + radius;
+  const d = sub(c, o.at);
+  const u = d.x * o.dir.x + d.y * o.dir.y;
+  const v = d.x * o.n.x + d.y * o.n.y;
+  const eu = ext(o.dir);
+  const ev = ext(o.n);
+  return u + eu > o.lo && u - eu < o.hi && v - ev < o.plus && -v - ev < o.minus;
+}
+
+/**
+ * A uniform grid of obstacles: a query visits only the cells its box touches. Bounded by
+ * construction — an obstacle spanning more than {@link MAX_CELLS} cells goes on a shared list
+ * every query visits, and a query that would examine more than {@link MAX_PROBE} entries
+ * stops and answers "not clear" — so placing every tag is linear in the tags, however the
+ * openings are stacked, and the answer is the same on every run (the order is fixed).
+ */
+const MAX_CELLS = 256;
+const MAX_PROBE = 4096;
+class ObstacleGrid {
+  private readonly cells = new Map<number, Map<number, Obstacle[]>>();
+  private readonly wide: Obstacle[] = [];
+  private stamp = 0;
+  constructor(private readonly cell: number) {}
+  private at(v: number): number {
+    return Math.floor(v / this.cell);
+  }
+  add(o: Obstacle): void {
+    const b = obstacleBounds(o);
+    const x0 = this.at(b.minX);
+    const x1 = this.at(b.maxX);
+    const y0 = this.at(b.minY);
+    const y1 = this.at(b.maxY);
+    if (!(Number.isFinite(x0) && Number.isFinite(x1) && Number.isFinite(y0) && Number.isFinite(y1))) return;
+    if (!((x1 - x0 + 1) * (y1 - y0 + 1) <= MAX_CELLS)) {
+      this.wide.push(o);
+      return;
+    }
+    for (let cx = x0; cx <= x1; cx++) {
+      let col = this.cells.get(cx);
+      if (!col) {
+        col = new Map();
+        this.cells.set(cx, col);
+      }
+      for (let cy = y0; cy <= y1; cy++) {
+        const list = col.get(cy);
+        if (list) list.push(o);
+        else col.set(cy, [o]);
+      }
+    }
+  }
+  /** True when nothing in the grid is covered by a tag at `c` (see {@link covers}). */
+  clear(c: Point, ext: (u: Point) => number, halfX: number, halfY: number, radius: number): boolean {
+    const stamp = ++this.stamp;
+    let probes = 0;
+    const hit = (o: Obstacle): boolean => {
+      if (o.seen === stamp) return false;
+      o.seen = stamp;
+      return covers(c, ext, radius, o);
+    };
+    for (const o of this.wide) {
+      if (++probes > MAX_PROBE) return false;
+      if (hit(o)) return false;
+    }
+    const x0 = this.at(c.x - halfX);
+    const x1 = this.at(c.x + halfX);
+    const y0 = this.at(c.y - halfY);
+    const y1 = this.at(c.y + halfY);
+    for (let cx = x0; cx <= x1; cx++) {
+      const col = this.cells.get(cx);
+      if (!col) continue;
+      for (let cy = y0; cy <= y1; cy++) {
+        for (const o of col.get(cy) ?? []) {
+          if (++probes > MAX_PROBE) return false;
+          if (hit(o)) return false;
+        }
+      }
+    }
+    return true;
+  }
+}
 
 /**
  * The candidate centres for one tag, in preference order — see the module header for the
@@ -247,16 +392,25 @@ function tagCandidates(o: RDoor | RWindow, boxes: readonly RoomBox[], ext: (u: P
   // neither has floor or both are the same room.
   const hasFloor = (s: 1 | -1): boolean => (s > 0 ? fPlus : fMinus) >= 0;
   const floorSide: 1 | -1 = fPlus >= 0 && (fMinus < 0 || fPlus < fMinus) ? 1 : -1;
-  const standOff = (s: 1 | -1): Point => mul(n, s * (h + gap + ext(mul(n, s))));
+  // `ring` 1 stands one more tag-depth off the face: the second row a tag tries, on the
+  // face it prefers only, after every first-row place is taken.
+  const standOff = (s: 1 | -1, ring = 0): Point => {
+    const e = ext(mul(n, s));
+    return mul(n, s * (h + gap + e + ring * (2 * e + gap)));
+  };
   const beside = (a: 1 | -1): Point => mul(dir, a * (o.width / 2 + gap + ext(dir)));
 
   if (o.kind === "window") {
     const off = standOff(floorSide);
+    const off2 = standOff(floorSide, 1);
     return [
       add(o.at, off),
       add(add(o.at, beside(-1)), off),
       add(add(o.at, beside(1)), off),
       add(o.at, standOff(floorSide === 1 ? -1 : 1)),
+      add(o.at, off2),
+      add(add(o.at, beside(-1)), off2),
+      add(add(o.at, beside(1)), off2),
     ];
   }
 
@@ -281,6 +435,8 @@ function tagCandidates(o: RDoor | RWindow, boxes: readonly RoomBox[], ext: (u: P
     add(add(o.at, beside(flip)), standOff(side)),
     add(add(o.at, beside(along)), standOff(other)),
     add(add(o.at, beside(flip)), standOff(other)),
+    add(add(o.at, beside(along)), standOff(side, 1)),
+    add(add(o.at, beside(flip)), standOff(side, 1)),
   ];
 }
 
@@ -289,12 +445,18 @@ function tagCandidates(o: RDoor | RWindow, boxes: readonly RoomBox[], ext: (u: P
  * and its tag, per window a box and its tag — {@link TAG_PRIMITIVES} each, which is what the
  * drawing budget counts.
  *
- * Each tag takes the FIRST of its candidates that touches no opening's zone on its own wall
- * (every door, window and cased opening there — its own included, except a window's) and no
- * tag already placed; when none is clear it takes the one with the fewest such conflicts,
- * the earliest on a tie. Tags are placed doors first, then windows, each in element order.
+ * Each tag takes its FIRST candidate (see {@link tagCandidates}) when that is clear of every
+ * obstacle of the storey — every opening as far as it draws, every straight wall's poché, every
+ * tag already placed — and otherwise the first candidate that is. When none is clear it keeps
+ * the first: a tag only ever moves to a place that is strictly better, never from one conflict
+ * into another. Tags are placed doors first, then windows, each in element order.
  */
-export function openingTagNodes(elements: readonly ResolvedElement[], theme: Theme, sizes: RenderSizes): SceneNode[] {
+export function openingTagNodes(
+  elements: readonly ResolvedElement[],
+  theme: Theme,
+  sizes: RenderSizes,
+  drawn: readonly SceneNode[] = [],
+): SceneNode[] {
   const { doors, windows } = taggable(elements);
   const boxes = floorBoxes(elements);
   const fs = tagFont(sizes);
@@ -302,45 +464,83 @@ export function openingTagNodes(elements: readonly ResolvedElement[], theme: The
   const ink = theme.annotation;
   const out: SceneNode[] = [];
 
-  // Every opening's zone, grouped by its host wall: a tag only ever stands off its own
-  // wall's faces, so only that wall's openings can lie under it.
-  const zonesByWall = new Map<string, Zone[]>();
+  // The storey's obstacles, in one grid whose cell is a few tags wide.
+  const grid = new ObstacleGrid(fs * 6);
+  const tags = new ObstacleGrid(fs * 6);
   for (const e of elements) {
+    if (e.kind === "wall") {
+      for (const s of segmentsOfWall(e as RWall)) {
+        const w = wallObstacle(s);
+        if (w) grid.add(w);
+      }
+      continue;
+    }
     if (e.kind !== "door" && e.kind !== "window" && e.kind !== "opening") continue;
     const o = e as RDoor | RWindow | ROpening;
-    const z = zoneOf(o);
-    if (!z || !o.host) continue;
-    const list = zonesByWall.get(o.host.wallId);
-    if (list) list.push(z);
-    else zonesByWall.set(o.host.wallId, [z]);
+    let floorSide: 1 | -1 | 0 = 0;
+    if (o.kind === "window" && o.host) {
+      const { plus, minus } = wallFaceProbes(o.host, o.at, Math.max(o.host.thickness, 1));
+      const p = floorIndex(plus, boxes) >= 0;
+      const m = floorIndex(minus, boxes) >= 0;
+      floorSide = p === m ? 0 : p ? 1 : -1;
+    }
+    const z = openingObstacle(o, floorSide, gap);
+    if (z) grid.add(z);
   }
-  // Tags already placed, by wall too: two walls' tags meet only where the walls do, which is
-  // the perpendicular-wall case this pass does not take on (and keeping the scan per wall
-  // keeps it linear in walls rather than quadratic in every opening of the storey).
-  const placedByWall = new Map<string, Box[]>();
+  // Everything already drawn that a tag could print over — furniture, stairs, door leaves and
+  // panels, dimension lines and numbers, axis lines and bubbles — by each primitive's box (a
+  // line by its stroke),
+  // filtered the way the room-label pass filters its obstacles: never the floor or the wall
+  // fills (the walls are in by segment above), a roof outline or the ground (each boxes the
+  // whole site), and never a room's name, which moves off a tag after this pass.
+  for (const n of drawn) {
+    if (n.layer === "floor" || n.layer === "wallFill" || n.layer === "wallFace" || n.layer === "labels") continue;
+    // The annotations pass holds only the lot line here (the tables come after the tags).
+    if (n.layer === "annotations") continue;
+    if (n.layerName === ROOF_LAYER) continue;
+    if (n.layerName !== undefined && OUTDOOR_LAYERS.includes(n.layerName)) continue;
+    if (n.prim.t === "line") {
+      // A line is its stroke, not its box: a dimension or an axis line crosses a whole room.
+      const l = bandObstacle(n.prim.a, n.prim.b, (n.paint.width ?? 0) / 2);
+      if (l) grid.add(l);
+      continue;
+    }
+    const b = primBBox(n.prim);
+    if (!b) continue;
+    grid.add({
+      at: { x: b.x, y: b.y },
+      dir: { x: 1, y: 0 },
+      n: { x: 0, y: 1 },
+      lo: 0,
+      hi: b.w,
+      plus: b.h,
+      minus: 0,
+      seen: 0,
+    });
+  }
+
   const place = (o: RDoor | RWindow, ext: (u: Point) => number, halfX: number, halfY: number): Point => {
-    const wallId = o.host?.wallId ?? "";
-    const zones = zonesByWall.get(wallId) ?? [];
-    let placed = placedByWall.get(wallId);
-    if (!placed) {
-      placed = [];
-      placedByWall.set(wallId, placed);
-    }
-    let best: Point = o.at;
-    let bestHits = Number.POSITIVE_INFINITY;
-    for (const c of tagCandidates(o, boxes, ext, gap)) {
-      const box = { x0: c.x - halfX, y0: c.y - halfY, x1: c.x + halfX, y1: c.y + halfY };
-      let hits = 0;
-      for (const z of zones) if (!(o.kind === "window" && z.owner === o) && hitsZone(c, ext, z)) hits++;
-      for (const b of placed) if (boxesOverlap(box, b)) hits++;
-      if (hits < bestHits) {
-        best = c;
-        bestHits = hits;
-        if (hits === 0) break;
-      }
-    }
-    placed.push({ x0: best.x - halfX, y0: best.y - halfY, x1: best.x + halfX, y1: best.y + halfY });
-    return best;
+    const radius = Math.hypot(halfX, halfY);
+    const candidates = tagCandidates(o, boxes, ext, gap);
+    // Strictly clear of everything, else at least clear of every tag already placed (two tags
+    // on top of each other read as neither), else the first choice.
+    const c =
+      candidates.find((p) => grid.clear(p, ext, halfX, halfY, radius)) ??
+      candidates.find((p) => tags.clear(p, ext, halfX, halfY, radius)) ??
+      candidates[0]!;
+    const box = (): Obstacle => ({
+      at: c,
+      dir: { x: 1, y: 0 },
+      n: { x: 0, y: 1 },
+      lo: -halfX,
+      hi: halfX,
+      plus: halfY,
+      minus: halfY,
+      seen: 0,
+    });
+    grid.add(box());
+    tags.add(box());
+    return c;
   };
 
   const text = (at: Point, value: string): SceneNode => ({
