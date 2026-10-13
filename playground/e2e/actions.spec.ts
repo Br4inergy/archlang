@@ -130,11 +130,18 @@ test.describe("header actions", () => {
     await expect(editor).not.toContainText("dims auto all");
     await expect(editor).toContainText("# typed");
     // Exactly the typed text on top of the plan (whatever indent Enter chose), no Finish.
+    // ONE predicate, polled: the autosave is debounced 250 ms, so the draft saved while
+    // Finish was applied (which also ends in "}\n# typed") can still be the stored one
+    // for a moment after the undo; a loose match followed by a second read raced that.
+    const isPlanPlusTyping = (saved: string | null) =>
+      saved !== null &&
+      saved.startsWith(`${SIMPLE_PLAN}\n`) &&
+      /^[ \t]*# typed$/.test(saved.slice(SIMPLE_PLAN.length + 1));
     await expect
-      .poll(() => page.evaluate((k) => localStorage.getItem(k), AUTOSAVE_KEY), { timeout: 10_000 })
-      .toMatch(/^plan "E2E" \{[\s\S]*\n\}\n[ \t]*# typed$/);
-    const saved = (await page.evaluate((k) => localStorage.getItem(k), AUTOSAVE_KEY)) ?? "";
-    expect(saved.startsWith(SIMPLE_PLAN)).toBe(true);
+      .poll(async () => isPlanPlusTyping(await page.evaluate((k) => localStorage.getItem(k), AUTOSAVE_KEY)), {
+        timeout: 10_000,
+      })
+      .toBe(true);
   });
 
   test("Finish that declines says so, opens Lint, and offers Reissue sheet", async ({ page }) => {
