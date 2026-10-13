@@ -13,6 +13,7 @@ import { execSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PLUGIN_MANIFEST, pluginSkillFiles } from "./gen-plugin.js";
+import { allOutputs } from "./gen-agent-manifests.js";
 import { README_SVGS, VIEW_SVGS, svgPath } from "./gen-example-svgs.js";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
@@ -53,18 +54,25 @@ const GENERATORS: readonly { script: string; artifacts: readonly string[] }[] = 
   { script: "gen:plugin", artifacts: [...pluginSkillFiles().map((f) => f.dest), PLUGIN_MANIFEST] },
   // The per-route `.md` Content-Type rules, derived from the PAGES + SITE_PAGES tables in docs-site/sync-docs.mjs.
   { script: "gen:docs-headers", artifacts: ["docs-site/public/_headers"] },
+  { script: "gen:agent-manifests", artifacts: allOutputs() },
 ];
 
 const ALL_ARTIFACTS = GENERATORS.flatMap((g) => g.artifacts);
 
-/** True when `git diff --quiet` reports the given paths are unchanged in the working tree. */
+/**
+ * True when the given paths are unchanged in the working tree AND none is untracked. A generator
+ * re-creates an artifact deleted from the repository as an UNTRACKED file, which `git diff` cannot
+ * see, so that is checked separately; a staged, in-sync file stays clean (regenerating cannot clear
+ * an index-vs-HEAD difference, so `git status` would be wrong here).
+ */
 function isClean(paths: readonly string[]): boolean {
+  const list = paths.join(" ");
   try {
-    execSync(`git diff --quiet -- ${paths.join(" ")}`, { cwd: ROOT, stdio: "ignore" });
-    return true;
+    execSync(`git diff --quiet -- ${list}`, { cwd: ROOT, stdio: "ignore" });
   } catch {
     return false;
   }
+  return execSync(`git ls-files --others --exclude-standard -- ${list}`, { cwd: ROOT, encoding: "utf8" }).trim() === "";
 }
 
 function main(): void {
