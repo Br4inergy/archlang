@@ -1662,6 +1662,17 @@ and in each theme. The tool used for this redraw was never committed; `scripts/`
 equivalent. Consider promoting a `scripts/specimen` that takes two checkouts and writes one PNG
 sheet, kept outside `check:drift`.
 
+### D.9 · A wall-thickness call-out can sit on a stair, column, elevator or escalator — `todo`
+
+`thicknessStation` (`src/scene-build.ts`) keeps a `dims auto walls` call-out off the openings on
+its wall and off furniture footprints, but nothing else that stands on the floor blocks it.
+Re-run: `examples/townhouse.arch` draws its "300" at (4871.25, 3550) on all three storeys, inside
+stair `st` (x 4150–5050, y 2600–5800); the same as before the furniture rule landed. A kind list
+in `thicknessStation` would be a second copy of "what occupies floor"; the fix wants that fact
+declared once, on the element (an `ElementDef` field read through the registry, with each
+element's `bounds()` as the footprint), and then read here and by any other placement that
+avoids obstacles. It moves the drawing of every plan whose call-out stands on such an element.
+
 ---
 
 ## Wave 5 — deferred by name in v1.28.0 / v1.29.0

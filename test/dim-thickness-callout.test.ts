@@ -408,23 +408,95 @@ suite("wall-thickness call-outs stay off doorways and fixtures", () => {
     expect(calloutClashes(atStation(c200, 7775), ir)).toEqual(["furniture kitchen_sink_3 (7300,100)..(8100,700)"]);
   });
 
-  it("holds for every shipped example: no call-out in a doorway or over a piece of furniture", () => {
+  it("holds over the corpus: no call-out in poché, in a doorway or over a piece of furniture", () => {
+    // The shipped examples, the docs gallery, the test fixtures and recovery-corpus copies, and
+    // the eval goldens — every plan here that draws a thickness call-out.
+    const root = join(__dirname, "..");
+    const dirs = ["examples", "docs/gallery", "test/fixtures", "test/recovery-corpus", "eval/goldens"];
     const offenders: string[] = [];
     let seen = 0;
-    for (const name of exampleNames) {
-      for (const [i, { s, ir }] of storeys(example(name), {
-        read: exampleWorld.read,
+    let plans = 0;
+    for (const dir of dirs) {
+      const abs = join(root, dir);
+      const world: World = {
+        read: (p) => {
+          try {
+            return readFileSync(join(abs, p), "utf8");
+          } catch {
+            return null;
+          }
+        },
         now: () => new Date(0),
-      }).entries()) {
-        for (const co of thicknessCallouts(s, ir)) {
-          seen++;
-          const hits = calloutClashes(co, ir);
-          if (hits.length > 0) offenders.push(`${name} storey ${i + 1} "${co.value}": ${hits.join(", ")}`);
+      };
+      for (const file of readdirSync(abs)
+        .filter((f) => f.endsWith(".arch"))
+        .sort()) {
+        plans++;
+        for (const [i, { s, ir }] of storeys(readFileSync(join(abs, file), "utf8"), world).entries()) {
+          const where = `${dir}/${file} storey ${i + 1}`;
+          for (const hit of readingsInPoche(s)) offenders.push(`${where} in poché: ${hit}`);
+          for (const co of thicknessCallouts(s, ir)) {
+            seen++;
+            const hits = calloutClashes(co, ir);
+            if (hits.length > 0) offenders.push(`${where} "${co.value}": ${hits.join(", ")}`);
+          }
         }
       }
     }
     expect(offenders).toEqual([]);
-    // The examples that draw `dims auto all`/`walls` call-outs really are found by the finder.
-    expect(seen).toBeGreaterThan(20);
+    // Not vacuous: the corpus is walked, and its call-outs really are found by the finder.
+    expect(plans).toBeGreaterThan(80);
+    expect(seen).toBeGreaterThan(50);
+  });
+
+  it("never trades poché for a clear doorway: walls first, then openings and furniture", () => {
+    // The red team's repro. Partition `p` carries two 1600 mm openings that, with the shell
+    // and `q` teeing in at p's midpoint, leave no run clear of everything. The station must
+    // fall back to the widest run clear of WALLS (in an opening — untidy, readable), never to
+    // the segment midpoint, which is exactly where `q`'s poché is.
+    const src = [
+      'plan "Tee" {',
+      "  units mm",
+      "  dims auto all",
+      "  wall id=shell exterior thickness 200 { (0,0) (6000,0) (6000,4000) (0,4000) close }",
+      "  wall id=p partition thickness 100 { (3000,0) (3000,4000) }",
+      "  wall id=q partition thickness 100 { (3000,2000) (6000,2000) }",
+      '  room id=w at (0,0) size 3000x4000 label "W" uses living',
+      '  room id=n at (3000,0) size 3000x2000 label "N" uses bedroom',
+      '  room id=s at (3000,2000) size 3000x2000 label "S" uses bedroom',
+      "  opening id=o1 on p at 1000 width 1600",
+      "  opening id=o2 on p at 3000 width 1600",
+      "}",
+    ].join("\n");
+    const s = scene(src);
+    expect(readingsInPoche(s)).toEqual([]);
+    const c100 = dimTexts(s).filter((t) => t.value === "100");
+    expect(c100).toHaveLength(1);
+    // q's band is y 1950..2050; the number is a cap height tall, centred on its station.
+    const { y, size } = c100[0]!;
+    expect(y + size / 2 <= 1950 || y - size / 2 >= 2050).toBe(true);
+  });
+
+  it("leaves a call-out that collides with nothing exactly where walls alone put it", () => {
+    // The stability tier: an opening ELSEWHERE on the wall changes which run is widest once
+    // openings block, but the wall-clear station is already clear, so it must not move.
+    const base = [
+      'plan "Calm" {',
+      "  units mm",
+      "  dims auto walls",
+      "  wall id=shell exterior thickness 200 { (0,0) (8000,0) (8000,6000) (0,6000) close }",
+      "  wall id=spine partition thickness 100 { (0,3000) (8000,3000) }",
+      "  wall id=tee partition thickness 100 { (2000,3000) (2000,6000) }",
+      '  room id=a at (0,0) size 8000x3000 label "A" uses living',
+      '  room id=b at (0,3000) size 2000x3000 label "B" uses bedroom',
+      '  room id=c at (2000,3000) size 6000x3000 label "C" uses bedroom',
+    ];
+    const without = scene([...base, "}"].join("\n"));
+    const withDoor = scene([...base, "  door id=d on spine at 7200 width 800", "}"].join("\n"));
+    const at = (sc: Scene) => dimTexts(sc).find((t) => t.value === "100")!;
+    // The door (6800..7600) shortens the widest wall-clear run (2050..7900), so the widest run
+    // clear of everything has a different midpoint: without the stability tier this moves.
+    expect(at(without).x).toBeLessThan(6800);
+    expect(at(withDoor)).toEqual(at(without));
   });
 });

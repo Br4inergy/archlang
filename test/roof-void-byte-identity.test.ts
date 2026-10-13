@@ -229,7 +229,7 @@ import { type CompilerApi, semanticDigestWith } from "./byte-identity-digest.js"
 // row, and SEMANTIC_BASELINE did not move. Each moved call-out in ./byte-identity-baseline.ts
 // ("thickness call-outs keep off doorways and fixtures").
 const BASELINE: [string, string][] = [
-  ["laneway-house", "0e213c10c0334b45568e0a8de48dce9a1ce9b3406209af1cffb31c1dc8e556d3"],
+  ["laneway-house", "779d485d40bc85d86a029a8552d1f69dc5f337e322d81d01f467b265973f3232"],
   ["studio", "a673da24ae4ecee5a7de64e34efbf5f24df2cf6bfb85d4d8e79bcfd54c7a1acb"],
   ["gallery-l", "ffd6dd1847abaddeb7fc923e60bc66b7d798250ef53f29f2db918f1dee9583a0"],
   ["aquarium", "e665a074e8738a1ac4aeded2cb719c7ac7267cbd8758ab74465d5dfd922b2538"],

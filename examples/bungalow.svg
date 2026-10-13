@@ -449,10 +449,10 @@
 <line x1="6659.85" y1="4765.15" x2="6490.15" y2="4934.85" stroke="#0E5484" stroke-width="18"/>
 <line x1="6659.85" y1="4665.15" x2="6490.15" y2="4834.85" stroke="#0E5484" stroke-width="18"/>
 <text x="6575" y="4392.5" font-size="250" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 6575 4392.5)">100</text>
-<line x1="2700" y1="100" x2="2700" y2="-100" stroke="#0E5484" stroke-width="18"/>
-<line x1="2784.85" y1="15.15" x2="2615.15" y2="184.85" stroke="#0E5484" stroke-width="18"/>
-<line x1="2784.85" y1="-184.85" x2="2615.15" y2="-15.15" stroke="#0E5484" stroke-width="18"/>
-<text x="2700" y="457.5" font-size="250" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 2700 457.5)">200</text>
+<line x1="3025" y1="100" x2="3025" y2="-100" stroke="#0E5484" stroke-width="18"/>
+<line x1="3109.85" y1="15.15" x2="2940.15" y2="184.85" stroke="#0E5484" stroke-width="18"/>
+<line x1="3109.85" y1="-184.85" x2="2940.15" y2="-15.15" stroke="#0E5484" stroke-width="18"/>
+<text x="3025" y="457.5" font-size="250" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 3025 457.5)">200</text>
 </g>
 <g id="A-ROOF" inkscape:groupmode="layer" inkscape:label="A-ROOF">
 <polygon points="-700,-700 12700,-700 12700,9200 -700,9200" fill="none" stroke="#888888" stroke-width="18" stroke-dasharray="108 72"/>

@@ -157,8 +157,8 @@ const ROOT = join(HERE, "..");
 // ("thickness call-outs keep off doorways and fixtures").
 const BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "daacc21fb471e0d7d29c88191b838607a07b3f73e82a0508d42a8cbd8184bef3",
-  "laneway-house.arch": "8082a855a254f68f6acece39f2a157cc6230ffaf7ac57f72c36fa913e8b5b2c0",
-  "bungalow.arch": "1bfbf41d145e6298fdbb125f48f57ad1a278e254d06a304e21f68c187f3d20ea",
+  "laneway-house.arch": "db057207a832b3c0bce1cdb9580acb50a0eba0562db7332b3465c210c7910811",
+  "bungalow.arch": "4385f60b8dae41c7f1b5e8b14f52171242bcfeb378602c2523c843dcfba8c4dc",
   // Re-measured for the `overhead` flag. Its SOURCE gained two statements —
   // a `range_hood` over the stove and a `mirror` over the basin, the two correct drawings
   // the missing flag had kept out of the flagship — so this plan is a different building

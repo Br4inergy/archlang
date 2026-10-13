@@ -336,7 +336,7 @@ const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "7d17249d81b43f1ff5b17c6b1219750bbdd695599f31e66fb298be9facc7c169"],
   ["examples/aquarium.arch", "bd7b2666cb68c863d7a89064d0b96710e130cc2163ba426750ca1b76f8e22ba0"],
   ["examples/attached.arch", "ce39e349037a98b01516a72737bf9ea14a6f410ec295913efe84708753481761"],
-  ["examples/bungalow.arch", "7b840024de86cc1d48f14a65538e161a0ac59d5afed64018360f5a40dd23d497"],
+  ["examples/bungalow.arch", "1e374f87b266082707aa4e0baa263a2f2784ddc75eba8aeec94e5049f97d84ae"],
   ["examples/clinic.arch", "2713e28ea3bfb3409f54cab4fac70402777397fbc0414ac91fd22a13093b6a9d"],
   ["examples/courtyard-house.arch", "91c2a44265e69f983cf775eed28aa33e0aa5888334ad13856662a15fefa68169"],
   ["examples/furnished-flat.arch", "12473e1ca6aaacf6adea0da3c46565d93a14a8396700eed2f8d70dd90d73957a"],
@@ -350,10 +350,10 @@ const BASELINE: [string, string][] = [
   // Re-measured for the facade-probe fix (level 2's `dims auto` chains only), and again because
   // the EXAMPLE changed (backlog D.2, its piano turned and moved): the same row, with the same
   // digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/hillside-villa.arch", "1272134e6282e80d240a6235e92167c02b90eca4a3dc1f4d68588190c57ee016"],
+  ["examples/hillside-villa.arch", "4eed978244287e971800bed3775fff061c0602b894b8076087c1e0532678752d"],
   ["examples/imports.arch", "dbbdb95881775e34e5abecc72a52bc72160af81a5883ddced18bbf3d7f1a7f2c"],
-  ["examples/laneway-house.arch", "b686e0f50d895367dd161a68d4bd05100382d62502de05bbb27cd2aec2ee8034"],
-  ["examples/library.arch", "1f0439e36eac4f4cd06679963f12b4f797deb5480edd269179bba87249d1a4e9"],
+  ["examples/laneway-house.arch", "22c7826c336b629f99f486b29fd601033ba3220c27a8db9ab166f4de721ab40f"],
+  ["examples/library.arch", "087897f49ddcea8e83f7c59081946b38e36db0b6f4afe37aa99e4f91522b54e9"],
   ["examples/materials.arch", "3222a896a4a48f27bb92bb3e6396fde2395af69307536eae38cdd75e8bcf32cd"],
   ["examples/museum-wing.arch", "961bb8630adfb67925212a4ddfd0ad2fa95213306e8d3ee27def73dcb8bb6d6e"],
   ["examples/museum-wings.arch", "9d1a8cd57df5a37100ec394c8a263481d280a7e1cef5d53c931fb13b2a5972c1"],
@@ -365,8 +365,8 @@ const BASELINE: [string, string][] = [
   ["examples/terrace-row.arch", "93825c78af4638012261cfa52b8645ff1bfcb2859f4d65a4595a1a8505a40424"],
   ["examples/themed.arch", "94ea6112f46d9827b260dbfee48cfe1a5fe694d78256bfb70dc12a85be7532a0"],
   ["examples/tiny-house.arch", "af84b98168791a856d4b2787106534b2def58541ad554405d6d890c576444106"],
-  ["examples/townhouse.arch", "533114df8ca94b927678bf7ade9ddf812414c8485083812a3f3ed66f0d9ea7bd"],
-  ["examples/transit-hall.arch", "34b95a32a12ae9a73556f368f9f3a95452eda83f251b6c7dbbc4666ada8f5714"],
+  ["examples/townhouse.arch", "35e1b257702e6facdc73fa3bf34e00571d7721744b6c20e816246198ecf361a7"],
+  ["examples/transit-hall.arch", "adf801635352b34e5fbba07ea84cd55c5b2df81a8a13b12dc2722e963c48ff56"],
   ["examples/two-bed.arch", "595276f8bf7cf2b3531acf5f6f89808b33653e3ec99c4d30e5ca9b81d5f8bd1f"],
   ["examples/two-storey.arch", "1876fbe4389260e58f93a68c8100c81fd7fb7976ad3dc926ba68ba5d7d2e4419"],
   ["examples/lib/doors.arch", "5ae00707fc962b042e0e7e8d824a15a6bf7c7b4889bfb721632c667f7614396d"],

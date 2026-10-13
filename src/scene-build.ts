@@ -15,12 +15,12 @@ import type { RenderCtx, Registry, Runtime } from "./registry.js";
 import { BUILTIN_RUNTIME } from "./registry.js";
 import type { RenderSizes, Scene, SceneNode, SceneSheet } from "./scene.js";
 import type { Bounds, Vec, WallSegment } from "./geometry.js";
-import { add, mul, normal, rectCorners, segmentsOfWall, sub, unit } from "./geometry.js";
+import { add, mul, normal, segmentsOfWall, sub, unit } from "./geometry.js";
 import { arcPointAt, diameterText, radiusText } from "./geometry/arc.js";
 import type { Point } from "./ast.js";
 import { hatchesUsed } from "./hatches.js";
 import { lowerWallSet } from "./wall-lowering.js";
-import type { SideGeom } from "./facade.js";
+import type { FacadeOpening, SideGeom } from "./facade.js";
 import { SIDES, cleanTicks, facadeAt, facadeOpenings, measureExtent, openingsBySide, sideGeoms } from "./facade.js";
 import { anchorChromeToSheet, dimReach, layoutChrome } from "./chrome-layout.js";
 import { axesNodes } from "./axes.js";
@@ -451,8 +451,8 @@ function segmentBand(s: WallSegment): Bounds {
 }
 
 /**
- * WHERE along its wall a thickness call-out is taken: the middle of the segment's widest
- * run clear of every other wall.
+ * WHERE along its wall a thickness call-out is taken: a station clear of every other wall
+ * and, where the wall allows it, of the openings on it and the furniture beside it.
  *
  * The segment midpoint is the obvious station and the wrong one — on a shell it is very
  * often exactly where a partition tees in, which is the common case. The
@@ -463,19 +463,28 @@ function segmentBand(s: WallSegment): Bounds {
  * the run it covers, widened by a cap height at each end so the digits clear it rather than
  * touch it. Two more things block a run the same way, each read from its own shape:
  *
- *  - every OPENING on this wall line — its extent along the wall is its centre ± half its
- *    width, from the opening model. The dimension's ticks would cross the jambs and its
- *    number would sit in the doorway or across the door's swing (which spans the same run);
+ *  - every OPENING on this wall line (`openings`) — its extent along the wall is its centre
+ *    ± half its width, from the opening model. The dimension's ticks would cross the jambs
+ *    and its number would sit in the doorway or across the door's swing (which spans the
+ *    same run);
  *  - every piece of FURNITURE whose footprint reaches into the band the number occupies —
  *    from the wall face out to `reach`, on the side the number is written (`side`, the unit
- *    normal {@link thicknessSideFlipped} chose). The footprint polygon's vertices are
- *    projected onto the wall axis for the run it blocks and onto the normal for the reach
- *    test; a piece on the far side of the wall cannot collide with the number and blocks
- *    nothing.
+ *    normal {@link thicknessSideFlipped} chose). The footprint is the polygon the element's
+ *    own `bounds()` reports; its vertices are projected onto the wall axis for the run it
+ *    blocks and onto the normal for the reach test, so a piece on the far side of the wall
+ *    cannot collide with the number and blocks nothing.
  *
- * What is left is a set of free runs; the widest one's midpoint is the station.
- * Closed form — merge the intervals once, take the maximum — and it falls back to the
- * segment midpoint when the segment is blocked end to end (a call-out has to go somewhere).
+ * Walls and the rest are NOT equals: a number in poché is unreadable, a number in a doorway
+ * is only untidy. So the station is chosen in tiers, each the midpoint of a widest free run
+ * (closed form — sort the intervals once, take the maximum):
+ *
+ *  1. the widest run clear of WALLS, when that station is also clear of every opening and
+ *     piece of furniture — so a call-out that collides with nothing never moves;
+ *  2. otherwise the widest run clear of walls, openings and furniture;
+ *  3. otherwise (nothing is clear of all three) the widest run clear of walls alone, which
+ *     keeps the number out of poché at the cost of a doorway or a fixture;
+ *  4. otherwise (walls cross the segment end to end) the segment midpoint — a call-out has
+ *     to go somewhere.
  */
 function thicknessStation(
   rep: { a: Point; b: Point; t: number },
@@ -483,6 +492,7 @@ function thicknessStation(
   reach: number,
   pad: number,
   side: Vec,
+  openings: readonly FacadeOpening[],
 ): Point {
   const horiz = rep.a.y === rep.b.y;
   const lo = horiz ? Math.min(rep.a.x, rep.b.x) : Math.min(rep.a.y, rep.b.y);
@@ -512,12 +522,14 @@ function thicknessStation(
       blocked.push({ lo: Math.max(lo, aLo), hi: Math.min(hi, aHi) });
     }
   }
+  // Openings and furniture: the runs a doorway or a fixture takes.
+  const extra: { lo: number; hi: number }[] = [];
   const block = (aLo: number, aHi: number): void => {
     if (aHi <= lo || aLo >= hi) return;
-    blocked.push({ lo: Math.max(lo, aLo), hi: Math.min(hi, aHi) });
+    extra.push({ lo: Math.max(lo, aLo), hi: Math.min(hi, aHi) });
   };
   const axis = horiz ? "h" : "v";
-  for (const op of facadeOpenings(ir)) {
+  for (const op of openings) {
     if (op.axis !== axis || op.line !== c) continue;
     block(op.along - op.width / 2 - pad, op.along + op.width / 2 + pad);
   }
@@ -527,14 +539,14 @@ function thicknessStation(
   const tip = c + out * reach;
   const bandLo = Math.min(face, tip);
   const bandHi = Math.max(face, tip);
+  const furniture = BUILTIN_RUNTIME.registry.byKind.get("furniture");
   for (const el of ir.elements) {
-    if (el.kind !== "furniture") continue;
-    const f = el as RFurniture;
+    if (el.kind !== "furniture" || !furniture) continue;
     let aLo = Number.POSITIVE_INFINITY;
     let aHi = Number.NEGATIVE_INFINITY;
     let xLo = Number.POSITIVE_INFINITY;
     let xHi = Number.NEGATIVE_INFINITY;
-    for (const p of rectCorners(f.at.x, f.at.y, f.size.w, f.size.h)) {
+    for (const p of furniture.bounds(el)) {
       const along = horiz ? p.x : p.y;
       const across = horiz ? p.y : p.x;
       aLo = Math.min(aLo, along);
@@ -545,8 +557,24 @@ function thicknessStation(
     if (xHi <= bandLo || xLo >= bandHi) continue;
     block(aLo - pad, aHi + pad);
   }
-  blocked.sort((p, q) => p.lo - q.lo || p.hi - q.hi);
 
+  const at = (v: number): Point => (horiz ? { x: v, y: c } : { x: c, y: v });
+  // Tier 1: the wall-clear station, kept when nothing else stands on it.
+  const wallClear = widestFreeRun(lo, hi, blocked);
+  if (wallClear === null) return mid; // tier 4 — no run is clear of walls, so none is clear of all
+  if (!extra.some((e) => e.lo < wallClear && wallClear < e.hi)) return at(wallClear);
+  // Tier 2: clear of everything; tier 3: clear of walls alone.
+  const allClear = widestFreeRun(lo, hi, [...blocked, ...extra]);
+  return at(allClear ?? wallClear);
+}
+
+/**
+ * The midpoint of the widest run of `[lo, hi]` left free by `blocked` (each interval already
+ * clipped to the segment), or `null` when the intervals cover it end to end. Sorts a copy, so
+ * the caller's list keeps its order; on equal widths the first run wins.
+ */
+function widestFreeRun(lo: number, hi: number, blocked: readonly { lo: number; hi: number }[]): number | null {
+  const sorted = [...blocked].sort((p, q) => p.lo - q.lo || p.hi - q.hi);
   let bestLen = 0;
   let bestAt = 0;
   let cursor = lo;
@@ -556,13 +584,12 @@ function thicknessStation(
       bestAt = (from + to) / 2;
     }
   };
-  for (const b of blocked) {
+  for (const b of sorted) {
     consider(cursor, b.lo);
     cursor = Math.max(cursor, b.hi);
   }
   consider(cursor, hi);
-  if (bestLen <= 0) return mid;
-  return horiz ? { x: bestAt, y: c } : { x: c, y: bestAt };
+  return bestLen > 0 ? bestAt : null;
 }
 
 /** One thickness call-out per distinct wall thickness (deduped so eight identical
@@ -573,8 +600,8 @@ function thicknessStation(
  *  offset keeps it on the wall, and because the number is far wider than the wall the
  *  dim element writes it past the far station (`outsideStations` in `elements/dim.ts`).
  *  That makes two derived positions, and both come from the shape rather than a box:
- *  {@link thicknessStation} picks WHERE along the wall (a run no other wall, opening or
- *  furniture footprint crosses) and
+ *  {@link thicknessStation} picks WHERE along the wall (a run no other wall crosses and,
+ *  where one exists, no opening or furniture footprint either) and
  *  {@link thicknessSideFlipped} picks WHICH SIDE (the one with floor under it, not the
  *  annotation band outside the building). Presentation only — never expands bounds
  *  meaningfully (faces sit ½-thickness off a centerline already inside the plan). */
@@ -600,6 +627,7 @@ function synthWallDims(ir: ResolvedPlan, sizes: RenderSizes, dims: RDim[]): void
     }
   }
   const rooms = ir.elements.filter((el): el is RRoom => el.kind === "room").map(roomBox);
+  const openings = repByThickness.size > 0 ? facadeOpenings(ir) : [];
   for (const t of [...repByThickness.keys()].sort((a, c) => a - c)) {
     const rep = repByThickness.get(t)!;
     // How far off the centreline the number reaches, and how tall it is — the same two
@@ -612,7 +640,7 @@ function synthWallDims(ir: ResolvedPlan, sizes: RenderSizes, dims: RDim[]): void
     // text and nothing else. It is decided first because the station avoids what stands on
     // that side.
     const onPlusSide = thicknessSideFlipped(rep.a, rep.b, rep.n, rep.t, rooms);
-    const at = thicknessStation(rep, ir, reach, sizes.dimFont, onPlusSide ? rep.n : mul(rep.n, -1));
+    const at = thicknessStation(rep, ir, reach, sizes.dimFont, onPlusSide ? rep.n : mul(rep.n, -1), openings);
     const half = mul(rep.n, rep.t / 2);
     dims.push({
       ...mkDim(add(at, half), add(at, mul(half, -1)), 0, text),
