@@ -103,7 +103,10 @@ export interface FinishNote {
   stage: FinishStage;
   /** The statement the note is about, when it is about one. */
   statement?: FinishStatement;
-  /** The room the note is about, when the `furnish` stage left one empty. */
+  /**
+   * The room the note is about, when the `furnish` stage left one empty, or found one that
+   * holds furniture but lacks a piece its use requires (named in `reason`; never topped up).
+   */
   room?: string;
   /** The diagnostic codes furnishing that room, or writing that sheet statement, would have raised. */
   codes?: string[];

@@ -557,8 +557,17 @@ A use's wall fixtures form one run: the stove next to the sink, the fridge next 
 one wall. A use whose required pieces cannot be placed together is left out whole and named in
 `unresolved`.
 
-- **Fill only.** A room that holds any piece is not touched. Nothing authored is moved, resized
-  or deleted.
+- **Fill only.** A room gains pieces only when nothing stands on its floor and nothing is
+  declared `in` it. A piece stands on a room's floor when its footprint reaches it; a piece
+  declared `in` another room must reach more than 100 mm onto it, the overhang
+  `W_FIXTURE_WRONG_ROOM` allows at a wall. Nothing authored is moved, resized or deleted.
+  - A room that holds some pieces but lacks one its use requires (a living room with a lamp
+    and no sofa) is named in `unresolved` with the missing pieces, and is not filled. A piece
+    that does the job counts: a `double_bed` for a `bed`, and a `urinal` for a `wc` in any
+    wet room, a dwelling bathroom included.
+  - A room whose only pieces are declared `in` it but stand outside it is named in
+    `unresolved` as holding no piece on its floor, with `W_FIXTURE_WRONG_ROOM`, and is not
+    filled: fix the piece's position or its `in` first.
 - **Relative placement.** A services fixture is written `against wall <id> offset …`; a
   free-standing piece `in <room> anchor … flush size WxH rotate …`. Never `at (x,y)`.
 - **Never worse.** A room's pieces are kept only when the plan still compiles and raises no
