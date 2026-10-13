@@ -174,6 +174,154 @@ suite("furnish law — fill only: a room that holds furniture is not touched", (
     }, 120000);
 });
 
+suite("furnish law — fill only: a partly furnished room is reported, never topped up", () => {
+  const PARTLY = "holds furniture but not every piece its use requires";
+  /** The partly-furnished notes of a result, as `[room, what it lacks]`. */
+  const partly = (r: { unresolved: readonly { room?: string; reason: string }[] }): Array<[string, string]> =>
+    r.unresolved
+      .filter((u) => u.reason.includes(PARTLY))
+      .map((u) => [u.room!, /requires — (.*) missing; finish fills only empty rooms/.exec(u.reason)![1]!]);
+
+  it("the agent-UX audit plan: the living room's missing sofa is named; the bedrooms are furnished; the bathroom is silent", () => {
+    const src = readFileSync("test/finish-fixtures/agent-ux-prefinish.arch", "utf8");
+    expect(errorsOf(src)).toEqual([]);
+    for (const r of [finish(src, { only: "furnish" }), finish(src)]) {
+      expect([...new Set(r.changes.filter((c) => c.stage === "furnish").map((c) => c.room))]).toEqual([
+        "r_bed1",
+        "r_bed2",
+      ]);
+      expect(r.unresolved.filter((u) => u.stage === "furnish")).toEqual([
+        {
+          stage: "furnish",
+          room: "r_live",
+          reason:
+            '"r_live" holds furniture but not every piece its use requires — living: `sofa` missing; finish fills only empty rooms',
+          span: { start: src.indexOf("room id=r_live"), end: src.indexOf("\n\n  outdoor") },
+        },
+      ]);
+      // Nothing is written into the partly furnished room, and the full bathroom has no note.
+      expect(furnitureLines(r.source).filter((l) => l.includes("in r_live"))).toEqual(
+        furnitureLines(src).filter((l) => l.includes("in r_live")),
+      );
+      expect(r.unresolved.some((u) => u.room === "r_bath")).toBe(false);
+    }
+  });
+
+  it("a living room with only a lamp is named; a bedroom with its bed is not; an empty kitchen is furnished", () => {
+    const src = `plan "Lamp" {
+  units mm
+  wall id=w exterior thickness 200 { (0,0) (9000,0) (9000,4000) (0,4000) close }
+  wall id=p1 partition thickness 100 { (4000,0) (4000,4000) }
+  wall id=p2 partition thickness 100 { (6500,0) (6500,4000) }
+  room id=r_live at (0,0) size 4000x4000 label "Living" uses living
+  room id=r_bed at (4000,0) size 2500x4000 label "Bedroom" uses bedroom
+  room id=r_kit at (6500,0) size 2500x4000 label "Kitchen" uses kitchen
+  door id=d on w at 2000 width 900 swing in
+  opening id=o1 on p1 at 3000 width 900
+  opening id=o2 on p2 at 3000 width 900
+  furniture lamp at (300,300) size 400x400 in r_live
+  furniture bed in r_bed anchor top flush size 1500x2000
+}
+`;
+    expect(errorsOf(src)).toEqual([]);
+    const r = finish(src, { only: "furnish" });
+    expect([...new Set(r.changes.map((c) => c.room))]).toEqual(["r_kit"]);
+    expect(partly(r)).toEqual([["r_live", "living: `sofa`"]]);
+    expect(r.unresolved.map((u) => u.room)).toEqual(["r_live"]);
+  });
+
+  it("every required piece of every use is named, use by use", () => {
+    const src = FLAT.replace(`label "Bedroom" uses bedroom`, `label "Studio" uses bedroom living kitchen`).replace(
+      "  door id=d_bed",
+      "  furniture fridge against wall w_bb offset 2000 in r_bed\n  door id=d_bed",
+    );
+    expect(errorsOf(src)).toEqual([]);
+    const r = finish(src, { only: "furnish" });
+    expect(partly(r)).toEqual([["r_bed", "kitchen: `kitchen_sink`, `stove`; bedroom: `bed`; living: `sofa`"]]);
+    expect(r.changes.some((c) => c.room === "r_bed")).toBe(false);
+  });
+
+  it("a piece of the same family, or one that does the job, counts: no note", () => {
+    for (const piece of [
+      "couch in r_bed anchor center size 2000x900", // the `sofa` family, in a living room
+      "double_bed in r_bed anchor center size 1600x2000",
+      "bunk_bed in r_bed anchor center size 1000x2000",
+    ]) {
+      const use = piece.startsWith("couch") ? "living" : "bedroom";
+      const src = FLAT.replace(`uses bedroom`, `uses ${use}`).replace(
+        "  door id=d_bed",
+        `  furniture ${piece}\n  door id=d_bed`,
+      );
+      expect(errorsOf(src), piece).toEqual([]);
+      expect(partly(finish(src, { only: "furnish" })), piece).toEqual([]);
+    }
+  });
+
+  it("a piece counts for a room by its footprint on the room's shape, never the room's bounding box", () => {
+    // The bed stands in the square room that fills the notch of the L, without `in`. The L's
+    // bounding box covers it; the L's floor does not. So the L holds nothing (and is reported
+    // as a polygon room), and the square room holds its bed (no note).
+    const src = `plan "Notch" {
+  units mm
+  wall id=w exterior thickness 200 { (0,0) (6000,0) (6000,6000) (0,6000) close }
+  wall id=p partition thickness 100 { (6000,3000) (3000,3000) (3000,6000) }
+  room id=l polygon (0,0) (6000,0) (6000,3000) (3000,3000) (3000,6000) (0,6000) label "Bedroom" uses bedroom
+  room id=sq at (3000,3000) size 3000x3000 label "Bedroom" uses bedroom
+  door id=d on w at 10% width 900 swing in
+  opening id=o on p at 1500 width 900
+  furniture bed at (3500,3800) size 1500x2000
+}
+`;
+    expect(errorsOf(src)).toEqual([]);
+    const r = finish(src, { only: "furnish" });
+    expect(r.unresolved.map((u) => u.room)).toEqual(["l"]);
+    expect(r.unresolved[0]!.reason).toContain("polygon room");
+    expect(partly(r)).toEqual([]);
+  });
+
+  // The examples whose `finish` output gained a partly-furnished note, each named with what it
+  // lacks. Every other example has none. A move in this table is an output change: explain it.
+  const CORPUS_PARTLY: Readonly<Record<string, Array<[string, string]>>> = {
+    clinic: [
+      ["r_recept", "office: `desk`"],
+      ["r_treat", "office: `desk`"],
+      ["r_staff", "office: `desk`"],
+    ],
+    "hexagon-pavilion": [
+      ["g_ne", "living: `sofa`"],
+      ["g_n", "office: `desk`"],
+      ["g_se", "living: `sofa`"],
+    ],
+    "terrace-row": [
+      ["u1.living", "dining: `dining_table`"],
+      ["u2.living", "dining: `dining_table`"],
+      ["u3.living", "dining: `dining_table`"],
+      ["u4.living", "dining: `dining_table`"],
+    ],
+    "tiny-house": [["r_main", "living: `sofa`"]],
+    "transit-hall": [
+      ["r_shop1", "office: `desk`"],
+      ["r_shop2", "office: `desk`"],
+      ["r_shop3", "office: `desk`"],
+      ["r_shop4", "office: `desk`"],
+    ],
+    "two-storey": [["kitchen", "kitchen: `stove`"]],
+  };
+
+  it("the pinned table names only shipped examples", () => {
+    for (const name of Object.keys(CORPUS_PARTLY)) expect(NAMES).toContain(name);
+  });
+
+  for (const name of NAMES)
+    it(`${name}: the partly furnished rooms are named, and nothing is written into them`, () => {
+      const src = srcOf(name);
+      const r = finish(src, { world, only: "furnish" });
+      const named = partly(r);
+      expect(named).toEqual(CORPUS_PARTLY[name] ?? []);
+      for (const [room] of named) expect(r.changes.some((c) => c.room === room)).toBe(false);
+    }, 120000);
+});
+
 suite("furnish law — never worse: no error, no new diagnostic code, no new furniture conflict", () => {
   for (const name of NAMES)
     it(`${name}`, () => {
