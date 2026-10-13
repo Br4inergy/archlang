@@ -1263,192 +1263,208 @@ exports[`golden SVG snapshots > renders classroom-block.arch deterministically 1
 <text x="5930" y="13575" font-size="250" fill="#333333" text-anchor="middle" dominant-baseline="central">W06</text>
 <polygon points="21635,12800 22275,12800 22275,13200 21635,13200" fill="none" stroke="#333333" stroke-width="18"/>
 <text x="21955" y="13000" font-size="250" fill="#333333" text-anchor="middle" dominant-baseline="central">W07</text>
-<polygon points="-125,19710 3475,19710 3475,25490 -125,25490" fill="none" stroke="#333333" stroke-width="18"/>
+<polygon points="-125,19710 6025,19710 6025,25490 -125,25490" fill="none" stroke="#333333" stroke-width="18"/>
 <text x="-53" y="19880" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">ROOM SCHEDULE</text>
-<line x1="-125" y1="20050" x2="3475" y2="20050" stroke="#333333" stroke-width="18"/>
+<line x1="-125" y1="20050" x2="6025" y2="20050" stroke="#333333" stroke-width="18"/>
 <text x="150" y="20220" font-size="152" fill="#888888" text-anchor="middle" dominant-baseline="central" font-weight="600">NO.</text>
 <text x="497" y="20220" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">NAME</text>
-<text x="3403" y="20220" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">AREA (m²)</text>
-<line x1="-125" y1="20390" x2="3475" y2="20390" stroke="#333333" stroke-width="18"/>
+<text x="4553" y="20220" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">AREA (CENTRELINE, m²)</text>
+<text x="5953" y="20220" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">NET AREA (m²)</text>
+<line x1="-125" y1="20390" x2="6025" y2="20390" stroke="#333333" stroke-width="18"/>
 <text x="-53" y="20560" font-size="190" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">Teaching</text>
 <text x="150" y="20900" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">01</text>
 <text x="497" y="20900" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 1</text>
-<text x="3403" y="20900" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">60.00</text>
-<line x1="-125" y1="21070" x2="3475" y2="21070" stroke="#333333" stroke-width="13"/>
+<text x="4553" y="20900" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">60.00</text>
+<text x="5953" y="20900" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">56.94</text>
+<line x1="-125" y1="21070" x2="6025" y2="21070" stroke="#333333" stroke-width="13"/>
 <text x="150" y="21240" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">02</text>
 <text x="497" y="21240" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 2</text>
-<text x="3403" y="21240" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">60.00</text>
-<line x1="-125" y1="21410" x2="3475" y2="21410" stroke="#333333" stroke-width="13"/>
+<text x="4553" y="21240" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">60.00</text>
+<text x="5953" y="21240" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">57.33</text>
+<line x1="-125" y1="21410" x2="6025" y2="21410" stroke="#333333" stroke-width="13"/>
 <text x="150" y="21580" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">03</text>
 <text x="497" y="21580" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 3</text>
-<text x="3403" y="21580" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">60.00</text>
+<text x="4553" y="21580" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">60.00</text>
+<text x="5953" y="21580" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">56.94</text>
 <line x1="425" y1="20730" x2="425" y2="21750" stroke="#333333" stroke-width="13"/>
 <line x1="2425" y1="20730" x2="2425" y2="21750" stroke="#333333" stroke-width="13"/>
-<line x1="-125" y1="21750" x2="3475" y2="21750" stroke="#333333" stroke-width="13"/>
+<line x1="4625" y1="20730" x2="4625" y2="21750" stroke="#333333" stroke-width="13"/>
+<line x1="-125" y1="21750" x2="6025" y2="21750" stroke="#333333" stroke-width="13"/>
 <text x="-53" y="21920" font-size="190" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">SUBTOTAL</text>
-<text x="3403" y="21920" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">180.00</text>
-<line x1="-125" y1="22090" x2="3475" y2="22090" stroke="#333333" stroke-width="18"/>
+<text x="4553" y="21920" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">180.00</text>
+<text x="5953" y="21920" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">171.21</text>
+<line x1="-125" y1="22090" x2="6025" y2="22090" stroke="#333333" stroke-width="18"/>
 <text x="-53" y="22260" font-size="190" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">Service</text>
 <text x="150" y="22600" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">04</text>
 <text x="497" y="22600" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor</text>
-<text x="3403" y="22600" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">45.00</text>
-<line x1="-125" y1="22770" x2="3475" y2="22770" stroke="#333333" stroke-width="13"/>
+<text x="4553" y="22600" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">45.00</text>
+<text x="5953" y="22600" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">41.16</text>
+<line x1="-125" y1="22770" x2="6025" y2="22770" stroke="#333333" stroke-width="13"/>
 <text x="150" y="22940" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">05</text>
 <text x="497" y="22940" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Entrance Lobby</text>
-<text x="3403" y="22940" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">20.00</text>
-<line x1="-125" y1="23110" x2="3475" y2="23110" stroke="#333333" stroke-width="13"/>
+<text x="4553" y="22940" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">20.00</text>
+<text x="5953" y="22940" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">18.24</text>
+<line x1="-125" y1="23110" x2="6025" y2="23110" stroke="#333333" stroke-width="13"/>
 <text x="150" y="23280" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">06</text>
 <text x="497" y="23280" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Staff Prep</text>
-<text x="3403" y="23280" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">18.00</text>
-<line x1="-125" y1="23450" x2="3475" y2="23450" stroke="#333333" stroke-width="13"/>
+<text x="4553" y="23280" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">18.00</text>
+<text x="5953" y="23280" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">16.53</text>
+<line x1="-125" y1="23450" x2="6025" y2="23450" stroke="#333333" stroke-width="13"/>
 <text x="150" y="23620" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">07</text>
 <text x="497" y="23620" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Store</text>
-<text x="3403" y="23620" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">12.00</text>
-<line x1="-125" y1="23790" x2="3475" y2="23790" stroke="#333333" stroke-width="13"/>
+<text x="4553" y="23620" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">12.00</text>
+<text x="5953" y="23620" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">10.83</text>
+<line x1="-125" y1="23790" x2="6025" y2="23790" stroke="#333333" stroke-width="13"/>
 <text x="150" y="23960" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">08</text>
 <text x="497" y="23960" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Pupil WCs</text>
-<text x="3403" y="23960" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">18.00</text>
-<line x1="-125" y1="24130" x2="3475" y2="24130" stroke="#333333" stroke-width="13"/>
+<text x="4553" y="23960" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">18.00</text>
+<text x="5953" y="23960" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">16.10</text>
+<line x1="-125" y1="24130" x2="6025" y2="24130" stroke="#333333" stroke-width="13"/>
 <text x="150" y="24300" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">09</text>
 <text x="497" y="24300" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Accessible WC</text>
-<text x="3403" y="24300" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">10.00</text>
-<line x1="-125" y1="24470" x2="3475" y2="24470" stroke="#333333" stroke-width="13"/>
+<text x="4553" y="24300" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">10.00</text>
+<text x="5953" y="24300" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">8.93</text>
+<line x1="-125" y1="24470" x2="6025" y2="24470" stroke="#333333" stroke-width="13"/>
 <text x="150" y="24640" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">10</text>
 <text x="497" y="24640" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Plant Room</text>
-<text x="3403" y="24640" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">12.00</text>
+<text x="4553" y="24640" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">12.00</text>
+<text x="5953" y="24640" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">10.64</text>
 <line x1="425" y1="22430" x2="425" y2="24810" stroke="#333333" stroke-width="13"/>
 <line x1="2425" y1="22430" x2="2425" y2="24810" stroke="#333333" stroke-width="13"/>
-<line x1="-125" y1="24810" x2="3475" y2="24810" stroke="#333333" stroke-width="13"/>
+<line x1="4625" y1="22430" x2="4625" y2="24810" stroke="#333333" stroke-width="13"/>
+<line x1="-125" y1="24810" x2="6025" y2="24810" stroke="#333333" stroke-width="13"/>
 <text x="-53" y="24980" font-size="190" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">SUBTOTAL</text>
-<text x="3403" y="24980" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">135.00</text>
-<line x1="-125" y1="25150" x2="3475" y2="25150" stroke="#333333" stroke-width="18"/>
+<text x="4553" y="24980" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">135.00</text>
+<text x="5953" y="24980" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">122.43</text>
+<line x1="-125" y1="25150" x2="6025" y2="25150" stroke="#333333" stroke-width="18"/>
 <text x="-53" y="25320" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">TOTAL</text>
-<text x="3403" y="25320" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">315.00</text>
-<polygon points="3775,19710 9425,19710 9425,26170 3775,26170" fill="none" stroke="#333333" stroke-width="18"/>
-<text x="3888" y="19880" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">DOOR &amp; WINDOW SCHEDULE</text>
-<line x1="3775" y1="20050" x2="9425" y2="20050" stroke="#333333" stroke-width="18"/>
-<text x="4050" y="20220" font-size="152" fill="#888888" text-anchor="middle" dominant-baseline="central" font-weight="600">TAG</text>
-<text x="4438" y="20220" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">ROOM(S)</text>
-<line x1="4325" y1="20050" x2="4325" y2="26170" stroke="#333333" stroke-width="13"/>
-<text x="7912" y="20220" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">WIDTH</text>
-<line x1="7325" y1="20050" x2="7325" y2="26170" stroke="#333333" stroke-width="13"/>
-<text x="8138" y="20220" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">TYPE</text>
-<line x1="8025" y1="20050" x2="8025" y2="26170" stroke="#333333" stroke-width="13"/>
-<text x="8938" y="20220" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">HAND</text>
-<line x1="8825" y1="20050" x2="8825" y2="26170" stroke="#333333" stroke-width="13"/>
-<line x1="3775" y1="20390" x2="9425" y2="20390" stroke="#333333" stroke-width="18"/>
-<text x="4050" y="20560" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D01</text>
-<text x="4438" y="20560" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">exterior / Entrance ...</text>
-<text x="7912" y="20560" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1400</text>
-<text x="8138" y="20560" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8938" y="20560" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
-<text x="4050" y="20900" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D02</text>
-<text x="4438" y="20900" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 1 / Corridor</text>
-<text x="7912" y="20900" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8138" y="20900" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8938" y="20900" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
-<line x1="3775" y1="20730" x2="9425" y2="20730" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="21240" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D03</text>
-<text x="4438" y="21240" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 2 / Corridor</text>
-<text x="7912" y="21240" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8138" y="21240" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8938" y="21240" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
-<line x1="3775" y1="21070" x2="9425" y2="21070" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="21580" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D04</text>
-<text x="4438" y="21580" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 3 / Corridor</text>
-<text x="7912" y="21580" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8138" y="21580" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8938" y="21580" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
-<line x1="3775" y1="21410" x2="9425" y2="21410" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="21920" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D05</text>
-<text x="4438" y="21920" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Staff Prep</text>
-<text x="7912" y="21920" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8138" y="21920" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8938" y="21920" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
-<line x1="3775" y1="21750" x2="9425" y2="21750" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="22260" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D06</text>
-<text x="4438" y="22260" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Store</text>
-<text x="7912" y="22260" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8138" y="22260" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8938" y="22260" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
-<line x1="3775" y1="22090" x2="9425" y2="22090" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="22600" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D07</text>
-<text x="4438" y="22600" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Pupil WCs</text>
-<text x="7912" y="22600" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8138" y="22600" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8938" y="22600" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
-<line x1="3775" y1="22430" x2="9425" y2="22430" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="22940" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D08</text>
-<text x="4438" y="22940" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Accessibl...</text>
-<text x="7912" y="22940" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8138" y="22940" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8938" y="22940" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
-<line x1="3775" y1="22770" x2="9425" y2="22770" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="23280" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D09</text>
-<text x="4438" y="23280" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Plant Room</text>
-<text x="7912" y="23280" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8138" y="23280" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8938" y="23280" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
-<line x1="3775" y1="23110" x2="9425" y2="23110" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="23620" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D10</text>
-<text x="4438" y="23620" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">exterior / Corridor</text>
-<text x="7912" y="23620" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8138" y="23620" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8938" y="23620" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
-<line x1="3775" y1="23450" x2="9425" y2="23450" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="23960" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W01</text>
-<text x="4438" y="23960" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 1</text>
-<text x="7912" y="23960" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">4500</text>
-<text x="8138" y="23960" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8938" y="23960" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3775" y1="23790" x2="9425" y2="23790" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="24300" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W02</text>
-<text x="4438" y="24300" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 2</text>
-<text x="7912" y="24300" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">4500</text>
-<text x="8138" y="24300" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8938" y="24300" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3775" y1="24130" x2="9425" y2="24130" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="24640" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W03</text>
-<text x="4438" y="24640" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 3</text>
-<text x="7912" y="24640" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">4500</text>
-<text x="8138" y="24640" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8938" y="24640" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3775" y1="24470" x2="9425" y2="24470" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="24980" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W04</text>
-<text x="4438" y="24980" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 1</text>
-<text x="7912" y="24980" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
-<text x="8138" y="24980" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8938" y="24980" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3775" y1="24810" x2="9425" y2="24810" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="25320" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W05</text>
-<text x="4438" y="25320" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 3</text>
-<text x="7912" y="25320" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
-<text x="8138" y="25320" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8938" y="25320" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3775" y1="25150" x2="9425" y2="25150" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="25660" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W06</text>
-<text x="4438" y="25660" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Staff Prep</text>
-<text x="7912" y="25660" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1800</text>
-<text x="8138" y="25660" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8938" y="25660" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3775" y1="25490" x2="9425" y2="25490" stroke="#333333" stroke-width="13"/>
-<text x="4050" y="26000" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W07</text>
-<text x="4438" y="26000" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Plant Room</text>
-<text x="7912" y="26000" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8138" y="26000" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8938" y="26000" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3775" y1="25830" x2="9425" y2="25830" stroke="#333333" stroke-width="13"/>
-<polygon points="9725,19710 17075,19710 17075,21750 9725,21750" fill="none" stroke="#333333" stroke-width="18"/>
-<text x="9872" y="19880" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">NOTES</text>
-<line x1="9725" y1="20050" x2="17075" y2="20050" stroke="#333333" stroke-width="18"/>
-<text x="9928" y="20220" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1.</text>
-<text x="10075" y="20220" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">All dimensions in millimetres. Do not scale from this</text>
-<text x="10075" y="20560" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">drawing.</text>
-<text x="9928" y="20900" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2.</text>
-<text x="10075" y="20900" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom doors are 1000 mm leaves; a second exit closes</text>
-<text x="10075" y="21240" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">the east end of the corridor.</text>
-<text x="9928" y="21580" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">3.</text>
-<text x="10075" y="21580" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Pupil WC cubicle partitions are 1500 mm deep.</text>
+<text x="4553" y="25320" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">315.00</text>
+<text x="5953" y="25320" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">293.64</text>
+<polygon points="6325,19710 11975,19710 11975,26170 6325,26170" fill="none" stroke="#333333" stroke-width="18"/>
+<text x="6438" y="19880" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">DOOR &amp; WINDOW SCHEDULE</text>
+<line x1="6325" y1="20050" x2="11975" y2="20050" stroke="#333333" stroke-width="18"/>
+<text x="6600" y="20220" font-size="152" fill="#888888" text-anchor="middle" dominant-baseline="central" font-weight="600">TAG</text>
+<text x="6988" y="20220" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">ROOM(S)</text>
+<line x1="6875" y1="20050" x2="6875" y2="26170" stroke="#333333" stroke-width="13"/>
+<text x="10462" y="20220" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">WIDTH</text>
+<line x1="9875" y1="20050" x2="9875" y2="26170" stroke="#333333" stroke-width="13"/>
+<text x="10688" y="20220" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">TYPE</text>
+<line x1="10575" y1="20050" x2="10575" y2="26170" stroke="#333333" stroke-width="13"/>
+<text x="11488" y="20220" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">HAND</text>
+<line x1="11375" y1="20050" x2="11375" y2="26170" stroke="#333333" stroke-width="13"/>
+<line x1="6325" y1="20390" x2="11975" y2="20390" stroke="#333333" stroke-width="18"/>
+<text x="6600" y="20560" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D01</text>
+<text x="6988" y="20560" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">exterior / Entrance ...</text>
+<text x="10462" y="20560" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1400</text>
+<text x="10688" y="20560" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11488" y="20560" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
+<text x="6600" y="20900" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D02</text>
+<text x="6988" y="20900" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 1 / Corridor</text>
+<text x="10462" y="20900" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10688" y="20900" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11488" y="20900" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
+<line x1="6325" y1="20730" x2="11975" y2="20730" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="21240" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D03</text>
+<text x="6988" y="21240" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 2 / Corridor</text>
+<text x="10462" y="21240" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10688" y="21240" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11488" y="21240" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
+<line x1="6325" y1="21070" x2="11975" y2="21070" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="21580" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D04</text>
+<text x="6988" y="21580" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 3 / Corridor</text>
+<text x="10462" y="21580" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10688" y="21580" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11488" y="21580" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
+<line x1="6325" y1="21410" x2="11975" y2="21410" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="21920" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D05</text>
+<text x="6988" y="21920" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Staff Prep</text>
+<text x="10462" y="21920" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10688" y="21920" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11488" y="21920" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
+<line x1="6325" y1="21750" x2="11975" y2="21750" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="22260" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D06</text>
+<text x="6988" y="22260" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Store</text>
+<text x="10462" y="22260" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10688" y="22260" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11488" y="22260" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
+<line x1="6325" y1="22090" x2="11975" y2="22090" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="22600" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D07</text>
+<text x="6988" y="22600" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Pupil WCs</text>
+<text x="10462" y="22600" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10688" y="22600" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11488" y="22600" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
+<line x1="6325" y1="22430" x2="11975" y2="22430" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="22940" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D08</text>
+<text x="6988" y="22940" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Accessibl...</text>
+<text x="10462" y="22940" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10688" y="22940" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11488" y="22940" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
+<line x1="6325" y1="22770" x2="11975" y2="22770" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="23280" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D09</text>
+<text x="6988" y="23280" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Plant Room</text>
+<text x="10462" y="23280" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10688" y="23280" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11488" y="23280" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
+<line x1="6325" y1="23110" x2="11975" y2="23110" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="23620" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D10</text>
+<text x="6988" y="23620" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">exterior / Corridor</text>
+<text x="10462" y="23620" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10688" y="23620" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11488" y="23620" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
+<line x1="6325" y1="23450" x2="11975" y2="23450" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="23960" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W01</text>
+<text x="6988" y="23960" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 1</text>
+<text x="10462" y="23960" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">4500</text>
+<text x="10688" y="23960" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11488" y="23960" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6325" y1="23790" x2="11975" y2="23790" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="24300" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W02</text>
+<text x="6988" y="24300" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 2</text>
+<text x="10462" y="24300" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">4500</text>
+<text x="10688" y="24300" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11488" y="24300" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6325" y1="24130" x2="11975" y2="24130" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="24640" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W03</text>
+<text x="6988" y="24640" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 3</text>
+<text x="10462" y="24640" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">4500</text>
+<text x="10688" y="24640" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11488" y="24640" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6325" y1="24470" x2="11975" y2="24470" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="24980" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W04</text>
+<text x="6988" y="24980" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 1</text>
+<text x="10462" y="24980" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
+<text x="10688" y="24980" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11488" y="24980" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6325" y1="24810" x2="11975" y2="24810" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="25320" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W05</text>
+<text x="6988" y="25320" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom 3</text>
+<text x="10462" y="25320" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
+<text x="10688" y="25320" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11488" y="25320" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6325" y1="25150" x2="11975" y2="25150" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="25660" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W06</text>
+<text x="6988" y="25660" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Staff Prep</text>
+<text x="10462" y="25660" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1800</text>
+<text x="10688" y="25660" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11488" y="25660" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6325" y1="25490" x2="11975" y2="25490" stroke="#333333" stroke-width="13"/>
+<text x="6600" y="26000" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W07</text>
+<text x="6988" y="26000" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Plant Room</text>
+<text x="10462" y="26000" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10688" y="26000" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11488" y="26000" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6325" y1="25830" x2="11975" y2="25830" stroke="#333333" stroke-width="13"/>
+<polygon points="12275,19710 19625,19710 19625,21750 12275,21750" fill="none" stroke="#333333" stroke-width="18"/>
+<text x="12422" y="19880" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">NOTES</text>
+<line x1="12275" y1="20050" x2="19625" y2="20050" stroke="#333333" stroke-width="18"/>
+<text x="12478" y="20220" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1.</text>
+<text x="12625" y="20220" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">All dimensions in millimetres. Do not scale from this</text>
+<text x="12625" y="20560" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">drawing.</text>
+<text x="12478" y="20900" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2.</text>
+<text x="12625" y="20900" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Classroom doors are 1000 mm leaves; a second exit closes</text>
+<text x="12625" y="21240" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">the east end of the corridor.</text>
+<text x="12478" y="21580" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">3.</text>
+<text x="12625" y="21580" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Pupil WC cubicle partitions are 1500 mm deep.</text>
 </g>
 <g><polygon points="22175,-1400 21950,-680 22175,-837.5 22400,-680" fill="#333333" transform="rotate(0 22175 -950)"/><text x="22175" y="-1608" font-size="260" fill="#333333" text-anchor="middle" dominant-baseline="central">N</text></g>
 <g><rect x="-125" y="16450" width="1000" height="140" fill="#333333"/><rect x="875" y="16450" width="1000" height="140" fill="none" stroke="#333333" stroke-width="18"/><text x="-125" y="16790" font-size="200" fill="#333333" text-anchor="start" dominant-baseline="central">0</text><text x="1875" y="16790" font-size="200" fill="#333333" text-anchor="middle" dominant-baseline="central">2 m</text></g>
@@ -2826,151 +2842,163 @@ exports[`golden SVG snapshots > renders corner-cafe.arch deterministically 1`] =
 <text x="4525" y="457.5" font-size="250" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 4525 457.5)">200</text>
 </g>
 <g id="A-ANNO" inkscape:groupmode="layer" inkscape:label="A-ANNO">
-<polygon points="-100,13385 3500,13385 3500,17805 -100,17805" fill="none" stroke="#333333" stroke-width="18"/>
+<polygon points="-100,13385 6050,13385 6050,17805 -100,17805" fill="none" stroke="#333333" stroke-width="18"/>
 <text x="-28" y="13555" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">ROOM SCHEDULE</text>
-<line x1="-100" y1="13725" x2="3500" y2="13725" stroke="#333333" stroke-width="18"/>
+<line x1="-100" y1="13725" x2="6050" y2="13725" stroke="#333333" stroke-width="18"/>
 <text x="175" y="13895" font-size="152" fill="#888888" text-anchor="middle" dominant-baseline="central" font-weight="600">NO.</text>
 <text x="522" y="13895" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">NAME</text>
-<text x="3428" y="13895" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">AREA (m²)</text>
-<line x1="-100" y1="14065" x2="3500" y2="14065" stroke="#333333" stroke-width="18"/>
+<text x="4578" y="13895" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">AREA (CENTRELINE, m²)</text>
+<text x="5978" y="13895" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">NET AREA (m²)</text>
+<line x1="-100" y1="14065" x2="6050" y2="14065" stroke="#333333" stroke-width="18"/>
 <text x="-28" y="14235" font-size="190" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">Front of house</text>
 <text x="175" y="14575" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">01</text>
 <text x="522" y="14575" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Dining</text>
-<text x="3428" y="14575" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">90.00</text>
-<line x1="-100" y1="14745" x2="3500" y2="14745" stroke="#333333" stroke-width="13"/>
+<text x="4578" y="14575" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">90.00</text>
+<text x="5978" y="14575" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">86.73</text>
+<line x1="-100" y1="14745" x2="6050" y2="14745" stroke="#333333" stroke-width="13"/>
 <text x="175" y="14915" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">02</text>
 <text x="522" y="14915" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Lobby</text>
-<text x="3428" y="14915" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">6.00</text>
-<line x1="-100" y1="15085" x2="3500" y2="15085" stroke="#333333" stroke-width="13"/>
+<text x="4578" y="14915" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">6.00</text>
+<text x="5978" y="14915" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">5.42</text>
+<line x1="-100" y1="15085" x2="6050" y2="15085" stroke="#333333" stroke-width="13"/>
 <text x="175" y="15255" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">03</text>
 <text x="522" y="15255" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">WC</text>
-<text x="3428" y="15255" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">5.10</text>
+<text x="4578" y="15255" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">5.10</text>
+<text x="5978" y="15255" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">4.56</text>
 <line x1="450" y1="14405" x2="450" y2="15425" stroke="#333333" stroke-width="13"/>
 <line x1="2450" y1="14405" x2="2450" y2="15425" stroke="#333333" stroke-width="13"/>
-<line x1="-100" y1="15425" x2="3500" y2="15425" stroke="#333333" stroke-width="13"/>
+<line x1="4650" y1="14405" x2="4650" y2="15425" stroke="#333333" stroke-width="13"/>
+<line x1="-100" y1="15425" x2="6050" y2="15425" stroke="#333333" stroke-width="13"/>
 <text x="-28" y="15595" font-size="190" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">SUBTOTAL</text>
-<text x="3428" y="15595" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">101.10</text>
-<line x1="-100" y1="15765" x2="3500" y2="15765" stroke="#333333" stroke-width="18"/>
+<text x="4578" y="15595" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">101.10</text>
+<text x="5978" y="15595" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">96.71</text>
+<line x1="-100" y1="15765" x2="6050" y2="15765" stroke="#333333" stroke-width="18"/>
 <text x="-28" y="15935" font-size="190" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">Back of house</text>
 <text x="175" y="16275" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">04</text>
 <text x="522" y="16275" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Kitchen</text>
-<text x="3428" y="16275" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">24.00</text>
-<line x1="-100" y1="16445" x2="3500" y2="16445" stroke="#333333" stroke-width="13"/>
+<text x="4578" y="16275" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">24.00</text>
+<text x="5978" y="16275" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">22.52</text>
+<line x1="-100" y1="16445" x2="6050" y2="16445" stroke="#333333" stroke-width="13"/>
 <text x="175" y="16615" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">05</text>
 <text x="522" y="16615" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Servery</text>
-<text x="3428" y="16615" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">18.00</text>
-<line x1="-100" y1="16785" x2="3500" y2="16785" stroke="#333333" stroke-width="13"/>
+<text x="4578" y="16615" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">18.00</text>
+<text x="5978" y="16615" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">16.97</text>
+<line x1="-100" y1="16785" x2="6050" y2="16785" stroke="#333333" stroke-width="13"/>
 <text x="175" y="16955" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">06</text>
 <text x="522" y="16955" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Store</text>
-<text x="3428" y="16955" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">6.90</text>
+<text x="4578" y="16955" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">6.90</text>
+<text x="5978" y="16955" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">6.13</text>
 <line x1="450" y1="16105" x2="450" y2="17125" stroke="#333333" stroke-width="13"/>
 <line x1="2450" y1="16105" x2="2450" y2="17125" stroke="#333333" stroke-width="13"/>
-<line x1="-100" y1="17125" x2="3500" y2="17125" stroke="#333333" stroke-width="13"/>
+<line x1="4650" y1="16105" x2="4650" y2="17125" stroke="#333333" stroke-width="13"/>
+<line x1="-100" y1="17125" x2="6050" y2="17125" stroke="#333333" stroke-width="13"/>
 <text x="-28" y="17295" font-size="190" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">SUBTOTAL</text>
-<text x="3428" y="17295" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">48.90</text>
-<line x1="-100" y1="17465" x2="3500" y2="17465" stroke="#333333" stroke-width="18"/>
+<text x="4578" y="17295" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">48.90</text>
+<text x="5978" y="17295" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">45.62</text>
+<line x1="-100" y1="17465" x2="6050" y2="17465" stroke="#333333" stroke-width="18"/>
 <text x="-28" y="17635" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">TOTAL</text>
-<text x="3428" y="17635" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">150.00</text>
-<polygon points="3800,13385 6500,13385 6500,17805 3800,17805" fill="none" stroke="#333333" stroke-width="18"/>
-<text x="3854" y="13555" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">LEGEND</text>
-<line x1="3800" y1="13725" x2="6500" y2="13725" stroke="#333333" stroke-width="18"/>
-<path d="M 3854,13793 L 4246,13793 L 4246,13997 L 3854,13997 Z" fill="url(#poche)" fill-rule="nonzero"/>
-<polygon points="3854,13793 4246,13793 4246,13997 3854,13997" fill="none" stroke="#333333" stroke-width="18"/>
-<text x="4354" y="13895" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">poche</text>
-<line x1="3800" y1="14065" x2="6500" y2="14065" stroke="#333333" stroke-width="13"/>
-<path d="M 3890.25,14133 L 4209.75,14133 A 6.85 6.85 0 0 1 4216.6,14139.85 L 4216.6,14175.11 A 6.85 6.85 0 0 1 4209.75,14181.96 L 3890.25,14181.96 A 6.85 6.85 0 0 1 3883.4,14175.11 L 3883.4,14139.85 A 6.85 6.85 0 0 1 3890.25,14133 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<path d="M 4206.8,14251.32 A 50.5 50.5 0 0 1 4177.96,14296.94 A 298.3 298.3 0 0 1 3922.04,14296.94 A 50.5 50.5 0 0 1 3893.2,14251.32 A 50.5 50.5 0 0 1 3922.04,14205.7 A 298.3 298.3 0 0 1 4177.96,14205.7 A 50.5 50.5 0 0 1 4206.8,14251.32 Z" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
-<path d="M 4184.46,14262.49 A 24.59 24.59 0 0 1 4167.03,14286.01 A 401.69 401.69 0 0 1 3932.97,14286.01 A 24.59 24.59 0 0 1 3915.54,14262.49 A 24.59 24.59 0 0 1 3932.97,14238.96 A 401.69 401.69 0 0 1 4167.03,14238.96 A 24.59 24.59 0 0 1 4184.46,14262.49 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="13"/>
-<line x1="3983.36" y1="14191.85" x2="3983.36" y2="14211.64" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4116.64" y1="14191.85" x2="4116.64" y2="14211.64" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="4050" cy="14157.48" r="8.16" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
-<text x="4354" y="14235" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">wc</text>
-<line x1="3800" y1="14405" x2="6500" y2="14405" stroke="#333333" stroke-width="13"/>
-<path d="M 3866.24,14473 L 4233.76,14473 A 12.24 12.24 0 0 1 4246,14485.24 L 4246,14664.76 A 12.24 12.24 0 0 1 4233.76,14677 L 3866.24,14677 A 12.24 12.24 0 0 1 3854,14664.76 L 3854,14485.24 A 12.24 12.24 0 0 1 3866.24,14473 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<path d="M 4198.96,14591.32 A 46.72 46.72 0 0 1 4171.96,14633.68 A 288.92 288.92 0 0 1 3928.04,14633.68 A 46.72 46.72 0 0 1 3901.04,14591.32 A 46.72 46.72 0 0 1 3928.04,14548.96 A 288.92 288.92 0 0 1 4171.96,14548.96 A 46.72 46.72 0 0 1 4198.96,14591.32 Z" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
-<path d="M 4185.09,14591.32 A 35.91 35.91 0 0 1 4162.82,14624.54 A 296.93 296.93 0 0 1 3937.18,14624.54 A 35.91 35.91 0 0 1 3914.91,14591.32 A 35.91 35.91 0 0 1 3937.18,14558.1 A 296.93 296.93 0 0 1 4162.82,14558.1 A 35.91 35.91 0 0 1 4185.09,14591.32 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="4050" cy="14496.46" r="7.14" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4050" y1="14496.46" x2="4050" y2="14536.24" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="4050" cy="14598.26" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
-<text x="4354" y="14575" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">basin</text>
-<line x1="3800" y1="14745" x2="6500" y2="14745" stroke="#333333" stroke-width="13"/>
-<polygon points="3854,14813 4246,14813 4246,15017 3854,15017" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<path d="M 3971.82,14853.8 L 4128.18,14853.8 A 14.89 14.89 0 0 1 4143.08,14868.69 L 4143.08,14987.83 A 14.89 14.89 0 0 1 4128.18,15002.72 L 3971.82,15002.72 A 14.89 14.89 0 0 1 3956.93,14987.83 L 3956.93,14868.69 A 14.89 14.89 0 0 1 3971.82,14853.8 Z" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
-<circle cx="4050" cy="14928.26" r="9.68" fill="#ffffff" stroke="#a8a29a" stroke-width="13"/>
-<path d="M 3874.39,14853.8 L 3938.57,14853.8 A 6.11 6.11 0 0 1 3944.69,14859.91 L 3944.69,14996.61 A 6.11 6.11 0 0 1 3938.57,15002.72 L 3874.39,15002.72 A 6.11 6.11 0 0 1 3868.28,14996.61 L 3868.28,14859.91 A 6.11 6.11 0 0 1 3874.39,14853.8 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<line x1="3877.45" y1="14883.58" x2="3935.52" y2="14883.58" stroke="#a8a29a" stroke-width="13"/>
-<line x1="3877.45" y1="14913.37" x2="3935.52" y2="14913.37" stroke="#a8a29a" stroke-width="13"/>
-<line x1="3877.45" y1="14943.15" x2="3935.52" y2="14943.15" stroke="#a8a29a" stroke-width="13"/>
-<line x1="3877.45" y1="14972.94" x2="3935.52" y2="14972.94" stroke="#a8a29a" stroke-width="13"/>
-<path d="M 4161.43,14853.8 L 4225.61,14853.8 A 6.11 6.11 0 0 1 4231.72,14859.91 L 4231.72,14996.61 A 6.11 6.11 0 0 1 4225.61,15002.72 L 4161.43,15002.72 A 6.11 6.11 0 0 1 4155.32,14996.61 L 4155.32,14859.91 A 6.11 6.11 0 0 1 4161.43,14853.8 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4164.48" y1="14883.58" x2="4222.55" y2="14883.58" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4164.48" y1="14913.37" x2="4222.55" y2="14913.37" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4164.48" y1="14943.15" x2="4222.55" y2="14943.15" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4164.48" y1="14972.94" x2="4222.55" y2="14972.94" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="4050" cy="14834.42" r="7.14" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4050" y1="14841.56" x2="4050" y2="14883.58" stroke="#a8a29a" stroke-width="13"/>
-<text x="4354" y="14915" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">kitchen_sink</text>
-<line x1="3800" y1="15085" x2="6500" y2="15085" stroke="#333333" stroke-width="13"/>
-<polygon points="3854,15153 4246,15153 4246,15357 3854,15357" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<path d="M 3871.34,15165.24 L 4228.66,15165.24 A 5.1 5.1 0 0 1 4233.76,15170.34 L 4233.76,15298.86 A 5.1 5.1 0 0 1 4228.66,15303.96 L 3871.34,15303.96 A 5.1 5.1 0 0 1 3866.24,15298.86 L 3866.24,15170.34 A 5.1 5.1 0 0 1 3871.34,15165.24 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="3960.2" cy="15202" r="26.08" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="3960.2" cy="15202" r="14.34" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="4139.8" cy="15202" r="26.08" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="4139.8" cy="15202" r="14.34" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="3960.2" cy="15267.2" r="18.91" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="3960.2" cy="15267.2" r="10.4" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="4139.8" cy="15267.2" r="18.91" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="4139.8" cy="15267.2" r="10.4" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="3932.4" cy="15335.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="4010.8" cy="15335.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="4089.2" cy="15335.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="4167.6" cy="15335.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
-<text x="4354" y="15255" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">stove</text>
-<line x1="3800" y1="15425" x2="6500" y2="15425" stroke="#333333" stroke-width="13"/>
-<path d="M 3858.08,15493 L 4241.92,15493 A 4.08 4.08 0 0 1 4246,15497.08 L 4246,15692.92 A 4.08 4.08 0 0 1 4241.92,15697 L 3858.08,15697 A 4.08 4.08 0 0 1 3854,15692.92 L 3854,15497.08 A 4.08 4.08 0 0 1 3858.08,15493 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<line x1="3854" y1="15668.44" x2="4246" y2="15668.44" stroke="#a8a29a" stroke-width="13"/>
-<line x1="3971.6" y1="15668.44" x2="3971.6" y2="15697" stroke="#6c6864" stroke-width="18"/>
-<line x1="4050" y1="15682.72" x2="4175.44" y2="15682.72" stroke="#6c6864" stroke-width="18"/>
-<text x="4354" y="15595" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">fridge</text>
-<line x1="3800" y1="15765" x2="6500" y2="15765" stroke="#333333" stroke-width="13"/>
-<path d="M 3856.45,15833 L 4243.55,15833 A 2.45 2.45 0 0 1 4246,15835.45 L 4246,16034.55 A 2.45 2.45 0 0 1 4243.55,16037 L 3856.45,16037 A 2.45 2.45 0 0 1 3854,16034.55 L 3854,15835.45 A 2.45 2.45 0 0 1 3856.45,15833 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<path d="M 3861.75,15839.12 L 4238.25,15839.12 A 1.63 1.63 0 0 1 4239.88,15840.75 L 4239.88,16029.25 A 1.63 1.63 0 0 1 4238.25,16030.88 L 3861.75,16030.88 A 1.63 1.63 0 0 1 3860.12,16029.25 L 3860.12,15840.75 A 1.63 1.63 0 0 1 3861.75,15839.12 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<text x="4354" y="15935" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">table</text>
-<line x1="3800" y1="16105" x2="6500" y2="16105" stroke="#333333" stroke-width="13"/>
-<path d="M 3902,16189.32 L 4198,16189.32 A 24.48 24.48 0 0 1 4222.48,16213.8 L 4222.48,16352.52 A 24.48 24.48 0 0 1 4198,16377 L 3902,16377 A 24.48 24.48 0 0 1 3877.52,16352.52 L 3877.52,16213.8 A 24.48 24.48 0 0 1 3902,16189.32 Z" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
-<path d="M 3866.24,16173 L 4233.76,16173 A 12.24 12.24 0 0 1 4246,16185.24 A 12.24 12.24 0 0 1 4233.76,16197.48 L 3866.24,16197.48 A 12.24 12.24 0 0 1 3854,16185.24 A 12.24 12.24 0 0 1 3866.24,16173 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<text x="4354" y="16275" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">chair</text>
-<line x1="3800" y1="16445" x2="6500" y2="16445" stroke="#333333" stroke-width="13"/>
-<path d="M 3858.08,16513 L 4241.92,16513 A 4.08 4.08 0 0 1 4246,16517.08 L 4246,16712.92 A 4.08 4.08 0 0 1 4241.92,16717 L 3858.08,16717 A 4.08 4.08 0 0 1 3854,16712.92 L 3854,16517.08 A 4.08 4.08 0 0 1 3858.08,16513 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<line x1="3854" y1="16547" x2="4246" y2="16547" stroke="#a8a29a" stroke-width="13"/>
-<line x1="3854" y1="16581" x2="4246" y2="16581" stroke="#a8a29a" stroke-width="13"/>
-<line x1="3854" y1="16615" x2="4246" y2="16615" stroke="#a8a29a" stroke-width="13"/>
-<line x1="3854" y1="16649" x2="4246" y2="16649" stroke="#a8a29a" stroke-width="13"/>
-<line x1="3854" y1="16683" x2="4246" y2="16683" stroke="#a8a29a" stroke-width="13"/>
-<text x="4354" y="16615" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">bench</text>
-<line x1="3800" y1="16785" x2="6500" y2="16785" stroke="#333333" stroke-width="13"/>
-<polygon points="3854,16853 4246,16853 4246,17057 3854,17057" fill="none" stroke="#6c6864" stroke-width="18" stroke-dasharray="108 72"/>
-<line x1="3854" y1="17024.36" x2="4246" y2="17024.36" stroke="#a8a29a" stroke-width="13" stroke-dasharray="108 72"/>
-<text x="4354" y="16955" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">upper_cabinet</text>
-<line x1="3800" y1="17125" x2="6500" y2="17125" stroke="#333333" stroke-width="13"/>
-<path d="M 4120.56,17265.77 A 29.29 29.29 0 0 1 4147.92,17295 A 29.29 29.29 0 0 1 4120.56,17324.23 A 35.17 35.17 0 0 1 4079.23,17365.56 A 29.29 29.29 0 0 1 4050,17392.92 A 29.29 29.29 0 0 1 4020.77,17365.56 A 35.17 35.17 0 0 1 3979.44,17324.23 A 29.29 29.29 0 0 1 3952.08,17295 A 29.29 29.29 0 0 1 3979.44,17265.77 A 35.17 35.17 0 0 1 4020.77,17224.44 A 29.29 29.29 0 0 1 4050,17197.08 A 29.29 29.29 0 0 1 4079.23,17224.44 A 35.17 35.17 0 0 1 4120.56,17265.77 Z" fill="#eef3e7" stroke="#6c6864" stroke-width="18"/>
-<circle cx="4050" cy="17295" r="41.13" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4091.13" y1="17295" x2="4118.54" y2="17295" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4079.08" y1="17324.08" x2="4098.47" y2="17343.47" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4050" y1="17336.13" x2="4050" y2="17363.54" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4020.92" y1="17324.08" x2="4001.53" y2="17343.47" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4008.87" y1="17295" x2="3981.46" y2="17295" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4020.92" y1="17265.92" x2="4001.53" y2="17246.53" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4050" y1="17253.87" x2="4050" y2="17226.46" stroke="#a8a29a" stroke-width="13"/>
-<line x1="4079.08" y1="17265.92" x2="4098.47" y2="17246.53" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="4050" cy="17295" r="5.88" fill="#6c6864" stroke="#6c6864" stroke-width="18"/>
-<text x="4354" y="17295" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">plant</text>
-<line x1="3800" y1="17465" x2="6500" y2="17465" stroke="#333333" stroke-width="13"/>
-<polygon points="3854,17533 4246,17533 4246,17659.48 3854,17659.48" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<line x1="3854" y1="17618.68" x2="4246" y2="17618.68" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="3952" cy="17696.2" r="28.56" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
-<circle cx="4148" cy="17696.2" r="28.56" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
-<text x="4354" y="17635" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">bar_counter</text>
+<text x="4578" y="17635" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">150.00</text>
+<text x="5978" y="17635" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">142.33</text>
+<polygon points="6350,13385 9050,13385 9050,17805 6350,17805" fill="none" stroke="#333333" stroke-width="18"/>
+<text x="6404" y="13555" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">LEGEND</text>
+<line x1="6350" y1="13725" x2="9050" y2="13725" stroke="#333333" stroke-width="18"/>
+<path d="M 6404,13793 L 6796,13793 L 6796,13997 L 6404,13997 Z" fill="url(#poche)" fill-rule="nonzero"/>
+<polygon points="6404,13793 6796,13793 6796,13997 6404,13997" fill="none" stroke="#333333" stroke-width="18"/>
+<text x="6904" y="13895" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">poche</text>
+<line x1="6350" y1="14065" x2="9050" y2="14065" stroke="#333333" stroke-width="13"/>
+<path d="M 6440.25,14133 L 6759.75,14133 A 6.85 6.85 0 0 1 6766.6,14139.85 L 6766.6,14175.11 A 6.85 6.85 0 0 1 6759.75,14181.96 L 6440.25,14181.96 A 6.85 6.85 0 0 1 6433.4,14175.11 L 6433.4,14139.85 A 6.85 6.85 0 0 1 6440.25,14133 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<path d="M 6756.8,14251.32 A 50.5 50.5 0 0 1 6727.96,14296.94 A 298.3 298.3 0 0 1 6472.04,14296.94 A 50.5 50.5 0 0 1 6443.2,14251.32 A 50.5 50.5 0 0 1 6472.04,14205.7 A 298.3 298.3 0 0 1 6727.96,14205.7 A 50.5 50.5 0 0 1 6756.8,14251.32 Z" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
+<path d="M 6734.46,14262.49 A 24.59 24.59 0 0 1 6717.03,14286.01 A 401.69 401.69 0 0 1 6482.97,14286.01 A 24.59 24.59 0 0 1 6465.54,14262.49 A 24.59 24.59 0 0 1 6482.97,14238.96 A 401.69 401.69 0 0 1 6717.03,14238.96 A 24.59 24.59 0 0 1 6734.46,14262.49 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6533.36" y1="14191.85" x2="6533.36" y2="14211.64" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6666.64" y1="14191.85" x2="6666.64" y2="14211.64" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6600" cy="14157.48" r="8.16" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
+<text x="6904" y="14235" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">wc</text>
+<line x1="6350" y1="14405" x2="9050" y2="14405" stroke="#333333" stroke-width="13"/>
+<path d="M 6416.24,14473 L 6783.76,14473 A 12.24 12.24 0 0 1 6796,14485.24 L 6796,14664.76 A 12.24 12.24 0 0 1 6783.76,14677 L 6416.24,14677 A 12.24 12.24 0 0 1 6404,14664.76 L 6404,14485.24 A 12.24 12.24 0 0 1 6416.24,14473 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<path d="M 6748.96,14591.32 A 46.72 46.72 0 0 1 6721.96,14633.68 A 288.92 288.92 0 0 1 6478.04,14633.68 A 46.72 46.72 0 0 1 6451.04,14591.32 A 46.72 46.72 0 0 1 6478.04,14548.96 A 288.92 288.92 0 0 1 6721.96,14548.96 A 46.72 46.72 0 0 1 6748.96,14591.32 Z" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
+<path d="M 6735.09,14591.32 A 35.91 35.91 0 0 1 6712.82,14624.54 A 296.93 296.93 0 0 1 6487.18,14624.54 A 35.91 35.91 0 0 1 6464.91,14591.32 A 35.91 35.91 0 0 1 6487.18,14558.1 A 296.93 296.93 0 0 1 6712.82,14558.1 A 35.91 35.91 0 0 1 6735.09,14591.32 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6600" cy="14496.46" r="7.14" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6600" y1="14496.46" x2="6600" y2="14536.24" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6600" cy="14598.26" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
+<text x="6904" y="14575" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">basin</text>
+<line x1="6350" y1="14745" x2="9050" y2="14745" stroke="#333333" stroke-width="13"/>
+<polygon points="6404,14813 6796,14813 6796,15017 6404,15017" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<path d="M 6521.82,14853.8 L 6678.18,14853.8 A 14.89 14.89 0 0 1 6693.07,14868.69 L 6693.07,14987.83 A 14.89 14.89 0 0 1 6678.18,15002.72 L 6521.82,15002.72 A 14.89 14.89 0 0 1 6506.92,14987.83 L 6506.92,14868.69 A 14.89 14.89 0 0 1 6521.82,14853.8 Z" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
+<circle cx="6600" cy="14928.26" r="9.68" fill="#ffffff" stroke="#a8a29a" stroke-width="13"/>
+<path d="M 6424.39,14853.8 L 6488.57,14853.8 A 6.11 6.11 0 0 1 6494.69,14859.91 L 6494.69,14996.61 A 6.11 6.11 0 0 1 6488.57,15002.72 L 6424.39,15002.72 A 6.11 6.11 0 0 1 6418.28,14996.61 L 6418.28,14859.91 A 6.11 6.11 0 0 1 6424.39,14853.8 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6427.45" y1="14883.58" x2="6485.52" y2="14883.58" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6427.45" y1="14913.37" x2="6485.52" y2="14913.37" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6427.45" y1="14943.15" x2="6485.52" y2="14943.15" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6427.45" y1="14972.94" x2="6485.52" y2="14972.94" stroke="#a8a29a" stroke-width="13"/>
+<path d="M 6711.43,14853.8 L 6775.61,14853.8 A 6.11 6.11 0 0 1 6781.72,14859.91 L 6781.72,14996.61 A 6.11 6.11 0 0 1 6775.61,15002.72 L 6711.43,15002.72 A 6.11 6.11 0 0 1 6705.32,14996.61 L 6705.32,14859.91 A 6.11 6.11 0 0 1 6711.43,14853.8 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6714.48" y1="14883.58" x2="6772.55" y2="14883.58" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6714.48" y1="14913.37" x2="6772.55" y2="14913.37" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6714.48" y1="14943.15" x2="6772.55" y2="14943.15" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6714.48" y1="14972.94" x2="6772.55" y2="14972.94" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6600" cy="14834.42" r="7.14" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6600" y1="14841.56" x2="6600" y2="14883.58" stroke="#a8a29a" stroke-width="13"/>
+<text x="6904" y="14915" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">kitchen_sink</text>
+<line x1="6350" y1="15085" x2="9050" y2="15085" stroke="#333333" stroke-width="13"/>
+<polygon points="6404,15153 6796,15153 6796,15357 6404,15357" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<path d="M 6421.34,15165.24 L 6778.66,15165.24 A 5.1 5.1 0 0 1 6783.76,15170.34 L 6783.76,15298.86 A 5.1 5.1 0 0 1 6778.66,15303.96 L 6421.34,15303.96 A 5.1 5.1 0 0 1 6416.24,15298.86 L 6416.24,15170.34 A 5.1 5.1 0 0 1 6421.34,15165.24 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6510.2" cy="15202" r="26.08" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6510.2" cy="15202" r="14.34" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6689.8" cy="15202" r="26.08" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6689.8" cy="15202" r="14.34" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6510.2" cy="15267.2" r="18.91" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6510.2" cy="15267.2" r="10.4" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6689.8" cy="15267.2" r="18.91" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6689.8" cy="15267.2" r="10.4" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6482.4" cy="15335.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6560.8" cy="15335.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6639.2" cy="15335.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6717.6" cy="15335.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
+<text x="6904" y="15255" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">stove</text>
+<line x1="6350" y1="15425" x2="9050" y2="15425" stroke="#333333" stroke-width="13"/>
+<path d="M 6408.08,15493 L 6791.92,15493 A 4.08 4.08 0 0 1 6796,15497.08 L 6796,15692.92 A 4.08 4.08 0 0 1 6791.92,15697 L 6408.08,15697 A 4.08 4.08 0 0 1 6404,15692.92 L 6404,15497.08 A 4.08 4.08 0 0 1 6408.08,15493 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<line x1="6404" y1="15668.44" x2="6796" y2="15668.44" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6521.6" y1="15668.44" x2="6521.6" y2="15697" stroke="#6c6864" stroke-width="18"/>
+<line x1="6600" y1="15682.72" x2="6725.44" y2="15682.72" stroke="#6c6864" stroke-width="18"/>
+<text x="6904" y="15595" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">fridge</text>
+<line x1="6350" y1="15765" x2="9050" y2="15765" stroke="#333333" stroke-width="13"/>
+<path d="M 6406.45,15833 L 6793.55,15833 A 2.45 2.45 0 0 1 6796,15835.45 L 6796,16034.55 A 2.45 2.45 0 0 1 6793.55,16037 L 6406.45,16037 A 2.45 2.45 0 0 1 6404,16034.55 L 6404,15835.45 A 2.45 2.45 0 0 1 6406.45,15833 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<path d="M 6411.75,15839.12 L 6788.25,15839.12 A 1.63 1.63 0 0 1 6789.88,15840.75 L 6789.88,16029.25 A 1.63 1.63 0 0 1 6788.25,16030.88 L 6411.75,16030.88 A 1.63 1.63 0 0 1 6410.12,16029.25 L 6410.12,15840.75 A 1.63 1.63 0 0 1 6411.75,15839.12 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<text x="6904" y="15935" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">table</text>
+<line x1="6350" y1="16105" x2="9050" y2="16105" stroke="#333333" stroke-width="13"/>
+<path d="M 6452,16189.32 L 6748,16189.32 A 24.48 24.48 0 0 1 6772.48,16213.8 L 6772.48,16352.52 A 24.48 24.48 0 0 1 6748,16377 L 6452,16377 A 24.48 24.48 0 0 1 6427.52,16352.52 L 6427.52,16213.8 A 24.48 24.48 0 0 1 6452,16189.32 Z" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
+<path d="M 6416.24,16173 L 6783.76,16173 A 12.24 12.24 0 0 1 6796,16185.24 A 12.24 12.24 0 0 1 6783.76,16197.48 L 6416.24,16197.48 A 12.24 12.24 0 0 1 6404,16185.24 A 12.24 12.24 0 0 1 6416.24,16173 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<text x="6904" y="16275" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">chair</text>
+<line x1="6350" y1="16445" x2="9050" y2="16445" stroke="#333333" stroke-width="13"/>
+<path d="M 6408.08,16513 L 6791.92,16513 A 4.08 4.08 0 0 1 6796,16517.08 L 6796,16712.92 A 4.08 4.08 0 0 1 6791.92,16717 L 6408.08,16717 A 4.08 4.08 0 0 1 6404,16712.92 L 6404,16517.08 A 4.08 4.08 0 0 1 6408.08,16513 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<line x1="6404" y1="16547" x2="6796" y2="16547" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6404" y1="16581" x2="6796" y2="16581" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6404" y1="16615" x2="6796" y2="16615" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6404" y1="16649" x2="6796" y2="16649" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6404" y1="16683" x2="6796" y2="16683" stroke="#a8a29a" stroke-width="13"/>
+<text x="6904" y="16615" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">bench</text>
+<line x1="6350" y1="16785" x2="9050" y2="16785" stroke="#333333" stroke-width="13"/>
+<polygon points="6404,16853 6796,16853 6796,17057 6404,17057" fill="none" stroke="#6c6864" stroke-width="18" stroke-dasharray="108 72"/>
+<line x1="6404" y1="17024.36" x2="6796" y2="17024.36" stroke="#a8a29a" stroke-width="13" stroke-dasharray="108 72"/>
+<text x="6904" y="16955" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">upper_cabinet</text>
+<line x1="6350" y1="17125" x2="9050" y2="17125" stroke="#333333" stroke-width="13"/>
+<path d="M 6670.56,17265.77 A 29.29 29.29 0 0 1 6697.92,17295 A 29.29 29.29 0 0 1 6670.56,17324.23 A 35.17 35.17 0 0 1 6629.23,17365.56 A 29.29 29.29 0 0 1 6600,17392.92 A 29.29 29.29 0 0 1 6570.77,17365.56 A 35.17 35.17 0 0 1 6529.44,17324.23 A 29.29 29.29 0 0 1 6502.08,17295 A 29.29 29.29 0 0 1 6529.44,17265.77 A 35.17 35.17 0 0 1 6570.77,17224.44 A 29.29 29.29 0 0 1 6600,17197.08 A 29.29 29.29 0 0 1 6629.23,17224.44 A 35.17 35.17 0 0 1 6670.56,17265.77 Z" fill="#eef3e7" stroke="#6c6864" stroke-width="18"/>
+<circle cx="6600" cy="17295" r="41.13" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6641.13" y1="17295" x2="6668.54" y2="17295" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6629.08" y1="17324.08" x2="6648.47" y2="17343.47" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6600" y1="17336.13" x2="6600" y2="17363.54" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6570.92" y1="17324.08" x2="6551.53" y2="17343.47" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6558.87" y1="17295" x2="6531.46" y2="17295" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6570.92" y1="17265.92" x2="6551.53" y2="17246.53" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6600" y1="17253.87" x2="6600" y2="17226.46" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6629.08" y1="17265.92" x2="6648.47" y2="17246.53" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6600" cy="17295" r="5.88" fill="#6c6864" stroke="#6c6864" stroke-width="18"/>
+<text x="6904" y="17295" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">plant</text>
+<line x1="6350" y1="17465" x2="9050" y2="17465" stroke="#333333" stroke-width="13"/>
+<polygon points="6404,17533 6796,17533 6796,17659.48 6404,17659.48" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<line x1="6404" y1="17618.68" x2="6796" y2="17618.68" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6502" cy="17696.2" r="28.56" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
+<circle cx="6698" cy="17696.2" r="28.56" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
+<text x="6904" y="17635" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">bar_counter</text>
 </g>
 <g><polygon points="14650,-1375 14425,-655 14650,-812.5 14875,-655" fill="#333333" transform="rotate(0 14650 -925)"/><text x="14650" y="-1583" font-size="260" fill="#333333" text-anchor="middle" dominant-baseline="central">N</text></g>
 <g><rect x="-100" y="12425" width="1000" height="140" fill="#333333"/><rect x="900" y="12425" width="1000" height="140" fill="none" stroke="#333333" stroke-width="18"/><text x="-100" y="12765" font-size="200" fill="#333333" text-anchor="start" dominant-baseline="central">0</text><text x="1900" y="12765" font-size="200" fill="#333333" text-anchor="middle" dominant-baseline="central">2 m</text></g>
@@ -11538,201 +11566,216 @@ exports[`golden SVG snapshots > renders practice-office.arch deterministically 1
 <text x="16900" y="12100" font-size="250" fill="#333333" text-anchor="middle" dominant-baseline="central">W09</text>
 <polygon points="200,2800 840,2800 840,3200 200,3200" fill="none" stroke="#333333" stroke-width="18"/>
 <text x="520" y="3000" font-size="250" fill="#333333" text-anchor="middle" dominant-baseline="central">W10</text>
-<polygon points="-100,18185 3500,18185 3500,23625 -100,23625" fill="none" stroke="#333333" stroke-width="18"/>
+<polygon points="-100,18185 6050,18185 6050,23625 -100,23625" fill="none" stroke="#333333" stroke-width="18"/>
 <text x="-28" y="18355" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">ROOM SCHEDULE</text>
-<line x1="-100" y1="18525" x2="3500" y2="18525" stroke="#333333" stroke-width="18"/>
+<line x1="-100" y1="18525" x2="6050" y2="18525" stroke="#333333" stroke-width="18"/>
 <text x="175" y="18695" font-size="152" fill="#888888" text-anchor="middle" dominant-baseline="central" font-weight="600">NO.</text>
 <text x="522" y="18695" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">NAME</text>
-<text x="3428" y="18695" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">AREA (m²)</text>
-<line x1="-100" y1="18865" x2="3500" y2="18865" stroke="#333333" stroke-width="18"/>
+<text x="4578" y="18695" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">AREA (CENTRELINE, m²)</text>
+<text x="5978" y="18695" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">NET AREA (m²)</text>
+<line x1="-100" y1="18865" x2="6050" y2="18865" stroke="#333333" stroke-width="18"/>
 <text x="-28" y="19035" font-size="190" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">Workspace</text>
 <text x="175" y="19375" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">01</text>
 <text x="522" y="19375" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Team Workspace</text>
-<text x="3428" y="19375" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">63.00</text>
-<line x1="-100" y1="19545" x2="3500" y2="19545" stroke="#333333" stroke-width="13"/>
+<text x="4578" y="19375" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">63.00</text>
+<text x="5978" y="19375" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">60.55</text>
+<line x1="-100" y1="19545" x2="6050" y2="19545" stroke="#333333" stroke-width="13"/>
 <text x="175" y="19715" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">02</text>
 <text x="522" y="19715" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Manager</text>
-<text x="3428" y="19715" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">21.00</text>
-<line x1="-100" y1="19885" x2="3500" y2="19885" stroke="#333333" stroke-width="13"/>
+<text x="4578" y="19715" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">21.00</text>
+<text x="5978" y="19715" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">19.89</text>
+<line x1="-100" y1="19885" x2="6050" y2="19885" stroke="#333333" stroke-width="13"/>
 <text x="175" y="20055" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">03</text>
 <text x="522" y="20055" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 1</text>
-<text x="3428" y="20055" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">24.00</text>
-<line x1="-100" y1="20225" x2="3500" y2="20225" stroke="#333333" stroke-width="13"/>
+<text x="4578" y="20055" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">24.00</text>
+<text x="5978" y="20055" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">22.52</text>
+<line x1="-100" y1="20225" x2="6050" y2="20225" stroke="#333333" stroke-width="13"/>
 <text x="175" y="20395" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">04</text>
 <text x="522" y="20395" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 2</text>
-<text x="3428" y="20395" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">21.15</text>
+<text x="4578" y="20395" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">21.15</text>
+<text x="5978" y="20395" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">19.79</text>
 <line x1="450" y1="19205" x2="450" y2="20565" stroke="#333333" stroke-width="13"/>
 <line x1="2450" y1="19205" x2="2450" y2="20565" stroke="#333333" stroke-width="13"/>
-<line x1="-100" y1="20565" x2="3500" y2="20565" stroke="#333333" stroke-width="13"/>
+<line x1="4650" y1="19205" x2="4650" y2="20565" stroke="#333333" stroke-width="13"/>
+<line x1="-100" y1="20565" x2="6050" y2="20565" stroke="#333333" stroke-width="13"/>
 <text x="-28" y="20735" font-size="190" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">SUBTOTAL</text>
-<text x="3428" y="20735" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">129.15</text>
-<line x1="-100" y1="20905" x2="3500" y2="20905" stroke="#333333" stroke-width="18"/>
+<text x="4578" y="20735" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">129.15</text>
+<text x="5978" y="20735" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">122.75</text>
+<line x1="-100" y1="20905" x2="6050" y2="20905" stroke="#333333" stroke-width="18"/>
 <text x="-28" y="21075" font-size="190" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">Support</text>
 <text x="175" y="21415" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">05</text>
 <text x="522" y="21415" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor</text>
-<text x="3428" y="21415" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">32.40</text>
-<line x1="-100" y1="21585" x2="3500" y2="21585" stroke="#333333" stroke-width="13"/>
+<text x="4578" y="21415" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">32.40</text>
+<text x="5978" y="21415" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">30.26</text>
+<line x1="-100" y1="21585" x2="6050" y2="21585" stroke="#333333" stroke-width="13"/>
 <text x="175" y="21755" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">06</text>
 <text x="522" y="21755" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Reception</text>
-<text x="3428" y="21755" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">21.15</text>
-<line x1="-100" y1="21925" x2="3500" y2="21925" stroke="#333333" stroke-width="13"/>
+<text x="4578" y="21755" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">21.15</text>
+<text x="5978" y="21755" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">19.79</text>
+<line x1="-100" y1="21925" x2="6050" y2="21925" stroke="#333333" stroke-width="13"/>
 <text x="175" y="22095" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">07</text>
 <text x="522" y="22095" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Break Room</text>
-<text x="3428" y="22095" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">22.56</text>
-<line x1="-100" y1="22265" x2="3500" y2="22265" stroke="#333333" stroke-width="13"/>
+<text x="4578" y="22095" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">22.56</text>
+<text x="5978" y="22095" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">21.39</text>
+<line x1="-100" y1="22265" x2="6050" y2="22265" stroke="#333333" stroke-width="13"/>
 <text x="175" y="22435" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">08</text>
 <text x="522" y="22435" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Accessible WC</text>
-<text x="3428" y="22435" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">11.75</text>
-<line x1="-100" y1="22605" x2="3500" y2="22605" stroke="#333333" stroke-width="13"/>
+<text x="4578" y="22435" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">11.75</text>
+<text x="5978" y="22435" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">10.92</text>
+<line x1="-100" y1="22605" x2="6050" y2="22605" stroke="#333333" stroke-width="13"/>
 <text x="175" y="22775" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">09</text>
 <text x="522" y="22775" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Comms</text>
-<text x="3428" y="22775" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">7.99</text>
+<text x="4578" y="22775" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">7.99</text>
+<text x="5978" y="22775" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">7.28</text>
 <line x1="450" y1="21245" x2="450" y2="22945" stroke="#333333" stroke-width="13"/>
 <line x1="2450" y1="21245" x2="2450" y2="22945" stroke="#333333" stroke-width="13"/>
-<line x1="-100" y1="22945" x2="3500" y2="22945" stroke="#333333" stroke-width="13"/>
+<line x1="4650" y1="21245" x2="4650" y2="22945" stroke="#333333" stroke-width="13"/>
+<line x1="-100" y1="22945" x2="6050" y2="22945" stroke="#333333" stroke-width="13"/>
 <text x="-28" y="23115" font-size="190" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">SUBTOTAL</text>
-<text x="3428" y="23115" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">95.85</text>
-<line x1="-100" y1="23285" x2="3500" y2="23285" stroke="#333333" stroke-width="18"/>
+<text x="4578" y="23115" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">95.85</text>
+<text x="5978" y="23115" font-size="190" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">89.64</text>
+<line x1="-100" y1="23285" x2="6050" y2="23285" stroke="#333333" stroke-width="18"/>
 <text x="-28" y="23455" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">TOTAL</text>
-<text x="3428" y="23455" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">225.00</text>
-<polygon points="3800,18185 9450,18185 9450,25325 3800,25325" fill="none" stroke="#333333" stroke-width="18"/>
-<text x="3913" y="18355" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">DOOR &amp; WINDOW SCHEDULE</text>
-<line x1="3800" y1="18525" x2="9450" y2="18525" stroke="#333333" stroke-width="18"/>
-<text x="4075" y="18695" font-size="152" fill="#888888" text-anchor="middle" dominant-baseline="central" font-weight="600">TAG</text>
-<text x="4463" y="18695" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">ROOM(S)</text>
-<line x1="4350" y1="18525" x2="4350" y2="25325" stroke="#333333" stroke-width="13"/>
-<text x="7937" y="18695" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">WIDTH</text>
-<line x1="7350" y1="18525" x2="7350" y2="25325" stroke="#333333" stroke-width="13"/>
-<text x="8163" y="18695" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">TYPE</text>
-<line x1="8050" y1="18525" x2="8050" y2="25325" stroke="#333333" stroke-width="13"/>
-<text x="8963" y="18695" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">HAND</text>
-<line x1="8850" y1="18525" x2="8850" y2="25325" stroke="#333333" stroke-width="13"/>
-<line x1="3800" y1="18865" x2="9450" y2="18865" stroke="#333333" stroke-width="18"/>
-<text x="4075" y="19035" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D01</text>
-<text x="4463" y="19035" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">exterior / Reception</text>
-<text x="7937" y="19035" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1200</text>
-<text x="8163" y="19035" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8963" y="19035" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
-<text x="4075" y="19375" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D02</text>
-<text x="4463" y="19375" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Team Workspace / Cor...</text>
-<text x="7937" y="19375" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1200</text>
-<text x="8163" y="19375" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8963" y="19375" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
-<line x1="3800" y1="19205" x2="9450" y2="19205" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="19715" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D03</text>
-<text x="4463" y="19715" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Manager / Corridor</text>
-<text x="7937" y="19715" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8163" y="19715" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8963" y="19715" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
-<line x1="3800" y1="19545" x2="9450" y2="19545" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="20055" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D04</text>
-<text x="4463" y="20055" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 1 / Corridor</text>
-<text x="7937" y="20055" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8163" y="20055" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8963" y="20055" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
-<line x1="3800" y1="19885" x2="9450" y2="19885" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="20395" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D05</text>
-<text x="4463" y="20395" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Break Room</text>
-<text x="7937" y="20395" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8163" y="20395" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8963" y="20395" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
-<line x1="3800" y1="20225" x2="9450" y2="20225" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="20735" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D06</text>
-<text x="4463" y="20735" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Accessibl...</text>
-<text x="7937" y="20735" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8163" y="20735" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8963" y="20735" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
-<line x1="3800" y1="20565" x2="9450" y2="20565" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="21075" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D07</text>
-<text x="4463" y="21075" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Comms</text>
-<text x="7937" y="21075" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8163" y="21075" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8963" y="21075" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
-<line x1="3800" y1="20905" x2="9450" y2="20905" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="21415" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D08</text>
-<text x="4463" y="21415" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 2 / Corridor</text>
-<text x="7937" y="21415" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8163" y="21415" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8963" y="21415" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
-<line x1="3800" y1="21245" x2="9450" y2="21245" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="21755" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D09</text>
-<text x="4463" y="21755" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">exterior / Corridor</text>
-<text x="7937" y="21755" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
-<text x="8163" y="21755" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
-<text x="8963" y="21755" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
-<line x1="3800" y1="21585" x2="9450" y2="21585" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="22095" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W01</text>
-<text x="4463" y="22095" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Team Workspace</text>
-<text x="7937" y="22095" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
-<text x="8163" y="22095" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8963" y="22095" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3800" y1="21925" x2="9450" y2="21925" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="22435" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W02</text>
-<text x="4463" y="22435" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Team Workspace</text>
-<text x="7937" y="22435" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
-<text x="8163" y="22435" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8963" y="22435" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3800" y1="22265" x2="9450" y2="22265" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="22775" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W03</text>
-<text x="4463" y="22775" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Team Workspace</text>
-<text x="7937" y="22775" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
-<text x="8163" y="22775" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8963" y="22775" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3800" y1="22605" x2="9450" y2="22605" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="23115" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W04</text>
-<text x="4463" y="23115" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Manager</text>
-<text x="7937" y="23115" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1400</text>
-<text x="8163" y="23115" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8963" y="23115" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3800" y1="22945" x2="9450" y2="22945" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="23455" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W05</text>
-<text x="4463" y="23455" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 1</text>
-<text x="7937" y="23455" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
-<text x="8163" y="23455" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8963" y="23455" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3800" y1="23285" x2="9450" y2="23285" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="23795" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W06</text>
-<text x="4463" y="23795" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 1</text>
-<text x="7937" y="23795" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
-<text x="8163" y="23795" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8963" y="23795" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3800" y1="23625" x2="9450" y2="23625" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="24135" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W07</text>
-<text x="4463" y="24135" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 2</text>
-<text x="7937" y="24135" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
-<text x="8163" y="24135" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8963" y="24135" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3800" y1="23965" x2="9450" y2="23965" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="24475" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W08</text>
-<text x="4463" y="24475" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Break Room</text>
-<text x="7937" y="24475" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1800</text>
-<text x="8163" y="24475" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8963" y="24475" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3800" y1="24305" x2="9450" y2="24305" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="24815" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W09</text>
-<text x="4463" y="24815" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 2</text>
-<text x="7937" y="24815" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1800</text>
-<text x="8163" y="24815" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8963" y="24815" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3800" y1="24645" x2="9450" y2="24645" stroke="#333333" stroke-width="13"/>
-<text x="4075" y="25155" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W10</text>
-<text x="4463" y="25155" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Team Workspace</text>
-<text x="7937" y="25155" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
-<text x="8163" y="25155" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
-<text x="8963" y="25155" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
-<line x1="3800" y1="24985" x2="9450" y2="24985" stroke="#333333" stroke-width="13"/>
-<polygon points="9750,18185 17100,18185 17100,20565 9750,20565" fill="none" stroke="#333333" stroke-width="18"/>
-<text x="9897" y="18355" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">NOTES</text>
-<line x1="9750" y1="18525" x2="17100" y2="18525" stroke="#333333" stroke-width="18"/>
-<text x="9953" y="18695" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1.</text>
-<text x="10100" y="18695" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">All dimensions in millimetres. Do not scale from this</text>
-<text x="10100" y="19035" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">drawing.</text>
-<text x="9953" y="19375" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2.</text>
-<text x="10100" y="19375" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Room areas are as scheduled; confirm on site before</text>
-<text x="10100" y="19715" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">ordering finishes.</text>
-<text x="9953" y="20055" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">3.</text>
-<text x="10100" y="20055" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Fire-rated door to the comms room to be confirmed by the</text>
-<text x="10100" y="20395" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">engineer.</text>
+<text x="4578" y="23455" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">225.00</text>
+<text x="5978" y="23455" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">212.39</text>
+<polygon points="6350,18185 12000,18185 12000,25325 6350,25325" fill="none" stroke="#333333" stroke-width="18"/>
+<text x="6463" y="18355" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">DOOR &amp; WINDOW SCHEDULE</text>
+<line x1="6350" y1="18525" x2="12000" y2="18525" stroke="#333333" stroke-width="18"/>
+<text x="6625" y="18695" font-size="152" fill="#888888" text-anchor="middle" dominant-baseline="central" font-weight="600">TAG</text>
+<text x="7013" y="18695" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">ROOM(S)</text>
+<line x1="6900" y1="18525" x2="6900" y2="25325" stroke="#333333" stroke-width="13"/>
+<text x="10487" y="18695" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">WIDTH</text>
+<line x1="9900" y1="18525" x2="9900" y2="25325" stroke="#333333" stroke-width="13"/>
+<text x="10713" y="18695" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">TYPE</text>
+<line x1="10600" y1="18525" x2="10600" y2="25325" stroke="#333333" stroke-width="13"/>
+<text x="11513" y="18695" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">HAND</text>
+<line x1="11400" y1="18525" x2="11400" y2="25325" stroke="#333333" stroke-width="13"/>
+<line x1="6350" y1="18865" x2="12000" y2="18865" stroke="#333333" stroke-width="18"/>
+<text x="6625" y="19035" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D01</text>
+<text x="7013" y="19035" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">exterior / Reception</text>
+<text x="10487" y="19035" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1200</text>
+<text x="10713" y="19035" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11513" y="19035" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
+<text x="6625" y="19375" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D02</text>
+<text x="7013" y="19375" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Team Workspace / Cor...</text>
+<text x="10487" y="19375" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1200</text>
+<text x="10713" y="19375" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11513" y="19375" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
+<line x1="6350" y1="19205" x2="12000" y2="19205" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="19715" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D03</text>
+<text x="7013" y="19715" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Manager / Corridor</text>
+<text x="10487" y="19715" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10713" y="19715" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11513" y="19715" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
+<line x1="6350" y1="19545" x2="12000" y2="19545" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="20055" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D04</text>
+<text x="7013" y="20055" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 1 / Corridor</text>
+<text x="10487" y="20055" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10713" y="20055" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11513" y="20055" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
+<line x1="6350" y1="19885" x2="12000" y2="19885" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="20395" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D05</text>
+<text x="7013" y="20395" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Break Room</text>
+<text x="10487" y="20395" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10713" y="20395" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11513" y="20395" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
+<line x1="6350" y1="20225" x2="12000" y2="20225" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="20735" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D06</text>
+<text x="7013" y="20735" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Accessibl...</text>
+<text x="10487" y="20735" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10713" y="20735" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11513" y="20735" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
+<line x1="6350" y1="20565" x2="12000" y2="20565" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="21075" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D07</text>
+<text x="7013" y="21075" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Corridor / Comms</text>
+<text x="10487" y="21075" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10713" y="21075" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11513" y="21075" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
+<line x1="6350" y1="20905" x2="12000" y2="20905" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="21415" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D08</text>
+<text x="7013" y="21415" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 2 / Corridor</text>
+<text x="10487" y="21415" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10713" y="21415" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11513" y="21415" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">left</text>
+<line x1="6350" y1="21245" x2="12000" y2="21245" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="21755" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">D09</text>
+<text x="7013" y="21755" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">exterior / Corridor</text>
+<text x="10487" y="21755" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1000</text>
+<text x="10713" y="21755" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">hinged</text>
+<text x="11513" y="21755" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">right</text>
+<line x1="6350" y1="21585" x2="12000" y2="21585" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="22095" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W01</text>
+<text x="7013" y="22095" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Team Workspace</text>
+<text x="10487" y="22095" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
+<text x="10713" y="22095" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11513" y="22095" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6350" y1="21925" x2="12000" y2="21925" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="22435" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W02</text>
+<text x="7013" y="22435" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Team Workspace</text>
+<text x="10487" y="22435" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
+<text x="10713" y="22435" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11513" y="22435" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6350" y1="22265" x2="12000" y2="22265" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="22775" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W03</text>
+<text x="7013" y="22775" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Team Workspace</text>
+<text x="10487" y="22775" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
+<text x="10713" y="22775" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11513" y="22775" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6350" y1="22605" x2="12000" y2="22605" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="23115" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W04</text>
+<text x="7013" y="23115" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Manager</text>
+<text x="10487" y="23115" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1400</text>
+<text x="10713" y="23115" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11513" y="23115" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6350" y1="22945" x2="12000" y2="22945" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="23455" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W05</text>
+<text x="7013" y="23455" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 1</text>
+<text x="10487" y="23455" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
+<text x="10713" y="23455" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11513" y="23455" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6350" y1="23285" x2="12000" y2="23285" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="23795" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W06</text>
+<text x="7013" y="23795" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 1</text>
+<text x="10487" y="23795" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
+<text x="10713" y="23795" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11513" y="23795" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6350" y1="23625" x2="12000" y2="23625" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="24135" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W07</text>
+<text x="7013" y="24135" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 2</text>
+<text x="10487" y="24135" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
+<text x="10713" y="24135" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11513" y="24135" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6350" y1="23965" x2="12000" y2="23965" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="24475" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W08</text>
+<text x="7013" y="24475" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Break Room</text>
+<text x="10487" y="24475" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1800</text>
+<text x="10713" y="24475" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11513" y="24475" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6350" y1="24305" x2="12000" y2="24305" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="24815" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W09</text>
+<text x="7013" y="24815" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Meeting 2</text>
+<text x="10487" y="24815" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1800</text>
+<text x="10713" y="24815" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11513" y="24815" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6350" y1="24645" x2="12000" y2="24645" stroke="#333333" stroke-width="13"/>
+<text x="6625" y="25155" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">W10</text>
+<text x="7013" y="25155" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Team Workspace</text>
+<text x="10487" y="25155" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2000</text>
+<text x="10713" y="25155" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">window</text>
+<text x="11513" y="25155" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">-</text>
+<line x1="6350" y1="24985" x2="12000" y2="24985" stroke="#333333" stroke-width="13"/>
+<polygon points="12300,18185 19650,18185 19650,20565 12300,20565" fill="none" stroke="#333333" stroke-width="18"/>
+<text x="12447" y="18355" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">NOTES</text>
+<line x1="12300" y1="18525" x2="19650" y2="18525" stroke="#333333" stroke-width="18"/>
+<text x="12503" y="18695" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1.</text>
+<text x="12650" y="18695" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">All dimensions in millimetres. Do not scale from this</text>
+<text x="12650" y="19035" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">drawing.</text>
+<text x="12503" y="19375" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2.</text>
+<text x="12650" y="19375" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Room areas are as scheduled; confirm on site before</text>
+<text x="12650" y="19715" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">ordering finishes.</text>
+<text x="12503" y="20055" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">3.</text>
+<text x="12650" y="20055" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Fire-rated door to the comms room to be confirmed by the</text>
+<text x="12650" y="20395" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">engineer.</text>
 </g>
 <g><polygon points="17650,-1375 17425,-655 17650,-812.5 17875,-655" fill="#333333" transform="rotate(0 17650 -925)"/><text x="17650" y="-1583" font-size="260" fill="#333333" text-anchor="middle" dominant-baseline="central">N</text></g>
 <g><rect x="-100" y="14925" width="1000" height="140" fill="#333333"/><rect x="900" y="14925" width="1000" height="140" fill="none" stroke="#333333" stroke-width="18"/><text x="-100" y="15265" font-size="200" fill="#333333" text-anchor="start" dominant-baseline="central">0</text><text x="1900" y="15265" font-size="200" fill="#333333" text-anchor="middle" dominant-baseline="central">2 m</text></g>
