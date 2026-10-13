@@ -2650,9 +2650,10 @@ can freeze the partitions and keep the envelope. That is the rule the rest of Ar
 uses for an outside wall (an `exterior` host's door opens to the outside, a roof follows
 the closed `exterior` ring), so name the envelope `exterior`. Where walls join, the
 thicker wall owns the junction. Between two walls of equal thickness and the same
-material, the `exterior` wall owns it. Between equal-thickness walls of different
-materials, the wall stated first owns it, because that is whose hatch the drawing shows
-there. Each layer holds its walls' share of the joined outline and poché the drawing
+hatch (the same material, `scale` and `angle`), the `exterior` wall owns it. Between
+equal-thickness walls with different hatches (a different material, or the same material
+at another `scale` or `angle`), the wall stated first owns it, because that is whose hatch
+the drawing shows there. Each layer holds its walls' share of the joined outline and poché the drawing
 shows. No line is moved or added, but a face line is cut in two where it passes from one
 layer's wall to the other's.
 

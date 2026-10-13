@@ -70,6 +70,10 @@ function sceneWall(w: RWall): SceneWall {
  * that never exports a DXF pays one closure and no per-wall work. A getter rather than a
  * method because a Scene is plain data — `structuredClone`, `JSON.stringify` and a spread
  * all read it as an ordinary array property. A plan with no walls gets no property at all.
+ *
+ * And WRITABLE, as the type says: assigning it (say `scene.walls = undefined`, to export the
+ * wall nodes unsplit on `A-WALL` as a hand-built Scene would) replaces the getter with a plain
+ * data property holding the new value. `delete scene.walls` works too.
  */
 export function attachSceneWalls(scene: Scene, walls: readonly RWall[]): void {
   if (walls.length === 0) return;
@@ -80,6 +84,9 @@ export function attachSceneWalls(scene: Scene, walls: readonly RWall[]): void {
     get: (): SceneWall[] => {
       projected ??= walls.map(sceneWall);
       return projected;
+    },
+    set: (value: readonly SceneWall[] | undefined): void => {
+      Object.defineProperty(scene, "walls", { value, enumerable: true, configurable: true, writable: true });
     },
   });
 }
@@ -172,8 +179,10 @@ export function joinWallSet<W extends JoinableWall>(
  *
  * `walls` must be in the order the drawing lowered them (`Scene.walls` is), since that order
  * breaks the joinery's thickness ties. `classes` is a PRIORITY: where two walls of equal
- * thickness and the same hatch share a point, it is filed under the class listed first —
- * which cannot move a fill, because both walls are in the same one.
+ * thickness and the same hatch (material, scale AND angle — `hatchKey`) share a point, it is
+ * filed under the class listed first —
+ * which cannot move a fill, because both walls are in the same one. A tie between DIFFERENT
+ * hatches stays the drawing's (the earlier wall in `walls`): re-deciding it would move a fill.
  */
 export interface ClassedWallSet {
   outline: ScenePrim | null;

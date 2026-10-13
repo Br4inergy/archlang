@@ -424,6 +424,8 @@ const exampleSrc = (f: string): string => readFileSync(join(__dirname, "..", "ex
  *    `exterior` — the envelope must keep the junction squares and its whole outer face.
  *  - "Tie": a brick partition stated before a concrete envelope, both 200 mm — the DXF fell
  *    back to A-WALL because it re-joined in a different order from the drawing.
+ *  - "S": the same material at a different hatch SCALE is a different hatch, so the tie is
+ *    the drawing's (statement order), not exterior-first — pinned so the docs stay exact.
  */
 const TIE_REPROS: ReadonlyArray<readonly [string, string, string]> = [
   [
@@ -434,6 +436,11 @@ const TIE_REPROS: ReadonlyArray<readonly [string, string, string]> = [
   [
     "Tie",
     "wall id=part interior thickness 200 material brick { (2500,0) (2500,4000) }",
+    "wall id=shell exterior thickness 200 material concrete { (0,0) (5000,0) (5000,4000) (0,4000) close }",
+  ],
+  [
+    "S",
+    "wall id=part interior thickness 200 material concrete scale 2 { (2500,0) (2500,4000) }",
     "wall id=shell exterior thickness 200 material concrete { (0,0) (5000,0) (5000,4000) (0,4000) close }",
   ],
 ];
@@ -506,6 +513,29 @@ describe("DXF units and wall layers", () => {
     const walls = dxfEntities(dxf).filter(isWallEnt);
     expect(walls.length).toBeGreaterThan(0);
     expect(walls.every((e) => e.layer === "A-WALL")).toBe(true);
+  });
+
+  it("`Scene.walls` is lazy but writable: reassigning or clearing it works, and the export follows", () => {
+    const scene = toScene(resolve(parse(studio).plan!).ir);
+    const walls = scene.walls!;
+    expect(walls.length).toBeGreaterThan(0);
+    // Clearing it is the documented way to get the unsplit, hand-built export.
+    expect(() => {
+      scene.walls = undefined;
+    }).not.toThrow();
+    expect(scene.walls).toBeUndefined();
+    expect(
+      dxfEntities(toDxf(scene))
+        .filter(isWallEnt)
+        .every((e) => e.layer === "A-WALL"),
+    ).toBe(true);
+    // Putting the same list back restores the split, byte for byte.
+    scene.walls = walls;
+    expect(scene.walls).toBe(walls);
+    expect(toDxf(scene)).toBe(dxfOf(studio));
+    // And it stays an ordinary data property for every reader that copies a Scene.
+    expect(Object.keys(scene)).toContain("walls");
+    expect(JSON.parse(JSON.stringify(scene)).walls).toHaveLength(walls.length);
   });
 
   it("re-files only the nodes the walls drew: a wall-pass node added by hand stays itself, on A-WALL", () => {
@@ -583,6 +613,25 @@ describe("DXF units and wall layers", () => {
     expect(r.intr - s.intr).toBeCloseTo(squares, 3);
     expect(s.extr - r.extr).toBeCloseTo(squares, 3);
     expect(r.extr + r.intr).toBeCloseTo(s.extr + s.intr, 3);
+  });
+
+  it("S: exterior-first is a SAME-HATCH rule — a different scale is a different hatch, so the drawing's order decides", () => {
+    const [name, a, b] = TIE_REPROS[2]!;
+    // DXF flips Y: the envelope's bottom outer face is y = 100.
+    const bottomFace = (src: string): Ent[] =>
+      dxfEntities(dxfOf(src)).filter(
+        (e) => e.type === "LINE" && isWallEnt(e) && groupNum(e, 20) === 100 && groupNum(e, 21) === 100,
+      );
+    // As reported (the scale-2 partition stated first): the drawing gives the junction
+    // squares to the partition's hatch, so the two 200 mm pieces of the envelope's outer face
+    // in front of it are the partition's, on A-WALL-INTR, as the drawn hatch shows them.
+    const reported = bottomFace(tieSource(name, a, b));
+    const piece = (e: Ent): boolean => [2400, 2600].includes(groupNum(e, 10)) && [2400, 2600].includes(groupNum(e, 11));
+    expect(reported.filter(piece).map((e) => e.layer)).toEqual(["A-WALL-INTR"]);
+    // Swapped (envelope first): the envelope owns the squares and its whole bottom face.
+    const swapped = bottomFace(tieSource(name, b, a));
+    expect(swapped.length).toBeGreaterThan(0);
+    expect(swapped.filter((e) => e.layer !== "A-WALL-EXTR")).toEqual([]);
   });
 
   it("a one-class plan's entities are the plain export's, byte for byte, with only the layer renamed", () => {

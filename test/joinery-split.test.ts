@@ -8,13 +8,19 @@
  * 2. **The runs partition the outline.** Their total length is the outline's.
  * 3. **The (group, face) fills tile the group fill.** Their net areas sum to the group's,
  *    and at sample points no face claims a point twice, nor one the group fill lacks.
- * 4. **Exterior first in a same-group tie.** A face listed first wins every point a wall of
- *    the same thickness and group shares with it, whatever the statement order.
+ * 4. **The tie POLICY.** At every probed point exactly one (group, face) fill claims it, and
+ *    it is the one the policy names: the owner is the thickest wall covering the point (the
+ *    lowest index among equal ones), and its face is the face listed FIRST among the walls of
+ *    that thickness AND that group (hatch: material, scale and angle) covering the point —
+ *    so an exterior wall wins a same-hatch tie whatever the statement order. Laws 1–3 hold
+ *    for any face rule; this one pins the rule itself.
  *
- * Run over every storey of every shipped example and over the joinery fuzz generator
+ * All four run over every storey of every shipped example, over the joinery fuzz generator
  * (`test/arbitrary-joinery.ts`, the same pinned seed convention as
- * `test/joinery-oracle.test.ts`). Every quantity is read off the exact `EdgeLoop`s — arcs
- * included — so there is no tessellation in the tolerances.
+ * `test/joinery-oracle.test.ts`), and over 20 deterministic T-junction ties. Points are a
+ * 41 x 41 grid plus probes a quarter-thickness off every band vertex (where junction squares
+ * are; a grid alone rarely lands in one). Every quantity is read off the exact `EdgeLoop`s —
+ * arcs included — so there is no tessellation in the tolerances.
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -26,15 +32,15 @@ import type { Point } from "../src/ast.js";
 import { distPointToSegment } from "../src/geometry.js";
 import { distPointToArc } from "../src/geometry/arc.js";
 import type { Edge, EdgeLoop } from "../src/geometry/band.js";
-import { loopArea, loopWinding } from "../src/geometry/band.js";
-import type { JoineryResult, JoineryWall } from "../src/geometry/joinery.js";
-import { joinWalls } from "../src/geometry/joinery.js";
-import { hatchesUsed, hatchKey } from "../src/hatches.js";
+import { PointInterner, loopArea, loopBBox, loopWinding, openingCut, wallBand } from "../src/geometry/band.js";
+import type { JoineryCut, JoineryResult, JoineryWall } from "../src/geometry/joinery.js";
+import { bandBBox, joinWalls } from "../src/geometry/joinery.js";
+import { hatchesUsed, hatchKey, hatchOf } from "../src/hatches.js";
 import { compile } from "../src/index.js";
 import type { SceneWall } from "../src/scene.js";
 import { classifyWallSet, joinWallSet } from "../src/wall-lowering.js";
 import type { World } from "../src/world.js";
-import { angledWalls, rectilinearWalls, renderWalls } from "./arbitrary-joinery.js";
+import { type WallSpec, angledWalls, rectilinearWalls, renderWalls } from "./arbitrary-joinery.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SEED = 20261013;
@@ -52,46 +58,113 @@ const edgeDist = (p: Point, e: Edge): number =>
   e.t === "arc" ? distPointToArc(p, e.arc) : distPointToSegment(p, e.a, e.b);
 const close = (a: number, b: number, rel = 1e-9): boolean => Math.abs(a - b) <= rel * Math.max(1, Math.abs(b));
 
-/** Laws 1–3 for one join; returns a failure message, or null. */
+/** Laws 1–4 for one join: a failure message (or null), and how many probed points were a
+ *  same-group TIE between walls of different faces (so a caller can prove law 4 ran). */
 function splitLaws(
   walls: readonly JoineryWall[],
   cuts: Parameters<typeof joinWalls>[1],
   groups: string[],
   faces: string[],
-): string | null {
+): { error: string | null; ties: number } {
+  let ties = 0;
+  const fail = (error: string) => ({ error, ties });
   const plain = joinWalls(walls, cuts, groups);
   const withSplit: JoineryResult = joinWalls(walls, cuts, groups, faces);
-  if (JSON.stringify(withSplit.outline) !== JSON.stringify(plain.outline)) return "split mode moved the outline";
-  if (JSON.stringify(withSplit.fills) !== JSON.stringify(plain.fills)) return "split mode moved a fill";
+  if (JSON.stringify(withSplit.outline) !== JSON.stringify(plain.outline)) return fail("split mode moved the outline");
+  if (JSON.stringify(withSplit.fills) !== JSON.stringify(plain.fills)) return fail("split mode moved a fill");
   const split = withSplit.split!;
   const runs = split.faces.flatMap((f) => f.runs);
   if (!close(totalLength(runs), totalLength(plain.outline))) {
-    return `runs ${totalLength(runs)} != outline ${totalLength(plain.outline)}`;
+    return fail(`runs ${totalLength(runs)} != outline ${totalLength(plain.outline)}`);
   }
   // Sample grid over the solid's box, skipping points within 1e-6 mm of any boundary.
   const all = [...plain.outline, ...split.fills.flatMap((f) => f.loops)].flat();
-  if (all.length === 0) return null;
+  if (all.length === 0) return { error: null, ties };
   const xs = all.flatMap((e) => (e.t === "arc" ? [e.arc.a.x, e.arc.b.x, e.arc.center.x] : [e.a.x, e.b.x]));
   const ys = all.flatMap((e) => (e.t === "arc" ? [e.arc.a.y, e.arc.b.y, e.arc.center.y] : [e.a.y, e.b.y]));
   const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
   const N = 41;
+  const probes: Point[] = [];
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++)
+      probes.push({ x: x0 + ((x1 - x0) * (i + 0.37)) / N, y: y0 + ((y1 - y0) * (j + 0.61)) / N });
+  }
+  for (const w of walls) {
+    const q = w.thickness / 4;
+    for (const l of w.loops) {
+      for (const e of l) {
+        const v = e.t === "arc" ? e.arc.a : e.a;
+        for (const [dx, dy] of [
+          [q, q],
+          [q, -q],
+          [-q, q],
+          [-q, -q],
+        ] as const)
+          probes.push({ x: v.x + dx, y: v.y + dy });
+      }
+    }
+  }
   for (const fill of plain.fills) {
     const parts = split.fills.filter((f) => f.group === fill.group);
     const sum = parts.reduce((s, f) => s + netArea(f.loops), 0);
     if (!close(sum, netArea(fill.loops), 1e-9))
-      return `group ${fill.group}: faces' area ${sum} != ${netArea(fill.loops)}`;
-    const edges = [...fill.loops, ...parts.flatMap((f) => f.loops)].flat();
-    for (let i = 0; i < N; i++) {
-      for (let j = 0; j < N; j++) {
-        const p = { x: x0 + ((x1 - x0) * (i + 0.37)) / N, y: y0 + ((y1 - y0) * (j + 0.61)) / N };
-        if (edges.some((e) => edgeDist(p, e) < 1e-6)) continue;
-        const claims = parts.filter((f) => inside(f.loops, p)).length;
-        const want = inside(fill.loops, p) ? 1 : 0;
-        if (claims !== want) return `group ${fill.group}: ${claims} faces claim (${p.x}, ${p.y}), the fill ${want}`;
+      return fail(`group ${fill.group}: faces' area ${sum} != ${netArea(fill.loops)}`);
+  }
+  // Every boundary a probe could sit on: the fills, the split fills, the bands and the cuts.
+  const boundary = [
+    ...plain.fills.flatMap((f) => f.loops),
+    ...split.fills.flatMap((f) => f.loops),
+    ...walls.flatMap((w) => w.loops),
+    ...cuts.map((c) => c.loop),
+  ].flat();
+  const rank = (w: JoineryWall): number => faces.indexOf(w.face ?? "");
+  for (const p of probes) {
+    if (boundary.some((e) => edgeDist(p, e) < 1e-6)) continue;
+    // The policy's answer at p, computed from the walls alone.
+    let want: { group: string; face: string } | null = null;
+    if (!cuts.some((c) => loopWinding(c.loop, p) !== 0)) {
+      const covering = walls.filter((w) => inside(w.loops, p));
+      if (covering.length > 0) {
+        const t = Math.max(...covering.map((w) => w.thickness));
+        const owner = covering.filter((w) => w.thickness === t).sort((a, b) => a.index - b.index)[0]!;
+        const tied = covering.filter((w) => w.thickness === t && w.group === owner.group);
+        const face = tied.reduce((best, w) => (rank(w) < rank(best) ? w : best), owner).face ?? "";
+        if (new Set(tied.map((w) => w.face)).size > 1) ties++;
+        want = { group: owner.group, face };
       }
     }
+    const claims = split.fills.filter((f) => inside(f.loops, p));
+    const got = claims.map((f) => `${f.group}/${f.face}`).join(",");
+    const expected = want ? `${want.group}/${want.face}` : "";
+    if (got !== expected) return fail(`(${p.x}, ${p.y}) is claimed by [${got}], the policy says [${expected}]`);
   }
-  return null;
+  return { error: null, ties };
+}
+
+/** The joinery inputs of a Scene's walls, built exactly as `joinWallSet` builds them. */
+function joineryInputs(walls: readonly SceneWall[], faceOf: (w: SceneWall) => string) {
+  const intern = new PointInterner();
+  const jwalls: JoineryWall[] = [];
+  const cuts: JoineryCut[] = [];
+  walls.forEach((w, index) => {
+    const loops = wallBand(w, intern);
+    if (loops.length > 0) {
+      jwalls.push({
+        index,
+        id: "",
+        thickness: w.thickness,
+        group: hatchKey(hatchOf(w)),
+        face: faceOf(w),
+        loops,
+        bbox: bandBBox(loops),
+      });
+    }
+    for (const op of w.openings) {
+      const loop = openingCut(w, op, intern);
+      if (loop) cuts.push({ index: cuts.length, loop, bbox: loopBBox(loop) });
+    }
+  });
+  return { walls: jwalls, cuts, groups: hatchesUsed(walls).map(hatchKey) };
 }
 
 const examplesWorld: World = {
@@ -138,6 +211,9 @@ describe("joinery split mode — laws over every shipped example", () => {
           const sum = parts.reduce((s, x) => s + netArea(x.loops), 0);
           expect(close(sum, netArea(fill.loops))).toBe(true);
         }
+        // And all four laws, point-sampled, on the same inputs `joinWallSet` builds.
+        const inputs = joineryInputs(walls, (w) => (w.category === "exterior" ? "EXTR" : "INTR"));
+        expect(splitLaws(inputs.walls, inputs.cuts, inputs.groups, ["EXTR", "INTR"]).error).toBeNull();
       }
     });
   }
@@ -145,16 +221,61 @@ describe("joinery split mode — laws over every shipped example", () => {
 
 describe("joinery split mode — laws over the fuzz generator", () => {
   const families = fc.oneof(rectilinearWalls, angledWalls);
-  it("inert, runs partition the outline, (group, face) fills tile each group fill", () => {
+  it("inert, runs partition the outline, (group, face) fills tile each group fill, tie policy", () => {
+    let fuzzTies = 0;
     fc.assert(
       fc.property(families, fc.array(fc.boolean(), { minLength: 5, maxLength: 5 }), (specs, ext) => {
         const { walls, cuts, groups } = renderWalls(specs);
         const faced = walls.map((w, i) => ({ ...w, face: ext[i % ext.length] ? "EXTR" : "INTR" }));
-        expect(splitLaws(faced, cuts, groups, ["EXTR", "INTR"])).toBeNull();
+        const r = splitLaws(faced, cuts, groups, ["EXTR", "INTR"]);
+        expect(r.error).toBeNull();
+        fuzzTies += r.ties;
       }),
       { numRuns: RUNS, seed: SEED },
     );
+    // The generator does produce same-group ties between faces, so law 4 was exercised here
+    // too — not only by the deterministic set below.
+    expect(fuzzTies).toBeGreaterThan(0);
   });
+});
+
+describe("joinery split mode — the tie policy over 20 deterministic T-junctions", () => {
+  // An INTR wall stated FIRST (so it has the lower index and owns the tie by index) meets an
+  // EXTR ring of the same thickness and group: 5 thicknesses x 4 positions, two of them
+  // where the T meets a corner. Law 4 must give every junction point to EXTR.
+  const ring = (t: number): WallSpec => ({
+    points: [
+      { x: 0, y: 0 },
+      { x: 6000, y: 0 },
+      { x: 6000, y: 4000 },
+      { x: 0, y: 4000 },
+    ],
+    thickness: t,
+    closed: true,
+    group: "concrete",
+    openings: [],
+  });
+  for (const t of [100, 150, 200, 250, 300]) {
+    for (const x of [1000, 3000, 5500, 6000 - t / 2]) {
+      it(`thickness ${t}, T at x = ${x}`, () => {
+        const stub: WallSpec = {
+          points: [
+            { x, y: 0 },
+            { x, y: 4000 },
+          ],
+          thickness: t,
+          closed: false,
+          group: "concrete",
+          openings: [],
+        };
+        const { walls, cuts, groups } = renderWalls([stub, ring(t)]);
+        const faced = walls.map((w, i) => ({ ...w, face: i === 0 ? "INTR" : "EXTR" }));
+        const r = splitLaws(faced, cuts, groups, ["EXTR", "INTR"]);
+        expect(r.error).toBeNull();
+        expect(r.ties).toBeGreaterThan(0);
+      });
+    }
+  }
 });
 
 describe("joinery split mode — the face listed first wins a same-group tie", () => {

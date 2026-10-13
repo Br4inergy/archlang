@@ -243,7 +243,8 @@ const LTYPES: { name: string; desc: string; pattern: number[] }[] = [
 const PLAIN_WALL_LAYER = { name: "A-WALL", color: 7 };
 
 /** The two wall layers, in the order their entities are written — and in PRIORITY order:
- *  exterior first, so an equal-thickness, same-material junction is the envelope's (see
+ *  exterior first, so an equal-thickness junction of the same hatch (material, scale and
+ *  angle) is the envelope's (see
  *  `classifyWallSet`), whatever the other wall's category is called. */
 const WALL_CLASS_LAYERS = ["A-WALL-EXTR", "A-WALL-INTR"] as const;
 
