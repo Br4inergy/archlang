@@ -23,9 +23,8 @@ const rootPkg = JSON.parse(readFileSync(resolve(REPO, "package.json"), "utf8")) 
   name: string;
   bin: Record<string, string>;
 };
-/** Where the workflow skill the instructions condense lives. If SKILL.md moves (for example to
- *  `skills/archlang/SKILL.md`), point this at the new path. */
-const SKILL_PATH = resolve(REPO, "SKILL.md");
+/** Where the workflow skill the instructions condense lives: the umbrella skill under `skills/`. */
+const SKILL_PATH = resolve(REPO, "skills/archlang/SKILL.md");
 
 /** The single-word backticked names in the instructions that the CLI manifest knows. */
 const namedCommands = (): string[] => {

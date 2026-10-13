@@ -305,7 +305,7 @@ agents: deterministic, self-correcting (errors carry a machine code, a prose `fi
 The CLI runs straight from npm — no clone, no build:
 
 ```bash
-npx -y @chanmeng666/archlang help
+npx -y @chanmeng666/archlang --help
 ```
 
 Or `npm i -g @chanmeng666/archlang` for a global `archlang` command. Every call below is written
@@ -530,8 +530,8 @@ them out and read the defaults from `archlang manifest --json`'s `datum` block.
 The CLI documents itself, and every read can be narrowed at the source — never pull a whole plan's
 facts into context just to filter them yourself.
 
-- **`archlang <cmd> --help`** (or `archlang help <cmd>`) prints that one command's flags *and worked
-  examples* — every command carries at least one copy-pasteable invocation. `archlang help` lists the
+- **`archlang <cmd> --help`** prints that one command's flags *and worked
+  examples* — every command carries at least one copy-pasteable invocation. `archlang --help` lists the
   commands; `archlang --version` prints the version. A flag a command doesn't take is a usage error
   (exit `3`) with a did-you-mean, never a silently-swallowed filename — so a typo fails loudly
   instead of compiling the wrong thing.
@@ -566,10 +566,10 @@ facts into context just to filter them yourself.
 archlang spec                              # the whole language in one page — READ THIS FIRST
 archlang context                           # everything in one call: spec + this workflow + CLI reference + error catalog
 archlang context --section errors          # just one section of it (spec|workflow|cli|errors)
-archlang help <cmd>                        # flags + worked examples for one command (same as `archlang <cmd> --help`)
+archlang --help                            # list the commands
 archlang manifest --json                   # the whole CLI API as data: commands, flags, formats, lint rules, error codes
 archlang compile plan.arch -o out.svg --json   # render (also -f dxf|txt|pdf|png)
-archlang compile plan.arch -f txt          # zero-dependency ASCII text plan on stdout (also `preview --ascii`)
+archlang compile plan.arch -f txt          # zero-dependency ASCII text plan on stdout
 archlang compile plan.json --from-json -o out.svg   # compile structured Plan JSON (see /plan.schema.json)
 echo '<source>' | archlang compile - -o - -f svg    # compile stdin → SVG on stdout
 archlang fix plan.arch --dry-run --json    # preview the machine-applicable fixes as a unified diff (drop --dry-run to apply; --backup keeps <file>.bak)
@@ -612,8 +612,8 @@ about SVG by hand.
 
 ## Task skills
 
-Four short skills sit in `skills/` beside this file, one job each
-(`npx skills add ChanMeng666/archlang --full-depth` installs them with this one). Each is a
+Four short skills sit beside this one in `skills/`, one job each
+(`npx skills add ChanMeng666/archlang` offers them with this one). Each is a
 checklist of CLI calls and holds no language reference of its own:
 
 - `archlang-brief-to-plan`: write a new plan from a written brief and check it against the brief.
@@ -740,7 +740,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 
 **`archlang context`** — print the full bundled agent context (spec + workflow + CLI + errors)
   - input: none → output: the full agent context (llms-full.txt), or one --section of it
-  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 109 KB of it (spec = the language, 30 KB; workflow = the agent loop, 24 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 32 KB) · `--json` structured result on stdout, messages on stderr
+  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 108 KB of it (spec = the language, 30 KB; workflow = the agent loop, 24 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 32 KB) · `--json` structured result on stdout, messages on stderr
   - example: `archlang context` — the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 
 **`archlang new`** (aliases: `init`) — scaffold a starter .arch

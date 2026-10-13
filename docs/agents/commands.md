@@ -27,7 +27,7 @@
   transcendental agreement: a 1-ulp `Math.cos` difference is invisible by design, and `hypot` is
   caught only where it feeds an exact comparison. It measures, it fixes nothing. Set `PLAYWRIGHT_BROWSERS_PATH` to keep the browsers off the default cache.
 - `gen:plugin` (in `gen:all`, drift-gated) writes `plugins/archlang/`: the Claude Code plugin's
-  manifest and its copies of the skills. Edit the root `SKILL.md` / `skills/`, never the copies.
+  manifest and its copies of the skills. Edit `skills/` (the umbrella `skills/archlang/` included), never the copies.
 - `build:mcpb` rebuilds the core, then writes both `.mcpb` bundles to the gitignored `dist-mcpb/`;
   `prove:mcpb` unpacks one outside the repo and drives it over stdio. Neither runs in `ci.yml`: only
   `release.yml` runs them, last and best-effort, so a broken bundle shows as a yellow step on a

@@ -28,7 +28,7 @@ const DOCS = [
   "README.md",
   "docs/overview.md",
   "llms.txt",
-  "SKILL.md",
+  "skills/archlang/SKILL.md",
   "AGENTS.md",
   "CLAUDE.md",
   "docs/agents/commands.md",
@@ -129,7 +129,6 @@ describe("docs never document a flag the command doesn't take", () => {
 describe("agent-facing docs never tell an agent to run a bare `arch` or a prompting npx", () => {
   const AGENT_DOCS = [
     "README.md",
-    "SKILL.md",
     "llms.txt",
     "docs/overview.md",
     "docs-site/agents.md",

@@ -54,7 +54,7 @@ npm run gen:all       # every gen:* generator
 (owner decisions) · `commands.md` (CI, scripts). `docs/testing.md`: red guards, golden policy.
 `docs/seo.md` § 8: where the project is listed and who may submit.
 A root `.ignore` hides CHANGELOG, generated files and goldens from ripgrep; name the path to search them.
-Authoring `.arch` (not contributing): `spec.llm.md`, `SKILL.md`.
+Authoring `.arch` (not contributing): `spec.llm.md`, `skills/archlang/SKILL.md`.
 
 Conventional Commits. `AGENTS.md` + `CLAUDE.md` ≤ 5,000 bytes together (`wc -c`); detail goes in
 `docs/agents/`.

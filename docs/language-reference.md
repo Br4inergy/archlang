@@ -2458,7 +2458,7 @@ wall — plus a change log (see [ADR 0006](adr/0006-solver-as-explicit-transform
 It is deterministic and never guesses topology: it will **not** add a door or window
 (that is a design choice), and a **circulation guard** declines any furniture move
 that would newly pinch a walk below the lint threshold (reporting it in `unresolved`
-instead). Use [`SKILL.md`](../SKILL.md) for the full repair-then-gate loop.
+instead). Use [`SKILL.md`](https://github.com/chanmeng666/archlang/blob/main/skills/archlang/SKILL.md) for the full repair-then-gate loop.
 
 **It reads every furniture statement, and never goes quiet.** The scan walks *into*
 `for` / `while` / `if` bodies and component definitions, so scripted pieces are no

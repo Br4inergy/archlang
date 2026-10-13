@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The Claude Code plugin passes the directory's checks.** The manifest pins the MCP launcher to an exact version (`npx -y @chanmeng666/archlang-mcp@<version>`, not the unpinned package), carries a `version` (the core's), and ships a 1024 px `.claude-plugin/icon.png` rendered from the plum mark on a light tile. `npm run gen:plugin` stamps the version and the pin from the package manifests and `check:drift` gates them, so a release bump cannot leave them stale.
 
-- **The Claude Code plugin is a slim subfolder, `plugins/archlang/`.** The plugin root used to be the repo root, whose 11 MB font the plugin directory rejects (5 MiB per file). `marketplace.json` now installs `./plugins/archlang`: the manifest plus the five skills, which `npm run gen:plugin` copies from the root `SKILL.md` and `skills/` (drift-gated). `npx skills add` is unchanged.
+- **The Claude Code plugin is a slim subfolder, `plugins/archlang/`.** The plugin root used to be the repo root, whose 11 MB font the plugin directory rejects (5 MiB per file). `marketplace.json` now installs `./plugins/archlang`: the manifest plus the five skills, which `npm run gen:plugin` copies from `skills/` (drift-gated).
+
+- **The umbrella skill now lives at `skills/archlang/SKILL.md`.** `npx skills add ChanMeng666/archlang` finds all five skills without `--full-depth` (a terminal user gets a picker; `--yes` or an agent installs all). The npm tarball no longer ships a root `SKILL.md`.
 
 - **`@chanmeng666/archlang-mcp` 0.2.25 sends `instructions` and describes its tools by behaviour.** At `initialize` the server sends the authoring loop (read `archlang://spec`, write `.arch`, `compile`/`fix`, `describe`, `validate` strict, `finish`) and the CLI spelling `archlang <cmd>` / `npx -y @chanmeng666/archlang <cmd>`; tool and resource descriptions no longer cite ADR numbers or repo file names. Release order: publish 0.2.25 only after the core release that ships the `archlang` bin (core 1.42.1 installs only `arch`).
 

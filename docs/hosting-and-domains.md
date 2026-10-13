@@ -343,7 +343,7 @@ artifacts. Two traps caught us during the 2026-07-15 migration:
    `archlang-docs` (no dots) to catch both the literal and escaped forms.
 2. **Edit sources, then regenerate — never hand-edit generated files.** The JSON Schema `$id`s live in
    `src/plan-json.ts` / `src/intent.ts` (→ `npm run gen:plan-schema` / `gen:intent-schema`); the
-   agent-context URLs live in `SKILL.md` (→ `npm run gen:llms`). `check:drift` fails if you edit the
+   agent-context URLs live in `skills/archlang/SKILL.md` (→ `npm run gen:llms`). `check:drift` fails if you edit the
    generated `schemas/*.json` / `llms-full.txt` directly. The README `#z=` playground permalinks are
    **base-independent** (the compressed hash encodes only the example source), so only the host prefix
    changes — the hash stays valid.

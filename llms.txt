@@ -16,7 +16,7 @@ of the project for large language models and AI agents.
 - [README](https://github.com/chanmeng666/archlang/blob/main/README.md): overview, features, installation, usage
 - [spec.llm.md](https://github.com/chanmeng666/archlang/blob/main/spec.llm.md): the WHOLE language in one page — read this to author `.arch`
 - [llms-full.txt](https://archlang.uk/llms-full.txt): the full agent context in one document — the spec, the workflow skill, the CLI reference, and every diagnostic code (also at `/llms-full.txt`)
-- [SKILL.md](https://github.com/chanmeng666/archlang/blob/main/SKILL.md): the agent skill — how to drive ArchLang via the CLI
+- [SKILL.md](https://github.com/chanmeng666/archlang/blob/main/skills/archlang/SKILL.md): the agent skill — how to drive ArchLang via the CLI
 - [AGENTS.md](https://github.com/chanmeng666/archlang/blob/main/AGENTS.md): how AI agents should work in this repo
 - [CONTRIBUTING](https://github.com/chanmeng666/archlang/blob/main/CONTRIBUTING.md): development setup and contribution workflow
 - [CHANGELOG](https://github.com/chanmeng666/archlang/blob/main/CHANGELOG.md): version history and release notes, read before a version bump; also shipped inside the npm package as `CHANGELOG.md`
@@ -67,7 +67,7 @@ Loop: `spec` → write `.arch` → `compile --json` → if `ok:false` (exit 2) f
 `manifest --json` is the whole API map in one call, and the help, the flag parser and the CLI
 reference are all rendered from it, so none of them can claim a flag a command doesn't take.
 `batch`/`md` cover variant exploration and embedding plans in Markdown. See
-[SKILL.md](https://github.com/chanmeng666/archlang/blob/main/SKILL.md).
+[SKILL.md](https://github.com/chanmeng666/archlang/blob/main/skills/archlang/SKILL.md).
 
 Exit codes: `0` ok · `2` user-source error (deterministic — fix it, don't retry) · `1` IO/internal ·
 `3` bad usage. Misuse is loud, never silent: an unknown flag or verb exits 3 with a did-you-mean —

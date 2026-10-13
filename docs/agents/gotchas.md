@@ -78,7 +78,7 @@ Non-obvious traps that no test catches, or whose symptom points the wrong way. E
   the CodeMirror lint squiggle's data-URI hex (a `var()` cannot enter an SVG data URI).
 - **Changing a public host**: grep the host prefix without dots (`archlang-playground`), because some
   references are regexes with escaped dots. Schema `$id`s live in `src/plan-json.ts`/`src/intent.ts`
-  (regenerate with `gen:*-schema`), agent-context URLs in `SKILL.md` (`gen:llms`).
+  (regenerate with `gen:*-schema`), agent-context URLs in `skills/archlang/SKILL.md` (`gen:llms`).
 - **SEO** (`docs/seo.md`): crawlers execute no JavaScript, so only static bytes count; the
   killed-claim regexes on `PAGE_META`/`EXAMPLE_ROWS` are never widened — fix the copy; `/embed.html`
   is de-indexed by an `X-Robots-Tag` header, not a `robots.txt` Disallow; `_headers` binds to the

@@ -539,13 +539,13 @@ export default defineConfig({
   srcExclude: ["public/**"],
   // The reference/errors pages are synced verbatim from the canonical repo docs,
   // which contain relative links to repo files (examples/*.arch, playground/,
-  // CHANGELOG.md, SKILL.md, error-codes.md → the site's /errors page) that are
+  // CHANGELOG.md, error-codes.md → the site's /errors page) that are
   // valid on GitHub but not pages on this site under the same name. Don't fail
   // the build on them.
   ignoreDeadLinks: [
     /\.\.\/(examples|playground)\//,
     /\.\.\/\.\.\//,
-    /\.\.\/(CHANGELOG|SKILL)/,
+    /\.\.\/CHANGELOG/,
     /error-codes/,
     /language-reference/,
     // Machine-readable artifacts served verbatim from public/ (sync-docs.mjs). VitePress
