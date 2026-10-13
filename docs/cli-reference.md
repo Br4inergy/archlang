@@ -36,6 +36,7 @@ that name, so this page never uses it.
 | `svg` | zero-dep (built in) |
 | `dxf` | zero-dep (built in) |
 | `txt` | zero-dep (built in) |
+| `json` | zero-dep (built in) |
 | `pdf` | needs optional `pdfkit` |
 | `png` | needs optional `@resvg/resvg-js` |
 
@@ -50,14 +51,14 @@ that name, so this page never uses it.
 
 ### `archlang compile`
 
-render a plan to SVG/DXF/TXT/PDF/PNG
+render a plan to SVG/DXF/TXT/PDF/PNG, or to Plan JSON
 
 **Input:** `<file.arch|-> (Plan JSON with --from-json)` · **Output:** file (or stdout with -o -) — with --json and no -o nothing is written
 
 | Flag | Does |
 | --- | --- |
 | `--out, -o <file\|->` | output file, or '-' for stdout (default: the input path with the format's extension) |
-| `--format, -f <svg\|dxf\|txt\|pdf\|png>` | output format (default svg) |
+| `--format, -f <svg\|dxf\|txt\|json\|pdf\|png>` | output format (default svg); json writes the Plan JSON that --from-json reads |
 | `--level <n>` | render only this storey of a multi-storey plan (level blocks) to the plain -o target, instead of one &lt;stem&gt;.L&lt;level&gt;.&lt;ext&gt; file per level |
 | `--width, -w <px>` | page width hint in pixels |
 | `--scale, -s <n>` | raster scale for the PNG backend (ignored by the non-raster formats) |
@@ -88,6 +89,9 @@ $ archlang compile plan.arch
 # compile source from stdin straight to SVG on stdout
 $ archlang compile - -o - < plan.arch
 
+# export the Plan JSON; `archlang compile plan.json --from-json` renders it back
+$ archlang compile plan.arch -f json -o plan.json
+
 # rasterize to PNG, fetching the optional renderer if it is missing
 $ archlang compile plan.arch -f png -o plan.png --install --json
 
@@ -110,7 +114,7 @@ render many .arch files in one call, concurrently
 | Flag | Does |
 | --- | --- |
 | `--out, -o <dir>` | output DIRECTORY for every rendered file (default: alongside each input) |
-| `--format, -f <svg\|dxf\|txt\|pdf\|png>` | output format (default svg) |
+| `--format, -f <svg\|dxf\|txt\|json\|pdf\|png>` | output format (default svg); json writes the Plan JSON that --from-json reads |
 | `--jobs, -j <n>` | max concurrent renders (default: CPU count) |
 | `--width, -w <px>` | page width hint in pixels |
 | `--scale, -s <n>` | raster scale for the PNG backend (ignored by the non-raster formats) |
@@ -232,7 +236,7 @@ recompile on save (interactive)
 | Flag | Does |
 | --- | --- |
 | `--out, -o <file\|->` | output file, or '-' for stdout (default: the input path with the format's extension) |
-| `--format, -f <svg\|dxf\|txt\|pdf\|png>` | output format (default svg) |
+| `--format, -f <svg\|dxf\|txt\|json\|pdf\|png>` | output format (default svg); json writes the Plan JSON that --from-json reads |
 | `--level <n>` | render only this storey of a multi-storey plan (level blocks) to the plain -o target, instead of one &lt;stem&gt;.L&lt;level&gt;.&lt;ext&gt; file per level |
 | `--width, -w <px>` | page width hint in pixels |
 | `--scale, -s <n>` | raster scale for the PNG backend (ignored by the non-raster formats) |

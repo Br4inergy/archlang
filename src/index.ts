@@ -177,6 +177,7 @@ export {
 } from "./plan-json.js";
 export type {
   PlanJson,
+  PlanJsonPage,
   RoomJson,
   WallJson,
   OpeningJson,

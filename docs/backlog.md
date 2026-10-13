@@ -256,6 +256,21 @@ refused earlier, by `E_JSON_MIRROR`) and goes red when a placed plan starts roun
 fixes that still has to decide what a mirrored fixture becomes on the way back, since source has no
 word for it outside a `place`.
 
+**The CLI round-trip and its gap list.** `archlang compile -f json` writes the Plan JSON that
+`compile --from-json` reads back, and `test/cli-plan-json-roundtrip.test.ts` holds every example
+to byte-identical SVG through that pipe except exactly these 21 (the list is `CANNOT_ROUND_TRIP`
+in `test/plan-json-gaps.ts`, minus `imports.arch`, which the CLI's file World flattens):
+
+- refused with `E_JSON_MIRROR` (a reflecting `place`): `clinic`, `museum-wings`, `terrace-row`, and
+  `hillside-villa`'s level 2;
+- storeys (each storey projects alone and draws differently from its sheet): `two-storey`,
+  `townhouse`, `garden-house`, `hillside-villa`;
+- the sheet layer (`paper`, `schedule`, `legend`, `zone`): `furnished-flat`, `museum`,
+  `museum-wing`, `transit-hall`;
+- the style layer (`theme`, `style`): `themed`, `gallery-l`, `materials`;
+- curves (`arc`, `room circle`): `aquarium`, `hexagon-pavilion`, `library`;
+- `roof`: `tiny-house`, `bungalow`, `courtyard-house`, `two-bed`.
+
 The neighbouring rule, from [ADR 0016](adr/0016-component-instances-and-frames.md) and now stated in
 `AGENTS.md`: when a fact crosses a frame, ask **can this be re-expressed in plan coordinates?** A
 placement clause cannot (plan space has no word for a local corner) so it is dropped; a symbol's

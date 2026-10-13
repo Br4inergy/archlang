@@ -383,13 +383,15 @@ export function parseFormat(args: Args): Format | null {
 /**
  * Resolve `--view <iso|axon>`, or say precisely why it cannot be honoured.
  *
- * Four refusals, every one an exit-3 usage error rather than a silent fallback to the
+ * Five refusals, every one an exit-3 usage error rather than a silent fallback to the
  * plan — a flag that quietly does nothing is how a user comes to believe they are looking
  * at a drawing they are not:
  *
  *  - an unrecognised value, with a did-you-mean, exactly as an unknown verb is treated;
  *  - `-f txt`, because the ASCII backend reads a plan (it identifies a room as a polygon
  *    on the `floor` pass) and would print a meaningless grid from a projection;
+ *  - `-f json`, because Plan JSON is the plan's model rather than a drawing, so a view has
+ *    nothing to change in it and would hand back the plan as though it were the view;
  *  - `--level`, because the view is ONE drawing of the whole building and has no per-storey
  *    page to narrow to. This one has to be refused *here* and not left to the render path:
  *    a view returns no `pages`, so the generic handler saw an empty level list and told the
@@ -422,6 +424,14 @@ export function resolveView(args: Args, format: Format, command: string): { view
       code: usageErrorFor(
         command,
         "--view cannot be combined with -f txt — the ASCII backend draws a PLAN, not a projection (use svg, pdf, png or dxf)",
+      ),
+    };
+  }
+  if (format === "json") {
+    return {
+      code: usageErrorFor(
+        command,
+        "--view cannot be combined with -f json — Plan JSON is the plan's model, not a drawing of it (drop --view)",
       ),
     };
   }

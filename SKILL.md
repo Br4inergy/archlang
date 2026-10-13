@@ -278,7 +278,7 @@ archlang context                           # everything in one call: spec + this
 archlang context --section errors          # just one section of it (spec|workflow|cli|errors)
 archlang help <cmd>                        # flags + worked examples for one command (same as `archlang <cmd> --help`)
 archlang manifest --json                   # the whole CLI API as data: commands, flags, formats, lint rules, error codes
-archlang compile plan.arch -o out.svg --json   # render (also -f dxf|txt|pdf|png)
+archlang compile plan.arch -o out.svg --json   # render (also -f dxf|txt|json|pdf|png)
 archlang compile plan.arch -f txt          # zero-dependency ASCII text plan on stdout (also `preview --ascii`)
 archlang compile plan.json --from-json -o out.svg   # compile structured Plan JSON (see /plan.schema.json)
 echo '<source>' | archlang compile - -o - -f svg    # compile stdin → SVG on stdout

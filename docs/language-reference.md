@@ -2145,7 +2145,7 @@ archlang describe house.arch --level 2 --json        # read one storey (a displa
 archlang preview house.arch --level 2 -o upper.png   # look at one storey
 ```
 
-Every format works per level (`-f svg|dxf|txt|pdf|png` each write `<stem>.L<level>.<ext>`);
+Every format works per level (`-f svg|dxf|txt|json|pdf|png` each write `<stem>.L<level>.<ext>`);
 a multi-page PDF is deliberately not built — one file per storey is one drawing per sheet.
 `md` and `batch` render the lowest storey. Diagnostics aggregate across storeys and each
 carries a `level`, so `lint`/`validate` gate on the whole building while still saying which

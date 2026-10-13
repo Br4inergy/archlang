@@ -18,6 +18,7 @@ import {
 // The parser's own accept-list, imported rather than retyped — the same law the
 // projection itself follows, so a fifth `dims auto` mode cannot pass this suite unnoticed.
 import { AUTO_DIMS_MODES } from "../src/ast.js";
+import { CANNOT_ROUND_TRIP } from "./plan-json-gaps.js";
 
 /**
  * Structured JSON I/O: planFromJson / planToJson / astToJson.
@@ -97,70 +98,6 @@ describe("plan-json — round-trip byte-identity (SVG)", () => {
    * the schema rather than a defect — with ONE exception, `two-bed.arch`, called out as
    * a defect in its own reason string.
    */
-  const CANNOT_ROUND_TRIP: Record<string, { because: string; proof: RegExp }> = {
-    // --- the sheet layer: `paper`/`axes`/`schedule`/`legend` have no JSON field ------
-    "furnished-flat.arch": { because: "sheet layer — `paper` + `schedule`", proof: /^\s*paper\b/m },
-    "museum-wing.arch": { because: "sheet layer — `paper`", proof: /^\s*paper\b/m },
-    "museum.arch": { because: "sheet layer — `paper`", proof: /^\s*paper\b/m },
-    // --- the style layer: `theme`/`style` select paint, which the JSON does not carry -
-    "themed.arch": { because: "style layer — `theme`", proof: /^\s*theme\b/m },
-    "gallery-l.arch": { because: "style layer — `theme`; and the sheet layer — `paper`", proof: /^\s*theme\b/m },
-    "materials.arch": {
-      because: "style layer — `style <kind> { … }`; and `paper`/`schedule`/`legend`",
-      proof: /^\s*style\b/m,
-    },
-    // --- curved geometry: `WallJson.points` is straight-edged; there is no `circle` ---
-    "aquarium.arch": {
-      because: "curved geometry — wall `arc` + `room circle`; and the sheet layer",
-      proof: /\barc\s*\(/,
-    },
-    "hexagon-pavilion.arch": { because: "curved geometry — wall `arc` + `room circle`", proof: /\barc\s*\(/ },
-    "library.arch": {
-      because: "curved geometry — wall `arc`; and the sheet layer, `zone`, `stair`/`elevator`",
-      proof: /\barc\s*\(/,
-    },
-    // --- drawing-only and ground elements: no JSON element kind ----------------------
-    "tiny-house.arch": { because: "`roof` is deliberately absent from the projection", proof: /^\s*roof\b/m },
-    "bungalow.arch": { because: "`roof`; and the sheet layer — `paper` + `schedule`", proof: /^\s*roof\b/m },
-    "courtyard-house.arch": { because: "`roof`; and the sheet layer + `zone`", proof: /^\s*roof\b/m },
-    // --- storeys and composition -----------------------------------------------------
-    "two-storey.arch": {
-      because: "`level` — the projection is single-storey; also `roof`/`void`/`stair`",
-      proof: /^\s*level\b/m,
-    },
-    "townhouse.arch": {
-      because: "`level` — the projection is single-storey; also `roof`/`stair`/`paper`",
-      proof: /^\s*level\b/m,
-    },
-    "garden-house.arch": {
-      because: "`level`, `outdoor`/`fence`/`roof`, `site … boundary` and the sheet layer",
-      proof: /^\s*level\b/m,
-    },
-    "hillside-villa.arch": {
-      because: "`level`, `place`, `roof`/`void`, `arc` and the sheet layer",
-      proof: /^\s*level\b/m,
-    },
-    "terrace-row.arch": {
-      because: "`component` + `place` — composition is authored in .arch, not JSON",
-      proof: /^\s*place\b/m,
-    },
-    "clinic.arch": { because: "`component` + `place`; and the sheet layer + `zone`", proof: /^\s*place\b/m },
-    "transit-hall.arch": { because: "sheet layer + `zone` + `elevator`/`escalator`", proof: /^\s*escalator\b/m },
-    // `import` is refused outright, by design — `planFromJson` says so in its own doc.
-    "imports.arch": {
-      because: "`import` — refused by design (`E_IMPORT_NOT_FOUND` on projection)",
-      proof: /^\s*import\b/m,
-    },
-    "museum-wings.arch": { because: "`import` + `place` — refused by design", proof: /^\s*import\b/m },
-    // This entry used to name the ONE genuine defect in this list — `planToJson`
-    // projected a RESOLVER-DERIVED furniture position as an authored `at (x,y)`, which
-    // `grid` then re-snapped, moving eight of this plan's twelve fixtures.
-    // That is fixed: the projection now carries the placement CLAUSE, and this file
-    // round-trips byte-identical once its `roof overhang` line is removed — which is the
-    // ordinary by-design loss the rest of this list describes, and all that is left here.
-    // The derived-position half is pinned below, under "derived furniture positions".
-    "two-bed.arch": { because: "`roof` is deliberately absent from the projection", proof: /^\s*roof\b/m },
-  };
 
   const EXAMPLES = readdirSync("examples")
     .filter((f) => f.endsWith(".arch"))

@@ -18,8 +18,9 @@ import {
   toPdf,
   diagnosticToJson,
   ERROR_CATALOG,
+  planToJson,
 } from "../index.js";
-import type { Diagnostic, Scene, ViewName } from "../index.js";
+import type { Diagnostic, PlanJson, Scene, ViewName, World } from "../index.js";
 import { type Args, type Format, EXIT, asciiCharset, baseDirOf, hasErrors, makeNodeWorld, readInput } from "./io.js";
 
 /** Does this error mean a lazy optional render dependency (resvg/pdfkit) is absent? */
@@ -97,6 +98,43 @@ async function serialize(
   return svg;
 }
 
+/** The bytes `-f json` writes: one Plan-JSON document, two-space indented, newline-terminated. */
+const planJsonText = (json: PlanJson): string => `${JSON.stringify(json, null, 2)}\n`;
+
+/**
+ * `-f json`: the Plan JSON of a plan that compiled — the projection `planToJson` makes and
+ * `compile --from-json` reads back, not a drawing of the Scene. It follows the page rules of
+ * every other format: one document per storey (`planToJson`'s `pages`) for `"all"`, the
+ * lowest storey for `"first"`, exactly one storey for `{ level }`. Exported so the
+ * round-trip test drives this exact path over the whole corpus without a process per file.
+ */
+export function planJsonArtifact(
+  source: string,
+  world: World,
+  page: PageSelect,
+  levels: number[],
+  diagnostics: Diagnostic[],
+): Rendered {
+  const { json, pages } = planToJson(source, { world });
+  // Unreachable after a clean compile (it is the same resolve), but never an exception.
+  if (!json) return { diagnostics, levels, error: "Plan JSON projection failed" };
+  if (pages && pages.length > 0) {
+    if (page === "all") {
+      const out: RenderedPage[] = pages.map((p) => ({
+        level: p.level,
+        ...(p.name !== undefined ? { name: p.name } : {}),
+        bytes: planJsonText(p.json),
+      }));
+      return { pages: out, levels, diagnostics };
+    }
+    const want = page === "first" ? pages[0]! : pages.find((p) => p.level === page.level);
+    if (!want) return { diagnostics, levels, badLevel: true };
+    return { bytes: planJsonText(want.json), levels, diagnostics };
+  }
+  if (typeof page === "object") return { diagnostics, levels, badLevel: true };
+  return { bytes: planJsonText(json), levels, diagnostics };
+}
+
 /** One serialized page of a multi-storey plan (`level <n> { … }`). */
 export interface RenderedPage {
   level: number;
@@ -145,10 +183,11 @@ export async function renderArtifact(
   page: PageSelect = "first",
   view?: ViewName,
 ): Promise<Rendered> {
+  const world = makeNodeWorld(baseDir);
   const { svg, diagnostics, scene, pages } = compile(source, {
     width: args.width,
     noCache: true,
-    world: makeNodeWorld(baseDir),
+    world,
     // `--overlay circulation` draws the opt-in diagnostic overlay; unknown names are ignored.
     ...(args.overlay === "circulation" ? { overlays: ["circulation"] as const } : {}),
     // `--error-svg`: a broken plan yields a self-describing error card in `svg`
@@ -198,6 +237,7 @@ export async function renderArtifact(
     }
     return { diagnostics, levels };
   }
+  if (format === "json") return planJsonArtifact(source, world, page, levels, diagnostics);
   try {
     // Multi-storey: serialize the requested page(s). A single-storey plan has no `pages`,
     // so it takes the one-artifact path below exactly as before.

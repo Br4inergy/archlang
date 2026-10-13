@@ -50,9 +50,14 @@ describe("manifest — content", () => {
 
   it("injects the version and advertises the formats with their optional deps", () => {
     expect(m.version).toBe("9.9.9");
-    expect(m.formats.map((f) => f.id)).toEqual(["svg", "dxf", "txt", "pdf", "png"]);
+    expect(m.formats.map((f) => f.id)).toEqual(["svg", "dxf", "txt", "json", "pdf", "png"]);
     expect(m.formats.find((f) => f.id === "svg")?.zeroDep).toBe(true);
     expect(m.formats.find((f) => f.id === "txt")?.zeroDep).toBe(true);
+    // `-f json` is the Plan JSON the core already projects: zero-dependency, no optional dep.
+    expect(m.formats.find((f) => f.id === "json")).toEqual({ id: "json", zeroDep: true });
+    // The `-f` placeholder is derived from the format table, so a new row cannot go unadvertised.
+    const fmt = m.commands.find((c) => c.name === "compile")!.flags.find((f) => f.flag === "--format")!;
+    expect(fmt.arg).toBe(`<${m.formats.map((f) => f.id).join("|")}>`);
     expect(m.formats.find((f) => f.id === "png")?.optionalDep).toBe("@resvg/resvg-js");
   });
 
