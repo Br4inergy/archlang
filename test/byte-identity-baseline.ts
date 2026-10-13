@@ -968,6 +968,19 @@
  * `materials`), whose drawn NET AREA cells change to the numbers above and nothing else;
  * with `compile()` also from `7d9cda8` every row reproduces, so `lint()` did not move.
  * `compile().diagnostics` is byte-identical on all of them.
+ *
+ * ## Three example rows re-measured when net area met them: classroom-block, corner-cafe, practice-office
+ *
+ * The three examples were first measured on a tree without net area. On it, each moves as
+ * every row above did, and in nothing else: `describe()` gains `net_area_m2` and
+ * `net_floor_area_m2` (the SEMANTIC rows), and all three set `schedule rooms`, so the drawn
+ * ROOM SCHEDULE takes the `AREA (CENTRELINE, m²)` label and a NET AREA column whose cells are
+ * those figures, with the zone subtotals and the total. Every table drawn right of the
+ * schedule moves right by the new column's width, every line of it otherwise unchanged; no
+ * other SVG node moves. `lint()` and `compile().diagnostics` are byte-identical. With the old
+ * tree's `describe()` the SEMANTIC rows reproduce, and with its SVG too the whole-surface
+ * rows and those in `while-byte-identity-baseline.ts` and `import-module-lets.test.ts`
+ * reproduce. Their `finish` digests did not move.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -976,7 +989,9 @@ export const BASELINE: [string, string][] = [
   ["aquarium", "4ed4aecd6b289a2538e3f1cd55ac6f2d52f4dfb637d5898f1f879f767c713b98"],
   ["attached", "f1b122904c1242d9ef7088c5eed12c765dc63f4dbc2af2a75ab8f23f398feac2"],
   ["bungalow", "d76e52dd1b75a347c84afba5350175032513776572f268839ee550883b564ae9"],
+  ["classroom-block", "0603ba167d90075ad90f1f347b7bc1428cc769b824332af87f1e16c0877129cf"], // added with the example, re-measured for net area, see header
   ["clinic", "5d1f3ac0f05d759faa0cb55fcc1059e4e140fef7004974606eda28d2957d9174"],
+  ["corner-cafe", "8046459776def7a4366478bd58b1d1d15a0813cfd9ef6557e942b94ac50bea63"], // added with the example, re-measured for net area, see header
   ["courtyard-house", "3d43b0dddae961c405f3bf81dc584ad1b4a0c9b6eaca2661cf54a50aa00eb340"],
   ["furnished-flat", "8812151f95e82fafcb3d21a23dede24e71944d9962e1b33c046727869f04d947"],
   ["gallery-l", "ef97490e9b951d76396df52427ba6673b0cce29489dfdf4232dc4d0876fe691d"],
@@ -993,6 +1008,7 @@ export const BASELINE: [string, string][] = [
   ["museum", "3fb053254be030885f9ccf7bb7b73d3c37f8e8273705b287417473000f6ca526"],
   ["one-room", "9519d5c396d8644e840a1520e6d84f75a8306d1309abebcbd61aa59560fda364"],
   ["parametric", "0300b6e01a4a0f10827b84dfaa21c9a89a4bfa15c008ce01ab6900118b6bc60a"],
+  ["practice-office", "db072312caf789f50ad413166edee3485ec5e5137f3339ff0c7126faecbf925e"], // added with the example, re-measured for net area, see header
   ["relational", "32c6a6e02ff16dcbdb146aa87e5e8176e38cbb5d00f972a2cd8849619c13db93"],
   ["sheet-notes", "f4ab64ec80be43d25a5949c971b07b00696f8fc2ab3927af72442ab70e8f551f"], // re-measured, see header
   ["studio", "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f"],
@@ -1021,7 +1037,9 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["aquarium", "0c0ff87fb446fe2dea2db1cc0560f6e840066c0a4a9afa192cee4387badde556"],
   ["attached", "0edb3482583f971f1c5daa64c7e8f8c638dc3ad70943893bfb5076ec71a425ac"],
   ["bungalow", "f35202195cf872e00bf31d62fffa7c783d04cfac55e7339154a048c496e8fc3a"],
+  ["classroom-block", "a3b9c7836a1084a810d9d5ff12d778002f3103933b49cca923b95057e06180bc"], // added with the example, re-measured for net area, see header
   ["clinic", "6abf1b490c46e473a3330d3acf61e35a0b9524f33ebaa0d7881dafebcf014261"],
+  ["corner-cafe", "860ea251773a8c5bc409aea86927a9c7b15832a61348feddb3e8fb7fc98ae867"], // added with the example, re-measured for net area, see header
   ["courtyard-house", "9594aa8e0be5cf3d24cc74fc6c2100b8b18293308ce39c3de002e9fd61edecac"],
   ["furnished-flat", "dab3b998a75ba65679021c8ae9282cb785d8daf69e6c0d64c39aea0c35a36fa5"],
   ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
@@ -1038,6 +1056,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["museum", "1f5c9501f69ae3fc6d92735ff9022f2f3e3b3552418e4993b64567b670dc8cd7"],
   ["one-room", "fbbd7f194ce4ff25444b4a5e58d32ae1919f01a25e20f9ab8bf6aa9d7475def5"],
   ["parametric", "d84db7c3f3d204692228fbec364808644f6f5c9bbb5b6a4d2a44347ad388dad3"],
+  ["practice-office", "95bf67a8406919ee17a76470368b99afd378a7fadce8e8ad0de7cc55f1ba642c"], // added with the example, re-measured for net area, see header
   ["relational", "52f6dce0ca7398b5763db5ac499680cdce39aa19f69eedf43eab80a191479552"],
   ["sheet-notes", "8a72d4737654ecebe5fa7cce4590d84c70d3c73556115298e2a1c2eadde7d0f9"], // added with the example, see header
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
