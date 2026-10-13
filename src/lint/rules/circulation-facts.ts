@@ -221,7 +221,10 @@ function relevance(ctx: LintContext, edges: readonly AccessEdge[]): (e: AccessEd
   const index = new Map<string, number>([[ROOT, 0]]);
   const idOf = (n: string): number => {
     let i = index.get(n);
-    if (i === undefined) index.set(n, (i = index.size));
+    if (i === undefined) {
+      i = index.size;
+      index.set(n, i);
+    }
     return i;
   };
   const ends: [number, number][] = [];
