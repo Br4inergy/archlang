@@ -38,6 +38,7 @@ import {
   NORTH_DIRS,
   SCHEDULE_SUBJECTS,
   STRIP_DIRS,
+  TITLE_FIELD_KEY,
   USE_KINDS,
 } from "./ast.js";
 import type { Expr } from "./expr.js";
@@ -51,7 +52,7 @@ import { fnv1a } from "./hash.js";
 import { idToken } from "./identity.js";
 import type { ParseCtx, Registry } from "./registry.js";
 import { BUILTIN_REGISTRY } from "./registry.js";
-import { STATEMENT_STARTS } from "./grammar/tokens.js";
+import { STATEMENT_STARTS, TITLE_FIELDS, type TitleField } from "./grammar/tokens.js";
 import type { PaperOrientation, PaperSize } from "./sheet.js";
 import { PAPER_ORIENTATIONS, PAPER_SIZES } from "./sheet.js";
 import { checkWhileDeprecation } from "./while-deprecation.js";
@@ -947,30 +948,10 @@ class Parser {
     while (!this.isType("rcurly") && !this.isType("eof")) {
       const t = this.peek();
       if (t.type !== "ident") this.fail(`Expected a title field but found ${describe(t)}`);
-      switch (t.value) {
-        case "project":
-          this.next();
-          node.project = this.eatString();
-          break;
-        case "drawn_by":
-          this.next();
-          node.drawnBy = this.eatString();
-          break;
-        case "date":
-          this.next();
-          node.date = this.eatString();
-          break;
-        case "number":
-          this.next();
-          node.number = this.eatString();
-          break;
-        case "revision":
-          this.next();
-          node.revision = this.eatString();
-          break;
-        default:
-          this.fail(`Unknown title field "${t.value}"`, t);
-      }
+      // One case per word of `TITLE_FIELDS`, each filling its `TitleNode` key.
+      if (!(TITLE_FIELDS as readonly string[]).includes(t.value)) this.fail(`Unknown title field "${t.value}"`, t);
+      this.next();
+      node[TITLE_FIELD_KEY[t.value as TitleField]] = this.eatString();
     }
     this.eat("rcurly");
     return node;

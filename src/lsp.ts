@@ -31,6 +31,7 @@ import { defaultFootprint, fixtureSpec } from "./fixtures-catalog.js";
 // proving a candidate the request doesn't even overlap would be wasted work
 // on a large plan (library.arch, museum.arch).
 import { rerollInRange, type RerollOptions } from "./reroll.js";
+import { TITLE_FIELDS } from "./grammar/tokens.js";
 
 // ---- keyword catalog (one place; T5.4 will source this from grammar/tokens) ----
 
@@ -39,7 +40,7 @@ const SETTING_KW: Record<string, string> = {
   grid: "Snap module in mm; 0 disables snapping.",
   scale: "Drawing scale, e.g. `scale 1:50`.",
   north: "North orientation: up | down | left | right | <degrees>.",
-  title: "Title block (project / drawn_by / date).",
+  title: `Title block (${TITLE_FIELDS.join(" / ")}).`,
   axes: "Positioning axes (定位轴线): `axes { x at 0, 6000  y at 0, 8000 }`. Labels ①/Ⓐ are derived from position.",
   accTitle: "Accessible title for the `--accessible` SVG `<title>` (overrides the plan name).",
   accDescr: "Accessible description for the `--accessible` SVG `<desc>` (overrides the derived caption).",

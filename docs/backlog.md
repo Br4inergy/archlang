@@ -701,6 +701,27 @@ example-flag guard). At 2.0: rebase it onto `main`, re-run its sweep, and move i
 
 ---
 
+## Found while landing the issued-sheet statements (`notes`, `schedule openings`)
+
+### N.1 · `arch finish` picks a sheet without the NOTES or DOOR & WINDOW SCHEDULE rows — `todo`
+
+`src/finish.ts` `tableRows` calls `planTableRows` with only `schedule`/`legend`, so a plan that
+already writes `notes` or `schedule openings` is fitted on a band shorter than the one drawn. It
+fails safe — finish's own post-check raises `W_SCALE_OVERFLOW` and adds no `paper` — but it picks
+nothing it could have picked. Fix: pass `openingSchedule`, `elements` and `notes` as `ir.ts` does.
+
+### N.2 · `E_LEVEL_MIX`'s remedy does not name `notes` among the plan-level settings — `todo`
+
+The remedy text in `src/error-catalog.ts` lists the statements that stay outside `level` blocks
+and predates `notes`. Cosmetic: `notes` inside a level is `E_PARSE`, as `legend` is.
+
+### N.3 · Opening tags avoid only their own wall — `todo`
+
+A tag clears every opening and tag on its own wall (`src/opening-schedule.ts`), but not
+furniture, nor a wall that meets the jamb (or that wall's openings and tags). Needs the general
+collision pass. Tags also number per storey (`W01` on each level); a set-unique numbering is an
+owner call.
+
 ## Parked from the algebra programme (2026-09, [ADR 0020](adr/0020-algebraic-core.md))
 
 ### 6.1 · D4-orbit `reroll` for a component or a `place … mirror` — `todo`

@@ -4,7 +4,7 @@
  * it and produces a separate IR — nothing here is mutated after parse.
  */
 
-import type { DoorHinge, DoorHingeNear, DoorKind, DoorSlideDir, DoorSwingDir } from "./grammar/tokens.js";
+import type { DoorHinge, DoorHingeNear, DoorKind, DoorSlideDir, DoorSwingDir, TitleField } from "./grammar/tokens.js";
 import type { Span } from "./diagnostics.js";
 import type { Comment } from "./lexer.js";
 import type { Expr } from "./expr.js";
@@ -1119,6 +1119,15 @@ export interface ImportNode {
   line: number;
   span?: Span;
 }
+
+/** The {@link TitleNode} key each `title { … }` field word (`TITLE_FIELDS`) fills. */
+export const TITLE_FIELD_KEY: Readonly<Record<TitleField, "project" | "drawnBy" | "date" | "number" | "revision">> = {
+  project: "project",
+  drawn_by: "drawnBy",
+  date: "date",
+  number: "number",
+  revision: "revision",
+};
 
 export interface TitleNode {
   project?: string;

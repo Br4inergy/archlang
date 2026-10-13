@@ -148,7 +148,9 @@
  * measured with this test's own digest body when the example first existed, and measured again
  * when the next commit on the same branch extended it with `schedule openings`: only its SVG
  * moved (`compile().diagnostics` is `[]` both times; the summary row in
- * `./byte-identity-baseline.ts` did not move). No other example row and no fixture row moved.
+ * `./byte-identity-baseline.ts` did not move), and once more for the review fixes (NOTES wrap
+ * to a fixed column; tags avoid neighbouring openings) — again the SVG alone, diagnostics `[]`.
+ * No other example row and no fixture row moved.
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "7d17249d81b43f1ff5b17c6b1219750bbdd695599f31e66fb298be9facc7c169"],
@@ -173,7 +175,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/one-room.arch", "050d5beb84aff06312d933a3b16de45f4b98cac0aa2d25efba6ed0234f45e4ca"],
   ["examples/parametric.arch", "50542aff6a0a3f03bb8e1ff9ba69d10d721d81bc78c7b7147b10acdab77e25fd"],
   ["examples/relational.arch", "78396bc038b0198f2ed2952cc6169d0c810ffeb4149d04ba3203aa397a16cabd"],
-  ["examples/sheet-notes.arch", "bb42b5646782bfdb4921ecff3fab9198ac5de8184a8f0b45fcf5426965a8cc40"], // added with the example, see header
+  ["examples/sheet-notes.arch", "365c38efe863ccf2b0b12be57bc7a0a899335efc75cf30241e82e0f73800f337"], // added with the example, see header
   ["examples/studio.arch", "6f0c677cc5c7bc15b4cea1faee4d61bf30e4e775aa96c2efb2f374f773047362"],
   ["examples/terrace-row.arch", "93825c78af4638012261cfa52b8645ff1bfcb2859f4d65a4595a1a8505a40424"],
   ["examples/themed.arch", "94ea6112f46d9827b260dbfee48cfe1a5fe694d78256bfb70dc12a85be7532a0"],

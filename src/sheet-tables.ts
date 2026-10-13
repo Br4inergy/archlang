@@ -364,15 +364,83 @@ const COL_NAME = 0.2;
 const COL_AREA = 0.105;
 const LEGEND_SWATCH = 0.05;
 const LEGEND_NAME = 0.22;
-/** DOOR & WINDOW SCHEDULE columns; ROOM(S) is a minimum, widened to its longest cell. */
+/** DOOR & WINDOW SCHEDULE columns, every one a FIXED width: authored text (a room's name)
+ *  is clipped to its column, never allowed to widen the table — or the page. */
 const COL_TAG = 0.055;
-const COL_ROOMS = 0.16;
+const COL_ROOMS = 0.3;
 const COL_WIDTH = 0.07;
 const COL_TYPE = 0.08;
 const COL_HAND = 0.06;
-/** NOTES: the number column, and the minimum width of the text column (widened to fit). */
+/** NOTES: the number column and the text column, both FIXED; a note wraps to the column. */
 const NOTES_NO = 0.035;
-const NOTES_TEXT = 0.2;
+const NOTES_TEXT = 0.7;
+
+/**
+ * How many characters fit a column `colFrac` of the reference dimension wide, at the table
+ * font, leaving one font of padding — by the one shared width estimate (`textWidth` is
+ * `characters × font × EM_PER_CHAR`). Both fractions scale with the sheet, so the answer is
+ * the same at every paper, scale and theme: it is a fact of the text, which is what lets the
+ * resolver's sheet fit and the drawing budget count wrapped NOTES lines with no drawing.
+ */
+const charsIn = (colFrac: number): number => Math.max(1, Math.floor((colFrac - FONT) / textWidth("x", FONT)));
+
+/** Characters per NOTES line, and per ROOM(S) cell. */
+export const NOTE_LINE_CHARS = charsIn(NOTES_TEXT);
+const ROOMS_CELL_CHARS = charsIn(COL_ROOMS);
+
+/**
+ * The most wrapped NOTES lines a sheet may carry — about one A0 sheet's height of table.
+ * Past it the plan is refused with `E_DRAWING_LIMIT` (`draw-budget.ts`), never drawn: a
+ * NOTES table is bounded in width by its column and in height by this, so every coordinate
+ * it draws stays a bounded multiple of the drawing's reference dimension.
+ */
+export const MAX_NOTE_LINES = 200;
+
+/** Where to cut `s` at or before `i` without splitting a UTF-16 surrogate pair (a lone half
+ *  is not well-formed text in any backend); never 0 when `i` is not, so a cut always advances. */
+const cutAt = (s: string, i: number): number => {
+  if (i <= 0 || i >= s.length) return i;
+  const c = s.charCodeAt(i - 1);
+  return c >= 0xd800 && c <= 0xdbff ? (i > 1 ? i - 1 : i + 1) : i;
+};
+
+/** `s` cut to `max` characters, the cut marked with `...` (ASCII, like every table cell). */
+const clip = (s: string, max: number): string =>
+  s.length <= max ? s : `${s.slice(0, cutAt(s, Math.max(0, max - 3)))}...`;
+
+/**
+ * One note word-wrapped to {@link NOTE_LINE_CHARS}: a `\n` always breaks; otherwise lines
+ * break at spaces (U+0020), runs of spaces collapse, and a word longer than a whole line is
+ * cut into line-length pieces. Linear in the note's length.
+ */
+export function wrapNote(note: string, width = NOTE_LINE_CHARS): string[] {
+  const out: string[] = [];
+  for (const para of note.split("\n")) {
+    let line = "";
+    for (const word of para.split(" ")) {
+      if (word === "") continue;
+      let w = word;
+      while (w.length > width) {
+        if (line !== "") {
+          out.push(line);
+          line = "";
+        }
+        const cut = cutAt(w, width);
+        out.push(w.slice(0, cut));
+        w = w.slice(cut);
+      }
+      if (w === "") continue;
+      if (line === "") line = w;
+      else if (line.length + 1 + w.length <= width) line += ` ${w}`;
+      else {
+        out.push(line);
+        line = w;
+      }
+    }
+    out.push(line);
+  }
+  return out;
+}
 /** Gap between the two tables when both are drawn. */
 const TABLE_GAP = 0.03;
 
@@ -392,11 +460,12 @@ export const scheduleRowCount = (s: RoomSchedule): number => 3 + s.rows.length +
 export const legendRowCount = (entries: number): number => 1 + entries;
 /** The DOOR & WINDOW SCHEDULE: caption, column headings, one row per tagged opening. */
 export const openingRowCount = (openings: number): number => 2 + openings;
-/** The NOTES table's drawn lines: a note written with `\n` draws one line per part. */
-const noteLines = (notes: readonly string[]): string[][] => notes.map((s) => s.split("\n"));
-/** The NOTES table: caption plus one row per drawn line. */
-export const notesRowCount = (notes: readonly string[]): number =>
-  1 + noteLines(notes).reduce((s, l) => s + l.length, 0);
+/** The NOTES table's drawn lines, per note, as {@link wrapNote} wraps them. */
+const noteLines = (notes: readonly string[]): string[][] => notes.map((s) => wrapNote(s));
+/** How many wrapped lines the NOTES draw — what {@link MAX_NOTE_LINES} bounds. */
+export const noteLineCount = (notes: readonly string[]): number => noteLines(notes).reduce((s, l) => s + l.length, 0);
+/** The NOTES table: caption plus one row per wrapped line. */
+export const notesRowCount = (notes: readonly string[]): number => 1 + noteLineCount(notes);
 
 /**
  * How deep the table ROW is, for the tables a plan actually opted into: the tallest of
@@ -512,10 +581,9 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
   // schedules read together. Absent → `x` is untouched, so the legend lands where it always did.
   let openings: OpeningTableBox | undefined;
   if (openingData) {
-    const roomsW = openingData.reduce((m, r) => Math.max(m, textWidth(r.rooms, fs)), 0) + fs;
     const cols: TableColumn[] = [
       { heading: "TAG", w: refDim * COL_TAG, align: "middle" },
-      { heading: "ROOM(S)", w: Math.max(refDim * COL_ROOMS, roomsW), align: "start" },
+      { heading: "ROOM(S)", w: refDim * COL_ROOMS, align: "start" },
       { heading: "WIDTH", w: refDim * COL_WIDTH, align: "end" },
       { heading: "TYPE", w: refDim * COL_TYPE, align: "start" },
       { heading: "HAND", w: refDim * COL_HAND, align: "start" },
@@ -532,7 +600,7 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
       pad: w * 0.02,
       caption: "DOOR & WINDOW SCHEDULE",
       cols,
-      rows: [...openingData],
+      rows: openingData.map((r) => ({ ...r, rooms: clip(r.rooms, ROOMS_CELL_CHARS) })),
     };
     x += w + refDim * TABLE_GAP;
     bottom = Math.max(bottom, top + h);
@@ -559,8 +627,9 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
     bottom = Math.max(bottom, top + h);
   }
 
-  // NOTES close the row on the right. Its text column is as wide as the longest line, so a
-  // note is never cut; the drawn lines are the notes in source order, numbered.
+  // NOTES close the row on the right, in a FIXED-width column: each note is word-wrapped to
+  // it (`wrapNote`), so authored text adds rows — which the sheet fit and the drawing budget
+  // count — and never width. The drawn lines are the notes in source order, numbered.
   let notes: NotesTableBox | undefined;
   if (notesData) {
     // The schedules leave a gap after themselves; the legend does not, so add one after it.
@@ -569,12 +638,7 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
       parts.map((text, k) => ({ no: k === 0 ? `${i + 1}.` : "", text })),
     );
     const noW = refDim * NOTES_NO;
-    const textW = Math.max(
-      refDim * NOTES_TEXT,
-      textWidth("NOTES", fs) + fs,
-      lines.reduce((m, l) => Math.max(m, textWidth(l.text, fs)), 0) + fs,
-    );
-    const w = noW + textW;
+    const w = noW + refDim * NOTES_TEXT;
     const h = tableRowsHeight(refDim, notesRowCount(notesData));
     notes = { x0: x, y0: top, w, h, rowH, fs, pad: w * 0.02, caption: "NOTES", noW, lines };
     x += w;

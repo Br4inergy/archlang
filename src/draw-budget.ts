@@ -22,7 +22,14 @@ import type { Diagnostic, Span } from "./diagnostics.js";
 import type { RFurniture, ROutdoor, RRoom, ResolvedElement, ResolvedPlan } from "./ir.js";
 import type { Registry } from "./registry.js";
 import { autoDimCount } from "./scene-build.js";
-import { legendEntries, notesRowCount, roomSchedule } from "./sheet-tables.js";
+import {
+  legendEntries,
+  MAX_NOTE_LINES,
+  NOTE_LINE_CHARS,
+  noteLineCount,
+  notesRowCount,
+  roomSchedule,
+} from "./sheet-tables.js";
 import { openingCount, TAG_PRIMITIVES } from "./opening-schedule.js";
 import { siteBoundaryNodes } from "./site.js";
 import { hatchesUsed } from "./hatches.js";
@@ -128,6 +135,21 @@ export function drawBudgetDiagnostic(
   registry: Registry,
   headerSpan: Span | undefined,
 ): Diagnostic | undefined {
+  // The NOTES table's own bound, checked first: its width is fixed and each note wraps to it,
+  // so authored text grows it only downward — and that is capped here, so a pasted essay is
+  // refused rather than drawn as a page metres tall. Plan-level, so one check covers every page.
+  const notes = storeys[0]?.ir.notes;
+  const noteLines = notes ? noteLineCount(notes) : 0;
+  if (noteLines > MAX_NOTE_LINES) {
+    return {
+      severity: "error",
+      message:
+        `The \`notes\` wrap to ${noteLines} lines of ${NOTE_LINE_CHARS} characters, past the ${MAX_NOTE_LINES} a sheet ` +
+        "may draw; shorten them, or keep the long text in a separate document and reference it in one note",
+      code: "E_DRAWING_LIMIT",
+      ...(headerSpan ? { span: headerSpan } : {}),
+    };
+  }
   let total = 0;
   let over: { el?: ResolvedElement; level?: number } | undefined;
   for (const s of storeys) {

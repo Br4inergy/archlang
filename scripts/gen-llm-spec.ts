@@ -40,7 +40,7 @@ import {
 import { BUILTIN_NAMES } from "../src/builtins.js";
 import { CANONICAL_FIXTURES } from "../src/elements/fixtures-glyphs.js";
 import { defaultFootprint } from "../src/fixtures-catalog.js";
-import { DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KINDS, KEYWORDS } from "../src/grammar/tokens.js";
+import { DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KINDS, KEYWORDS, TITLE_FIELDS } from "../src/grammar/tokens.js";
 import { KNOWN_MATERIALS } from "../src/hatches.js";
 import { buildManifest } from "../src/manifest.js";
 import { STYLE_KINDS, THEMES } from "../src/theme.js";
@@ -117,11 +117,11 @@ export const STATEMENT_GRAMMAR: Record<string, string> = {
     'level <int> ["Name"] [height <mm>] { … }   # ONE STOREY = one whole drawing. `height` is this storey\'s floor-to-floor and sits in the HEADER (a setting in the body is E_LEVEL_MIX); `heights.elevation` ACCUMULATES the storeys below, so it is NOT level × height. A plan is single-storey or ALL levels (a drawable statement beside them = E_LEVEL_MIX); settings/`component`/`import`/plan-global `let`/`set` stay OUTSIDE, applying to every level. Integers, unique, 0/negative legal, ASCENDING — lowest = page 1. Ids unique WITHIN a level (see `stair`). `arch compile` writes plan.L1.svg, plan.L2.svg … (`--level <n>` = one); `describe --json` adds `levels[]`. Plan-level only',
   strip: `strip <${STRIP_DIRS.join("|")}> at (x,y) gap <mm> [height|width <mm>] { room [id=<id>] size <main>[x<cross>] [label "…"] [uses …] … }   # a row/column of rooms laid end to end: each room's offset is the running sum of the previous extents + gap, and the shared cross dimension is the strip's height (right/left) or width (down/up). Pure sugar — expands to absolute rooms. Plan-level block only`,
   zone: 'zone <id> ["Label"] { … }   # a WING/DEPARTMENT grouping: pure metadata, ZERO geometry — every statement inside resolves as if the wrapper were deleted (same coordinates, same ids; a zone is NOT a scope), so the SVG is byte-identical. Membership is DECLARED, never inferred from position. Nests (`zone west { zone galleries { … } }` → path `west.galleries`, innermost wins) and is legal wherever a statement is, incl. inside `level`. `describe --json` adds `zones[]` (path/rooms/floor_area_m2; nested rooms roll UP, so summing zones double-counts) + `describe --zone <path>` to read one wing',
-  schedule: `schedule ${SCHEDULE_SUBJECTS.join("|")}   # a DERIVED table below the title block; write either or both. \`rooms\`: NO. (source order) · NAME (label, else id) · AREA (m²) + TOTAL — \`describe --json\`'s \`schedule[]\`; with \`zone\` blocks rows group by zone, each closed by a SUBTOTAL. \`openings\`: a D01…/W01… tag beside each door/window + a DOOR & WINDOW SCHEDULE: tag · room(s) · width · kind · a hinged door's hand (seen from the side it opens into)`,
+  schedule: `schedule ${SCHEDULE_SUBJECTS.join("|")}   # DERIVED tables under the title block, either or both. \`rooms\`: NO. · NAME (label, else id) · AREA (m²) + TOTAL = \`describe --json\`'s \`schedule[]\`, grouped by \`zone\` with SUBTOTALs. \`openings\`: D01…/W01… tags + a DOOR & WINDOW SCHEDULE: room(s) · width · kind · hinged hand (EN/DIN: seen from the side it opens into; ANSI reverses inswing)`,
   legend:
     "legend   # draw the LEGEND table beside the schedule: a row per wall hatch material used and per placed fixture category that has a plan symbol, each with a real swatch. Fully derived",
   notes:
-    'notes "…" ["…" …]   # a numbered NOTES table beside the others; repeats append. Like `legend`, `schedule openings` and the title-block `number`/`revision` rows, it draws only: no `describe()` field',
+    'notes "…" ["…" …]   # a numbered NOTES table, wrapped to its column; repeats append. Drawing-only, like `legend`, `schedule openings` and title `number`/`revision`',
   site: `site { street ${COMPASS_DIRECTIONS.join("|")} [hemisphere ${HEMISPHERES.join("|")}] [boundary (x,y) (x,y) (x,y) …] }   # \`street\`/\`hemisphere\` are semantics only and draw NOTHING; \`boundary\` is the LOT LINE and is the one part that draws (a dash-dot property line on C-PROP) and grows the page, adding \`site.lot_area_m2\` (exact shoelace) + \`site.lot_bbox\` (E_SITE_BOUNDARY_DEGENERATE, E_SITE_BOUNDARY_SELF_INTERSECT). \`street\` is a TRUE compass direction (read WITH \`north\`, not instead of it) and names five on \`describe --json\`'s \`site\`: \`street\`, \`back\` (opposite), \`equator_side\` (S north of the equator, N south of it), \`sunrise_side\` (E), \`sunset_side\` (W). An intent's \`windows.facing\` may assert those NAMES instead of a letter (no \`site\` = E_INTENT_NO_SITE). They are a DRAFTING HEURISTIC for an aspect, NOT daylight — there is no sun model. \`street\` required (E_SITE_NO_STREET), one block (E_SITE_DUP), plan-level only`,
   place:
     'place <component>(<args>) as <name> at (x,y) [rotate 0|90|180|270] [mirror x|y]   # instantiate a component as an ADDRESSABLE instance, authored in LOCAL coords from (0,0); `as`+`at` required. Ids inside become `<name>.<id>` (auto-ids restart per instance) and the plan addresses them dotted — `door on west.perimeter at 50%`, `furniture bed in west.main centered`, `describe --room west.main`. `mirror x` flips left↔right, `y` top↔bottom: a real reflection, so door swings mirror. `import "wing.arch" as wing` makes a WHOLE FILE a zero-arg component. Bare `<component>(<args>)` stays the old INLINE macro — caller\'s coords and id space, no namespace',
@@ -219,12 +219,9 @@ export const CLAUSE_ATTRIBUTES: readonly string[] = [
   "text",
   "close",
   "id",
-  "project",
-  "drawn_by",
-  "date",
-  // Title-block fields, taught by the Structure fence's `title { … }` line like the three above.
-  "number",
-  "revision",
+  // The `title { … }` field words, from their one list — taught by the Structure fence's
+  // `title` line, which is rendered from the same list.
+  ...TITLE_FIELDS,
   "from",
   "as",
   "right-of",
@@ -642,7 +639,7 @@ a \`fix\`). This page is everything you need to author it.
 plan "Title" {
 ${settingLines}
   # … elements and scripting …
-  title { project "…" drawn_by "…" date "…" number "…" revision "…" }
+  title { ${TITLE_FIELDS.map((f) => `${f} "…"`).join(" ")} }
 }
 \`\`\`
 

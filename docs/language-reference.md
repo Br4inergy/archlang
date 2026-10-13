@@ -2063,20 +2063,26 @@ and both tables draw.
 | Column | Contents |
 |--------|----------|
 | `TAG` | The tag drawn beside the opening. |
-| `ROOM(S)` | The room(s) it opens onto, by name — the same answer as `describe().doors[].between` and `windows[].room`; `exterior` for the outside. |
+| `ROOM(S)` | The room(s) it opens onto, by name — a door's are `describe().doors[].between`, `exterior` for the outside; a window lists the room it serves (`describe().windows[].room`) and, on a wall between two rooms, the other one too. Clipped to the column with `...`. |
 | `WIDTH` | The nominal width in mm. |
 | `TYPE` | A door's kind (`hinged`, `sliding`, …); `window` for a window. |
-| `HAND` | A hinged door's hand: stand on the side it opens into, face it, and the hinge is on your `left` or `right`. Read off the drawn leaf, so it does not depend on which way the wall's points run; `-` for anything else. |
+| `HAND` | A hinged door's hand, by the EN 12519 / DIN 107 convention: stand on the side it opens into (the pull side), face it, and the hinge is on your `left` or `right`. North American (ANSI/BHMA) handing is read from the other side, so an inswing door reads the other way there. Read off the drawn leaf, so it does not depend on which way the wall's points run; `-` for anything else. |
 
 A tag's position comes from the opening's own wall: a window's sits just inside, off the
 face that has floor (so never among the dimension chains outside); a door's sits beside
 the doorway, past the hinge jamb (or, for a sliding kind, the jamb opposite where the
 panel parks) and off a face with floor, so it is out of the passage and outside the
-leaf's quarter-disc. Tags do not yet step around furniture or a wall that meets the jamb.
+leaf's quarter-disc. A tag must also clear every other opening on its wall (its span, out
+to its width past each face) and every tag already placed there, so when its first place
+is taken it tries the other jamb, then the other face; if every place is taken it uses the
+one with the fewest conflicts. Tags do not yet step around furniture, or a wall (and its
+openings) that meets the jamb.
 
-**`notes "…"`** draws the sheet's general notes as a numbered **NOTES** table, one row per
-note in source order; a statement may carry several strings and repeated statements append.
-A `\n` inside a note continues it on an unnumbered line.
+**`notes "…"`** draws the sheet's general notes as a numbered **NOTES** table in source
+order; a statement may carry several strings and repeated statements append. The text
+column is a fixed width: a note wraps onto further unnumbered lines at its spaces (a `\n`
+always breaks), so long text makes the table taller, never wider, and the sheet fit counts
+every wrapped line. Past 200 wrapped lines the plan is refused with `E_DRAWING_LIMIT`.
 
 **`legend`** draws a legend derived closed-form from the drawing:
 

@@ -31,6 +31,8 @@ import { doorSwing, segmentDirAt } from "../src/geometry.js";
 import { planFromJson, planToJson } from "../src/plan-json.js";
 import { drawBudgetDiagnostic, storeyPassUnits } from "../src/draw-budget.js";
 import { BUILTIN_REGISTRY } from "../src/registry.js";
+import { MAX_NOTE_LINES, NOTE_LINE_CHARS, noteLineCount, wrapNote } from "../src/sheet-tables.js";
+import { MODEL_RANGE_MM } from "../src/num-format.js";
 import type { Scene, SceneNode } from "../src/scene.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -178,6 +180,26 @@ describe("what the sheet draws", () => {
     }
   });
 
+  it("a window on a wall between two rooms lists both, the one describe() names first", () => {
+    const src =
+      `plan "W" {\n  units mm\n  wall id=p partition thickness 100 { (0,2000) (4000,2000) }\n` +
+      `  room id=a at (0,0) size 4000x2000 label "Office"\n  room id=b at (0,2000) size 4000x2000 label "Lab"\n` +
+      `  window id=w on p at 2000 width 1200\n}\n`;
+    expect(describePlan(src).windows[0]!.room).toBe("a");
+    expect(openingRows(elementsOf(src))[0]!.rooms).toBe("Office / Lab");
+  });
+
+  it("a ROOM(S) cell is clipped to its column; a long name never widens the table", () => {
+    const long = "A Very Long Room Name That Goes On And On";
+    const sOf = (label: string) =>
+      sceneOf(box(`  schedule openings\n  door on w at 1000 width 900\n`).replace('label "Hall"', `label "${label}"`));
+    const t = sOf(long).chrome!.tables!.openings!;
+    const cell = t.rows[0]!.rooms;
+    expect(cell.endsWith("...")).toBe(true);
+    expect(cell.length).toBeLessThan(`exterior / ${long}`.length);
+    expect(t.w).toBe(sOf("Hall").chrome!.tables!.openings!.w);
+  });
+
   it("the sheet fit reserves the new rows: the example's A3 page is not grown", () => {
     const s = sceneOf(EXAMPLE);
     expect(s.sheet?.grown).toBe(false);
@@ -311,5 +333,115 @@ describe("budgets and round-trips", () => {
     const back = planFromJson(json);
     expect(back.diagnostics).toEqual([]);
     expect(back.ast?.title).toMatchObject({ project: "J", number: "A-7", revision: "C" });
+  });
+});
+
+describe("NOTES — a fixed column: text adds rows, never width", () => {
+  const viewBox = (svg: string): number[] => /viewBox="([^"]+)"/.exec(svg)![1]!.split(" ").map(Number);
+  const withNote = (note: string): string => EXAMPLE.replace(/(\n {2}notes "Door hand[^\n]*)/, `$1\n  notes "${note}"`);
+
+  it("wrapNote breaks at spaces, keeps `\\n` breaks, cuts an over-long word, never splits a surrogate pair", () => {
+    expect(wrapNote("aa bb cc dd", 5)).toEqual(["aa bb", "cc dd"]);
+    expect(wrapNote("aa  bb\ncc", 10)).toEqual(["aa bb", "cc"]);
+    expect(wrapNote("abcdefghij", 4)).toEqual(["abcd", "efgh", "ij"]);
+    for (const line of wrapNote("😀😀😀😀😀", 3)) expect(line).not.toMatch(/^[\uDC00-\uDFFF]|[\uD800-\uDBFF]$/);
+    expect(wrapNote("", 5)).toEqual([""]);
+  });
+
+  it("a 254-character note on the example sheet wraps, is counted by the fit, and does not grow the A3 page", () => {
+    const note = Array.from({ length: 40 }, (_, i) => `word${i}`)
+      .join(" ")
+      .slice(0, 254);
+    const src = withNote(note);
+    const s = sceneOf(src);
+    expect(s.chrome!.tables!.notes!.lines.length).toBeGreaterThan(5);
+    expect(s.sheet?.grown).toBe(false);
+    expect(describePlan(src).sheet?.fits).toBe(true);
+    // The table is exactly as wide as with the short notes alone.
+    expect(s.chrome!.tables!.notes!.w).toBe(sceneOf(EXAMPLE).chrome!.tables!.notes!.w);
+  });
+
+  it("a note at the line cap draws a page no wider than the example's, inside the modelling range", () => {
+    const note = "x".repeat(NOTE_LINE_CHARS * (MAX_NOTE_LINES - 10));
+    const out = compile(withNote(note), { noCache: true });
+    expect(out.errors).toEqual([]);
+    const [, , w, h] = viewBox(out.svg);
+    expect(w).toBe(viewBox(compile(EXAMPLE, { noCache: true }).svg)[2]);
+    expect(h).toBeLessThan(MODEL_RANGE_MM);
+  });
+
+  it("a 2,000,000-character note is a Diagnostic, never a drawing (and a 20 KB one too)", () => {
+    for (const n of [2_000_000, 20_000]) {
+      const out = compile(withNote("y".repeat(n)), { noCache: true });
+      expect(out.diagnostics.map((d) => d.code)).toContain("E_DRAWING_LIMIT");
+      expect(out.svg).not.toMatch(/viewBox="[^"]*\d{9}/);
+    }
+    expect(noteLineCount(["y".repeat(20_000)])).toBeGreaterThan(MAX_NOTE_LINES);
+  });
+});
+
+describe("tags — clear of every other opening on the wall", () => {
+  // The red-team repro: two 800 mm doors 200 mm apart on one partition.
+  const ADJ = `plan "Adj" {
+  units mm
+  schedule openings
+  wall id=s exterior thickness 200 { (0,0) (6000,0) (6000,4000) (0,4000) close }
+  wall id=p partition thickness 100 { (0,2000) (6000,2000) }
+  room id=a at (0,0) size 6000x2000 label "Hall"
+  room id=b at (0,2000) size 6000x2000 label "Bed 1"
+  door id=d1 on p at 2400 width 800 hinge right swing in
+  door id=d2 on p at 3400 width 800 hinge left swing out
+  window on s at 1000 width 1200
+  window on s at 5000 width 1200
+}
+`;
+
+  /** Axis-aligned bounds of what one element draws, from the annotated scene. */
+  const drawnBox = (nodes: readonly SceneNode[], id: string) => {
+    const pts: { x: number; y: number }[] = [];
+    for (const n of nodes) {
+      if (n.elementId !== id) continue;
+      const p = n.prim;
+      if (p.t === "polygon") pts.push(...p.pts);
+      else if (p.t === "line") pts.push(p.a, p.b);
+      else if (p.t === "arc") pts.push(p.start, p.end, p.center);
+    }
+    const xs = pts.map((q) => q.x);
+    const ys = pts.map((q) => q.y);
+    return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+  };
+
+  it("neither door's tag lands on the other door's leaf, swing or doorway, nor on the other tag", () => {
+    const { scene, errors } = compile(ADJ, { noCache: true, annotate: true });
+    expect(errors).toEqual([]);
+    const nodes = scene!.nodes;
+    const circles = nodes.filter((n) => n.layer === "annotations" && n.prim.t === "circle");
+    expect(circles).toHaveLength(2);
+    const [c1, c2] = circles.map((n) => n.prim as { t: "circle"; center: { x: number; y: number }; r: number });
+    const tagBox = (c: { center: { x: number; y: number }; r: number }) => ({
+      x0: c.center.x - c.r,
+      x1: c.center.x + c.r,
+      y0: c.center.y - c.r,
+      y1: c.center.y + c.r,
+    });
+    const overlaps = (a: ReturnType<typeof tagBox>, b: ReturnType<typeof tagBox>) =>
+      a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+    expect(overlaps(tagBox(c1!), drawnBox(nodes, "d2"))).toBe(false);
+    expect(overlaps(tagBox(c2!), drawnBox(nodes, "d1"))).toBe(false);
+    expect(overlaps(tagBox(c1!), tagBox(c2!))).toBe(false);
+  });
+
+  it("with the neighbour removed, D01 keeps its first choice — the avoidance only moves a tag that must move", () => {
+    const alone = ADJ.replace(/\n {2}door id=d2[^\n]*/, "");
+    const at = (src: string) =>
+      (
+        sceneOf(src).nodes.find((n) => n.layer === "annotations" && n.prim.t === "circle")!.prim as {
+          center: { x: number; y: number };
+        }
+      ).center;
+    const first = at(alone);
+    // Beside the hinge jamb (d1 hinges right, so toward +x of 2400 + 400), off the free face.
+    expect(first.x).toBeGreaterThan(2800);
+    expect(at(ADJ)).not.toEqual(first);
   });
 });

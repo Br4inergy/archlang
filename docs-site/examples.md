@@ -236,7 +236,7 @@ carries a drawing **number** and **revision** (`title { … number "A-101" revis
 the general notes sit in a numbered **NOTES** table (`notes "…"`), and
 `schedule openings` puts a tag beside every door (`D01`…) and window (`W01`…) keyed to a
 **DOOR & WINDOW SCHEDULE**: the room(s) each opening serves, its width, its kind and, for
-a hinged leaf, its hand, read from the side it opens into. All of it is derived from the
+a hinged leaf, its hand, read from the side it opens into (the EN/DIN convention). All of it is derived from the
 plan and all of it draws only — `archlang describe` and `archlang lint` report exactly what
 they would without those lines. A window's tag sits inside the room it serves; a door's
 sits beside the doorway past the hinge jamb, clear of the swing and out of the passage.

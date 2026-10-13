@@ -11,6 +11,8 @@
  */
 
 import type { AxesNode, ComponentDef, ImportNode, PlanNode, SiteNode, Statement, TitleNode } from "./ast.js";
+import { TITLE_FIELD_KEY } from "./ast.js";
+import { TITLE_FIELDS } from "./grammar/tokens.js";
 import type { Comment } from "./lexer.js";
 import { parse } from "./parser.js";
 import { isNumericThemeKey, styleKeyFor, type Theme } from "./theme.js";
@@ -105,11 +107,11 @@ function componentDoc(def: ComponentDef, comments: Comment[], source: string): D
 
 function titleDoc(title: TitleNode): Doc {
   const fields: Doc[] = [];
-  if (title.project !== undefined) fields.push(`project ${JSON.stringify(title.project)}`);
-  if (title.drawnBy !== undefined) fields.push(`drawn_by ${JSON.stringify(title.drawnBy)}`);
-  if (title.date !== undefined) fields.push(`date ${JSON.stringify(title.date)}`);
-  if (title.number !== undefined) fields.push(`number "${escapeStr(title.number)}"`);
-  if (title.revision !== undefined) fields.push(`revision "${escapeStr(title.revision)}"`);
+  // Every field of `TITLE_FIELDS`, in its order, quoted as the title block always has been.
+  for (const word of TITLE_FIELDS) {
+    const v = title[TITLE_FIELD_KEY[word]];
+    if (v !== undefined) fields.push(`${word} ${JSON.stringify(v)}`);
+  }
   if (fields.length === 0) return "title { }";
   return concat(["title {", indent(concat([hardline, join(hardline, fields)])), hardline, "}"]);
 }

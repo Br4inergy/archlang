@@ -15,6 +15,13 @@
  * mirror, not a table the lexer indexes at runtime.
  */
 
+/**
+ * The `title { … }` block's field words, in the order the title block draws them — the one
+ * list the parser, the formatter, Plan JSON, the GBNF and the spec all read.
+ */
+export const TITLE_FIELDS = ["project", "drawn_by", "date", "number", "revision"] as const;
+export type TitleField = (typeof TITLE_FIELDS)[number];
+
 /** Keyword categories, by highlighting role. Order within each is stable. */
 export const KEYWORDS = {
   /** Statement / declaration keywords → TextMate `keyword.control`, CM `keyword`. */
@@ -93,13 +100,8 @@ export const KEYWORDS = {
     "text",
     "close",
     "id",
-    "project",
-    "drawn_by",
-    "date",
-    // `title { number "A-101" revision "B" }` — the drawing number and revision fields,
-    // beside the other title-block field words.
-    "number",
-    "revision",
+    // The `title { … }` field words, from their one list.
+    ...TITLE_FIELDS,
     "from",
     "as",
     "right-of",

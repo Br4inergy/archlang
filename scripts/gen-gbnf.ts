@@ -49,7 +49,7 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import type { DoorEnumClause } from "../src/grammar/tokens.js";
-import { DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KINDS, KEYWORDS, OPERATORS } from "../src/grammar/tokens.js";
+import { DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KINDS, KEYWORDS, OPERATORS, TITLE_FIELDS } from "../src/grammar/tokens.js";
 import {
   USE_KINDS,
   FURNITURE_ANCHORS,
@@ -306,7 +306,7 @@ function rules(): [string, string][] {
 
     // ---- title / theme / style ------------------------------------------
     ["title-stmt", `"title" ws "{" ws ( title-field ws )* "}"`],
-    ["title-field", `( "project" | "drawn_by" | "date" | "number" | "revision" ) rws string`],
+    ["title-field", `( ${litAlt(TITLE_FIELDS)} ) rws string`],
     // Positioning axes (定位轴线): one row per direction, each a comma-separated
     // expression list. Rows may repeat and appear in either order (the parser appends).
     ["axes-stmt", `"axes" ws "{" ws ( axes-row ws )* "}"`],
