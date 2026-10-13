@@ -228,6 +228,21 @@ nudged away.
 
 <ArchLive :src="EXAMPLES['furnished-flat']" :rows="30" />
 
+### Issued Sheet (drawing number, notes, door and window tags)
+
+A three-room flat — **3 rooms, 54 m², 3 doors, 3 windows**, 9.2 × 6.2 m to the outer
+faces — drawn the way a sheet leaves the office, on A3 at `scale 1:50`. The title block
+carries a drawing **number** and **revision** (`title { … number "A-101" revision "B" }`),
+the general notes sit in a numbered **NOTES** table (`notes "…"`), and
+`schedule openings` puts a tag beside every door (`D01`…) and window (`W01`…) keyed to a
+**DOOR & WINDOW SCHEDULE**: the room(s) each opening serves, its width, its kind and, for
+a hinged leaf, its hand, read from the side it opens into (the EN/DIN convention). All of it is derived from the
+plan and all of it draws only — `archlang describe` and `archlang lint` report exactly what
+they would without those lines. A window's tag sits inside the room it serves; a door's
+sits beside the doorway past the hinge jamb, clear of the swing and out of the passage.
+
+<ArchLive :src="EXAMPLES['sheet-notes']" :rows="30" />
+
 ### Suburban Bungalow (orientation, and doors that are not hinged)
 
 A single-storey house — **8 rooms, 102 m², 6 doors, 7 windows** at `scale 1:100` — on a

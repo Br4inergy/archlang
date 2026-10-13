@@ -58,7 +58,9 @@ plan "My Home" {
 | `dims auto [overall\|rooms\|walls\|all]` | Auto-draw dimension **chains** without hand-placing each `dim`, in the GB/T 50104 exterior convention — every chain outside the building, measured from the outer wall faces (see [Automatic dimension chains](#automatic-dimension-chains)): `overall` (one outer-face-to-outer-face span per dimensioned facade), `rooms` (the room/partition axis chain), `walls` (one deduped thickness call-out per distinct wall thickness), or `all` (the openings chain + the axis chain + the overall span, and the default when no scope is given). | off |
 | `axes { x at … y at … }` | The plan's **positioning axes** (定位轴线) — declared structural datum lines, drawn dash-dot with a labelled bubble and used as the ticks of the middle dimension chain. See [Positioning axes](#positioning-axes-定位轴线). | none |
 | `schedule rooms` | Draw the **ROOM SCHEDULE** table in the sheet's bottom band — number, name and area per room, closed by a total. Rows are derived from the rooms, never authored. See [Sheet tables](#sheet-tables--room-schedule--legend). | off |
+| `schedule openings` | Tag every door (`D01`…) and window (`W01`…) beside it and draw the **DOOR & WINDOW SCHEDULE** — tag, room(s), width, kind and a hinged door's hand. Derived; composes with `schedule rooms`. See [Sheet tables](#sheet-tables--room-schedule--legend). | off |
 | `legend` | Draw the **LEGEND** table beside the schedule — one row per wall hatch material and per fixture symbol the drawing actually uses, each with a real swatch. Fully derived; nothing to configure. See [Sheet tables](#sheet-tables--room-schedule--legend). | off |
+| `notes "…" ["…" …]` | The sheet's general **NOTES**, drawn as a numbered table in the same band. Repeated statements append. See [Sheet tables](#sheet-tables--room-schedule--legend). | none |
 | `height <mm>` | The building's default **floor-to-floor** storey height. The vertical datum: it draws nothing at all, because a floor plan is a horizontal cut. A `level` may override it and a `wall` may override that. See [Heights (the datum layer)](#heights-the-datum-layer). | `3000` |
 
 ### Paper and scale (the sheet)
@@ -1958,10 +1960,15 @@ title {
   project "<name>"
   drawn_by "<name>"
   date "<date>"
+  number "<drawing number>"
+  revision "<revision>"
 }
 ```
 
-Rendered as a title block in the lower-right corner (with `scale` if set).
+Rendered as a title block in the lower-right corner (with `scale` if set). Every field is
+optional and draws one row only when written; `number` and `revision` draw `DRAWING NO.`
+and `REVISION` rows after `DATE`. They draw only — `describe()` does not report them —
+and Plan JSON carries them in `title` like the other three.
 
 ### Positioning axes (定位轴线)
 
@@ -2023,7 +2030,9 @@ plan "Clinic" {
   units mm
   dims auto all
   schedule rooms      # the ROOM SCHEDULE table
+  schedule openings   # door/window tags + the DOOR & WINDOW SCHEDULE
   legend              # the LEGEND table, derived from the plan
+  notes "Do not scale from this drawing."   # the NOTES table
   # … walls, rooms, fixtures …
 }
 ```
@@ -2044,9 +2053,40 @@ renders exactly as before.
 
 A final **`TOTAL`** row closes the table with the same number as
 `describe().totals.floor_area_m2`, so the drawn table and the JSON can never disagree.
-`rooms` is the only subject in v1.20; the keyword takes one anyway so `doors`,
-`windows` or `finishes` can be added later without a respelling — anything else is a
-parse error with a did-you-mean, never a silently ignored word.
+The keyword takes a subject — `rooms` or `openings` — and an unknown one is a parse error
+with a did-you-mean, never a silently ignored word. The two subjects compose: write both
+and both tables draw.
+
+**`schedule openings`** tags every door `D01, D02, …` and every window `W01, W02, …`
+(element order, per storey) and draws the **DOOR & WINDOW SCHEDULE**:
+
+| Column | Contents |
+|--------|----------|
+| `TAG` | The tag drawn beside the opening. |
+| `ROOM(S)` | The room(s) it opens onto, by name — a door's are `describe().doors[].between`, `exterior` for the outside; a window lists the room it serves (`describe().windows[].room`) and, on a wall between two rooms, the other one too. Clipped to the column with `...`. |
+| `WIDTH` | The nominal width in mm. |
+| `TYPE` | A door's kind (`hinged`, `sliding`, …); `window` for a window. |
+| `HAND` | A hinged door's hand, by the EN 12519 / DIN 107 convention: stand on the side it opens into (the pull side), face it, and the hinge is on your `left` or `right`. North American (ANSI/BHMA) handing is read from the other side, so an inswing door reads the other way there. Read off the drawn leaf, so it does not depend on which way the wall's points run; `-` for anything else. |
+
+A tag's position comes from the opening's own wall: a window's first place is just inside,
+off the face that has floor (so clear of the dimension chains outside); a door's sits beside
+the doorway, past the hinge jamb (or, for a sliding kind, the jamb opposite where the
+panel parks) and off a face with floor, so it is out of the passage and outside the
+leaf's quarter-disc. A tag must also be clear of everything else on the storey — every
+opening as far as it draws, every wall's poché, the furniture, dimension and axis lines and
+every tag already placed — so when its first place is taken it tries the other jamb, then
+the other face, then one tag-depth further out, and takes the first place that is clear.
+If none is, two tags still never overlap: it takes the first place clear of the other tags
+(which may be over other ink), and only if there is none, its first place. A tag reaches
+the outside face of an exterior wall only when that place is clear of the dimension chains
+and everything else. A room's name
+under a tag is moved by the label pass instead, once it is buried far enough.
+
+**`notes "…"`** draws the sheet's general notes as a numbered **NOTES** table in source
+order; a statement may carry several strings and repeated statements append. The text
+column is a fixed width: a note wraps onto further unnumbered lines at its spaces (a `\n`
+always breaks), so long text makes the table taller, never wider, and the sheet fit counts
+every wrapped line. Past 200 wrapped lines the plan is refused with `E_DRAWING_LIMIT`.
 
 **`legend`** draws a legend derived closed-form from the drawing:
 
@@ -2059,12 +2099,15 @@ Nothing is listed that is not drawn, and a category that renders as a plain labe
 rectangle gets no row (there is no symbol to explain). There is nothing to configure —
 which is the point: the legend cannot drift from the drawing.
 
-Both tables are ordinary `annotations`-pass primitives on the CAD layer **`A-ANNO`**, so
+The tables sit side by side in one row — room schedule, door & window schedule, legend,
+notes — and the sheet fit reserves the tallest. All of them, and the tags, are ordinary
+`annotations`-pass primitives on the CAD layer **`A-ANNO`**, so
 SVG, PNG, PDF and DXF all draw them from one implementation; the ASCII plan (`-f txt`)
 has no sheet chrome and still has none. Every size derives from the drawing's size
-system, so the tables scale with the sheet. `describe()` reports the schedule as
-`schedule[]` (see [Analysis](analysis.md)); `legend` is pure rendering and adds no
-field — every fact it shows is already in `furniture` and the source.
+system, so the tables scale with the sheet. `describe()` reports the room schedule as
+`schedule[]` (see [Analysis](analysis.md)); `legend`, `schedule openings` and `notes` are
+pure rendering and add no field — every fact they show is already in `describe()`
+(`furniture`, `doors`, `windows`) or the source.
 
 ## Levels — a multi-storey building (v1.21)
 

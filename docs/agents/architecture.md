@@ -91,7 +91,8 @@ source (.arch)
   cascade shared by the drawing and the pipeline's `lineWeight` check
 - `site.ts` compass/facing (`windowFacingPage` probes the window's own wall) · `vertical.ts`
   stair/elevator/escalator semantics and the shaft graph · `datum.ts` heights
-- `sheet.ts`, `axes.ts`, `sheet-tables.ts` paper, axis grid, margin tables
+- `sheet.ts`, `axes.ts`, `sheet-tables.ts` paper, axis grid, margin tables;
+  `opening-schedule.ts` the `schedule openings` tags (placed off the host wall's faces) and rows
 - `label-placement.ts` wraps a room name too wide for its room, then moves room labels off
   obstacles, after walls and dims · `text-metrics.ts` the single text-width estimate ·
   `text-layout.ts` the name line breaker and where each line of a text is drawn (every backend)

@@ -206,7 +206,8 @@ suite("docs-site/examples.md quotes figures the compiler agrees with", () => {
   it("every section is linked to an example by its own <ArchLive> widget", () => {
     // The page is a tour of every publishable example; if this number moves, a section
     // was added or removed and the figure sweep below has to have followed it.
-    expect(secs.length).toBe(27);
+    // 28 since the Issued Sheet section (`sheet-notes`) was added.
+    expect(secs.length).toBe(28);
     expect(new Set(secs.map((s) => s.example)).size).toBe(secs.length);
   });
 

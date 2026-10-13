@@ -15,6 +15,13 @@
  * mirror, not a table the lexer indexes at runtime.
  */
 
+/**
+ * The `title { … }` block's field words, in the order the title block draws them — the one
+ * list the parser, the formatter, Plan JSON, the GBNF and the spec all read.
+ */
+export const TITLE_FIELDS = ["project", "drawn_by", "date", "number", "revision"] as const;
+export type TitleField = (typeof TITLE_FIELDS)[number];
+
 /** Keyword categories, by highlighting role. Order within each is stable. */
 export const KEYWORDS = {
   /** Statement / declaration keywords → TextMate `keyword.control`, CM `keyword`. */
@@ -39,6 +46,9 @@ export const KEYWORDS = {
     "schedule",
     "legend",
     "site",
+    // `notes "…"` — the sheet's general-notes table. A statement keyword like `legend`;
+    // appended at the end so every earlier keyword keeps its position.
+    "notes",
   ],
   /** Built-in element kinds → `storage.type.element`, CM `typeName`. */
   element: [
@@ -90,9 +100,8 @@ export const KEYWORDS = {
     "text",
     "close",
     "id",
-    "project",
-    "drawn_by",
-    "date",
+    // The `title { … }` field words, from their one list.
+    ...TITLE_FIELDS,
     "from",
     "as",
     "right-of",
@@ -169,7 +178,7 @@ export const KEYWORDS = {
     "bottom-right",
     "auto",
     // `dims auto <mode>` selectors (AUTO_DIMS_MODES) and the `schedule <subject>` subject
-    // (SCHEDULE_SUBJECTS, whose one value `rooms` is the same word). Values following a
+    // (SCHEDULE_SUBJECTS: `rooms`, the same word, and `openings`). Values following a
     // keyword, so they sit here beside `auto` itself rather than in `attribute`. They are
     // the reason `test/closed-vocabularies.test.ts` exists: both sets live in
     // `src/ast.ts` as the parser's accept-list AND the spec's grammar line, and without a
@@ -177,6 +186,7 @@ export const KEYWORDS = {
     // own mode word as an identifier in every renderer.
     "overall",
     "rooms",
+    "openings",
     "walls",
     "all",
     "cw",
@@ -450,4 +460,6 @@ export const STATEMENT_STARTS: readonly string[] = [
   // unaffected — that clause is consumed inside `parseStrip`, which never re-enters this
   // dispatch.
   "height",
+  // The sheet's `notes "…"` statement, for the same reason `legend` is here.
+  "notes",
 ];

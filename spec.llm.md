@@ -32,7 +32,7 @@ plan "Title" {
   accDescr "…"   # …and description → <desc>, replacing the derived caption. Both plan-level only (E_ACC_PLACEMENT)
   height 3000   # OPTIONAL storey floor-to-floor in mm — the VERTICAL DATUM, and it DRAWS NOTHING (a plan is a horizontal cut, so heights move no byte). Overridden per storey (`level <n> height`) then per wall (`wall … height`); mm, never grid-snapped, E_HEIGHT_RANGE outside 0–100000, and an opening's `head` above its wall is E_OPENING_ABOVE_WALL. Defaults: 3000 storey, 2100 door head, 900/2100 window sill/head (900 is GB 50352-2019's residential minimum), host-wall height for a cased opening. `describe --json` reports `heights` (storey_height/elevation/per-wall) + `head`/`sill` on the openings, but ONLY if the source wrote one of these clauses somewhere; `arch manifest`'s `datum` has the defaults either way
   # … elements and scripting …
-  title { project "…" drawn_by "…" date "…" }
+  title { project "…" drawn_by "…" date "…" number "…" revision "…" }
 }
 ```
 
@@ -68,9 +68,10 @@ level <int> ["Name"] [height <mm>] { … }   # ONE STOREY = one whole drawing. `
 zone <id> ["Label"] { … }   # a WING/DEPARTMENT grouping: pure metadata, ZERO geometry — every statement inside resolves as if the wrapper were deleted (same coordinates, same ids; a zone is NOT a scope), so the SVG is byte-identical. Membership is DECLARED, never inferred from position. Nests (`zone west { zone galleries { … } }` → path `west.galleries`, innermost wins) and is legal wherever a statement is, incl. inside `level`. `describe --json` adds `zones[]` (path/rooms/floor_area_m2; nested rooms roll UP, so summing zones double-counts) + `describe --zone <path>` to read one wing
 place <component>(<args>) as <name> at (x,y) [rotate 0|90|180|270] [mirror x|y]   # instantiate a component as an ADDRESSABLE instance, authored in LOCAL coords from (0,0); `as`+`at` required. Ids inside become `<name>.<id>` (auto-ids restart per instance) and the plan addresses them dotted — `door on west.perimeter at 50%`, `furniture bed in west.main centered`, `describe --room west.main`. `mirror x` flips left↔right, `y` top↔bottom: a real reflection, so door swings mirror. `import "wing.arch" as wing` makes a WHOLE FILE a zero-arg component. Bare `<component>(<args>)` stays the old INLINE macro — caller's coords and id space, no namespace
 axes { x at <mm>, <mm>, … y at <mm>, <mm>, … }   # GB/T 50001 positioning axes (定位轴线): dash-dot datum lines with a labelled bubble. `x` are vertical (numbered 1,2,3… left-to-right), `y` horizontal (lettered A,B,C… BOTTOM-to-top, skipping I/O/Z). Positions are expressions; labels are DERIVED from sorted position, never authored. With `dims auto rooms|all` the middle chain measures the AXES instead of room boundaries. Plan-level block only
-schedule rooms   # draw the ROOM SCHEDULE table below the title block: NO. (01, 02, … source order) · NAME (label, else id) · AREA (m²) + a TOTAL row, all derived from the rooms. `rooms` is the only subject (anything else is a parse error). Same rows as `describe --json`'s `schedule[]`. With `zone` blocks the rows group by zone, each closed by a SUBTOTAL row
-legend   # draw the LEGEND table beside the schedule: a row per wall hatch material used and per placed fixture category that has a plan symbol, each with a real swatch. Fully derived; nothing to configure. Pure rendering — no `describe()` field
+schedule rooms|openings   # DERIVED tables under the title block, either or both. `rooms`: NO. · NAME (label, else id) · AREA (m²) + TOTAL = `describe --json`'s `schedule[]`, grouped by `zone` with SUBTOTALs. `openings`: D01…/W01… tags + a DOOR & WINDOW SCHEDULE: room(s) · width · kind · hinged hand (EN/DIN: seen from the side it opens into; ANSI reverses inswing)
+legend   # draw the LEGEND table beside the schedule: a row per wall hatch material used and per placed fixture category that has a plan symbol, each with a real swatch. Fully derived
 site { street north|south|east|west [hemisphere north|south] [boundary (x,y) (x,y) (x,y) …] }   # `street`/`hemisphere` are semantics only and draw NOTHING; `boundary` is the LOT LINE and is the one part that draws (a dash-dot property line on C-PROP) and grows the page, adding `site.lot_area_m2` (exact shoelace) + `site.lot_bbox` (E_SITE_BOUNDARY_DEGENERATE, E_SITE_BOUNDARY_SELF_INTERSECT). `street` is a TRUE compass direction (read WITH `north`, not instead of it) and names five on `describe --json`'s `site`: `street`, `back` (opposite), `equator_side` (S north of the equator, N south of it), `sunrise_side` (E), `sunset_side` (W). An intent's `windows.facing` may assert those NAMES instead of a letter (no `site` = E_INTENT_NO_SITE). They are a DRAFTING HEURISTIC for an aspect, NOT daylight — there is no sun model. `street` required (E_SITE_NO_STREET), one block (E_SITE_DUP), plan-level only
+notes "…" ["…" …]   # a numbered NOTES table, wrapped to its column; repeats append. Drawing-only, like `legend`, `schedule openings` and title `number`/`revision`
 ```
 
 ## Scripting (all expand-time, deterministic)
@@ -90,7 +91,7 @@ site { street north|south|east|west [hemisphere north|south] [boundary (x,y) (x,
 
 (Elements and plan settings are fully specced above; these are the rest.)
 
-- **Settings / control:** `plan`, `component`, `let`, `theme`, `title`, `style`, `import`, `for`, `if`, `while`, `else`, `set`, `strip`, `level`, `zone`, `place`, `axes`, `schedule`, `legend`, `site`
+- **Settings / control:** `plan`, `component`, `let`, `theme`, `title`, `style`, `import`, `for`, `if`, `while`, `else`, `set`, `strip`, `level`, `zone`, `place`, `axes`, `schedule`, `legend`, `site`, `notes`
 - **Enums / values not shown above:** `true`
 
 ## CLI loop (how an agent drives it)

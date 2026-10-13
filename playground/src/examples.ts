@@ -24,6 +24,7 @@ import courtyardHouse from "../../examples/courtyard-house.arch?raw";
 import townhouse from "../../examples/townhouse.arch?raw";
 import twoStorey from "../../examples/two-storey.arch?raw";
 import furnishedFlat from "../../examples/furnished-flat.arch?raw";
+import sheetNotes from "../../examples/sheet-notes.arch?raw";
 import gardenHouse from "../../examples/garden-house.arch?raw";
 import museum from "../../examples/museum.arch?raw";
 import aquarium from "../../examples/aquarium.arch?raw";
@@ -143,6 +144,12 @@ const EXAMPLE_ROWS = [
     "A two-bedroom flat furnished from the symbol catalogue: thirty-eight drawn fixture kinds across five domains.",
   ],
   [
+    "sheet-notes",
+    "Issued Sheet (tags + notes)",
+    "Homes",
+    "A small flat issued on A3 with a drawing number, general notes and a tag on every door and window, keyed to a schedule.",
+  ],
+  [
     "garden-house",
     "Garden House (site plan)",
     "Homes",
@@ -248,6 +255,7 @@ const SOURCES: Record<string, string> = {
   townhouse,
   "two-storey": twoStorey,
   "furnished-flat": furnishedFlat,
+  "sheet-notes": sheetNotes,
   "garden-house": gardenHouse,
   museum,
   aquarium,

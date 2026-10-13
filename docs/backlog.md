@@ -731,6 +731,56 @@ example-flag guard). At 2.0: rebase it onto `main`, re-run its sweep, and move i
 
 ---
 
+## Found while landing the issued-sheet statements (`notes`, `schedule openings`)
+
+### N.1 · `arch finish` picks a sheet without the NOTES or DOOR & WINDOW SCHEDULE rows — `todo`
+
+`src/finish.ts` `tableRows` calls `planTableRows` with only `schedule`/`legend`, so a plan that
+already writes `notes` or `schedule openings` is fitted on a band shorter than the one drawn. It
+fails safe — finish's own post-check raises `W_SCALE_OVERFLOW` and adds no `paper` — but it picks
+nothing it could have picked. Fix: pass `openingSchedule`, `elements` and `notes` as `ir.ts` does.
+
+### N.2 · `E_LEVEL_MIX`'s remedy does not name `notes` among the plan-level settings — `todo`
+
+The remedy text in `src/error-catalog.ts` lists the statements that stay outside `level` blocks
+and predates `notes`. Cosmetic: `notes` inside a level is `E_PARSE`, as `legend` is.
+
+### N.3 · A tag with every candidate place taken keeps its first place — `todo`
+
+A tag tries up to seven places and takes the first clear of every opening, wall, drawn
+primitive and tag on the storey (`src/opening-schedule.ts`); with `schedule openings` injected
+into the corpus, 21 tags find none and stay on ink (dense furniture, a party wall), and 5 sit
+on a room name the label pass did not move. Each is pinned in `test/opening-tags-corpus.test.ts`
+(the list may only shrink). Better needs more candidate places or a leader line. Tags also
+number per storey (`W01` on each level); a set-unique numbering is an owner call.
+
+### N.4 · `fmt` round-trips `project`/`drawn_by`/`date` wrongly for a control character — `todo`
+
+`src/format.ts` quotes those three title fields with `JSON.stringify`, which writes a tab as
+`\t`; the lexer reads back only `\"`, `\\` and `\n`, so `title { project "A<TAB>B" }` formats to
+`project "A\tB"` and re-parses as `"AtB"` (likewise CR, U+0001, a lone surrogate). Older than
+the sheet statements, and left so `fmt` output on existing files does not move in that change;
+`number`/`revision`/`notes` already use `escapeStr`. Fix: the same escaper for the three.
+
+### N.5 · `E_DRAWING_LIMIT`'s catalogue entry omits its second trigger — `todo`
+
+`src/error-catalog.ts` describes only the primitive budget; the NOTES cap (over 200 wrapped
+lines, `src/draw-budget.ts`) raises the same code with its own message. One sentence (with N.2).
+
+### N.6 · Wide glyphs overrun the NOTES column — `todo`
+
+The project-wide width estimate (`src/text-metrics.ts`, 0.62 em per character) has no wide-glyph
+weight, so a line of 57 CJK characters (or 57 `W`) runs past the table's right rule; the page
+does not grow. Needs a per-character width class in the shared estimate, not in the wrapper.
+
+### N.7 · Sheet tables at extreme sizes — `declared`
+
+Every margin table's row height scales with the drawing's reference dimension, so a plan wider
+than about 4.65 km with 200 NOTES lines draws past `MODEL_RANGE_MM` (a 30 km plan: page height
+216,004,640 mm) — as `schedule rooms` with 200 rooms already does on main (218,044,654 mm). The
+slowest accepted `-f png` is 21–23 s / 7.9 MB (a 4×3 m plan with 200 lines). ROOM(S) clips at
+23 characters with some slack left in the drawn column.
+
 ## Parked from the algebra programme (2026-09, [ADR 0020](adr/0020-algebraic-core.md))
 
 ### 6.1 · D4-orbit `reroll` for a component or a `place … mirror` — `todo`

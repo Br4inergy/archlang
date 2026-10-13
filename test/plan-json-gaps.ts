@@ -9,6 +9,10 @@ export const CANNOT_ROUND_TRIP: Record<string, { because: string; proof: RegExp 
   "furnished-flat.arch": { because: "sheet layer — `paper` + `schedule`", proof: /^\s*paper\b/m },
   "museum-wing.arch": { because: "sheet layer — `paper`", proof: /^\s*paper\b/m },
   "museum.arch": { because: "sheet layer — `paper`", proof: /^\s*paper\b/m },
+  "sheet-notes.arch": {
+    because: "sheet layer — `paper` + `schedule` + `notes` (the title block's `number`/`revision` DO round-trip)",
+    proof: /^\s*paper\b/m,
+  },
   // --- the style layer: `theme`/`style` select paint, which the JSON does not carry -
   "themed.arch": { because: "style layer — `theme`", proof: /^\s*theme\b/m },
   "gallery-l.arch": { because: "style layer — `theme`; and the sheet layer — `paper`", proof: /^\s*theme\b/m },

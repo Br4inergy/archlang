@@ -78,8 +78,9 @@ const measuredText = (name: string): string => (authorsHeight.has(name) ? height
 
 suite("iso byte-identity — a compile with no `view` is unchanged everywhere", () => {
   it("covers the whole shipped corpus (a law over an empty list is not a law)", () => {
-    expect(BASELINE.length).toBe(30);
-    expect(SEMANTIC_BASELINE.length).toBe(30);
+    // 31 since `sheet-notes` was added (a new row, not a re-measured one).
+    expect(BASELINE.length).toBe(31);
+    expect(SEMANTIC_BASELINE.length).toBe(31);
   });
 
   for (const [name, sha] of BASELINE) {

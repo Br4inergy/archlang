@@ -182,7 +182,7 @@ function overlapArea(a: BBox, b: BBox): number {
  * midpoint, which is exactly a door swing's quarter-disc box. Rotated text is boxed by
  * the exact axis-aligned extent of the turned rectangle.
  */
-function primBBox(prim: ScenePrim): BBox | null {
+export function primBBox(prim: ScenePrim): BBox | null {
   switch (prim.t) {
     case "polygon":
       return bboxOfPoints(prim.pts);
