@@ -45,9 +45,10 @@ The playground is TypeScript; every module below is `.ts` except the generated g
 | `arch-completion.ts` | CodeMirror `autocompletion` over the core `completion()` (hand-written) |
 | `preview.ts` / `pan-zoom.ts` | SVG preview + circulation Paths overlay; CSS-transform pan/zoom/fit controller |
 | `interact.ts` | hover-room tooltip + click-to-source (`data-span`) |
-| `actions.ts` | header actions: **Format**, **Repair furniture**, **Embed**, copy-link |
-| `llm-prompt.ts` | builds the **Copy for LLM** payload (source + `describe()` facts + diagnostics) |
-| `embed.ts` / `viewer.ts` | Embed-snippet builder; the chrome-less `embed.html` viewer runtime |
+| `actions.ts` | header actions: **Format**, **Finish** (core `finish()`, one undo step, log in the Lint tab), **Repair furniture**, **Embed**, copy-link, **Open in Claude / ChatGPT** |
+| `llm-prompt.ts` | builds the **Copy for LLM** payload (source + `describe()` facts + diagnostics) and the short **Ask AI** prompt and chat-host URL |
+| `embed-snippets.ts` | the Embed dialog's iframe and Markdown snippets (an example's hosted drawing, or a plain link) |
+| `embed.ts` / `viewer.ts` | the chrome-less `embed.html` page and its viewer runtime |
 | `facts-strip.ts` / `describe-panel.ts` / `lint-panel.ts` / `diagnostics-panel.ts` | the `describe()`/`lint()` fact & diagnostic panels |
 | `share.ts` | `#z=` deflate-raw permalink encode/decode (reads legacy `#src=`) |
 | `raster-export.ts` | copy/download SVG · PNG · DXF · PDF |

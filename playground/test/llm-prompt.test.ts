@@ -84,7 +84,16 @@ describe("Open in Claude / ChatGPT", () => {
     const prompt = buildChatPrompt(SHARE);
     expect(prompt).toContain(SHARE);
     expect(prompt).toContain("https://archlang.uk/spec");
-    expect(prompt.length).toBeLessThan(SHARE.length + 400);
+    expect(prompt.length).toBeLessThan(SHARE.length + 500);
+  });
+
+  it("gives a padding-safe decode recipe for the hash form the link actually uses", () => {
+    expect(buildChatPrompt(SHARE)).toContain(
+      'zlib.decompress(base64.urlsafe_b64decode(z + "=" * (-len(z) % 4)), -15).decode()',
+    );
+    const legacy = buildChatPrompt("https://playground.archlang.uk/#src=cGxhbiAiWCIge30");
+    expect(legacy).toContain('base64.urlsafe_b64decode(s + "=" * (-len(s) % 4)).decode()');
+    expect(legacy).not.toContain("zlib");
   });
 
   it("puts the prompt in the host's q parameter and nothing else", () => {

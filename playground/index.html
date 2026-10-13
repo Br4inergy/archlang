@@ -156,10 +156,10 @@
           <!-- Unlike Copy link (the plan rides in the #fragment, which no browser sends to
                a server), these links put the plan's share link in the chat host's URL.
                The panel says so next to the links themselves. No tracking parameter. -->
-          <details class="tb-ai">
-            <summary>Open in AI ▾</summary>
+          <details class="tb-ai" id="chatMenu">
+            <summary>Ask AI ▾</summary>
             <div class="tb-ai-panel">
-              <p id="chatNote" class="tb-ai-note">These links send this plan's share link to the chat host in its URL. Copy link keeps the plan after the #, which your browser never sends to any server. A plan too long for a URL is copied instead, for you to paste.</p>
+              <p id="chatNote" class="tb-ai-note">These links put this plan, its full source inside the share link, in the chat host's URL, so the host's servers receive it, and the host may send it as your first message straight away. Copy link keeps the plan after the #, which your browser never sends to any server. A plan too long for a URL is copied instead, for you to paste.</p>
               <a href="https://claude.ai/new" data-chat-host="claude" target="_blank" rel="noopener noreferrer" aria-describedby="chatNote">Open in Claude ↗</a>
               <a href="https://chatgpt.com/" data-chat-host="chatgpt" target="_blank" rel="noopener noreferrer" aria-describedby="chatNote">Open in ChatGPT ↗</a>
             </div>

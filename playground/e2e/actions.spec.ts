@@ -61,7 +61,7 @@ test.describe("header actions", () => {
     // The same transform as `arch finish`: for this plan, paper/scale/dims/schedule/
     // legend and a title block, nothing left unresolved.
     await page.getByRole("button", { name: "Finish", exact: true }).click();
-    await status.expectFlash("Finished: 6 additions (Ctrl+Z undoes)");
+    await status.expectFlash("Finished: 6 changes (Ctrl+Z undoes)");
     const editor = page.locator(".cm-content");
     await expect(editor).toContainText("dims auto all");
     await expect(editor).toContainText('title { project "E2E" }');
@@ -73,21 +73,49 @@ test.describe("header actions", () => {
     await page.locator("#tab-lint").click();
     const panel = page.getByRole("region", { name: "Finish results" });
     await expect(panel).toBeVisible();
-    await expect(panel).toContainText("Finish — 6 additions");
+    await expect(panel).toContainText("Finish — 6 changes");
     await expect(panel.locator("code", { hasText: "scale 1:50" })).toBeVisible();
     await expect(panel).not.toContainText("unresolved");
 
-    // Idempotent: a finished sheet has nothing left to add.
+    // Idempotent: a finished sheet has nothing left to add — and a second press
+    // leaves the log of what the first one did in place.
     await page.getByRole("button", { name: "Finish", exact: true }).click();
     await status.expectFlash("Nothing to finish");
+    await expect(panel).toContainText("Finish — 6 changes");
 
-    // One Ctrl+Z in the editor reverts the whole Finish, back to the exact source.
+    // One Ctrl+Z in the editor reverts the whole Finish, back to the exact source,
+    // and the log of an edit that is no longer there goes away.
     await editor.click();
     await page.keyboard.press("ControlOrMeta+z");
     await expect(editor).not.toContainText("dims auto all");
     await expect
       .poll(() => page.evaluate((k) => localStorage.getItem(k), AUTOSAVE_KEY), { timeout: 10_000 })
       .toBe(SIMPLE_PLAN);
+    await expect(panel).toBeHidden();
+  });
+
+  test("Finish that declines says so, opens Lint, and offers Reissue sheet", async ({ page }) => {
+    // The flagship's authored A2 sheet is too small at 1:50: finish adds nothing and
+    // says why, and only a reissue may replace the paper (the `arch finish --reissue` rule).
+    await page.goto("/");
+    await waitForPlan(page);
+    await page.locator("#examples").selectOption("Hillside Villa");
+    await expect(page.locator(".cm-content")).toContainText("paper A2 landscape");
+    const status = await watchStatus(page);
+
+    await page.getByRole("button", { name: "Finish", exact: true }).click();
+    await status.expectFlash("Finish added nothing: 1 unresolved (see Lint)");
+    await expect(page.locator("#tab-lint")).toHaveAttribute("aria-selected", "true");
+    const panel = page.getByRole("region", { name: "Finish results" });
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText("1 unresolved");
+    await expect(panel.locator(".repair-un code", { hasText: "paper" })).toBeVisible();
+
+    await panel.getByRole("button", { name: "Reissue sheet" }).click();
+    await status.expectFlash("Finished: 1 change (Ctrl+Z undoes)");
+    await expect(page.locator(".cm-content")).toContainText("paper A1 landscape");
+    await expect(panel).toContainText("replaced");
+    await expect(panel.getByRole("button", { name: "Reissue sheet" })).toHaveCount(0);
   });
 
   test("Open in Claude / ChatGPT prefill the chat host with the plan's share link", async ({ page, context }) => {
@@ -99,32 +127,40 @@ test.describe("header actions", () => {
     await waitForPlan(page);
     await setEditorSource(page, SIMPLE_PLAN);
 
-    await page.getByText("Open in AI").click();
-    // The panel says, next to the links, that they put the plan in the host's URL.
-    await expect(page.locator("#chatNote")).toBeVisible();
-    await expect(page.locator("#chatNote")).toContainText("in its URL");
-    await expect(page.locator("#chatNote")).toContainText("never sends");
+    const note = page.locator("#chatNote");
+    const summary = page.getByText("Ask AI");
+    // The disclosure closes on Escape, like the Saved popover.
+    await summary.click();
+    await expect(note).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(note).toBeHidden();
 
     for (const [name, base] of [
       ["Open in Claude ↗", "https://claude.ai/new"],
       ["Open in ChatGPT ↗", "https://chatgpt.com/"],
     ] as const) {
+      await summary.click();
+      // The panel says, next to the links, that they put the plan in the host's URL.
+      await expect(note).toContainText("in the chat host's URL");
+      await expect(note).toContainText("never sends");
       const link = page.getByRole("link", { name });
-      await expect(link).toHaveAccessibleDescription(/in its URL/);
+      await expect(link).toHaveAccessibleDescription(/in the chat host's URL/);
       const [popup] = await Promise.all([context.waitForEvent("page"), link.click()]);
       await popup.waitForURL((u) => u.href.startsWith(base));
       const url = new URL(popup.url());
       expect(`${url.origin}${url.pathname}`).toBe(base);
       expect([...url.searchParams.keys()]).toEqual(["q"]); // no tracking parameter
       const q = url.searchParams.get("q") ?? "";
-      // The prompt carries the very URL Copy link would copy.
+      // The prompt carries the very URL Copy link would copy, and how to decode it.
       expect(q).toContain(await page.evaluate(() => window.location.href));
       expect(q).toMatch(/#z=/);
+      expect(q).toContain("zlib.decompress(");
       await popup.close();
+      await expect(note).toBeHidden(); // choosing a link closes the menu
     }
   });
 
-  test("a plan too long for a chat URL is copied and the host opens empty", async ({ page, context }) => {
+  test("a plan too long for a chat URL copies the full prompt and opens the host empty", async ({ page, context }) => {
     await context.route(/^https:\/\/(claude\.ai|chatgpt\.com)\//, (route) =>
       route.fulfill({ contentType: "text/plain", body: "stub" }),
     );
@@ -140,16 +176,37 @@ test.describe("header actions", () => {
     await setEditorSource(page, long);
     const status = await watchStatus(page);
 
-    await page.getByText("Open in AI").click();
+    await page.getByText("Ask AI").click();
     const [popup] = await Promise.all([
       context.waitForEvent("page"),
       page.getByRole("link", { name: "Open in ChatGPT ↗" }).click(),
     ]);
-    await status.expectFlash("Plan too long for a link: prompt copied, paste it into ChatGPT");
+    await status.expectFlash("Plan too long for a link: full prompt copied, paste it into ChatGPT");
     await popup.waitForURL((u) => u.href.startsWith("https://chatgpt.com/"));
     expect(popup.url()).toBe("https://chatgpt.com/");
+    // The Copy-for-LLM prompt: readable source and facts, not a link to decode.
     const copied = await page.evaluate(() => navigator.clipboard.readText());
-    expect(copied).toContain(await page.evaluate(() => window.location.href));
+    expect(copied).toContain("This is an ArchLang floor plan");
+    expect(copied).toContain("```arch");
+    expect(copied).toContain(filler);
+  });
+
+  test("the header never scrolls sideways, and is one row from 1280px", async ({ page }) => {
+    for (const width of [1440, 1280, 1024]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("/");
+      await waitForPlan(page);
+      const { scroll, client, rows } = await page.evaluate(() => {
+        const h = document.querySelector("header")!;
+        const tops = new Set([...h.querySelectorAll(":scope > .tb-cell")].map((c) => c.getBoundingClientRect().top));
+        return { scroll: h.scrollWidth, client: h.clientWidth, rows: tops.size };
+      });
+      expect(scroll, `header overflows at ${width}px`).toBeLessThanOrEqual(client);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      // Below 1280 the cells may wrap (better than a sideways scroll); from 1280 up the
+      // title block is one row, as it was before Finish and Ask AI joined it.
+      if (width >= 1280) expect(rows, `header wraps at ${width}px`).toBe(1);
+    }
   });
 
   test("Copy link puts a #z= permalink in the URL and on the clipboard", async ({ page }) => {
@@ -203,7 +260,9 @@ test.describe("header actions", () => {
     await expect(dialog).toHaveCount(0); // copying closes it
   });
 
-  test("Embed's Markdown snippet is a link to the share URL, never an image of embed.html", async ({ page }) => {
+  test("Embed's Markdown for an edited plan is a link to the share URL, never an image of embed.html", async ({
+    page,
+  }) => {
     await page.goto("/");
     await waitForPlan(page);
     await setEditorSource(page, SIMPLE_PLAN);
@@ -212,8 +271,8 @@ test.describe("header actions", () => {
 
     const dialog = page.locator(".embed-dialog");
     await expect(dialog.getByLabel(/Markdown link/)).toHaveValue(/^\[[^\]]+\]\(http[^)]*#(z|src)=[^)]+\)$/);
-    await dialog.getByRole("button", { name: "Copy Markdown link" }).click();
-    await status.expectFlash("Markdown link copied");
+    await dialog.getByRole("button", { name: "Copy Markdown" }).click();
+    await status.expectFlash("Markdown copied");
 
     const md = await page.evaluate(() => navigator.clipboard.readText());
     // An `embed.html` URL is an HTML page: as `![](…)` it renders as a broken image.
@@ -224,6 +283,27 @@ test.describe("header actions", () => {
     await page.locator("#copyLink").click();
     await status.expectFlash("Link copied");
     expect(target).toBe(await page.evaluate(() => navigator.clipboard.readText()));
+  });
+
+  test("Embed's Markdown for an unedited example shows its hosted drawing", async ({ page }) => {
+    await page.goto("/");
+    await waitForPlan(page);
+    await page.locator("#examples").selectOption("Studio (1BR)");
+    await expect(page.locator(".cm-content")).toContainText('plan "');
+    await page.locator("#embed").click();
+    const md = page.locator(".embed-dialog").getByLabel(/this example's drawing/);
+    await expect(md).toHaveValue(
+      /^\[!\[ArchLang floor plan\]\(https:\/\/archlang\.uk\/examples\/studio\.svg\)\]\(http[^)]*#(z|src)=[^)]+\)$/,
+    );
+    await page.locator(".embed-close").click();
+
+    // A multi-storey example names the storey on screen, as the docs gallery does.
+    await page.locator("#examples").selectOption("Hillside Villa");
+    await expect(page.locator(".cm-content")).toContainText("paper A2 landscape");
+    await page.locator("#embed").click();
+    await expect(page.locator(".embed-dialog").getByLabel(/this example's drawing/)).toHaveValue(
+      /\(https:\/\/archlang\.uk\/examples\/hillside-villa\.L1\.svg\)/,
+    );
   });
 });
 

@@ -112,10 +112,15 @@ export const MAX_CHAT_URL = 8000;
  * holds the source).
  */
 export function buildChatPrompt(shareUrl: string): string {
+  // `encodeSrc` writes `#z=` (raw DEFLATE), or `#src=` on a browser without
+  // CompressionStream; both are UNPADDED base64url, so the recipe restores the padding.
+  const decode = /[#&]src=/.test(shareUrl)
+    ? 'The plan source is the text s after #src=. Decode it with Python: base64.urlsafe_b64decode(s + "=" * (-len(s) % 4)).decode()'
+    : 'The plan source is the text z after #z=. Decode it with Python: zlib.decompress(base64.urlsafe_b64decode(z + "=" * (-len(z) % 4)), -15).decode()';
   return [
     `Help me work on this ArchLang floor plan: ${shareUrl}`,
     "ArchLang is a declarative language that compiles .arch source to SVG floor plans (spec: https://archlang.uk/spec).",
-    "The link opens the plan in the browser playground; its source is the text after #z=, base64url-encoded raw DEFLATE of UTF-8.",
+    decode,
   ].join("\n");
 }
 

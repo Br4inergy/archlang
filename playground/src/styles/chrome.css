@@ -27,6 +27,9 @@ body {
    controls — the drafting title block, not a strip of pills. */
 header {
   display: flex;
+  /* A fallback, not the layout: at ≥1280px the cells fit one row (the compaction
+     below sees to it); narrower, they wrap instead of scrolling the page sideways. */
+  flex-wrap: wrap;
   align-items: stretch;
   background: var(--src-bg);
   color: var(--src-fg);
@@ -531,6 +534,24 @@ main {
   }
   .tb-nav-more {
     display: block;
+  }
+}
+
+/* <1440px: tighter cells and no "Playground" stamp (the page's H1 says it), so the
+   whole title block still fits one row at 1280px. */
+@media (max-width: 1439px) {
+  .tb-cell {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+  .tb-controls select,
+  .tb-controls button,
+  .tb-ai > summary {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .tb-brand .badge {
+    display: none;
   }
 }
 

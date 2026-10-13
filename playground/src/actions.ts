@@ -17,7 +17,8 @@ import {
   type Scene,
 } from "archlang";
 import { escapeHtml } from "./escape.js";
-import { embedSnippets } from "./embed-snippets.js";
+import { embedSnippets, exampleImageUrl } from "./embed-snippets.js";
+import { exampleNameFor } from "./examples.js";
 import { buildChatPrompt, buildLlmPrompt, CHAT_HOSTS, chatHostUrl, isChatHost } from "./llm-prompt.js";
 import { encodeSrc, updateHash } from "./share.js";
 import { mountSnapshots } from "./snapshots.js";
@@ -40,10 +41,14 @@ interface ActionsCtx {
   getLevel: () => number | null;
   /** Surface an export failure in the status/errors UI. */
   onExportError: (format: string, err: unknown) => void;
+  /** Bring the Lint tab to the front (where Finish and Repair report). */
+  showLintTab: () => void;
   els: {
     formatBtn: HTMLButtonElement | null;
     finishBtn: HTMLButtonElement | null;
     finishPanel: HTMLElement | null;
+    /** The "Ask AI" disclosure holding the chat links. */
+    chatMenu: HTMLDetailsElement | null;
     /** The "Open in Claude / ChatGPT" links, each naming its host in `data-chat-host`. */
     chatLinks: HTMLAnchorElement[];
     repairBtn: HTMLElement | null;
@@ -58,7 +63,7 @@ interface ActionsCtx {
 }
 
 export function mountActions(ctx: ActionsCtx): void {
-  const { getSource, loadSource, flash, getCleanSvg, getScene, getLevel, onExportError, els } = ctx;
+  const { getSource, loadSource, flash, getCleanSvg, getScene, getLevel, onExportError, showLintTab, els } = ctx;
 
   // Format (idempotent, comment-preserving) — rewrite the source in place.
   els.formatBtn?.addEventListener("click", () => {
@@ -75,14 +80,33 @@ export function mountActions(ctx: ActionsCtx): void {
   // Finish — the core's `finish()` (the same transform as `arch finish`) adds what a
   // finished sheet needs and replaces the source as ONE undo step (Ctrl+Z reverts
   // it); what it added and what it declined are listed in the Lint tab.
-  els.finishBtn?.addEventListener("click", () => {
+  els.finishBtn?.addEventListener("click", () => runFinish(false));
+
+  /**
+   * Run `finish` (with `reissue` from the panel's "Reissue sheet" button) and report.
+   * `loadSource` hides the panel — it describes the previous document — so the panel
+   * is rendered AFTER it. A rerun with nothing to do leaves a showing log in place.
+   */
+  function runFinish(reissue: boolean) {
     const src = getSource();
-    const result = finish(src);
-    if (result.changed) loadSource(result.source, false);
-    showFinish(result);
+    const result = finish(src, reissue ? { reissue: true } : {});
     const n = result.changes.length;
-    flash(result.changed ? `Finished: ${n} addition${n === 1 ? "" : "s"} (Ctrl+Z undoes)` : "Nothing to finish");
-  });
+    const m = result.unresolved.length;
+    if (result.changed) loadSource(result.source, false);
+    if (result.changed || m > 0 || els.finishPanel?.hidden !== false) showFinish(result);
+    const added = `${n} change${n === 1 ? "" : "s"}`;
+    flash(
+      result.changed
+        ? m > 0
+          ? `Finished: ${added}, ${m} unresolved (see Lint)`
+          : `Finished: ${added} (Ctrl+Z undoes)`
+        : m > 0
+          ? `Finish added nothing: ${m} unresolved (see Lint)`
+          : "Nothing to finish",
+    );
+    // A declined statement is the part a user must act on: put it in front of them.
+    if (m > 0) showLintTab();
+  }
 
   // Repair furniture (ADR 0006) — run the deterministic corrector, show the change
   // log, and let the user apply the new source. Never auto-applied.
@@ -106,51 +130,72 @@ export function mountActions(ctx: ActionsCtx): void {
   // diagnostics with fixes + a spec pointer) so a user can hand the plan to any
   // AI assistant. All client-side; no API key. Same clipboard UX as Copy link.
   els.copyLlmBtn?.addEventListener("click", async () => {
-    const source = getSource();
-    const facts = describe(source);
-    const { diagnostics } = compile(source);
-    const prompt = buildLlmPrompt({
-      source,
-      facts,
-      diagnostics: (diagnostics ?? []).map((d) => diagnosticToJson(source, d)),
-    });
     try {
-      await navigator.clipboard.writeText(prompt);
+      await navigator.clipboard.writeText(llmPrompt());
       flash("LLM prompt copied");
     } catch {
       flash("Copy failed");
     }
   });
 
+  /** The full paste-ready prompt (source + facts + diagnostics) for the current plan. */
+  function llmPrompt(): string {
+    const source = getSource();
+    const facts = describe(source);
+    const { diagnostics } = compile(source);
+    return buildLlmPrompt({
+      source,
+      facts,
+      diagnostics: (diagnostics ?? []).map((d) => diagnosticToJson(source, d)),
+    });
+  }
+
   // Open in Claude / ChatGPT — open the chat host with a short prompt carrying the
   // plan's share link. This DOES put the plan in the host's URL (the panel says so),
   // unlike Copy link, whose `#z=` fragment never leaves the browser. No tracking
-  // parameter. A prompt too long for a URL is copied and the host opens empty.
+  // parameter. A prompt too long for a URL copies the full Copy-for-LLM prompt
+  // instead and opens the host empty.
+  //
+  // Nothing is awaited inside the click: a popup or clipboard write after an `await`
+  // has spent the click's user activation, which Safari's blockers refuse (silently,
+  // with `noopener`). So the hash and the href are refreshed BEFORE the click —
+  // on hover, focus and press — and the click itself only reads them.
   for (const link of els.chatLinks) {
     const host = link.dataset.chatHost;
     if (!isChatHost(host)) continue;
-    // A real href for middle-click / "copy link address", refreshed before each use.
-    const refresh = () => {
+    const refresh = async () => {
+      await updateHash(getSource()); // the share link must carry the latest edit
       link.href = chatHostUrl(host, buildChatPrompt(location.href)).url;
     };
-    link.addEventListener("pointerenter", refresh);
-    link.addEventListener("focus", refresh);
-    link.addEventListener("click", async (e) => {
-      e.preventDefault();
-      await updateHash(getSource()); // the share link must carry the latest edit
-      const prompt = buildChatPrompt(location.href);
-      const { url, fits } = chatHostUrl(host, prompt);
+    for (const type of ["pointerenter", "focus", "pointerdown"]) link.addEventListener(type, () => void refresh());
+    link.addEventListener("click", (e) => {
+      const { url, fits } = chatHostUrl(host, buildChatPrompt(location.href));
       link.href = url;
-      if (!fits) {
-        try {
-          await navigator.clipboard.writeText(prompt);
-          flash(`Plan too long for a link: prompt copied, paste it into ${CHAT_HOSTS[host].name}`);
-        } catch {
-          flash("Copy failed");
-          return;
-        }
-      }
+      setTimeout(closeChatMenu, 0); // after the anchor's own activation
+      if (fits) return; // the anchor itself opens the prefilled host
+      e.preventDefault();
+      navigator.clipboard.writeText(llmPrompt()).then(
+        () => flash(`Plan too long for a link: full prompt copied, paste it into ${CHAT_HOSTS[host].name}`),
+        () => flash("Copy failed"),
+      );
       window.open(url, "_blank", "noopener,noreferrer");
+    });
+  }
+
+  // The "Ask AI" disclosure closes like the Saved popover: Escape, a click
+  // outside it, or choosing a link.
+  const chatMenu = els.chatMenu;
+  function closeChatMenu() {
+    if (chatMenu) chatMenu.open = false;
+  }
+  if (chatMenu) {
+    chatMenu.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape" || !chatMenu.open) return;
+      closeChatMenu();
+      chatMenu.querySelector("summary")?.focus();
+    });
+    document.addEventListener("click", (e) => {
+      if (chatMenu.open && !chatMenu.contains(e.target as Node)) closeChatMenu();
     });
   }
 
@@ -184,20 +229,29 @@ export function mountActions(ctx: ActionsCtx): void {
       .join("");
     const unresolvedRows = result.unresolved
       .map((u) => {
-        const what = u.statement ?? u.room ?? u.stage;
+        // A whole-plan note (e.g. "the plan does not compile") names no statement or room.
+        const what = u.statement ?? u.room;
         const codes = u.codes?.length ? ` (${u.codes.map(escapeHtml).join(", ")})` : "";
-        return `<li class="repair-un"><code>${escapeHtml(what)}</code> ${escapeHtml(u.reason)}${codes}</li>`;
+        return `<li class="repair-un">${what ? `<code>${escapeHtml(what)}</code> ` : ""}${escapeHtml(u.reason)}${codes}</li>`;
       })
       .join("");
+    // The notes may say "rerun with --reissue", a CLI flag. Offer it here when — and only
+    // when — reissuing would actually change the sheet (`paper`/`scale`, nothing else).
+    const canReissue = result.unresolved.length > 0 && finish(getSource(), { reissue: true }).changed;
     const n = result.changes.length;
     panel.innerHTML =
-      `<div class="repair-head"><strong>Finish — ${n} addition${n === 1 ? "" : "s"}` +
-      `${result.unresolved.length ? `, ${result.unresolved.length} unresolved` : ""}</strong></div>` +
+      `<div class="repair-head"><strong>Finish — ${n} change${n === 1 ? "" : "s"}` +
+      `${result.unresolved.length ? `, ${result.unresolved.length} unresolved` : ""}</strong>` +
+      (canReissue
+        ? `<button class="repair-apply finish-reissue" type="button" title="Run finish again, allowed to replace paper and scale so the drawing fits">Reissue sheet</button>`
+        : "") +
+      `</div>` +
       (result.changed ? `<p class="repair-un-h">Applied to the editor; undo with Ctrl+Z (⌘Z on a Mac).</p>` : "") +
       (changeRows ? `<ul class="repair-list">${changeRows}</ul>` : "") +
       (unresolvedRows
         ? `<p class="repair-un-h">Left for you to resolve (finish never guesses):</p><ul class="repair-list">${unresolvedRows}</ul>`
         : "");
+    panel.querySelector(".finish-reissue")?.addEventListener("click", () => runFinish(true));
   }
 
   /** Run `repair` on the current source and render its change log into the Lint
@@ -240,23 +294,31 @@ export function mountActions(ctx: ActionsCtx): void {
   }
 
   /** Present a copyable iframe snippet that embeds the current plan via the
-   *  chrome-less embed page, and a Markdown LINK to the playground share URL
-   *  (`embed.html` is a page, not an image), using the shared `#z=` share codec. */
+   *  chrome-less embed page, and a Markdown snippet linking the playground share URL
+   *  (`embed.html` is a page, not an image), using the shared `#z=` share codec.
+   *  An unedited bundled example shows its docs-site drawing (the storey on screen). */
   async function showEmbed() {
-    const hash = await encodeSrc(getSource());
+    const src = getSource();
+    const hash = await encodeSrc(src);
     const base = location.origin + location.pathname.replace(/[^/]*$/, "");
-    const { embedUrl, iframe, markdown: md } = embedSnippets(base, hash);
+    const example = exampleNameFor(src);
+    const imageUrl = example ? exampleImageUrl(example, getLevel()) : undefined;
+    const { embedUrl, iframe, markdown: md } = embedSnippets(base, hash, imageUrl);
     const dialog = document.createElement("div");
     dialog.className = "embed-dialog";
     dialog.innerHTML =
       `<div class="embed-box">` +
       `<div class="embed-head"><strong>Embed this plan</strong><button class="embed-close" type="button" aria-label="Close">×</button></div>` +
       `<label for="embedCode">iframe (HTML)</label><textarea id="embedCode" class="embed-code" readonly rows="3">${escapeHtml(iframe)}</textarea>` +
-      `<label for="embedMd">Markdown link (Markdown cannot embed a live plan; download an SVG for an image)</label>` +
+      `<label for="embedMd">${
+        imageUrl
+          ? "Markdown (this example's drawing, linking to the plan)"
+          : "Markdown link (an edited plan has no hosted image; download an SVG for one)"
+      }</label>` +
       `<input id="embedMd" class="embed-link embed-md" readonly value="${escapeHtml(md)}" />` +
       `<label for="embedLink">Live editable link</label><input id="embedLink" class="embed-link embed-live" readonly value="${escapeHtml(embedUrl)}&editable=1" />` +
       `<div class="embed-actions"><button class="embed-copy" data-snippet="iframe" type="button">Copy iframe</button>` +
-      `<button class="embed-copy" data-snippet="md" type="button">Copy Markdown link</button>` +
+      `<button class="embed-copy" data-snippet="md" type="button">Copy Markdown</button>` +
       `<a class="embed-open" href="${embedUrl}&editable=1" target="_blank" rel="noopener">Open embed ↗</a></div>` +
       `</div>`;
     document.body.appendChild(dialog);
@@ -269,7 +331,7 @@ export function mountActions(ctx: ActionsCtx): void {
       btn.addEventListener("click", async () => {
         try {
           await navigator.clipboard.writeText(btn.dataset.snippet === "md" ? md : iframe);
-          flash(btn.dataset.snippet === "md" ? "Markdown link copied" : "Embed snippet copied");
+          flash(btn.dataset.snippet === "md" ? "Markdown copied" : "Embed snippet copied");
           close();
         } catch {
           flash("Copy failed");

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { embedSnippets } from "../src/embed-snippets.js";
+import { embedSnippets, exampleImageUrl } from "../src/embed-snippets.js";
+import { exampleNameFor } from "../src/examples.js";
+import studioSource from "../../examples/studio.arch?raw";
 
 const BASE = "https://playground.archlang.uk/";
 const HASH = "#z=q1YqLUktUrJSUFJSSs7PS8nMS1eyUjA0MjE1MDA0MDE2MDAwsLIyNjA0MDAwtbRUKkpVslJQUlICAA";
@@ -11,6 +13,27 @@ describe("embedSnippets", () => {
     expect(markdown).toBe(`[ArchLang floor plan — open it in the playground](${shareUrl})`);
     expect(markdown).not.toContain("![");
     expect(markdown).not.toContain("embed.html");
+  });
+
+  it("shows a bundled example's hosted drawing as an image linking to the share URL", () => {
+    const imageUrl = exampleImageUrl("studio", null);
+    const { markdown, shareUrl } = embedSnippets(BASE, HASH, imageUrl);
+    expect(markdown).toBe(`[![ArchLang floor plan](https://archlang.uk/examples/studio.svg)](${shareUrl})`);
+    expect(markdown).not.toContain("embed.html");
+  });
+
+  it("names a storey's drawing the way the docs gallery writes it", () => {
+    expect(exampleImageUrl("studio", null)).toBe("https://archlang.uk/examples/studio.svg");
+    expect(exampleImageUrl("townhouse", 1)).toBe("https://archlang.uk/examples/townhouse.L1.svg");
+    expect(exampleImageUrl("townhouse", 3)).toBe("https://archlang.uk/examples/townhouse.L3.svg");
+  });
+
+  it("recognises only an unedited bundled example", () => {
+    const studio = studioSource;
+    expect(exampleNameFor(studio)).toBe("studio");
+    expect(exampleNameFor(studio.replace(/\r\n?/g, "\n"))).toBe("studio");
+    expect(exampleNameFor(`${studio}\n# edited`)).toBeUndefined();
+    expect(exampleNameFor("")).toBeUndefined();
   });
 
   it("frames the embed page in the iframe snippet", () => {

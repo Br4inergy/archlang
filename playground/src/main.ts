@@ -66,6 +66,7 @@ const formatBtn = document.getElementById("formatSrc") as HTMLButtonElement | nu
 const embedBtn = document.getElementById("embed");
 const repairBtn = document.getElementById("repair");
 const repairPanel = document.getElementById("repairPanel");
+const finishPanel = document.getElementById("finishPanel");
 const suggestBtn = document.getElementById("suggest");
 const suggestPanel = document.getElementById("suggestPanel");
 const intentEl = document.getElementById("intent")!;
@@ -351,6 +352,9 @@ function render(source: string, refit = false) {
 
 let debounce: ReturnType<typeof setTimeout>;
 const onDocChanged = (source: string) => {
+  // The Finish log describes the document it ran on; any later change (an edit, an
+  // undo, a new example) makes it stale. Finish re-shows it after its own edit.
+  if (finishPanel) finishPanel.hidden = true;
   clearTimeout(debounce);
   debounce = setTimeout(() => {
     render(source);
@@ -424,10 +428,12 @@ async function init() {
     getScene: () => lastScene,
     getLevel: () => activeLevel,
     onExportError,
+    showLintTab: () => document.getElementById("tab-lint")?.click(),
     els: {
       formatBtn,
       finishBtn: document.getElementById("finishSrc") as HTMLButtonElement | null,
-      finishPanel: document.getElementById("finishPanel"),
+      finishPanel,
+      chatMenu: document.getElementById("chatMenu") as HTMLDetailsElement | null,
       chatLinks: [...document.querySelectorAll<HTMLAnchorElement>("a[data-chat-host]")],
       repairBtn,
       repairPanel,
