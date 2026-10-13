@@ -19,6 +19,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { coreSubpaths, missingExports, rangeMinimum } from "../scripts/check-core-exports.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MCP = resolve(HERE, "..");
@@ -70,6 +71,59 @@ describe("core dep range ↔ the core's version", () => {
     // version. Do NOT relax this to a range check to make a core release green — the
     // red IS the reminder that the baked context needs refreshing.
     expect(pkg.dependencies["@chanmeng666/archlang"]).toBe(`^${rootPkg.version}`);
+  });
+
+  it("every core subpath the server loads is one the pinned core range guarantees", () => {
+    // `link` imports `@chanmeng666/archlang/link`, which no published core up to 1.42.1 exports.
+    // The root package.json is the core that ships it, so the range's minimum must be at least the
+    // root version (the equality above implies it; this names the reason). THE ROOT VERSION MUST
+    // BE BUMPED to the release that first exports `./link`, and that core published, BEFORE this
+    // shim publishes. `release.yml` publishes core first, and `check-core-exports.ts` refuses the
+    // shim when npm's copy of the range's minimum lacks a subpath (a dispatch run skips the core).
+    const server = readText(resolve(MCP, "src", "server.ts"));
+    const subpaths = coreSubpaths(server);
+    // The runtime `import("…/link")` call, not the type-only `typeof import("…/link")` beside it.
+    expect(subpaths).toContain("./link");
+    for (const s of subpaths) expect(rootPkg.exports?.[s], `the root package does not export ${s}`).toBeTruthy();
+    const min = rangeMinimum(String(pkg.dependencies["@chanmeng666/archlang"]));
+    const parts = (v: string) => v.split(".").map((n) => Number.parseInt(n, 10));
+    const [a, b] = [parts(min), parts(rootPkg.version)];
+    const cmp = a[0]! - b[0]! || a[1]! - b[1]! || a[2]! - b[2]!;
+    expect(cmp, `core range minimum ${min} is below the root version ${rootPkg.version}`).toBeGreaterThanOrEqual(0);
+    // Loaded lazily, never at module load: a host that resolved an older core keeps every other
+    // tool, and `link` answers with the version it needs as data. Any top-level
+    // `import … "…/link"` (named or bare) loads it at startup; `import type` is erased.
+    expect(server).not.toMatch(/^import(?!\s+type\b)[^;]*["']@chanmeng666\/archlang\/link["']/m);
+  });
+
+  it("the release gate reads runtime subpaths only and refuses a core that lacks one", () => {
+    const typeOnly = 'let x: typeof import("@chanmeng666/archlang/link");';
+    expect(coreSubpaths(typeOnly)).toEqual([]);
+    expect(coreSubpaths(`${typeOnly}\nconst m = await import("@chanmeng666/archlang/link");`)).toEqual(["./link"]);
+    expect(
+      coreSubpaths('import { a } from "@chanmeng666/archlang/x";\nimport type { B } from "@chanmeng666/archlang/y";'),
+    ).toEqual(["./x"]);
+    expect(coreSubpaths('import { compile } from "@chanmeng666/archlang";')).toEqual([]);
+    // What `npm view @chanmeng666/archlang@1.42.1 exports --json` prints.
+    const v1421 = { ".": { types: "./dist/index.d.ts", import: "./dist/index.js" } };
+    expect(missingExports(["./link"], v1421)).toEqual(["./link"]);
+    expect(missingExports(["./link"], { ...v1421, "./link": {} })).toEqual([]);
+    expect(missingExports(["./link"], "./dist/index.js")).toEqual(["./link"]);
+    expect(rangeMinimum("^1.43.0")).toBe("1.43.0");
+    expect(() => rangeMinimum(">=1 <2")).toThrow();
+  });
+
+  it("release.yml runs the gate before the shim publish, under the same condition", () => {
+    const yml = readText(resolve(REPO, ".github", "workflows", "release.yml"));
+    const gate = yml.indexOf("npx tsx packages/mcp/scripts/check-core-exports.ts");
+    const core = yml.indexOf("run: npm publish --provenance --access public");
+    const shim = yml.indexOf("run: npm publish -w packages/mcp");
+    expect(gate, "release.yml no longer runs check-core-exports.ts").toBeGreaterThan(-1);
+    expect(core).toBeGreaterThan(-1);
+    expect(gate).toBeGreaterThan(core);
+    expect(gate).toBeLessThan(shim);
+    const step = yml.slice(yml.lastIndexOf("- name:", gate), gate);
+    expect(step).toContain("steps.check.outputs.mcp_exists != 'true'");
   });
 
   it("the MCP SDK stays quarantined here and never leaks into the core", () => {

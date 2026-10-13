@@ -108,7 +108,8 @@ rendered from that one manifest, so neither can drift from the tool.
    empty and every statement it left out is named there with the reason.
 9. **Show the user the result** — `archlang preview plan.arch -o plan.png` renders a viewable PNG
    (~1600px, legible enough for your own vision *and* small enough to ingest). If it reports
-   `E_PNG_DEPENDENCY`, re-run with `--install`.
+   `E_PNG_DEPENDENCY`, re-run with `--install`. To give a person the plan itself, rendered and with
+   nothing to install, `npx -y @chanmeng666/archlang link plan.arch` prints a playground URL that opens it.
 
 > **A display filter never changes gating.** `--select`, `--room`, `--code` and `--severity` narrow
 > what you *read*; `ok` and the exit code are always computed from the **unfiltered** diagnostic set,

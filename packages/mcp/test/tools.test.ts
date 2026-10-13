@@ -10,7 +10,10 @@
  *
  * Read as a contract: these assertions are what an MCP host is entitled to see.
  */
+import { decodePlanHash, PLAYGROUND_ORIGIN, planLinks } from "@chanmeng666/archlang/link";
 import { describe, expect, it } from "vitest";
+import pkg from "../package.json" with { type: "json" };
+import { loadPlanLinks } from "../src/server.js";
 import {
   call,
   CLEAN,
@@ -489,5 +492,76 @@ describe("validate tool", () => {
     expect(strict.ok).toBe(false);
     expect(strict.strict).toBe(true);
     expect(codes(strict)).toContain("W_ROOM_DISCONNECTED");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// link
+// ---------------------------------------------------------------------------
+
+/** The `#z=` payload of a minted URL. */
+const payloadOf = (url: unknown): string => new URL(url as string).hash.slice("#z=".length);
+
+describe("link tool", () => {
+  it("returns the playground and embed URLs, both carrying the plan in the fragment", async () => {
+    const client = await connect();
+    const out = await call(client, "link", { source: CLEAN });
+    expect(Object.keys(out)).toEqual(["ok", "playground", "embed", "bytes"]);
+    expect(out.ok).toBe(true);
+    const playground = new URL(out.playground as string);
+    const embed = new URL(out.embed as string);
+    expect(playground.origin).toBe(PLAYGROUND_ORIGIN);
+    expect(playground.pathname).toBe("/");
+    expect(embed.origin).toBe(PLAYGROUND_ORIGIN);
+    expect(embed.pathname).toBe("/embed.html");
+    // Nothing but the plan: no query string, one `#z=` fragment, the same payload in both.
+    expect(playground.search).toBe("");
+    expect(embed.search).toBe("");
+    expect(playground.hash).toMatch(/^#z=[A-Za-z0-9_-]+$/);
+    expect(embed.hash).toBe(playground.hash);
+    expect(decodePlanHash(payloadOf(out.playground))).toBe(CLEAN);
+    expect(out.bytes).toBe(Buffer.from(payloadOf(out.playground), "base64url").length);
+  });
+
+  it("mints the same bytes as `archlang link` (one encoder)", async () => {
+    const client = await connect();
+    expect(await call(client, "link", { source: TWO_STOREY })).toEqual({ ok: true, ...planLinks(TWO_STOREY) });
+  });
+
+  it("still links a plan that does not compile, and says so: ok:false with the error count", async () => {
+    const client = await connect();
+    const broken = 'plan "X" {\n  romo at (0,0)\n}\n';
+    const out = await call(client, "link", { source: broken });
+    expect(out).toEqual({ ok: false, errors: 1, ...planLinks(broken) });
+    expect(decodePlanHash(payloadOf(out.embed))).toBe(broken);
+  });
+
+  it("an installed core without the ./link export is reported as data, not a dead server", async () => {
+    // What Node throws for `import("@chanmeng666/archlang/link")` against core 1.42.1.
+    const missing = Object.assign(new Error("Package subpath './link' is not defined by \"exports\""), {
+      code: "ERR_PACKAGE_PATH_NOT_EXPORTED",
+    });
+    const out = await loadPlanLinks(() => Promise.reject(missing));
+    expect(out).toEqual({
+      ok: false,
+      error: `link needs @chanmeng666/archlang >= ${pkg.dependencies["@chanmeng666/archlang"].replace(/^\^/, "")}; the installed core has no ./link export`,
+    });
+    // A core that exports `./link` but lost the file is a broken install, not an old core.
+    const lost = Object.assign(
+      new Error("Cannot find module '/x/node_modules/@chanmeng666/archlang/dist/cli/link.js'"),
+      {
+        code: "ERR_MODULE_NOT_FOUND",
+      },
+    );
+    const broken = await loadPlanLinks(() => Promise.reject(lost));
+    expect(broken).toEqual({
+      ok: false,
+      error:
+        "link could not load @chanmeng666/archlang/link; the core install looks incomplete, reinstall it (Cannot find module '/x/node_modules/@chanmeng666/archlang/dist/cli/link.js')",
+    });
+    // Any other failure is a bug, and is not dressed up as a version problem.
+    await expect(loadPlanLinks(() => Promise.reject(new Error("boom")))).rejects.toThrow("boom");
+    // The real import resolves (here: the source tree, through the test alias).
+    expect("planLinks" in (await loadPlanLinks())).toBe(true);
   });
 });

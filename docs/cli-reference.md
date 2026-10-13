@@ -202,6 +202,27 @@ $ archlang preview house.arch --level 2 -o upper.png --json
 $ archlang preview house.arch --view axon -o house-axon.png --json
 ```
 
+### `archlang link`
+
+print a playground URL that opens the plan, rendered, with nothing to install
+
+**Input:** `<file.arch|->` · **Output:** the playground URL; --json gives { ok, playground, embed, bytes } (embed: the plan alone, for an iframe; bytes: the compressed plan). A plan that does not compile still gets a link: ok false with an errors count, one warning on stderr, exit 0
+
+| Flag | Does |
+| --- | --- |
+| `--json` | structured result on stdout, messages on stderr |
+| `--quiet, -q` | suppress human messages on stderr |
+
+**Examples**
+
+```bash
+# a URL to give the user: it opens the plan in the hosted playground
+$ archlang link plan.arch
+
+# the playground and embed URLs as data, and whether the plan compiles
+$ archlang link plan.arch --json
+```
+
 ### `archlang watch`
 
 recompile on save (interactive)

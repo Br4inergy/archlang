@@ -2,7 +2,9 @@ import { copyFileSync, mkdirSync } from "node:fs";
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/cli.ts"],
+  // `src/cli/link.ts` is the Node-only `@chanmeng666/archlang/link` subpath (it uses zlib), so
+  // the MCP shim mints the same share links as `archlang link`; the main entry stays browser-safe.
+  entry: ["src/index.ts", "src/cli.ts", "src/cli/link.ts"],
   format: ["esm"],
   dts: true,
   clean: true,

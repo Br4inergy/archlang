@@ -197,6 +197,12 @@ than implying exposure. And a shim bump drags the pack-time resource law with it
 land in `packages/mcp/package.json` **and both** of `server.json`'s version fields, or the release
 workflow `npm view`-skips it and nothing reaches either registry.
 
+### 3.2 · One playground origin constant — `todo`
+
+Re-export `PLAYGROUND_ORIGIN` (`src/cli/share-codec.mjs`) from `scripts/gen-permalink.mjs` and use it
+for the hard-coded copies at `docs-site/sync-docs.mjs:25` and `playground/scripts/gen-static.mjs:73`,
+after C6 merges (it edits those build scripts).
+
 ## Found while redrawing the showcase
 
 Five things the twelve new examples ran into. None is a regression and none blocked an example from

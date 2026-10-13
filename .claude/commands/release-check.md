@@ -34,6 +34,10 @@ you observed. Do NOT push anything — this command only verifies.
      at pack time and refresh ONLY with a version bump — a legitimate reason to bump with an empty
      diff. Its core dep range is pinned as the string `^` + the root version, so every core release
      reddens `packages/mcp/test/lockstep.test.ts` on purpose: re-pin, rebuild, bump. Never relax it.
+   - Publish order is core → shim. The shim's `link` tool loads `@chanmeng666/archlang/link`, so the
+     shim must not publish while npm's latest core lacks `./link` (`npm view @chanmeng666/archlang exports`).
+     `release.yml` enforces it: `packages/mcp/scripts/check-core-exports.ts` fails the shim publish when
+     npm's copy of the range's minimum lacks a subpath the server loads.
    - Claude Code plugin manifest (`plugins/archlang/.claude-plugin/plugin.json`): its `version` is
      the core's and its `npx` pin is the shim's exact version. After the version bumps run
      `npm run gen:plugin` and commit the manifest; `check:drift` fails on a stale one. The release

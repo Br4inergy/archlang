@@ -56,21 +56,65 @@ function readResource(flat: string, repoRel: string): string {
  * core's `readVersion()` (`src/cli/io.ts`): `../package.json` resolves from both `dist/`
  * (the packed artifact — npm always includes package.json) and `src/` (the tests).
  */
-function readShimVersion(): string {
+function readShimField(pick: (pkg: any) => unknown, fallback: string): string {
   for (const rel of ["../package.json", "../../package.json"]) {
     const p = resolve(HERE, rel);
     if (existsSync(p)) {
       try {
-        const v = JSON.parse(readFileSync(p, "utf8")).version;
+        const v = pick(JSON.parse(readFileSync(p, "utf8")));
         if (typeof v === "string") return v;
       } catch {
         /* fall through to the next candidate */
       }
     }
   }
-  return "0.0.0";
+  return fallback;
 }
-export const SHIM_VERSION = readShimVersion();
+export const SHIM_VERSION = readShimField((pkg) => pkg.version, "0.0.0");
+
+/**
+ * The core this shim was released against, from its own dependency range (`^1.x.y` → `1.x.y`).
+ * The lockstep test holds that range to the core that first exports `./link`, so this is the
+ * version to name when an older core is installed under the shim.
+ */
+const CORE_MIN = readShimField((pkg) => pkg.dependencies?.["@chanmeng666/archlang"], "").replace(/^[\^~]/, "");
+
+/** What the `link` tool reports when the installed core cannot provide the `./link` subpath. */
+export interface LinkUnavailable {
+  ok: false;
+  error: string;
+}
+
+/**
+ * Load the share-link minter on first use, not at startup. The rest of the server needs only the
+ * core's main entry, so a host that resolved an older core without `./link` keeps ten working
+ * tools and gets this as data from `link`, instead of a server that dies at load.
+ *
+ * Two failures are data, told apart by Node's error code: `ERR_PACKAGE_PATH_NOT_EXPORTED` is a
+ * core too old to export `./link` (the fix is a newer core), `ERR_MODULE_NOT_FOUND` is a core that
+ * exports it but whose file is missing (the fix is a reinstall). Anything else is a bug and throws.
+ */
+export async function loadPlanLinks(
+  importer: () => Promise<typeof import("@chanmeng666/archlang/link")> = () => import("@chanmeng666/archlang/link"),
+): Promise<typeof import("@chanmeng666/archlang/link") | LinkUnavailable> {
+  try {
+    return await importer();
+  } catch (e) {
+    const { code, message } = e as { code?: unknown; message?: unknown };
+    if (code === "ERR_PACKAGE_PATH_NOT_EXPORTED") {
+      const need = CORE_MIN ? ` >= ${CORE_MIN}` : " with the ./link export";
+      return { ok: false, error: `link needs @chanmeng666/archlang${need}; the installed core has no ./link export` };
+    }
+    if (code === "ERR_MODULE_NOT_FOUND") {
+      const detail = String(message ?? "").split("\n")[0];
+      return {
+        ok: false,
+        error: `link could not load @chanmeng666/archlang/link; the core install looks incomplete, reinstall it (${detail})`,
+      };
+    }
+    throw e;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -456,6 +500,21 @@ export function createServer(): McpServer {
       },
     },
     async ({ source, at }) => json({ ok: true, items: completion(source, at) }),
+  );
+
+  server.registerTool(
+    "link",
+    {
+      title: "Share link to the rendered plan",
+      description:
+        "Make two URLs that show a plan in the browser with nothing to install, for handing to a person. `playground` opens it in the hosted editor, rendered; `embed` draws it alone, for an iframe. The plan travels inside the URL, after the `#`, so it is never sent to a server and the URL carries nothing else. A plan that does not compile still gets links, and the page shows its diagnostics; `ok` says whether it compiles, and `errors` counts the errors when it does not. `bytes` is the size of the compressed plan in the URL.",
+      inputSchema: { source: z.string().describe("ArchLang source.") },
+    },
+    async ({ source }) => {
+      const link = await loadPlanLinks();
+      if ("error" in link) return json(link);
+      return json(link.linkResult(source, compile(source, { noCache: true }).diagnostics));
+    },
   );
 
   // Resources: the static context artifacts, read once at server start.

@@ -156,6 +156,14 @@ jobs:
         if: ${{ success() && steps.check.outputs.core_exists != 'true' }}
         run: npm publish --provenance --access public
 
+      # The shim loads core subpaths lazily (`link` loads `@chanmeng666/archlang/link`), so a shim
+      # whose range admits a core without them publishes fine and fails at the first call — e.g.
+      # a workflow_dispatch run that skips the already-published core. Ask npm what the oldest core
+      # the range admits exports (published by the step above when it was new) and stop otherwise.
+      - name: Refuse a shim whose core range admits a core without its subpaths
+        if: ${{ success() && steps.check.outputs.mcp_exists != 'true' }}
+        run: npx tsx packages/mcp/scripts/check-core-exports.ts
+
       # Runs only after the core step. prepack builds the shim (core stays external — the
       # shim never re-bundles it, so it does not need the core's dist/ to be freshly built).
       - name: Publish MCP shim to npm (@chanmeng666/archlang-mcp)
