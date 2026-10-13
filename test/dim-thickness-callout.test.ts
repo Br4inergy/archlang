@@ -8,6 +8,14 @@ import { DIM_TEXT_GAP } from "../src/sheet.js";
 import { pointInPolygon } from "../src/geometry/polygon.js";
 import type { Point } from "../src/ast.js";
 import type { Scene } from "../src/scene.js";
+import { parse } from "../src/parser.js";
+import { link } from "../src/import.js";
+import { resolveAll } from "../src/ir.js";
+import type { ResolvedPlan, RFurniture } from "../src/ir.js";
+import { BUILTIN_REGISTRY } from "../src/registry.js";
+import { segmentsOfWall } from "../src/geometry.js";
+import { fmt2 } from "../src/num-format.js";
+import type { World } from "../src/world.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const examplesDir = join(__dirname, "..", "examples");
@@ -33,7 +41,9 @@ const example = (name: string): string => readFileSync(join(examplesDir, name), 
  *     the space outside its stations), and only when it genuinely does not fit.
  *  2. `thicknessStation` (`scene-build.ts`) picks WHERE along the wall to take the
  *     call-out: the middle of the widest run no other wall crosses, so the number is not
- *     pushed straight into a partition tee-ing in at the segment midpoint.
+ *     pushed straight into a partition tee-ing in at the segment midpoint — and no opening
+ *     on the wall and no furniture footprint on the number's side blocks, so it is not
+ *     written in a doorway or over a sink either (the second suite below).
  *  3. `thicknessSideFlipped` picks WHICH SIDE: the one with floor under it, probed off the
  *     wall's own faces. On a shell the other side is the annotation band the `dims auto`
  *     chains live in.
@@ -234,5 +244,187 @@ suite("wall-thickness call-outs are never drawn in the poché", () => {
     const src = example("bungalow.arch");
     expect(JSON.stringify(describePlan(src))).toBe(JSON.stringify(describePlan(src)));
     expect(compile(src, { noCache: true }).svg).toBe(compile(src, { noCache: true }).svg);
+  });
+});
+
+/** An axis-aligned box in plan millimetres. */
+interface Box {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+
+/** A thickness call-out's NUMBER as drawn: its text box (the shared width estimate, turned
+ *  with the text) and the wall line whose thickness it reads. */
+interface Callout {
+  value: string;
+  box: Box;
+  /** The wall segment runs along x (its line is `y = c`), else along y (`x = c`). */
+  horiz: boolean;
+  c: number;
+}
+
+const overlaps = (a0: number, a1: number, b0: number, b1: number): boolean => a0 < b1 && b0 < a1;
+
+/**
+ * The thickness call-outs of one storey, found from the drawing and the walls rather than
+ * from the code that placed them: a dims-layer number that reads a straight segment's
+ * thickness and sits exactly where `outsideStations` writes a pushed number — half the wall,
+ * one text gap and half the number off that segment's centreline, within its run.
+ */
+function thicknessCallouts(s: Scene, ir: ResolvedPlan): Callout[] {
+  const gap = DIM_TEXT_GAP * s.sizes.dimFont;
+  const out: Callout[] = [];
+  for (const n of s.nodes) {
+    if (n.layer !== "dims" || n.prim.t !== "text") continue;
+    const { value, at, size } = n.prim;
+    const w = textWidth(value, size);
+    const turned = Math.abs(n.prim.rotate ?? 0) === 90;
+    const hx = (turned ? size : w) / 2;
+    const hy = (turned ? w : size) / 2;
+    const box = { x0: at.x - hx, x1: at.x + hx, y0: at.y - hy, y1: at.y + hy };
+    const host = ir.walls
+      .flatMap((wall) => segmentsOfWall(wall))
+      .find((seg) => {
+        if (seg.arc || fmt2(seg.thickness) !== value) return false;
+        const horiz = seg.a.y === seg.b.y && seg.a.x !== seg.b.x;
+        if (!horiz && seg.a.x !== seg.b.x) return false;
+        const along = horiz ? at.x : at.y;
+        const c = horiz ? seg.a.y : seg.a.x;
+        const lo = horiz ? Math.min(seg.a.x, seg.b.x) : Math.min(seg.a.y, seg.b.y);
+        const hi = horiz ? Math.max(seg.a.x, seg.b.x) : Math.max(seg.a.y, seg.b.y);
+        const off = Math.abs((horiz ? at.y : at.x) - c);
+        return along >= lo && along <= hi && Math.abs(off - (seg.thickness / 2 + gap + w / 2)) < 1e-6;
+      });
+    if (!host) continue;
+    const horiz = host.a.y === host.b.y;
+    out.push({ value, box, horiz, c: horiz ? host.a.y : host.a.x });
+  }
+  return out;
+}
+
+/**
+ * What a call-out's number collides with: every opening on its own wall line whose run
+ * (centre ± half its width, from the opening model) the number's run along the wall
+ * overlaps, and every furniture footprint the number's box overlaps.
+ */
+function calloutClashes(co: Callout, ir: ResolvedPlan): string[] {
+  const hits: string[] = [];
+  const [a0, a1] = co.horiz ? [co.box.x0, co.box.x1] : [co.box.y0, co.box.y1];
+  for (const wall of ir.walls) {
+    for (const op of wall.openings) {
+      // The opening's host is the straight segment of its wall it sits on.
+      const host = segmentsOfWall(wall).find((seg) =>
+        !seg.arc && seg.a.y === seg.b.y && seg.a.x !== seg.b.x
+          ? op.at.y === seg.a.y && op.at.x >= Math.min(seg.a.x, seg.b.x) && op.at.x <= Math.max(seg.a.x, seg.b.x)
+          : !seg.arc &&
+            seg.a.x === seg.b.x &&
+            op.at.x === seg.a.x &&
+            op.at.y >= Math.min(seg.a.y, seg.b.y) &&
+            op.at.y <= Math.max(seg.a.y, seg.b.y),
+      );
+      if (!host || (host.a.y === host.b.y) !== co.horiz || (co.horiz ? host.a.y : host.a.x) !== co.c) continue;
+      const centre = co.horiz ? op.at.x : op.at.y;
+      if (overlaps(a0, a1, centre - op.width / 2, centre + op.width / 2))
+        hits.push(`opening ${op.ownerId} ${centre - op.width / 2}..${centre + op.width / 2}`);
+    }
+  }
+  for (const el of ir.elements) {
+    if (el.kind !== "furniture") continue;
+    const f = el as RFurniture;
+    const fx1 = f.at.x + f.size.w;
+    const fy1 = f.at.y + f.size.h;
+    if (overlaps(co.box.x0, co.box.x1, f.at.x, fx1) && overlaps(co.box.y0, co.box.y1, f.at.y, fy1))
+      hits.push(`furniture ${f.id} (${f.at.x},${f.at.y})..(${fx1},${fy1})`);
+  }
+  return hits;
+}
+
+/** The same call-out with its number moved to another station along its wall. */
+function atStation(co: Callout, along: number): Callout {
+  const box = co.horiz
+    ? { ...co.box, x0: along - (co.box.x1 - co.box.x0) / 2, x1: along + (co.box.x1 - co.box.x0) / 2 }
+    : { ...co.box, y0: along - (co.box.y1 - co.box.y0) / 2, y1: along + (co.box.y1 - co.box.y0) / 2 };
+  return { ...co, box };
+}
+
+/** Every storey of a plan: its Scene and the resolved plan it was drawn from. */
+function storeys(src: string, world?: World): { s: Scene; ir: ResolvedPlan }[] {
+  const out = compile(src, { noCache: true, ...(world ? { world } : {}) });
+  expect(out.errors).toEqual([]);
+  const scenes = out.pages ? out.pages.map((p) => p.scene) : [out.scene as Scene];
+  const w = world ?? { read: () => null, now: () => new Date(0) };
+  const linked = link(parse(src).plan!, w, BUILTIN_REGISTRY);
+  const resolved = resolveAll(linked.plan, BUILTIN_REGISTRY, w);
+  const irs = resolved.levels.length > 0 ? resolved.levels.map((l) => l.ir) : [resolved.ir];
+  expect(irs).toHaveLength(scenes.length);
+  return scenes.map((s, i) => ({ s, ir: irs[i]! }));
+}
+
+suite("wall-thickness call-outs stay off doorways and fixtures", () => {
+  // The agent-UX audit's plan: the "100" call-out sat in doorway `d_bed2` and the "200" on the
+  // kitchen sink. Committed verbatim (under a header comment) so the defect stays reproducible.
+  const audit = readFileSync(join(__dirname, "callout-fixtures", "agent-ux-flat.arch"), "utf8");
+
+  it("moves the audit plan's call-outs out of doorway d_bed2 and off the kitchen sink", () => {
+    const { s, ir } = storeys(audit)[0]!;
+    const callouts = thicknessCallouts(s, ir);
+    expect(callouts.map((c) => c.value).sort()).toEqual(["100", "200"]);
+
+    // "100" reads the hall's west partition, the wall `d_bed2` is hung in.
+    const c100 = callouts.find((c) => c.value === "100")!;
+    expect(c100.horiz).toBe(false);
+    expect(c100.c).toBe(3600);
+    const bed2 = ir.walls.flatMap((w) => w.openings).find((o) => o.ownerId === "d_bed2")!;
+    const [d0, d1] = [bed2.at.y - bed2.width / 2, bed2.at.y + bed2.width / 2];
+    expect([d0, d1]).toEqual([4600, 5400]); // the audit's reading of the doorway
+    expect(overlaps(c100.box.y0, c100.box.y1, d0, d1)).toBe(false);
+
+    // "200" reads the north shell, which the kitchen run stands against.
+    const c200 = callouts.find((c) => c.value === "200")!;
+    expect(c200.horiz).toBe(true);
+    expect(c200.c).toBe(0);
+    const sink = ir.elements.find((e): e is RFurniture => e.kind === "furniture" && e.category === "kitchen_sink")!;
+    const sinkBox = { x0: sink.at.x, x1: sink.at.x + sink.size.w, y0: sink.at.y, y1: sink.at.y + sink.size.h };
+    expect(
+      overlaps(c200.box.x0, c200.box.x1, sinkBox.x0, sinkBox.x1) &&
+        overlaps(c200.box.y0, c200.box.y1, sinkBox.y0, sinkBox.y1),
+    ).toBe(false);
+
+    // And nothing else: no opening on either wall line, no footprint under either number.
+    expect(calloutClashes(c100, ir)).toEqual([]);
+    expect(calloutClashes(c200, ir)).toEqual([]);
+  });
+
+  it("is not vacuous — the stations the audit found are caught by the same predicate", () => {
+    // The audit's drawing put "100" at y = 4975 and "200" at x = 7775 (the midpoints of the
+    // widest runs clear of WALLS only). Moved back there, each call-out must clash.
+    const { s, ir } = storeys(audit)[0]!;
+    const callouts = thicknessCallouts(s, ir);
+    const c100 = callouts.find((c) => c.value === "100")!;
+    const c200 = callouts.find((c) => c.value === "200")!;
+    expect(calloutClashes(atStation(c100, 4975), ir)).toEqual(["opening d_bed2 4600..5400"]);
+    expect(calloutClashes(atStation(c200, 7775), ir)).toEqual(["furniture kitchen_sink_3 (7300,100)..(8100,700)"]);
+  });
+
+  it("holds for every shipped example: no call-out in a doorway or over a piece of furniture", () => {
+    const offenders: string[] = [];
+    let seen = 0;
+    for (const name of exampleNames) {
+      for (const [i, { s, ir }] of storeys(example(name), {
+        read: exampleWorld.read,
+        now: () => new Date(0),
+      }).entries()) {
+        for (const co of thicknessCallouts(s, ir)) {
+          seen++;
+          const hits = calloutClashes(co, ir);
+          if (hits.length > 0) offenders.push(`${name} storey ${i + 1} "${co.value}": ${hits.join(", ")}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+    // The examples that draw `dims auto all`/`walls` call-outs really are found by the finder.
+    expect(seen).toBeGreaterThan(20);
   });
 });

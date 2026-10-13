@@ -15,7 +15,7 @@ import type { RenderCtx, Registry, Runtime } from "./registry.js";
 import { BUILTIN_RUNTIME } from "./registry.js";
 import type { RenderSizes, Scene, SceneNode, SceneSheet } from "./scene.js";
 import type { Bounds, Vec, WallSegment } from "./geometry.js";
-import { add, mul, normal, segmentsOfWall, sub, unit } from "./geometry.js";
+import { add, mul, normal, rectCorners, segmentsOfWall, sub, unit } from "./geometry.js";
 import { arcPointAt, diameterText, radiusText } from "./geometry/arc.js";
 import type { Point } from "./ast.js";
 import { hatchesUsed } from "./hatches.js";
@@ -461,11 +461,29 @@ function segmentBand(s: WallSegment): Bounds {
  *
  * Every wall band that comes within the number's reach of this segment's centreline blocks
  * the run it covers, widened by a cap height at each end so the digits clear it rather than
- * touch it. What is left is a set of free runs; the widest one's midpoint is the station.
+ * touch it. Two more things block a run the same way, each read from its own shape:
+ *
+ *  - every OPENING on this wall line — its extent along the wall is its centre ± half its
+ *    width, from the opening model. The dimension's ticks would cross the jambs and its
+ *    number would sit in the doorway or across the door's swing (which spans the same run);
+ *  - every piece of FURNITURE whose footprint reaches into the band the number occupies —
+ *    from the wall face out to `reach`, on the side the number is written (`side`, the unit
+ *    normal {@link thicknessSideFlipped} chose). The footprint polygon's vertices are
+ *    projected onto the wall axis for the run it blocks and onto the normal for the reach
+ *    test; a piece on the far side of the wall cannot collide with the number and blocks
+ *    nothing.
+ *
+ * What is left is a set of free runs; the widest one's midpoint is the station.
  * Closed form — merge the intervals once, take the maximum — and it falls back to the
- * segment midpoint when a wall is crossed end to end (a call-out has to go somewhere).
+ * segment midpoint when the segment is blocked end to end (a call-out has to go somewhere).
  */
-function thicknessStation(rep: { a: Point; b: Point; t: number }, ir: ResolvedPlan, reach: number, pad: number): Point {
+function thicknessStation(
+  rep: { a: Point; b: Point; t: number },
+  ir: ResolvedPlan,
+  reach: number,
+  pad: number,
+  side: Vec,
+): Point {
   const horiz = rep.a.y === rep.b.y;
   const lo = horiz ? Math.min(rep.a.x, rep.b.x) : Math.min(rep.a.y, rep.b.y);
   const hi = horiz ? Math.max(rep.a.x, rep.b.x) : Math.max(rep.a.y, rep.b.y);
@@ -493,6 +511,39 @@ function thicknessStation(rep: { a: Point; b: Point; t: number }, ir: ResolvedPl
       if (aHi <= lo || aLo >= hi) continue;
       blocked.push({ lo: Math.max(lo, aLo), hi: Math.min(hi, aHi) });
     }
+  }
+  const block = (aLo: number, aHi: number): void => {
+    if (aHi <= lo || aLo >= hi) return;
+    blocked.push({ lo: Math.max(lo, aLo), hi: Math.min(hi, aHi) });
+  };
+  const axis = horiz ? "h" : "v";
+  for (const op of facadeOpenings(ir)) {
+    if (op.axis !== axis || op.line !== c) continue;
+    block(op.along - op.width / 2 - pad, op.along + op.width / 2 + pad);
+  }
+  // The band across the wall the number is written in: from the face to its far end.
+  const out = horiz ? side.y : side.x;
+  const face = c + out * (rep.t / 2);
+  const tip = c + out * reach;
+  const bandLo = Math.min(face, tip);
+  const bandHi = Math.max(face, tip);
+  for (const el of ir.elements) {
+    if (el.kind !== "furniture") continue;
+    const f = el as RFurniture;
+    let aLo = Number.POSITIVE_INFINITY;
+    let aHi = Number.NEGATIVE_INFINITY;
+    let xLo = Number.POSITIVE_INFINITY;
+    let xHi = Number.NEGATIVE_INFINITY;
+    for (const p of rectCorners(f.at.x, f.at.y, f.size.w, f.size.h)) {
+      const along = horiz ? p.x : p.y;
+      const across = horiz ? p.y : p.x;
+      aLo = Math.min(aLo, along);
+      aHi = Math.max(aHi, along);
+      xLo = Math.min(xLo, across);
+      xHi = Math.max(xHi, across);
+    }
+    if (xHi <= bandLo || xLo >= bandHi) continue;
+    block(aLo - pad, aHi + pad);
   }
   blocked.sort((p, q) => p.lo - q.lo || p.hi - q.hi);
 
@@ -522,7 +573,8 @@ function thicknessStation(rep: { a: Point; b: Point; t: number }, ir: ResolvedPl
  *  offset keeps it on the wall, and because the number is far wider than the wall the
  *  dim element writes it past the far station (`outsideStations` in `elements/dim.ts`).
  *  That makes two derived positions, and both come from the shape rather than a box:
- *  {@link thicknessStation} picks WHERE along the wall (a run no other wall crosses) and
+ *  {@link thicknessStation} picks WHERE along the wall (a run no other wall, opening or
+ *  furniture footprint crosses) and
  *  {@link thicknessSideFlipped} picks WHICH SIDE (the one with floor under it, not the
  *  annotation band outside the building). Presentation only — never expands bounds
  *  meaningfully (faces sit ½-thickness off a centerline already inside the plan). */
@@ -555,12 +607,13 @@ function synthWallDims(ir: ResolvedPlan, sizes: RenderSizes, dims: RDim[]): void
     // run actually used.
     const text = fmtMm(rep.t);
     const reach = rep.t / 2 + DIM_TEXT_GAP * sizes.dimFont + textWidth(text, sizes.dimFont);
-    const at = thicknessStation(rep, ir, reach, sizes.dimFont);
-    const half = mul(rep.n, rep.t / 2);
     // The endpoints keep their historical order (which is what fixes the number's reading
     // direction); the SIDE the number is written on is `calloutFrom`, so a flip moves the
-    // text and nothing else.
+    // text and nothing else. It is decided first because the station avoids what stands on
+    // that side.
     const onPlusSide = thicknessSideFlipped(rep.a, rep.b, rep.n, rep.t, rooms);
+    const at = thicknessStation(rep, ir, reach, sizes.dimFont, onPlusSide ? rep.n : mul(rep.n, -1));
+    const half = mul(rep.n, rep.t / 2);
     dims.push({
       ...mkDim(add(at, half), add(at, mul(half, -1)), 0, text),
       ...(onPlusSide ? { calloutFrom: true } : {}),
