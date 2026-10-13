@@ -2642,14 +2642,19 @@ SVG output is unaffected either way: it uses the viewer's own fonts.
 
 **DXF units and layers.** The DXF is ASCII, headed AutoCAD 2000 (`AC1015`), and declares
 its unit: `$INSUNITS` 4 (millimetres) and `$MEASUREMENT` 1 (metric), so a CAD program
-inserts the plan at true size. Every entity sits on an AIA layer (`A-DOOR`, `A-GLAZ`,
-`A-FLOR`, `A-ANNO-DIMS`, …). Walls go on two: a wall of category `exterior` on
-`A-WALL-EXTR`, every other wall on `A-WALL-INTR`, so you can freeze the partitions and
-keep the envelope. That is the rule the rest of ArchLang uses for an outside wall (an
-`exterior` host's door opens to the outside, a roof follows the closed `exterior` ring),
-so name the envelope `exterior`. Where walls join, the thicker wall owns the junction,
-as it does in the drawing. The split moves no line: each layer holds its walls' share of
-the same joined outline and poché the SVG draws.
+inserts the plan at true size. Entities sit on NCS-style layers by discipline:
+architectural `A-` (`A-DOOR`, `A-GLAZ`, `A-FLOR`, `A-ANNO-DIMS`, …), landscape `L-` and
+civil `C-` for the ground, and `V-` for an axonometric view. Walls go on two layers: a
+wall of category `exterior` on `A-WALL-EXTR`, every other wall on `A-WALL-INTR`, so you
+can freeze the partitions and keep the envelope. That is the rule the rest of ArchLang
+uses for an outside wall (an `exterior` host's door opens to the outside, a roof follows
+the closed `exterior` ring), so name the envelope `exterior`. Where walls join, the
+thicker wall owns the junction. Between two walls of equal thickness and the same
+material, the `exterior` wall owns it. Between equal-thickness walls of different
+materials, the wall stated first owns it, because that is whose hatch the drawing shows
+there. Each layer holds its walls' share of the joined outline and poché the drawing
+shows. No line is moved or added, but a face line is cut in two where it passes from one
+layer's wall to the other's.
 
 The **TXT** backend draws the plan as an ASCII/Unicode grid — no image, no binary, no
 dependency. It exists so a text-only agent (or a terminal) can *see* the layout at a

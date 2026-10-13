@@ -242,7 +242,9 @@ const LTYPES: { name: string; desc: string; pattern: number[] }[] = [
 /** The pass-default wall layer, declared only when an entity still lands on it. */
 const PLAIN_WALL_LAYER = { name: "A-WALL", color: 7 };
 
-/** The two wall layers, in the order their entities are written. */
+/** The two wall layers, in the order their entities are written — and in PRIORITY order:
+ *  exterior first, so an equal-thickness, same-material junction is the envelope's (see
+ *  `classifyWallSet`), whatever the other wall's category is called. */
 const WALL_CLASS_LAYERS = ["A-WALL-EXTR", "A-WALL-INTR"] as const;
 
 /**

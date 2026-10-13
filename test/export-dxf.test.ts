@@ -351,10 +351,16 @@ const faceLength = (es: readonly Ent[]): number =>
     return s;
   }, 0);
 
-/** Net hatched area: every HATCH boundary (the 10/20 vertices after each 93 count), signed. */
+/**
+ * Hatched area: per HATCH, the ABSOLUTE value of its boundaries' signed sum (the 10/20
+ * vertices after each 93 count; holes run the other way and cancel inside one HATCH), summed
+ * over the HATCHes. Absolute per entity, so an overlap between two HATCHes can never be
+ * cancelled by a gap elsewhere.
+ */
 const hatchArea = (es: readonly Ent[]): number => {
   let total = 0;
   for (const e of es.filter((x) => x.type === "HATCH")) {
+    let own = 0;
     let pts: [number, number][] = [];
     let left = 0;
     for (let i = 0; i < e.body.length; i++) {
@@ -369,11 +375,12 @@ const hatchArea = (es: readonly Ent[]): number => {
             const [x2, y2] = pts[(k + 1) % pts.length]!;
             a += x1 * y2 - x2 * y1;
           }
-          total += a / 2;
+          own += a / 2;
           pts = [];
         }
       }
     }
+    total += Math.abs(own);
   }
   return total;
 };
@@ -409,6 +416,28 @@ const EXAMPLES = readdirSync(join(__dirname, "..", "examples"))
   .filter((f) => f.endsWith(".arch"))
   .sort();
 const exampleSrc = (f: string): string => readFileSync(join(__dirname, "..", "examples", f), "utf8");
+
+/**
+ * The red-team repros of the two tie defects (the joinery breaks a thickness tie by the
+ * wall's list index): `[name, first statement, second statement]`, as reported.
+ *  - "C": an envelope and a same-material 200 mm wall whose category sorts before
+ *    `exterior` — the envelope must keep the junction squares and its whole outer face.
+ *  - "Tie": a brick partition stated before a concrete envelope, both 200 mm — the DXF fell
+ *    back to A-WALL because it re-joined in a different order from the drawing.
+ */
+const TIE_REPROS: ReadonlyArray<readonly [string, string, string]> = [
+  [
+    "C",
+    "wall id=shell exterior thickness 200 { (0,0) (5000,0) (5000,4000) (0,4000) close }",
+    "wall id=part core thickness 200 { (2500,0) (2500,4000) }",
+  ],
+  [
+    "Tie",
+    "wall id=part interior thickness 200 material brick { (2500,0) (2500,4000) }",
+    "wall id=shell exterior thickness 200 material concrete { (0,0) (5000,0) (5000,4000) (0,4000) close }",
+  ],
+];
+const tieSource = (name: string, a: string, b: string): string => `plan "${name}" { units mm\n  ${a}\n  ${b} }`;
 
 describe("DXF units and wall layers", () => {
   it("declares millimetres and metric in the HEADER, for the AC1015 the header declares", () => {
@@ -494,6 +523,68 @@ describe("DXF units and wall layers", () => {
     expect(declaredLayers(dxf).filter((l) => l === "A-WALL")).toHaveLength(1);
   });
 
+  it("C: in either statement order, the envelope's outer face and its whole poche are on A-WALL-EXTR", () => {
+    const [name, a, b] = TIE_REPROS[0]!;
+    for (const src of [tieSource(name, a, b), tieSource(name, b, a)]) {
+      const walls = dxfEntities(dxfOf(src)).filter(isWallEnt);
+      // DXF flips Y: the outer face lines are x = -100 / 5100 and y = 100 / -4100.
+      const onOuter = (e: Ent): boolean =>
+        ([10, 11] as const).every((c) => groupNum(e, c) === -100) ||
+        ([10, 11] as const).every((c) => groupNum(e, c) === 5100) ||
+        ([20, 21] as const).every((c) => groupNum(e, c) === 100) ||
+        ([20, 21] as const).every((c) => groupNum(e, c) === -4100);
+      const outer = walls.filter((e) => e.type === "LINE" && onOuter(e));
+      expect(outer.length).toBeGreaterThanOrEqual(4);
+      expect(outer.filter((e) => e.layer !== "A-WALL-EXTR")).toEqual([]);
+      // The ring band (5200x4200 - 4800x3800) is EXTR, the 200 x 3800 between faces INTR.
+      expect(hatchArea(walls.filter((e) => e.layer === "A-WALL-EXTR"))).toBeCloseTo(5200 * 4200 - 4800 * 3800, 3);
+      expect(hatchArea(walls.filter((e) => e.layer === "A-WALL-INTR"))).toBeCloseTo(200 * 3800, 3);
+    }
+  });
+
+  it("Tie: both statement orders split; they differ only by the junction squares the DRAWING gives differently", () => {
+    const [name, a, b] = TIE_REPROS[1]!;
+    const asReported = compile(tieSource(name, a, b), { noCache: true }).scene!;
+    const swapped = compile(tieSource(name, b, a), { noCache: true }).scene!;
+    const hatchesOf = (scene: AnyScene): { extr: number; intr: number } => {
+      const dxf = toDxf(scene);
+      expect(declaredLayers(dxf)).not.toContain("A-WALL");
+      const walls = dxfEntities(dxf).filter(isWallEnt);
+      expect(walls.filter((e) => e.layer === "A-WALL")).toEqual([]);
+      return {
+        extr: hatchArea(walls.filter((e) => e.layer === "A-WALL-EXTR")),
+        intr: hatchArea(walls.filter((e) => e.layer === "A-WALL-INTR")),
+      };
+    };
+    // Not byte-identical, and rightly: across MATERIALS the drawing itself breaks a thickness
+    // tie by statement order (the earlier wall's hatch fills the two 200 x 200 junction
+    // squares), and the DXF files exactly what is drawn. The scene's own fills show it:
+    const drawnArea = (scene: AnyScene, material: string): number => {
+      const node = scene.nodes.find(
+        (n) => n.layer === "wallFill" && n.prim.t === "hatch" && n.prim.material === material,
+      );
+      if (node?.prim.t !== "hatch") throw new Error(`no ${material} fill`);
+      return Math.abs(
+        node.prim.region.reduce((acc, loop) => {
+          let x = 0;
+          for (let i = 0; i < loop.length; i++) {
+            const p = loop[i]!;
+            const q = loop[(i + 1) % loop.length]!;
+            x += p.x * q.y - q.x * p.y;
+          }
+          return acc + x / 2;
+        }, 0),
+      );
+    };
+    const squares = 2 * 200 * 200;
+    expect(drawnArea(asReported, "brick") - drawnArea(swapped, "brick")).toBeCloseTo(squares, 3);
+    const r = hatchesOf(asReported);
+    const s = hatchesOf(swapped);
+    expect(r.intr - s.intr).toBeCloseTo(squares, 3);
+    expect(s.extr - r.extr).toBeCloseTo(squares, 3);
+    expect(r.extr + r.intr).toBeCloseTo(s.extr + s.intr, 3);
+  });
+
   it("a one-class plan's entities are the plain export's, byte for byte, with only the layer renamed", () => {
     const src = `plan "E" {
       wall id=a exterior thickness 200 { (0,0) (6000,0) (6000,4000) (0,4000) close }
@@ -507,10 +598,21 @@ describe("DXF units and wall layers", () => {
     );
   });
 
-  // The partition oracle, over every storey of every shipped example.
-  for (const f of EXAMPLES) {
+  // The partition oracle, over every storey of every shipped example and the two tie repros
+  // in both statement orders. It FAILS if any wall node falls back to A-WALL (the re-join did
+  // not reproduce it), so a fallback is loud, never silent.
+  const CASES: Array<[string, string]> = [
+    ...EXAMPLES.map((f): [string, string] => [f, exampleSrc(f)]),
+    ...TIE_REPROS.flatMap(
+      ([name, a, b]): Array<[string, string]> => [
+        [`${name} (as reported)`, tieSource(name, a, b)],
+        [`${name} (statements swapped)`, tieSource(name, b, a)],
+      ],
+    ),
+  ];
+  for (const [f, src] of CASES) {
     it(`${f}: the wall split re-files the drawn walls and adds nothing`, () => {
-      for (const scene of scenesOf(exampleSrc(f))) {
+      for (const scene of scenesOf(src)) {
         const split = dxfEntities(toDxf(scene));
         const base = dxfEntities(toDxf(plain(scene)));
         // Every wall entity is on exactly one of the two wall layers.
@@ -520,14 +622,15 @@ describe("DXF units and wall layers", () => {
         const sw = split.filter(isWallEnt);
         const bw = base.filter(isWallEnt);
         // The same face length and the same hatched area: a partition of the drawing. The
-        // area is equal up to two honest approximations, hence relative: each boundary vertex
-        // is printed at 4 dp, and a HATCH boundary is a POLYGON, so a curved wall's arc cut
-        // where the class changes is tessellated as two pieces rather than one (aquarium:
-        // ~1e-6 of the hatched area). The face entities carry the arcs exactly, so their
-        // length is held tight.
+        // area is equal up to two honest approximations, hence a relative bound: each boundary
+        // vertex is printed at 4 dp, and a HATCH boundary is a POLYGON, so a curved wall's arc
+        // cut where the class changes is tessellated as two pieces rather than one. Measured
+        // worst case: aquarium, 1.1e-6 of its hatched area; pinned at 2e-6. The exact tiling
+        // (no overlap, no gap, arcs exact) is `test/joinery-split.test.ts`. The face entities
+        // carry the arcs exactly, so their length is held tight.
         expect(faceLength(sw)).toBeCloseTo(faceLength(bw), 6);
-        const area = Math.abs(hatchArea(bw));
-        expect(Math.abs(Math.abs(hatchArea(sw)) - area)).toBeLessThanOrEqual(area * 1e-5);
+        const area = hatchArea(bw);
+        expect(Math.abs(hatchArea(sw) - area)).toBeLessThanOrEqual(area * 2e-6);
         // And every split face LINE lies on a drawn one — it can only be a piece of it.
         const seg = (e: Ent): [number, number, number, number] => [
           groupNum(e, 10),

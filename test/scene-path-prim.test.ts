@@ -132,8 +132,9 @@ describe("the `path` primitive", () => {
     // The two straight edges become two more LINEs than the base drawing has.
     expect(count(toDxf(withPath), "LINE") - count(toDxf(base), "LINE")).toBe(2);
 
-    // A-WALL is the AIA layer for the `wallFace` pass; a curve landing anywhere else
-    // would be invisible to a CAD user who froze the wrong layer. Group 10/20 is the
+    // This node was pushed by hand, so it is not one the scene's walls drew: the DXF writes
+    // it as itself, on its pass's default layer A-WALL (a compiled plan's own wall nodes go
+    // on A-WALL-EXTR/A-WALL-INTR instead — `test/export-dxf.test.ts`). Group 10/20 is the
     // centre (DXF flips Y, so its y comes out negated) and 40 the radius — both the
     // STORED values, never re-derived from the endpoints.
     const dxf = toDxf(withPath);

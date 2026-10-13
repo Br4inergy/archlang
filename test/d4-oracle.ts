@@ -2239,7 +2239,8 @@ export function runBuildingScenes(
  * id-less node by its layer (`scene.<layer>`: `dims` is the `dims auto` chains); each
  * group a multiset of nodes, since paint order across statements is not drawn (the SVG
  * backend emits by layer). Every other scene key (`sizes`, `bounds`, `chrome`, `title`, …)
- * is one key `scene.<key>`. What the two sides differ in by CONSTRUCTION is taken out: on
+ * is one key `scene.<key>`, except the export-only `Scene.walls` list, which is the multiset
+ * `scene.wallList`. What the two sides differ in by CONSTRUCTION is taken out: on
  * the placed side the `g.` prefix (`unprefix`), every `span` carried back onto the
  * source's bytes (`toSource`), and the instance's own zone on a schedule row (`zone: "g"`;
  * an instance is a zone — `t0Normalise` drops the same stamp).
@@ -2261,7 +2262,17 @@ function t0SceneView(scene: Scene, side: { placed: false } | { placed: true; toS
   const view = (side.placed ? unprefix(norm(scene)) : norm(scene)) as Scene;
   const out = new Map<string, string[]>();
   const { nodes, ...rest } = view;
-  for (const [k, v] of Object.entries(rest)) out.set(`scene.${k}`, [stable(v)]);
+  for (const [k, v] of Object.entries(rest)) {
+    // `Scene.walls` is export metadata, not drawing (the DXF wall-layer split). It lists the
+    // walls in STATEMENT order, which placing a storey as a component legitimately changes,
+    // so it is compared as a multiset like a node group — under its own key, so it is never
+    // confused with the drawn wall fabric (`scene.walls`, below).
+    if (k === "walls" && Array.isArray(v)) {
+      out.set("scene.wallList", v.map(stable));
+    } else {
+      out.set(`scene.${k}`, [stable(v)]);
+    }
+  }
   for (const n of nodes) {
     const key =
       n.elementId !== undefined
