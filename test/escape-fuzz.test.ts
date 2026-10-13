@@ -287,6 +287,13 @@ const INJECTION_SITES: Record<string, (p: string) => string> = {
     `plan "P" { ${WALL} room id=r at (0,0) size 6000x4000 label "Room"\n furniture widget at (1000,1000) size 1200x600 label "${lit(p)}" }`,
   dimText: (p) => `plan "P" { ${WALL} dim (0,-100)->(6000,-100) offset 600 text "${lit(p)}" }`,
   titleBlock: (p) => `plan "P" { title { project "${lit(p)}" drawn_by "${lit(p)}" date "${lit(p)}" } ${WALL} }`,
+  titleNumberRevision: (p) => `plan "P" { title { number "${lit(p)}" revision "${lit(p)}" } ${WALL} }`,
+  // A note is wrapped into lines before it is drawn, so a payload can be cut mid-markup —
+  // each piece must still reach the SVG escaped.
+  notes: (p) => `plan "P" { notes "${lit(p)}" "${lit(p)}${lit(p)}" ${WALL} }`,
+  // The DOOR & WINDOW SCHEDULE prints room names, clipped to their column.
+  openingRooms: (p) =>
+    `plan "P" { schedule openings ${WALL} room id=r at (0,0) size 6000x4000 label "${lit(p)}"\n door on w at 1000 width 900 }`,
   accMetadata: (p) => `plan "P" { accTitle "${lit(p)}" accDescr "${lit(p)}" ${WALL} }`,
   themeValue: (p) => `plan "P" { theme { wall: "${lit(p)}" font: "${lit(p)}" } ${WALL} }`,
   interpolated: (p) => `plan "P" { let bad = "${lit(p)}" ${WALL} room id=r at (0,0) size 6000x4000 label "N: {bad}" }`,

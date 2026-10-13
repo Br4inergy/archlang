@@ -26,6 +26,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { compile, lint } from "../src/index.js";
 
 const EXAMPLES_TS = "playground/src/examples.ts";
 const GEN_STATIC = "playground/scripts/gen-static.mjs";
@@ -261,5 +262,21 @@ describe("the static page generator reads this table, and nothing else hand-list
     expect(gen).toMatch(/allRoomsReachable/);
     expect(gen).toMatch(/hasEntrance/);
     expect(gen).toMatch(/every room is reachable from the entrance/);
+  });
+});
+
+describe("the plan a first visit opens", () => {
+  // `EXAMPLE_ROWS[0]` is `DEFAULT_EXAMPLE`: the first thing a visitor and an agent see. It
+  // must open clean, or the front door greets them with warnings. The playground cannot be
+  // imported here (`?raw` imports), so the row is parsed exactly as the other tests do.
+  const first = readRows()[0]!;
+  const source = readFileSync(join("examples", `${first.name}.arch`), "utf8");
+
+  it("compiles with no diagnostics", () => {
+    expect(compile(source, { noCache: true }).diagnostics, `${first.name} (row 0)`).toEqual([]);
+  });
+
+  it("lints clean under the default profile", () => {
+    expect(lint(source), `${first.name} (row 0)`).toEqual([]);
   });
 });

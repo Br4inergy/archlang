@@ -20,7 +20,7 @@ reproducible.** Open source (MIT). Zero-dependency, and built so an
 ## Use it from your coding agent
 
 ```bash
-npx skills add ChanMeng666/archlang                      # the ArchLang skill, for any agent that reads skills
+npx skills add ChanMeng666/archlang                      # the ArchLang skills, for any agent that reads skills
 claude mcp add archlang -- npx -y @chanmeng666/archlang-mcp   # or the MCP server (Claude Code shown)
 /plugin marketplace add ChanMeng666/archlang                # or, inside Claude Code: the skills + MCP server as one plugin (plugins/archlang)
 /plugin install archlang@archlang
@@ -113,7 +113,7 @@ plan "Laneway House" {
 <img src="../examples/laneway-house.svg" alt="The floor plan the program above compiles to — click to open it in the live playground" width="620" />
 </a>
 
-**↑ `arch compile laneway-house.arch` — that program, rendered.** The walls join and hatch
+**↑ `archlang compile laneway-house.arch` — that program, rendered.** The walls join and hatch
 themselves, the hinged doors draw their own swing arcs, the sliding and pocket leaves draw panels
 instead (a pocket door has no arc, because it has no swing), and `dims auto all` measures the
 building it was given.
@@ -161,8 +161,8 @@ ArchLang generates a **program**, and then lets you interrogate it as **facts**:
 | Output | pixels | a `.arch` program → SVG / DXF / PDF / PNG / TXT |
 | Edit "widen the bedroom" | re-roll the whole image | change one number |
 | Same input twice | different image | **byte-identical** output |
-| "Is the bath reachable?" | look at it and guess | `arch describe --json` → access graph |
-| "Does it match the brief?" | eyeball it | `arch validate --intent` → exit code |
+| "Is the bath reachable?" | look at it and guess | `archlang describe --json` → access graph |
+| "Does it match the brief?" | eyeball it | `archlang validate --intent` → exit code |
 | Wrong syntax | — | **errors returned as data, each carrying its own `fix`** |
 
 That last row is the whole design: **`compile()` never throws.** It *returns* `diagnostics` with byte
@@ -175,14 +175,14 @@ rendering an image at all** — which is what makes ArchLang cheap to drive from
 
 ```mermaid
 flowchart TD
-    B([Brief]) --> S["<b>arch context</b> — the whole language, one call"]
+    B([Brief]) --> S["<b>archlang context</b> — the whole language, one call"]
     S --> W["Write <b>.arch</b>"]
-    W --> C{"<b>arch compile --json</b>"}
-    C -->|"ok: false"| F["<b>arch fix</b><br/><i>each diagnostic carries its own fix</i>"]
+    W --> C{"<b>archlang compile --json</b>"}
+    C -->|"ok: false"| F["<b>archlang fix</b><br/><i>each diagnostic carries its own fix</i>"]
     F --> C
-    C -->|"ok: true"| D["<b>arch describe --json</b><br/><i>rooms · areas · adjacency · access graph</i>"]
-    D --> V{"<b>arch validate --intent</b><br/><i>does it meet the brief?</i>"}
-    V -->|"no"| G["<b>arch suggest</b><br/><i>candidate door / window statements</i>"]
+    C -->|"ok: true"| D["<b>archlang describe --json</b><br/><i>rooms · areas · adjacency · access graph</i>"]
+    D --> V{"<b>archlang validate --intent</b><br/><i>does it meet the brief?</i>"}
+    V -->|"no"| G["<b>archlang suggest</b><br/><i>candidate door / window statements</i>"]
     G --> W
     V -->|"yes"| O([SVG · DXF · PDF · PNG])
 
@@ -195,37 +195,39 @@ flowchart TD
     style G fill:#fdecea,stroke:#b3261e,color:#1a1a1a
 ```
 
-**Cold start in one command.** `arch context` prints the entire agent context — language spec,
+**Cold start in one command.** `archlang context` prints the entire agent context — language spec,
 workflow skill, CLI reference and every diagnostic code — as one system-prompt-ready document (the
-same [`llms-full.txt`](https://archlang.uk/llms-full.txt) the docs site serves).
+same [`llms-full.txt`](https://archlang.uk/llms-full.txt) the docs site serves). After
+`npm i -g @chanmeng666/archlang` the command is `archlang <cmd>`; never a bare `arch`, which is the
+coreutils command on Linux, macOS and Git Bash.
 
 ```bash
-npx @chanmeng666/archlang context                       # EVERYTHING: spec + skill + CLI + error catalog
-npx @chanmeng666/archlang context --section errors      # …or one section of it (the catalog alone: 60 KB → 13 KB)
-npx @chanmeng666/archlang spec                          # just the language, one page (~2k tokens)
-npx @chanmeng666/archlang help describe                 # one command, with worked examples
-npx @chanmeng666/archlang compile plan.arch --json      # render → { ok, diagnostics, summary }
-npx @chanmeng666/archlang fix plan.arch --dry-run       # the exact unified diff it would write, applying nothing
-npx @chanmeng666/archlang describe plan.arch --json     # VERIFY, without an image
-npx @chanmeng666/archlang validate plan.arch --strict   # the ship gate
+npx -y @chanmeng666/archlang context                       # EVERYTHING: spec + skill + CLI + error catalog
+npx -y @chanmeng666/archlang context --section errors      # …or one section of it (about 109 KB in all; the catalog alone is about 32 KB)
+npx -y @chanmeng666/archlang spec                          # just the language, one page
+npx -y @chanmeng666/archlang help describe                 # one command, with worked examples
+npx -y @chanmeng666/archlang compile plan.arch --json      # render → { ok, diagnostics, summary }
+npx -y @chanmeng666/archlang fix plan.arch --dry-run       # the exact unified diff it would write, applying nothing
+npx -y @chanmeng666/archlang describe plan.arch --json     # VERIFY, without an image
+npx -y @chanmeng666/archlang validate plan.arch --strict   # the ship gate
 ```
 
 Every command takes `--json` (result on stdout, messages on stderr) with deterministic exit codes
-(`0` ok · `2` user-source error · `1` IO · `3` usage) — and a typo *earns* that `3`: `arch lint
+(`0` ok · `2` user-source error · `1` IO · `3` usage) — and a typo *earns* that `3`: `archlang lint
 --jsn` exits 3 with `did you mean --json?` rather than quietly reading `--jsn` as a filename, and
-`arch comple` suggests `compile`.
+`archlang comple` suggests `compile`.
 
-**One manifest, no drift.** The per-command help (`arch <cmd> --help`), the flag parser, and the
+**One manifest, no drift.** The per-command help (`archlang <cmd> --help`), the flag parser, and the
 generated **[CLI reference](https://archlang.uk/cli)** are all rendered from the same
-manifest — which is why they cannot advertise a flag a command doesn't take. `arch manifest --json`
-is that manifest as data, and `arch <cmd> --help` is the cheap way to read one row of it.
+manifest — which is why they cannot advertise a flag a command doesn't take. `archlang manifest --json`
+is that manifest as data, and `archlang <cmd> --help` is the cheap way to read one row of it.
 
 Reads are bounded, so a big plan can't flood a context window: `describe --select`/`--room`,
 `lint|validate --code`/`--severity`, `context --section`. Filtering what you *read* never changes
-what *gates* — the exit code always weighs every diagnostic. And because `arch fix` rewrites your
+what *gates* — the exit code always weighs every diagnostic. And because `archlang fix` rewrites your
 source, it prints the unified diff first and takes `--backup`.
 
-See [`SKILL.md`](../SKILL.md).
+See [`skills/archlang/SKILL.md`](../skills/archlang/SKILL.md).
 
 <details>
 <summary><b>Machine-native artifacts</b> — Plan JSON, a GBNF grammar, an intent schema, and an optional MCP server</summary>
@@ -234,10 +236,10 @@ See [`SKILL.md`](../SKILL.md).
 
 | Artifact | Use |
 |---|---|
-| [`/plan.schema.json`](https://archlang.uk/plan.schema.json) | Emit structured JSON, compile it with `arch compile --from-json` |
+| [`/plan.schema.json`](https://archlang.uk/plan.schema.json) | Emit structured JSON, compile it with `archlang compile --from-json` |
 | [`/archlang.gbnf`](https://archlang.uk/archlang.gbnf) | Constrain a local model to parseable output |
 | [`/intent.schema.json`](https://archlang.uk/intent.schema.json) | Write the brief down as a contract; gate on it with `validate --intent` |
-| [`/llms-full.txt`](https://archlang.uk/llms-full.txt) | The whole context bundle (`arch context`) |
+| [`/llms-full.txt`](https://archlang.uk/llms-full.txt) | The whole context bundle (`archlang context`) |
 
 **MCP server (optional).** [`@chanmeng666/archlang-mcp`](../packages/mcp) is a stdio Model Context
 Protocol shim over the library, listed on the official registry as `io.github.ChanMeng666/archlang-mcp`:
@@ -281,7 +283,7 @@ well or an atrium on the floor plate. And `dims auto` synthesizes the dimension 
 
 <br/>
 
-`arch lint` encodes tacit professional knowledge: a bathroom reachable only *through* a bedroom, a
+`archlang lint` encodes tacit professional knowledge: a bathroom reachable only *through* a bedroom, a
 wet room that isn't fully walled in, a door whose swing hits furniture or another door, a windowless
 bedroom, an unenterable room, a too-narrow door, a bath/kitchen with no fixtures, and a room whose use
 was merely *inferred* from an indirect label (`W_ALIAS_MATCH` — with a fix that pins the explicit
@@ -294,14 +296,14 @@ was merely *inferred* from an indirect label (`W_ALIAS_MATCH` — with a fix tha
 
 <br/>
 
-`arch describe` runs a clearance-eroded nav grid: per-room walk distance, the **narrowest pinch on
+`archlang describe` runs a clearance-eroded nav grid: per-room walk distance, the **narrowest pinch on
 the way in**, and how circuitous the route is — with advisory lint for a too-tight
 (`W_PATH_TOO_NARROW`) or roundabout (`W_CIRCUITOUS_PATH`) walk, and an opt-in
-`arch compile --overlay circulation` that draws the routes on top of the plan.
+`archlang compile --overlay circulation` that draws the routes on top of the plan.
 
 **Facts and advice — never an invisible auto-arranger** ([ADR 0005](../docs/adr/0005-no-invisible-architect.md)).
-`arch repair` is the one *explicit* corrector: it pushes furniture out of walls, doorways and swing
-arcs, and emits a change log you review. `arch finish` is the explicit completion step: it
+`archlang repair` is the one *explicit* corrector: it pushes furniture out of walls, doorways and swing
+arcs, and emits a change log you review. `archlang finish` is the explicit completion step: it
 furnishes the rooms that hold no furniture
 ([ADR 0025](../docs/adr/0025-furnish-as-explicit-transform.md)), then adds the `paper`, `scale`,
 `dims auto`, `title`, `schedule rooms` and `legend` a plan lacks
@@ -316,7 +318,7 @@ furnishes the rooms that hold no furniture
 
 `compile()` **never throws** on bad source — it *returns* `diagnostics` with byte spans, a catalogued
 `E_*`/`W_*` code, and a `fix`. Where the edit is mechanical, the diagnostic also carries applicable
-`fixes` that `arch fix` applies for you. `--error-svg` even turns a plan that *won't* compile into a
+`fixes` that `archlang fix` applies for you. `--error-svg` even turns a plan that *won't* compile into a
 self-describing error card an agent can look at.
 
 </details>
@@ -340,7 +342,7 @@ suffixes (`4m` / `40cm` / `20mm`) fold exactly to millimetres at lex time.
 
 **SVG**, **DXF** and a **TXT** ASCII plan with zero dependencies; **PDF** (vector, selectable text)
 and **PNG** (deterministic raster) via optional, lazily-loaded add-ons the default install never
-pulls. `arch compile --accessible` stamps the SVG with `<title>`/`<desc>` + `role="img"`
+pulls. `archlang compile --accessible` stamps the SVG with `<title>`/`<desc>` + `role="img"`
 (`--acc-id-prefix` renames those ids, so several plans can share one page). Add the
 library's `annotate` beside it — `compile(src, { annotate: true, accessible: true })`, an
 option the CLI does not expose — and every room, opening and fixture becomes a named,
@@ -350,8 +352,8 @@ read-only render — is in
 [the language reference](../docs/language-reference.md#keyboard-and-screen-reader-operability-annotate--accessible),
 with the known screen-reader limitations beside it.
 
-A full **LSP** (hover, completion, go-to-definition, rename, signature help), an `arch fmt`
-formatter, an `arch explain <CODE>` catalog, a self-documenting CLI (`arch <cmd> --help`, rendered
+A full **LSP** (hover, completion, go-to-definition, rename, signature help), an `archlang fmt`
+formatter, an `archlang explain <CODE>` catalog, a self-documenting CLI (`archlang <cmd> --help`, rendered
 from the manifest, worked examples included), and a
 [VS Code extension](https://marketplace.visualstudio.com/items?itemName=ChanMeng.archlang).
 
@@ -360,8 +362,8 @@ from the manifest, worked examples included), and a
 ## 🚀 Quick start
 
 ```bash
-npx @chanmeng666/archlang new -o plan.arch          # scaffold a starter plan
-npx @chanmeng666/archlang compile plan.arch -o plan.svg
+npx -y @chanmeng666/archlang new -o plan.arch          # scaffold a starter plan
+npx -y @chanmeng666/archlang compile plan.arch -o plan.svg
 ```
 
 Or install it:
@@ -420,7 +422,7 @@ name for the source.
 nook and an L-shaped master suite, a bowed arc bay, all five door kinds, a shared stair shaft, a
 void over the double-height living room, a roof overhang, and a mirrored pair of ensuite bathrooms
 composed from one `component`. Every room is reachable, every doorway clears, and the three
-warnings `arch lint` still raises are left in on purpose and explained in the source.
+warnings `archlang lint` still raises are left in on purpose and explained in the source.
 
 <div align="center">
 
@@ -602,7 +604,7 @@ four times), Bag End, de_dust2, The Skeld, 742 Evergreen Terrace, the Dunder Mif
 is a few dozen lines of source you can open in the playground and recompile.
 
 They are worth a look for what the compiler *says* about them as much as for the drawings:
-`arch lint` reports a real `W_NO_ENTRANCE` on de_dust2 — a quarter century of continuous occupancy,
+`archlang lint` reports a real `W_NO_ENTRANCE` on de_dust2 — a quarter century of continuous occupancy,
 achieved entirely by spawning — and it reviews a $2,950-a-month railroad apartment in twelve
 warnings across nine codes.
 
@@ -701,8 +703,8 @@ compact editor that re-renders as you type) and `theme=blueprint|dark|mono|prese
 
 - **[📖 Docs site](https://archlang.uk)** — guide, reference, error catalog, ADRs, and a **live, editable** examples gallery. Every ` ```arch ` fence on a docs page is itself an editable plan.
 - **[⌨ CLI reference](https://archlang.uk/cli)** — every command, flag and exit code (generated from the manifest, so it can't fall behind).
-- **[spec.llm.md](../spec.llm.md)** — the **whole language in one page** (~2k tokens) for AI agents; also `arch spec`.
-- **[SKILL.md](../SKILL.md)** — the agent Skill: the `spec → compile → fix → describe → validate` loop.
+- **[spec.llm.md](../spec.llm.md)** — the **whole language in one page** for AI agents; also `archlang spec`.
+- **[SKILL.md](../skills/archlang/SKILL.md)** — the agent Skill: the `spec → compile → fix → describe → validate` loop.
 - **[Language Reference](../docs/language-reference.md)** · **[Error catalog](../docs/error-codes.md)** · **[The intent contract](../docs/intent.md)** · **[ADRs](../docs/adr)**
 - **[AGENTS.md](../AGENTS.md)** — orientation for AI agents working *in* this repo.
 - **[Release notes](https://github.com/ChanMeng666/archlang/blob/main/CHANGELOG.md)** — every version, including what changes for code that embeds or parses the output. Installed, they are at `node_modules/@chanmeng666/archlang/CHANGELOG.md`; each tag's section is also its [GitHub Release](https://github.com/ChanMeng666/archlang/releases).

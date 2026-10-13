@@ -597,8 +597,13 @@ export function summaryFacts(
     s.rooms.map((r) => r.id),
   );
   for (const [k, r] of keyed(s.rooms, (r) => r.id)) {
-    const { bbox, floor_polygon, floor_circle, ...rest } = r;
+    const { bbox, floor_polygon, floor_circle, net_area_m2, ...rest } = r;
     inv(`rooms[${k}]`, rest);
+    // NET area is its own fact so a violation names it: an inset of the room by its walls'
+    // half-thicknesses, it is an area and must not move under any element of the group (a
+    // slab sweep along x on P₀ is one along y on a turned gP, so this is a real cross-check
+    // of `analyze/net-area.ts`, not a restatement of it).
+    inv(`rooms[${k}].net_area_m2`, net_area_m2);
     f.set(`rooms[${k}].bbox`, { kind: "rect", value: bbox });
     f.set(`rooms[${k}].floor_polygon`, { kind: "ring", value: floor_polygon });
     f.set(`rooms[${k}].floor_circle`, { kind: "circle", value: floor_circle ?? null });
@@ -669,7 +674,11 @@ export function summaryFacts(
   inv("fences", s.fences ?? null);
   inv("heights", s.heights ?? null);
   inv("access", s.access);
-  inv("totals", s.totals);
+  {
+    const { net_floor_area_m2, ...totals } = s.totals;
+    inv("totals", totals);
+    inv("totals.net_floor_area_m2", net_floor_area_m2);
+  }
   inv("input_graph", s.input_graph);
   inv("freedom", s.freedom);
   inv("schedule", s.schedule ?? null);
@@ -2239,7 +2248,8 @@ export function runBuildingScenes(
  * id-less node by its layer (`scene.<layer>`: `dims` is the `dims auto` chains); each
  * group a multiset of nodes, since paint order across statements is not drawn (the SVG
  * backend emits by layer). Every other scene key (`sizes`, `bounds`, `chrome`, `title`, …)
- * is one key `scene.<key>`. What the two sides differ in by CONSTRUCTION is taken out: on
+ * is one key `scene.<key>`, except the export-only `Scene.walls` list, which is the multiset
+ * `scene.wallList`. What the two sides differ in by CONSTRUCTION is taken out: on
  * the placed side the `g.` prefix (`unprefix`), every `span` carried back onto the
  * source's bytes (`toSource`), and the instance's own zone on a schedule row (`zone: "g"`;
  * an instance is a zone — `t0Normalise` drops the same stamp).
@@ -2261,7 +2271,17 @@ function t0SceneView(scene: Scene, side: { placed: false } | { placed: true; toS
   const view = (side.placed ? unprefix(norm(scene)) : norm(scene)) as Scene;
   const out = new Map<string, string[]>();
   const { nodes, ...rest } = view;
-  for (const [k, v] of Object.entries(rest)) out.set(`scene.${k}`, [stable(v)]);
+  for (const [k, v] of Object.entries(rest)) {
+    // `Scene.walls` is export metadata, not drawing (the DXF wall-layer split). It lists the
+    // walls in STATEMENT order, which placing a storey as a component legitimately changes,
+    // so it is compared as a multiset like a node group — under its own key, so it is never
+    // confused with the drawn wall fabric (`scene.walls`, below).
+    if (k === "walls" && Array.isArray(v)) {
+      out.set("scene.wallList", v.map(stable));
+    } else {
+      out.set(`scene.${k}`, [stable(v)]);
+    }
+  }
   for (const n of nodes) {
     const key =
       n.elementId !== undefined

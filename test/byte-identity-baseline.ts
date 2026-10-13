@@ -45,6 +45,11 @@
  *   1. the compiler changed — the SVG moves too, or a non-`span` field moves. Investigate.
  *   2. a shipped example's SOURCE BYTES moved above a diagnostic. The SVG is byte-identical
  *      and the ONLY delta is a uniform shift of every span by the byte count added.
+ *   3. a deliberate change to a diagnostic's TEXT — the `message`/`hints` an agent reads to
+ *      repair the plan, or a duplicate report of one defect withdrawn. Every storey's SVG,
+ *      `describe()` and `compile().diagnostics` are byte-identical, and putting the OLD
+ *      `lint()` back into the NEW payload reproduces the old hash; only the rows of plans that
+ *      raise a re-worded code move, each named with its reason in the commit and below.
  *
  * Check (2) by diffing the two `lint()` payloads field by field; if the shift is not uniform, it is case (1) wearing case
  * (2)'s clothes. Only `hillside-villa` was affected here, because it is the one example
@@ -785,40 +790,235 @@
  * Outside this table, five `eval/fidelity-plans` rows keep their `W_BATH_VIA_BEDROOM` — each
  * plan's only wet room is behind a bedroom — with a reworded hint
  * (`test/import-module-lets.test.ts`).
+ *
+ * ## `sheet-notes`: a row ADDED with a new example, nothing re-measured
+ *
+ * `examples/sheet-notes.arch` arrived with the issued-sheet statements (`notes`, the title
+ * block's `number`/`revision`). Its two rows were measured with this file's own digest
+ * bodies on the branch that added it, when the example first existed; no other row moved
+ * (the law suites and a per-payload sweep of the whole corpus, before against after, agree).
+ * The next commit on that branch extended the example with `schedule openings` (tags + the
+ * DOOR & WINDOW SCHEDULE), a fourth note and two comments, and re-measured only its
+ * whole-surface row: the SUMMARY row (`a26a55ae…`) is byte-identical before and after, so
+ * `describe()` and `lint()` did not move and the change is in the drawing alone. A third
+ * commit (the review fixes: NOTES wrap to a fixed column, tags avoid neighbouring openings)
+ * re-measured that whole-surface row once more — its first note now draws on two lines — and
+ * the SUMMARY row held again (`a26a55ae…`). Still no other row moved.
+ *
+ * ## `hillside-villa`: both rows re-measured — `W_PATH_TOO_NARROW` names the door, once
+ *
+ * Case (3), a diagnostic-text change, in `lint()` only (`test/lint-fix-texts.test.ts`). When
+ * doors set a room's bottleneck, the message names every door on its widest door path that is
+ * exactly that narrow and the hint gives the `width` that clears the minimum for each; one
+ * bottleneck opening is reported once. Field by field, on level 2: the three "Ensuite" walks
+ * gain `— the bottleneck is door …` naming `d_en2_corr`, `d_en3_corr` and `d_enm` (the doors
+ * off the landing and the Master Suite; each 700 mm, 640 clear), and their hints become
+ * "Widen door … to `width 800`" (on `grid 100`); the route "Master Suite" → "Ensuite" (span
+ * 13174, 640 mm, through `d_enm`, already named) is withdrawn. "Bedroom 2"/"Bedroom 3" (640 mm
+ * behind 900 mm doors: furniture, so no door is named) and both `W_ROOM_NOT_EQUATOR_FACING`
+ * are byte-identical. `lint()` 8 → 7 diagnostics. Measured twice: first when the room's own
+ * widest connector was the test (`d_en2` and `d_en2_corr` both named), then again when the
+ * red team showed doors in series name the wrong door and the test became the widest door path
+ * from the entrance (one canonical path, so one door per en-suite), and a third time when every
+ * attribution became re-measured before it is quoted (the three named doors held; only their
+ * hints changed, "which lets the walk clear the 700 mm minimum"). Each time, hashing the NEW
+ * compile + `describe()` with the PREVIOUS `lint()` reproduced the previous rows (and
+ * `while-byte-identity-baseline.ts`'s). Swept over 282 corpus plans (every storey; SVG,
+ * `describe()`, diagnostics, both `lint()` profiles): no SVG, `describe()` or diagnostics
+ * payload moved, and every `lint()` move was a carded text, `arch repair` → `archlang repair`
+ * in a door hint, or a withdrawn duplicate `W_PATH_TOO_NARROW`; none other in this table.
+ *
+ * ## Sixteen whole-surface rows re-measured: thickness call-outs keep off doorways and fixtures
+ *
+ * Case (1), the compiler changed, in the drawing only. A `dims auto all`/`walls` thickness
+ * call-out was taken at the middle of the widest run of its wall clear of crossing WALLS
+ * (`thicknessStation`, `src/scene-build.ts`), so the number was written in doorways and over
+ * fixtures: 33 call-outs over the shipped examples sat in an opening on their own wall or on a
+ * furniture footprint (`test/dim-thickness-callout.test.ts` names each on the old tree). The
+ * station is now chosen in tiers: the wall-clear station is KEPT when it is also at least a
+ * cap height clear of every opening on the wall line and every footprint reaching the
+ * number's band on its side; otherwise the widest run clear of all three; otherwise (none
+ * exists) the wall-clear station, so a number never trades poché for a clear doorway. So
+ * only a call-out that stood in or against an opening or a fixture moves; "edge on the jamb"
+ * below is one whose number touched the jamb, inside the cap-height clearance. Field by
+ * field, every changed SVG node is a thickness call-out (its `<text>` and three `<line>`s: the
+ * dim line and two ticks) or a room label (name + area `<text>`) that `relocateLabels`
+ * re-placed because the call-out it steers around moved. Every storey of every row:
+ * `describe()`, both `lint()` profiles and `compile().diagnostics` byte-identical, and the OLD
+ * SVG put back into the NEW payload reproduces each old row, in every table that pins it
+ * (here, `while-byte-identity-baseline.ts`, `import-module-lets.test.ts`, `outdoor-`,
+ * `roof-void-` and `garage-byte-identity.test.ts`). The `SEMANTIC_BASELINE` rows did not move.
+ * Swept over 281 corpus plans (every storey; SVG, diagnostics, `describe()`, both `lint()`
+ * profiles, the circulation overlay), after a planted one-millimetre station shift was caught
+ * on every plan that draws a call-out: 33 plans moved, SVG and overlay only. Each moved
+ * call-out, value, along-wall coordinate old → new, and what it cleared:
+ *
+ *     - `aquarium`: "300" x 10525 → 30000, out of window_3.
+ *     - `bungalow`: "100" x 4500 → 6575, out of o_living; label "Living / Dining" x 2100 → 3000.
+ *     - `clinic`: "100" x 6750 → 2975, out of o_entry; "200" x 4525 → 7475, out of window_7.
+ *     - `courtyard-house`: "150" y 6000 → 4600, out of d_study; "300" x 6250 → 1800, out of
+ *       n_living and off sofa_1; "100" y 4775 → 6575, edge on d_bath's jamb; "200" x 7025 →
+ *       14200, edge on d_court_l's jamb; label "Living" x 5425 → 6250 (where it sits with no
+ *       call-out drawn).
+ *     - `gallery-l`: "200" y 10975 → 9250, out of the opening `inner`.
+ *     - `garden-loft`: "100" y 1625 → 2575, out of d_bed; "200" x 2125 → 3725, out of window_2.
+ *     - `hillside-villa` level 1: "100" x 11850 → 10750, out of d_pantry; "300" x 6000 → 12950,
+ *       out of d_front. Level 2: "100" x 2050 → 3200, out of d_bed2; "300" x 2050 → 6900, off
+ *       bed_1.
+ *     - `laneway-house`: "200" x 2125 → 5375, out of d_front.
+ *     - `library`: "200" y 4025 → 11250, out of o_ref_stacks.
+ *     - `materials`: "150" x 13980 → 12537.5, off f_rug; "200" y 4000 → 7650, out of win_w;
+ *       "230" y 1537.5 → 4825, out of win_o and off f_rug; "300" x 6025 → 3900, out of win_n2.
+ *     - `museum-wing`: "200" and "300" x 9000 → 5050, out of o2 and w2.
+ *     - `museum-wings`: "200" and "300" x 9000 → 5050, out of west.o2 and west.w2.
+ *     - `museum`: "200" x 39000 → 20200, out of opening_3; "300" x 39000 → 20450, out of
+ *       window_2.
+ *     - `townhouse` level 1: "200" y 2350 → 3650, out of d_living; label "Hall" y 3465 → 2415
+ *       (the new "200" stands where it was). Level 2: "100" x 1625 → 2275, off bathtub_3.
+ *       Level 3: no move (its SVG is byte-identical; the row moves for levels 1–2).
+ *     - `transit-hall`: "200" y 23750 → 19425, out of o_shop2; "300" x 44000 → 62850, out of
+ *       opening_7.
+ *     - `two-storey` level 1: "100" y 1825 → 2900, out of d_living; "200" x 5075 → 1125, out of
+ *       w_living. Level 2: "100" y 1825 → 5775, out of d_bed1; "200" x 5075 → 6825, out of
+ *       w_bed1.
+ *
+ * Outside this table the same change moves, for the same reason and the drawing only:
+ * `test/fixtures/axes-grid` and `schedule-sheet`, the `test/recovery-corpus/` copies of
+ * `clinic`, `materials` and `two-storey`, `eval/goldens/dims-auto-cottage`, nine
+ * `docs/gallery/*.arch` (all but `narrow-plot`) and the `docs/overview.md` fence. Each PNG
+ * golden's changed pixels lie in the boxes around the old and new call-out (and moved label)
+ * positions.
+ *
+ * ## `sheet-notes`'s whole-surface row re-measured when the call-out change met it
+ *
+ * The call-out change above was measured on a tree without `sheet-notes`; the example came
+ * with the issued-sheet statements on the other branch. Merged, it is the same case (1) on one
+ * more plan, the drawing only: "100" on `w_mid` y 1525 → 2450, out of d_bed; "200" on `shell`
+ * x 2525 → 3975, out of d_front. Those two call-outs (a `<text>` and three `<line>`s each) are
+ * the only changed SVG nodes; its door and window tags, NOTES and both schedules are
+ * byte-identical. Its `describe()`, `lint()` and `compile().diagnostics` did not move, so the
+ * `SEMANTIC_BASELINE` row holds (`a26a55ae…`), and the OLD SVG put back into the NEW payload
+ * reproduces the old rows here (`cd9df889…`) and in `while-byte-identity-baseline.ts` and
+ * `import-module-lets.test.ts` (`365c38ef…`). The new stations are the call-out change's own:
+ * the plan with its `notes`, `schedule openings` and title `number`/`revision` removed draws
+ * both call-outs at the same coordinates on the call-out branch's tree, which has none of the
+ * issued-sheet code. Its PNG golden's changed pixels lie in the boxes around the old and new
+ * call-outs.
+ *
+ * ## EVERY row re-measured, once: `describe()` gains net internal area (owner decision 2)
+ *
+ * The reason, in one line: **`describe()` gains `net_area_m2` / `totals.net_floor_area_m2`;
+ * SVG and lint unchanged except room schedules.** The owner decided (agent-reach decision 2,
+ * 2026-10-13) that `describe()` gains an APPENDED field: every room's `net_area_m2` (its
+ * shape inset by half of each bounding wall's thickness, `docs/adr/0027-net-internal-area.md`),
+ * `totals.net_floor_area_m2`, and on a `schedule rooms` plan each `schedule` row's
+ * `net_area_m2`. `area_m2` and every other field are unchanged. Every row in both tables
+ * carries `describe()`, so every row moved, and all were re-measured in ONE commit with the
+ * tests' own digest bodies; no row was blessed alone.
+ *
+ * Proved by a HYBRID run of the law files themselves, unedited, with `../src/index.js`
+ * aliased to a shim. (A) `describe()` from the pre-change tree (`1eb1bf9`), `compile()` and
+ * `lint()` from the new one: every `SEMANTIC_BASELINE` row reproduces its OLD pin, and so does
+ * every `BASELINE` row except the twelve plans that set `schedule rooms` (`aquarium`,
+ * `bungalow`, `clinic`, `courtyard-house`, `furnished-flat`, `garden-house`,
+ * `hillside-villa`, `library`, `materials`, `museum-wings`, `sheet-notes`, `transit-hall`).
+ * (B) `compile()` too from the pre-change tree: those twelve reproduce as well, and so does
+ * every row of every law file, so `lint()` moved nowhere. (C) The same alias with nothing
+ * old fails every row, so the run can fail. On the twelve, `compile().diagnostics` is
+ * byte-identical and the SVG moves by the ROOM SCHEDULE's appended NET AREA column only: the
+ * frame and the full-width row rules widen by the column, and a column rule, the
+ * `NET AREA (m²)` heading, one cell per room and the subtotal and TOTAL cells are added.
+ * Every cell the table drew before is byte-identical, and a legend, door & window schedule or
+ * notes table to its right shifts right by the column's width. No page size moved.
+ *
+ * Then the AREA column took the owner's label, `AREA (CENTRELINE, m²)` (decision 2 names the
+ * columns "Area (centreline)" and "Net area"), and widened to hold it. The same twelve
+ * whole-surface rows were re-measured again, and ONLY them: run against the tables above,
+ * the heading change fails exactly the rows of the schedule plans that the net column moved
+ * (the identical set, checked), and every `SEMANTIC_BASELINE` row holds, so `describe()` and
+ * `lint()` did not move. In the drawing the NO. and NAME cells keep their place; the AREA
+ * cells, TOTAL and SUBTOTALs move right by the column's growth, and NET AREA with them.
+ *
+ * ## Six plans re-measured again: net area became "room less every wall band on it"
+ *
+ * The first definition inset only an edge with a wall centreline ON it, so a wall standing on
+ * a floor any other way was not subtracted: `hexagon-pavilion`'s 1200 mm drum is tangent to
+ * all six wedge galleries and its outer half-band (r 3000..3600) lies on each of them. Net
+ * area is now the room's area less the area of every wall band inside it, each band as the
+ * drawing draws it (`wallBand()`: faces, square caps at a free end, mitres, true arcs),
+ * computed in closed form (ADR 0027). Field by field, `describe()` moves only in
+ * `net_area_m2` and `totals.net_floor_area_m2`, and only where a band stands on a floor that
+ * the inset missed:
+ *
+ *   - `hexagon-pavilion`: g_ne/g_nw/g_sw/g_se 15.09 → 13.55, g_n/g_s 11.97 → 10.52 (the drum's
+ *     half-band, ~1.5 m² each); total 102.4 → 93.34. The rotunda holds at 18.1.
+ *   - `tiny-house`: r_main 13.39 → 13.13, total 17.42 → 17.16 (the wardrobe partitions
+ *     `w_ward`/`w_ward_e` stand inside the room).
+ *   - `aquarium`: concourse 467.45 → 467.17, cafe 163.7 → 162.56, total 1975.04 → 1973.62 (the
+ *     curved shell's band crosses the facets the two polygons were snapped to).
+ *   - `hillside-villa` (ground storey): r_living 26.58 → 26.54 (the bay's band at its chord
+ *     ends), r_dining 17.45 → 17.44 (a thicker wall's square cap past a thinner one on the
+ *     same edge); total 177.03 → 176.98.
+ *   - `materials`: r_shop 91.18 → 91.17 and `townhouse` (all three storeys): r_kitchen,
+ *     r_bed2, r_master 17.15 → 17.14 — a wall's square cap where it ends on the room's edge.
+ *
+ * Proved by the same hybrid: with `describe()` from `7d9cda8` and `compile()`/`lint()` new,
+ * every row reproduces its pin except the SUMMARY rows of those six plans and the
+ * whole-surface rows of the three that set `schedule rooms` (`aquarium`, `hillside-villa`,
+ * `materials`), whose drawn NET AREA cells change to the numbers above and nothing else;
+ * with `compile()` also from `7d9cda8` every row reproduces, so `lint()` did not move.
+ * `compile().diagnostics` is byte-identical on all of them.
+ *
+ * ## Three example rows re-measured when net area met them: classroom-block, corner-cafe, practice-office
+ *
+ * The three examples were first measured on a tree without net area. On it, each moves as
+ * every row above did, and in nothing else: `describe()` gains `net_area_m2` and
+ * `net_floor_area_m2` (the SEMANTIC rows), and all three set `schedule rooms`, so the drawn
+ * ROOM SCHEDULE takes the `AREA (CENTRELINE, m²)` label and a NET AREA column whose cells are
+ * those figures, with the zone subtotals and the total. Every table drawn right of the
+ * schedule moves right by the new column's width, every line of it otherwise unchanged; no
+ * other SVG node moves. `lint()` and `compile().diagnostics` are byte-identical. With the old
+ * tree's `describe()` the SEMANTIC rows reproduce, and with its SVG too the whole-surface
+ * rows and those in `while-byte-identity-baseline.ts` and `import-module-lets.test.ts`
+ * reproduce. Their `finish` digests did not move.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
 export const BASELINE: [string, string][] = [
-  ["accessible", "9ca87c1c9c2cb8cb4afb8428c3ea8120c134c8b0af2fd30ece8ef922fc2bb1a7"],
-  ["aquarium", "f89c3bf506d7737046e0412e5bc3ebfc7bbf4c9e6fb2c81c6a5a59ede302aa19"],
-  ["attached", "5a6374e3fec477aa55bc8e94586d4c60501608a2764830d6ee32c2b61d66d055"],
-  ["bungalow", "9990304f76493e86abee175aeab14cd21040601b86cd73e175150884d36ed8b9"],
-  ["clinic", "0eca2334d5986ce27ad5a0fa4455c1f1ad70308ccf2aec1750d4f12ca731a908"],
-  ["courtyard-house", "41f6ff56cc47f383795c0c9c11585de2d9846546d4fd3c96c2637a0ef2cd0447"],
-  ["furnished-flat", "889f4246f5e98f589952d5e20e0acdfd6057f542e0620c8d20bce01dd17c88f0"],
-  ["gallery-l", "af339b015babaa7a4cfa6fe45e4afe01a2643674f883f441b3066af686bc5601"],
-  ["garden-house", "ade0cdc23758924a0dbc9fec12e549ea826bb874ce8ed94e7b8e2ce26bc25af7"], // re-measured, see header
-  ["garden-loft", "bcbf52e5d8b7875906721d8367552e463d642428516530d733c8b9feb29c2f9f"],
-  ["hexagon-pavilion", "22030edea2fcaddfdc5d94d776849a8065bd287196664967e3f415285b0458cc"],
-  ["hillside-villa", "42682351711edca91747acfeb3ecfb4a36c87e6e06d88c8f1889d044b1d5b6c4"], // re-measured, see header
-  ["imports", "3490c17b19f31dfc3a82ce20a2218a4e8f48f0fd979a2c88f23e6a7ddfd75b00"],
-  ["laneway-house", "f9c3b29a51508234ab6f8426be062f3087f482cfa2b124ba75fdab150b4d18bc"],
-  ["library", "51d1c1a151192315fa19c2fa526ca9192ce84abdd9e6084c4dff4d30aed1c086"],
-  ["materials", "de930c93e3cdfc023d78e20f4ca10d0ff3be5ed11492cb856d9679da613de8df"],
-  ["museum-wing", "5caaeb9a2e06e070098d50b54b252c7a54721e13af82e055f76aa947d52d4f56"],
-  ["museum-wings", "fa6b137f9739cae7edd27642d604ed8d2fa08f034f57851d05cb9c292b187885"], // re-measured, see header
-  ["museum", "6e7cee1fa1ea32375d2b17a5872726d33b304815f85c423e41c68765f48ba24a"],
-  ["one-room", "006f9e2008584250fa6aa645769f01ad4ad3dcc5053d76c1c4fa963c6dbc3283"],
-  ["parametric", "b8055080fe56197849ab4624be16eed46510ac467de6218df59f093979e8235c"],
-  ["relational", "776f94d7f8a94ebf78b752697fa433cf49a05b1e4309430e8725a71e15780354"],
-  ["studio", "daacc21fb471e0d7d29c88191b838607a07b3f73e82a0508d42a8cbd8184bef3"],
-  ["terrace-row", "5c7a1b1380f8ca14f6927a1fefa481ffba57deb85deee79fc83930863bbab898"], // re-measured, see header
-  ["themed", "b6ba97d9000126e4355dd8c4a853c19fb8aa8790be0603dedf3e10fb1620cccf"],
-  ["tiny-house", "2c025f9656c85121ccb84b6a73c085501e4ddcfe0f043c325c64384ba21deda1"],
-  ["townhouse", "e2d1a4cdec5e46edfd6d697efdda877062d80d155b65a97d7de371a96c10ab46"], // re-measured, see header
-  ["transit-hall", "e584d228e637e8783bdc626da4246ddbaf073e25f6834bec047349bf2d755340"],
-  ["two-bed", "e2df66666ea707a11618a9b718820fe12998123d03e6f2cd5ab4698539eac1d5"],
-  ["two-storey", "8c1d0f225d7e5b8147913097ffd8be4513a11e9878653d2b234bfcdac0bdd762"], // re-measured, see header
+  ["accessible", "a3c542aed970a327102f2d13479e1dc8aa906980a3b6889047be1092881e2871"],
+  ["aquarium", "4ed4aecd6b289a2538e3f1cd55ac6f2d52f4dfb637d5898f1f879f767c713b98"],
+  ["attached", "f1b122904c1242d9ef7088c5eed12c765dc63f4dbc2af2a75ab8f23f398feac2"],
+  ["bungalow", "d76e52dd1b75a347c84afba5350175032513776572f268839ee550883b564ae9"],
+  ["classroom-block", "0603ba167d90075ad90f1f347b7bc1428cc769b824332af87f1e16c0877129cf"], // added with the example, re-measured for net area, see header
+  ["clinic", "5d1f3ac0f05d759faa0cb55fcc1059e4e140fef7004974606eda28d2957d9174"],
+  ["corner-cafe", "8046459776def7a4366478bd58b1d1d15a0813cfd9ef6557e942b94ac50bea63"], // added with the example, re-measured for net area, see header
+  ["courtyard-house", "3d43b0dddae961c405f3bf81dc584ad1b4a0c9b6eaca2661cf54a50aa00eb340"],
+  ["furnished-flat", "8812151f95e82fafcb3d21a23dede24e71944d9962e1b33c046727869f04d947"],
+  ["gallery-l", "ef97490e9b951d76396df52427ba6673b0cce29489dfdf4232dc4d0876fe691d"],
+  ["garden-house", "0532109ebf9869b2ebddfa229823f6c08f8aa50572af0da44e50fa80e7bbd749"], // re-measured, see header
+  ["garden-loft", "7161ddddda40ba6f520128b2196fdbba997e5f3b82674dbf2ee09495d763dc1d"],
+  ["hexagon-pavilion", "92d343afbb62315ad0014b95de9f4a8b26ccffbc14093b04c5956b689f850252"],
+  ["hillside-villa", "ce6b14e1dbe05e16fde2c710d666655d4da42a1f5a51a63f8eaf122d1f766474"], // re-measured, see header
+  ["imports", "4b0151513963a656e52ac84c6fd80eb35c9820ae101921420cb8d5c9c13c0b70"],
+  ["laneway-house", "62b3fdb835ccc7eb565f982ed7930d99cfced87bbf4ae9d6bb5410e4945d255c"],
+  ["library", "b1afe29423122d4d161d5ba51c8d4af703f47efd8299fdfb265df1d8f8e402fd"],
+  ["materials", "1217b23686c0616e9e922869271fe400a6a000c7b80ccefbfebab0bb022f8792"],
+  ["museum-wing", "00ac6744ffaa76596229248fd62ca5a41c9a5d70315c41ffa0fd6fc844ce2201"],
+  ["museum-wings", "cbbe528f80d7e433c839e0bc24069d57fee4a28b6c6361c6b8f7c82be0a99e71"], // re-measured, see header
+  ["museum", "3fb053254be030885f9ccf7bb7b73d3c37f8e8273705b287417473000f6ca526"],
+  ["one-room", "9519d5c396d8644e840a1520e6d84f75a8306d1309abebcbd61aa59560fda364"],
+  ["parametric", "0300b6e01a4a0f10827b84dfaa21c9a89a4bfa15c008ce01ab6900118b6bc60a"],
+  ["practice-office", "db072312caf789f50ad413166edee3485ec5e5137f3339ff0c7126faecbf925e"], // added with the example, re-measured for net area, see header
+  ["relational", "32c6a6e02ff16dcbdb146aa87e5e8176e38cbb5d00f972a2cd8849619c13db93"],
+  ["sheet-notes", "f4ab64ec80be43d25a5949c971b07b00696f8fc2ab3927af72442ab70e8f551f"], // re-measured, see header
+  ["studio", "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f"],
+  ["terrace-row", "392d8940246551ac543bf2d661dd2b8f9c0160070b44062e57b666cad747ac82"], // re-measured, see header
+  ["themed", "419afa87c1e188f69426e652cd3dfb295a543bd0ee19de5f282a5380e78f2891"],
+  ["tiny-house", "a78e4e99cb1d18bd4aae38e8b8927ec6b765274a3db3b5c63652e9fb189d045a"],
+  ["townhouse", "8744ddfa200945bfcf6d119b150d974ef352041248cdc7735d72b94973840431"], // re-measured, see header
+  ["transit-hall", "82e5125b88a008eb4831e84156d5981fe031c9496178006d2a1adcb4738f4762"],
+  ["two-bed", "83db33c0b0b8322c06643658b574cfd5fc0e320d7ddbe22c815cf0d7a3ae94f4"],
+  ["two-storey", "811bc40e41e54a485e1ca53eb7de32dc48c2d4096ed8792f2504c99eb0be5c6a"], // re-measured, see header
 ];
 
 /**
@@ -833,36 +1033,40 @@ export const BASELINE: [string, string][] = [
  * described in the header.
  */
 export const SEMANTIC_BASELINE: [string, string][] = [
-  ["accessible", "68484c56bb156de1e79654600b428779227547e5a44d46653217b34ab0364c9e"],
-  ["aquarium", "299f0e348e915d0f4f7aac16a047f708cc7003f3103892b10f46ee945a6b477c"],
-  ["attached", "df08961c92bc1d8412dd0f5ff7e9282c35b283e5a007b4192323005a6c564d0f"],
-  ["bungalow", "93a7bbad33a456a3f9a72b8ec7e0ccc116c3ea777b464149a6c40d0328e3d48d"],
-  ["clinic", "87a31334de932023821bb2a29a4a8b7f81b46f2c6a06283a00e4c4a0856d1e10"],
-  ["courtyard-house", "fe1c1009bf87d63b2e9dc77fb870ad43cc2a0957376e4ad3c2192ce5bab5ac0a"],
-  ["furnished-flat", "c55ce2b43dd4acf0eec4eada9ee456c799bf4188f6f1a2f6d32a8cb691424fc4"],
-  ["gallery-l", "cef0ee1863a505bb831aa2512ca204547117872a61cf1a1ddd293361f0b688be"],
-  ["garden-house", "89466ed2864b0161919158114a71bef855bb6ad9b50157992eed30290a943e3f"], // re-measured, see header
-  ["garden-loft", "ad8935f435045684b7ed9975254dc2daf0357f4eb3735e514e319980ebecf793"],
-  ["hexagon-pavilion", "9a3e3666e6e2b09d04a6239c984415ec92ffa487c8aa743fc8506f4bc0f97a61"],
-  ["hillside-villa", "a1a2580d09e7f798019f76a2896c74c2fa1a1d4c3354acd00189f541b5ed01e8"], // re-measured, see header
-  ["imports", "5c75030d46ecbfc8b1e80b40945d17bd13afb68a813a286b9ddfe23252452cbc"],
-  ["laneway-house", "9a173beb7f213286b8e0c117d829d126166b93e118f91894ba278005254a5255"],
-  ["library", "f81107388c6547af37b0938ecc06a1f3ab3acbe69916edb7b0c9c76a4c9f3477"],
-  ["materials", "e5041b5dd4d5029e77b657823d988604464193e121cd3f4f3a236a72faf5bf9f"],
-  ["museum-wing", "95ef06b2e848b83c8d042250431b5c46deed6d8afc3f2c443b343b83e5b6cd6e"],
-  ["museum-wings", "220aa53fd86ecc9546320077450fc93337d5fb85f0af4862fa05aa40c6ffe7d1"], // re-measured, see header
-  ["museum", "7ec1245b5a9ae03f813436680f5bb750cc707631703b26e1ecf6f0c1d750d573"],
-  ["one-room", "4313ab047cbd42c75be08c6a6c72e3bbe8ee6b1e598a816d722d0aa8655c0551"],
-  ["parametric", "5783da773c0493767621e2c063e6da257c660dec2edb5351893f0ad4907afc3a"],
-  ["relational", "d31bd84bfcb7bfce8d662470f8828144f55ef3e4117924af898587706bf46293"],
-  ["studio", "540245f5c6c0f523e13b455cad9bcfc3c6d21cf96ca953ce1bbfa3d547345208"],
-  ["terrace-row", "172aac3cd62b8ccbbdf2d58374fe0535e4657d1344f60c1c7cb825ae3e2a59b8"],
-  ["themed", "3644012b9d972af8e0314ce0a210073cc0315127d38a5f6b35220b00c883aff8"],
-  ["tiny-house", "63a784b0a353f2a0664dc710ca720364d3b246447972b5bda928c855ea0e18a8"],
-  ["townhouse", "9bc2a2a2c7191ab735d4c31486743f6fad161e556e4fd8f678797afb27a74364"], // re-measured, see header
-  ["transit-hall", "cc69ca4464febda4baee441c36b8c2a5f8b1b4b3f794b221ffa1261bb78a800e"],
-  ["two-bed", "061698b483472d4cee3801c39a6e1f74070037d82c8ea7efa19906388f24a79a"],
-  ["two-storey", "4a32d319784e26993659cfe2eb5b05626bea376f9de7c80f63a3c6e3ff171f03"], // re-measured, see header
+  ["accessible", "e86778ae3cbd5aea29e5e31761ad9ae6768872da816243f369a9cacc34501249"],
+  ["aquarium", "0c0ff87fb446fe2dea2db1cc0560f6e840066c0a4a9afa192cee4387badde556"],
+  ["attached", "0edb3482583f971f1c5daa64c7e8f8c638dc3ad70943893bfb5076ec71a425ac"],
+  ["bungalow", "f35202195cf872e00bf31d62fffa7c783d04cfac55e7339154a048c496e8fc3a"],
+  ["classroom-block", "a3b9c7836a1084a810d9d5ff12d778002f3103933b49cca923b95057e06180bc"], // added with the example, re-measured for net area, see header
+  ["clinic", "6abf1b490c46e473a3330d3acf61e35a0b9524f33ebaa0d7881dafebcf014261"],
+  ["corner-cafe", "860ea251773a8c5bc409aea86927a9c7b15832a61348feddb3e8fb7fc98ae867"], // added with the example, re-measured for net area, see header
+  ["courtyard-house", "9594aa8e0be5cf3d24cc74fc6c2100b8b18293308ce39c3de002e9fd61edecac"],
+  ["furnished-flat", "dab3b998a75ba65679021c8ae9282cb785d8daf69e6c0d64c39aea0c35a36fa5"],
+  ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
+  ["garden-house", "fee030c619c813af20a581665bc6366f66f511f8c8e6a035cca3fb344acab128"], // re-measured, see header
+  ["garden-loft", "77bddbf7b08d49b0845e5268bb267a602b93002dfa20175e9218e5156dc435d1"],
+  ["hexagon-pavilion", "6e8005c3a0af9b80598574e77141301a957b4a293ba8d5de6cc1effb00693494"],
+  ["hillside-villa", "5dce9065cd082e812793eb7355f35e6b3c63e8ecf9625ba4a5d2a55c4d05df71"], // re-measured, see header
+  ["imports", "183bf4ec261e6650b21c4771b64fe924bf5c6eabd3ea1b8d3bbdac71b2900ac3"],
+  ["laneway-house", "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0"],
+  ["library", "b2032b46514e9563ba3106e23869db32fef49e8241e65b7c84f6108a2cf4af08"],
+  ["materials", "ec7ff74d6438df84dcaae9961f01e0013d1e902c65011bdeeb0d7eea65346c8e"],
+  ["museum-wing", "b3058ec90b03384f0f6856a475263046f503e246cc654d05dbf8495d263fa246"],
+  ["museum-wings", "7da0f2d83346212930c82c89835fa27403322000e94ea49caac084ecfe477e78"], // re-measured, see header
+  ["museum", "1f5c9501f69ae3fc6d92735ff9022f2f3e3b3552418e4993b64567b670dc8cd7"],
+  ["one-room", "fbbd7f194ce4ff25444b4a5e58d32ae1919f01a25e20f9ab8bf6aa9d7475def5"],
+  ["parametric", "d84db7c3f3d204692228fbec364808644f6f5c9bbb5b6a4d2a44347ad388dad3"],
+  ["practice-office", "95bf67a8406919ee17a76470368b99afd378a7fadce8e8ad0de7cc55f1ba642c"], // added with the example, re-measured for net area, see header
+  ["relational", "52f6dce0ca7398b5763db5ac499680cdce39aa19f69eedf43eab80a191479552"],
+  ["sheet-notes", "8a72d4737654ecebe5fa7cce4590d84c70d3c73556115298e2a1c2eadde7d0f9"], // added with the example, see header
+  ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
+  ["terrace-row", "6fdf87a871af31b1395ab07db68c8d03dd9d2aba1df62488ef9e466d175a5a23"],
+  ["themed", "31e41ad123c02836badf682f82e0adc7c224f482574b74d2ee82d9a0e9654843"],
+  ["tiny-house", "bc489f37715328a03b841ffe5b2bd19875a02aa94c8b3d0d827f86e4516fb215"],
+  ["townhouse", "a647c239f56e135f28f1febb91ee3099258fa3bcad4babfafd53e2e3d158aed4"], // re-measured, see header
+  ["transit-hall", "ab123a7c7d3e506baf72db007ad465f1d2bba591a65cbed2f1973cbe950b9f08"],
+  ["two-bed", "956cb006115d475428a5eaed61fb01cf5ec47bcdf08899a4cd5bca56e5d72725"],
+  ["two-storey", "4c451bf36bb69f6a49ecd413c1e3008bc632adce8b9656ebf7d8766286426768"], // re-measured, see header
 ];
 
 /**

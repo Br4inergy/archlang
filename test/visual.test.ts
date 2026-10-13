@@ -95,6 +95,15 @@ const EXAMPLES = [
   // burner ring that faceted, a pillow branch that flipped, all draw the same STRING
   // length and would slip past a snapshot while moving pixels here.
   "furnished-flat.arch",
+  // The issued-sheet example: the only golden with the title block's `number`/`revision`
+  // rows, a NOTES table, the door/window tags and the DOOR & WINDOW SCHEDULE, so it is
+  // where a tag that drifted onto a swing or a table that lost a column would show.
+  "sheet-notes.arch",
+  // The three table-bearing starter plans (rooms schedule + openings schedule or legend):
+  // each opts in, so each needs a golden that pins its tables.
+  "practice-office.arch",
+  "corner-cafe.arch",
+  "classroom-block.arch",
 ];
 
 async function hasResvg(): Promise<boolean> {

@@ -11,7 +11,19 @@ describe("archlang mcp server", () => {
     const client = await connect();
     const tools = (await client.listTools()).tools.map((t) => t.name).sort();
     expect(tools).toEqual(
-      ["compile", "complete", "describe", "finish", "fix", "lint", "repair", "score", "suggest", "validate"].sort(),
+      [
+        "compile",
+        "complete",
+        "describe",
+        "finish",
+        "fix",
+        "link",
+        "lint",
+        "repair",
+        "score",
+        "suggest",
+        "validate",
+      ].sort(),
     );
     // The registry description is hand-written (no generator), so it is held to the tools
     // the server actually registers: every one is named in it.

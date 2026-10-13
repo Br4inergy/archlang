@@ -17,23 +17,11 @@
 
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { deflateRawSync, inflateRawSync } from "node:zlib";
+// The one Node encoder, shared with `archlang link` and the MCP `link` tool. Re-exported so
+// `docs-site/sync-docs.mjs` and `playground/scripts/gen-static.mjs` keep importing it from here.
+import { decodePlanHash, encodePlanHash, PLAYGROUND_ORIGIN } from "../src/cli/share-codec.mjs";
 
-const PLAYGROUND = "https://playground.archlang.uk";
-
-/** Encode plan source into the `#z=` share hash (base64url of the raw-deflated UTF-8). */
-export function encodePlanHash(source) {
-  return deflateRawSync(Buffer.from(source, "utf8"), { level: 9 })
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-/** Decode a `#z=` hash back to plan source. The inverse of {@link encodePlanHash}. */
-export function decodePlanHash(hash) {
-  return inflateRawSync(Buffer.from(hash.replace(/-/g, "+").replace(/_/g, "/"), "base64")).toString("utf8");
-}
+export { decodePlanHash, encodePlanHash };
 
 // The CLI half runs ONLY when this file is the entry point. `docs-site/sync-docs.mjs`
 // IMPORTS `encodePlanHash` to mint the home page's per-example playground links, and
@@ -46,5 +34,5 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
     process.stderr.write("usage: node scripts/gen-permalink.mjs <example.arch>\n");
     process.exit(2);
   }
-  process.stdout.write(`${PLAYGROUND}/#z=${encodePlanHash(readFileSync(file, "utf8"))}\n`);
+  process.stdout.write(`${PLAYGROUND_ORIGIN}/#z=${encodePlanHash(readFileSync(file, "utf8"))}\n`);
 }

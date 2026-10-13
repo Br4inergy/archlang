@@ -26,7 +26,6 @@ import type {
   RelAlign,
   RelDir,
   RoomNode,
-  ScheduleSubject,
   SiteNode,
   Statement,
   StripNode,
@@ -728,9 +727,14 @@ export interface ResolvedPlan {
    * `schedule rooms` — the sheet schedule table the drawing carries. Presentation only:
    * copied straight from the AST, never derived, and absent unless the plan opts in.
    */
-  schedule?: ScheduleSubject;
+  schedule?: "rooms";
+  /** `schedule openings` — draw the door/window tags and the DOOR & WINDOW SCHEDULE.
+   *  Presentation only, copied from the AST, absent unless the plan opts in. */
+  openingSchedule?: boolean;
   /** `legend` — draw the derived materials/fixtures legend. Presentation only. */
   legend?: boolean;
+  /** `notes "…"` — the sheet's general notes, in source order. Presentation only. */
+  notes?: string[];
   title?: TitleNode;
   /** Explicit accessible title (`accTitle "…"`), overriding the plan name in the
    *  accessible-SVG `<title>`. Metadata only — never affects default output. */
@@ -1794,6 +1798,9 @@ function tableRowsOf(ir: ResolvedPlan): number {
     walls: ir.walls,
     furniture: ir.elements.filter((e): e is RFurniture => e.kind === "furniture"),
     outdoor: ir.elements.filter((e): e is ROutdoor => e.kind === "outdoor"),
+    openingSchedule: ir.openingSchedule,
+    elements: ir.elements,
+    notes: ir.notes,
   });
 }
 
@@ -2635,7 +2642,9 @@ function resolveBody(
     // Sheet-table opt-ins: presentation flags carried through untouched. Spread so an
     // opted-out plan has no key at all and the IR stays byte-identical to before.
     ...(ast.schedule ? { schedule: ast.schedule } : {}),
+    ...(ast.openingSchedule ? { openingSchedule: true } : {}),
     ...(ast.legend ? { legend: true } : {}),
+    ...(ast.notes && ast.notes.length > 0 ? { notes: ast.notes } : {}),
     // Declared wing/department grouping — metadata only, absent when the plan
     // declares no `zone`, so an existing IR is byte-identical.
     ...(zoneFrame.declared.size > 0 ? { zones: [...zoneFrame.declared.values()] } : {}),
@@ -2717,6 +2726,9 @@ function resolveSheet(
       walls,
       furniture: elements.filter((e): e is RFurniture => e.kind === "furniture"),
       outdoor: elements.filter((e): e is ROutdoor => e.kind === "outdoor"),
+      openingSchedule: ast.openingSchedule,
+      elements,
+      notes: ast.notes,
     }),
   };
   const sheet = resolveSheetSpec(ast.paper, scaleInRange(ast, diagnostics), fit, drawn);

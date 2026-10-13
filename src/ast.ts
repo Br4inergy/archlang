@@ -4,7 +4,7 @@
  * it and produces a separate IR — nothing here is mutated after parse.
  */
 
-import type { DoorHinge, DoorHingeNear, DoorKind, DoorSlideDir, DoorSwingDir } from "./grammar/tokens.js";
+import type { DoorHinge, DoorHingeNear, DoorKind, DoorSlideDir, DoorSwingDir, TitleField } from "./grammar/tokens.js";
 import type { Span } from "./diagnostics.js";
 import type { Comment } from "./lexer.js";
 import type { Expr } from "./expr.js";
@@ -1120,10 +1120,23 @@ export interface ImportNode {
   span?: Span;
 }
 
+/** The {@link TitleNode} key each `title { … }` field word (`TITLE_FIELDS`) fills. */
+export const TITLE_FIELD_KEY: Readonly<Record<TitleField, "project" | "drawnBy" | "date" | "number" | "revision">> = {
+  project: "project",
+  drawn_by: "drawnBy",
+  date: "date",
+  number: "number",
+  revision: "revision",
+};
+
 export interface TitleNode {
   project?: string;
   drawnBy?: string;
   date?: string;
+  /** `number "A-101"` — the drawing number, a title-block row. Absent unless authored. */
+  number?: string;
+  /** `revision "B"` — the drawing's revision, a title-block row. Absent unless authored. */
+  revision?: string;
   line: number;
   span?: Span;
 }
@@ -1153,13 +1166,13 @@ export interface AxesNode {
 }
 
 /**
- * What a `schedule <subject>` statement tabulates. **Only `rooms` exists** — the
- * keyword takes an explicit subject purely so a later release can add `doors`,
- * `windows` or `finishes` without a second keyword or a breaking respelling. An
+ * What a `schedule <subject>` statement tabulates: `rooms` (the ROOM SCHEDULE) or
+ * `openings` (door and window tags plus the DOOR & WINDOW SCHEDULE). The keyword takes an
+ * explicit subject so the surface grows without a second keyword or a respelling. An
  * unrecognised subject is a parse error with a did-you-mean over this list, never a
- * silently ignored word.
+ * silently ignored word. The two subjects are independent opt-ins: a plan may write both.
  */
-export const SCHEDULE_SUBJECTS = ["rooms"] as const;
+export const SCHEDULE_SUBJECTS = ["rooms", "openings"] as const;
 export type ScheduleSubject = (typeof SCHEDULE_SUBJECTS)[number];
 
 /**
@@ -1264,13 +1277,28 @@ export interface PlanNode {
   /**
    * `schedule rooms` — draw the ROOM SCHEDULE table in the sheet's bottom band.
    * Absent unless the plan opts in, so an existing drawing is byte-identical.
+   * Only ever `"rooms"`: `schedule openings` is its own flag, {@link PlanNode.openingSchedule},
+   * so the two subjects compose rather than overwrite each other.
    */
-  schedule?: ScheduleSubject;
+  schedule?: "rooms";
+  /**
+   * `schedule openings` — tag every door (`D01`…) and window (`W01`…) beside it and draw
+   * the DOOR & WINDOW SCHEDULE table in the sheet's bottom band. Presentation only; absent
+   * unless the plan opts in, so an existing drawing is byte-identical.
+   */
+  openingSchedule?: boolean;
   /**
    * `legend` — draw the LEGEND table (wall materials + fixture symbols actually used),
    * derived closed-form from the plan. Absent unless the plan opts in.
    */
   legend?: boolean;
+  /**
+   * `notes "…" ["…" …]` — the sheet's general NOTES, one entry per string in source
+   * order (repeated statements append). Drawn as a numbered NOTES table in the sheet's
+   * bottom band; presentation only, never read by `describe()` or `lint()`. Absent
+   * unless authored.
+   */
+  notes?: string[];
   title?: TitleNode;
   /** Explicit accessible title (`accTitle "…"`) — overrides the plan name in the
    *  accessible-SVG `<title>` (`compile(src, { accessible: true })`). Metadata only. */

@@ -16,7 +16,8 @@ source (.arch)
   └─ src/backends/       svg (default) · png (optional resvg) · ascii · error-svg
   └─ src/export/         dxf · pdf (optional pdfkit)
   └─ src/pipeline.ts     compileUncached(): the one parse→link→resolve→render pipeline
-  └─ src/index.ts        compile() wraps it with the memo cache; the only public surface
+  └─ src/index.ts        compile() wraps it with the memo cache; the public surface (plus the
+                         Node-only `/link` subpath, src/cli/link.ts: share links, zlib)
 ```
 
 ## Conventions
@@ -90,7 +91,8 @@ source (.arch)
   cascade shared by the drawing and the pipeline's `lineWeight` check
 - `site.ts` compass/facing (`windowFacingPage` probes the window's own wall) · `vertical.ts`
   stair/elevator/escalator semantics and the shaft graph · `datum.ts` heights
-- `sheet.ts`, `axes.ts`, `sheet-tables.ts` paper, axis grid, margin tables
+- `sheet.ts`, `axes.ts`, `sheet-tables.ts` paper, axis grid, margin tables;
+  `opening-schedule.ts` the `schedule openings` tags (placed off the host wall's faces) and rows
 - `label-placement.ts` wraps a room name too wide for its room, then moves room labels off
   obstacles, after walls and dims · `text-metrics.ts` the single text-width estimate ·
   `text-layout.ts` the name line breaker and where each line of a text is drawn (every backend)
@@ -119,6 +121,11 @@ source (.arch)
   progression into a `for` loop (`arch reroll`, `reroll()`, the LSP's `refactorActions`)
 - `plan-json.ts` Plan JSON · `diagnostic-json.ts` · `repair.ts` (geometric corrector) vs
   `fix-apply.ts` (`arch fix`; skips a fix carrying `file`) · `manifest.ts` the CLI contract
+- `input-limit.ts` `inputTooLarge()` / `rateLimited()`: a HOST's refusals (`E_INPUT_TOO_LARGE`,
+  `E_RATE_LIMITED`), which `compile()` never calls · `cli/share-codec.mjs` (Node) and `cli/share-codec.web.mjs`
+  (`DecompressionStream`) the two `#z=` decoders, held together by `test/share-codec-web.test.ts`
+- `packages/mcp/src/tools.ts` the MCP tool set, transport-agnostic; `server.ts` (stdio, npm) and
+  `packages/mcp-worker` (the hosted Worker, ADR 0026) both register it
 - `finish.ts` the completion transform (`arch finish`): runs the stages in `FINISH_STAGE_ORDER`
   until a round changes nothing, and holds the `sheet` stage (`docs/adr/0024-finish-as-explicit-transform.md`):
   span inserts through `fix-apply.ts`'s `Data`, the fit decided by `sheet.ts` `fitsOnSheet` on

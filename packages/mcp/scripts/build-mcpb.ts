@@ -22,6 +22,7 @@ import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, w
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { deflateRawSync } from "node:zlib";
+import { PNG_NOT_IN_BUNDLE } from "../src/png.js";
 
 /** Pinned MCPB CLI (published well before this pin; bump deliberately). */
 export const MCPB_CLI_VERSION = "2.1.2";
@@ -55,6 +56,20 @@ interface PackageMeta {
 interface ServerJsonMeta {
   description: string;
   websiteUrl?: string;
+}
+
+/**
+ * The packages the bundle leaves out. `@resvg/resvg-js` must stay in this list: the bundle's
+ * `compile` description says png is unavailable there ({@link PNG_NOT_IN_BUNDLE}), and a test
+ * holds the two together.
+ */
+export const MCPB_EXTERNAL = ["@resvg/resvg-js", "pdfkit", "clipper2-wasm"] as const;
+
+/** The BUNDLED server's `compile` must say png is unavailable, in the one shared sentence. */
+export function assertBundleSaysNoPng(tools: McpbTool[]): void {
+  const compile = tools.find((t) => t.name === "compile");
+  if (!compile?.description?.includes(PNG_NOT_IN_BUNDLE))
+    throw new Error("build-mcpb: the bundled compile tool does not say png is unavailable in the bundle");
 }
 
 /** First sentence of a tool description: the manifest wants a one-liner, the server keeps the full text. */
@@ -229,14 +244,18 @@ async function main(): Promise<void> {
     platform: "node",
     format: "esm",
     target: "node18",
-    // The core's OPTIONAL lazy backends (resvg/pdfkit/clipper2) are never reached by the
-    // server's tools; leave their dynamic imports alone, as the VS Code bundle does.
-    external: ["@resvg/resvg-js", "pdfkit", "clipper2-wasm"],
+    // The core's OPTIONAL lazy backends (resvg/pdfkit/clipper2) stay out of the bundle; leave
+    // their dynamic imports alone, as the VS Code bundle does. `compile` is the one tool with a
+    // path to resvg (format "png"), and the define below tells it that it is in the bundle, so
+    // it states and returns PNG_NOT_IN_BUNDLE instead of reaching for a renderer that is not here.
+    external: [...MCPB_EXTERNAL],
+    define: { __ARCHLANG_MCPB__: "true" },
     // Some bundled CJS dependencies call `require`; give the ESM output one.
     banner: { js: 'import { createRequire as __cr } from "node:module"; const require = __cr(import.meta.url);' },
     logLevel: "warning",
   });
-  // `readShimVersion()` resolves `../package.json` from server/index.js → the bundle root.
+  // `readShimField()` resolves `../package.json` from server/index.js → the bundle root (the version;
+  // no `dependencies`, which the bundle needs none of: the core, `./link` included, is bundled in).
   writeFileSync(
     join(stage, "package.json"),
     `${JSON.stringify({ name: pkg.name, version: pkg.version, type: "module", license: pkg.license }, null, 2)}\n`,
@@ -246,6 +265,7 @@ async function main(): Promise<void> {
   copyFileSync(join(REPO, "LICENSE"), join(stage, "LICENSE"));
 
   const tools = await listBundledTools(join(stage, "server", "index.js"));
+  assertBundleSaysNoPng(tools);
   const manifest = buildManifest(pkg, serverJson, tools);
   writeFileSync(join(stage, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 

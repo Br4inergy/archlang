@@ -26,16 +26,70 @@
  * `emitRegion` produced.
  */
 
+import type { Point } from "./ast.js";
 import type { Opening, RWall } from "./ir.js";
 import type { RenderCtx } from "./registry.js";
-import type { SceneNode } from "./scene.js";
+import type { PathLoop, Scene, SceneNode, ScenePrim, SceneWall } from "./scene.js";
 import { MITER_LIMIT } from "./scene.js";
 import type { HatchSpec } from "./hatches.js";
-import { hatchKey, hatchOf, patternId } from "./hatches.js";
+import { hatchesUsed, hatchKey, hatchOf, patternId } from "./hatches.js";
 import { PointInterner, loopBBox, openingCut, wallBand } from "./geometry/band.js";
 import type { EdgeLoop } from "./geometry/band.js";
 import type { JoineryCut, JoineryResult, JoineryWall } from "./geometry/joinery.js";
-import { bandBBox, emitLoops, joinWalls, loopsToPolygons } from "./geometry/joinery.js";
+import { bandBBox, emitLoops, joinWalls, loopsToPolygons, toPathLoop } from "./geometry/joinery.js";
+
+/** What the joinery reads of a wall: its band, its hatch and the openings cut through it.
+ *  `id` is optional because the joinery only ever prints it in a diagnostic. */
+export type JoinableWall = Pick<
+  RWall,
+  "thickness" | "points" | "arcs" | "closed" | "material" | "hatchScale" | "hatchAngle" | "openings"
+> & { id?: string };
+
+/** A resolved wall as {@link Scene.walls} carries it: the joinery's inputs plus `category`;
+ *  an opening is only the `at`/`width` it cuts. Arrays are shared with the wall, not copied. */
+function sceneWall(w: RWall): SceneWall {
+  return {
+    category: w.category,
+    thickness: w.thickness,
+    points: w.points,
+    ...(w.arcs ? { arcs: w.arcs } : {}),
+    closed: w.closed,
+    material: w.material,
+    hatchScale: w.hatchScale,
+    hatchAngle: w.hatchAngle,
+    openings: w.openings.map((o) => ({ at: o.at, width: o.width })),
+  };
+}
+
+/**
+ * Give `scene` its {@link Scene.walls}: the walls `lowerWallSet` was handed, in THAT order —
+ * the drawing's own order, which is the joinery's tie-break index, so a re-join of the list
+ * reproduces the drawn wall nodes by construction.
+ *
+ * LAZY: an enumerable getter that projects on first read and keeps the result, so a compile
+ * that never exports a DXF pays one closure and no per-wall work. A getter rather than a
+ * method because a Scene is plain data — `structuredClone`, `JSON.stringify` and a spread
+ * all read it as an ordinary array property. A plan with no walls gets no property at all.
+ *
+ * And WRITABLE, as the type says: assigning it (say `scene.walls = undefined`, to export the
+ * wall nodes unsplit on `A-WALL` as a hand-built Scene would) replaces the getter with a plain
+ * data property holding the new value. `delete scene.walls` works too.
+ */
+export function attachSceneWalls(scene: Scene, walls: readonly RWall[]): void {
+  if (walls.length === 0) return;
+  let projected: SceneWall[] | undefined;
+  Object.defineProperty(scene, "walls", {
+    enumerable: true,
+    configurable: true,
+    get: (): SceneWall[] => {
+      projected ??= walls.map(sceneWall);
+      return projected;
+    },
+    set: (value: readonly SceneWall[] | undefined): void => {
+      Object.defineProperty(scene, "walls", { value, enumerable: true, configurable: true, writable: true });
+    },
+  });
+}
 
 /** One opening's cut volume, joined back to the wall it was cut from. */
 export interface JoinedCut {
@@ -73,7 +127,11 @@ export interface JoinedWallSet {
  * Pure and deterministic: one {@link PointInterner} for the whole call (see `joinWalls`
  * for why that matters), no clock, no randomness, no Map-order dependence.
  */
-export function joinWallSet(walls: readonly RWall[], groupKeys: readonly string[]): JoinedWallSet | null {
+export function joinWallSet<W extends JoinableWall>(
+  walls: readonly W[],
+  groupKeys: readonly string[],
+  split?: { faceOf: (w: W) => string; faces: readonly string[] },
+): JoinedWallSet | null {
   if (walls.length === 0) return null;
   const intern = new PointInterner();
   const jwalls: JoineryWall[] = [];
@@ -85,9 +143,10 @@ export function joinWallSet(walls: readonly RWall[], groupKeys: readonly string[
     if (loops.length > 0) {
       jwalls.push({
         index: i,
-        id: w.id,
+        id: w.id ?? "",
         thickness: w.thickness,
         group: hatchKey(hatchOf(w)),
+        ...(split ? { face: split.faceOf(w) } : {}),
         loops,
         bbox: bandBBox(loops),
       });
@@ -104,7 +163,67 @@ export function joinWallSet(walls: readonly RWall[], groupKeys: readonly string[
     }
   }
   if (jwalls.length === 0) return null;
-  return { result: joinWalls(jwalls, cuts, groupKeys), cuts: joined };
+  return { result: joinWalls(jwalls, cuts, groupKeys, split?.faces), cuts: joined };
+}
+
+/**
+ * A wall set's drawing, partitioned by a per-wall CLASS — for an export that files walls on
+ * separate layers (the DXF's exterior and interior wall layers). Never on the drawing path:
+ * the Scene is drawn by {@link lowerWallSet} alone.
+ *
+ * `outline` and each `fills[].region` are exactly what {@link lowerWallSet} puts on its
+ * nodes (same join, same emission), so a caller can recognise the nodes it is refining by
+ * equality and leave anything else alone. `byClass` and `faces` partition those two: one
+ * joinery call, read off the same ownership (`JoinerySplit`), so the split can only ever
+ * re-file what is drawn, never draw something else.
+ *
+ * `walls` must be in the order the drawing lowered them (`Scene.walls` is), since that order
+ * breaks the joinery's thickness ties. `classes` is a PRIORITY: where two walls of equal
+ * thickness and the same hatch (material, scale AND angle — `hatchKey`) share a point, it is
+ * filed under the class listed first —
+ * which cannot move a fill, because both walls are in the same one. A tie between DIFFERENT
+ * hatches stays the drawing's (the earlier wall in `walls`): re-deciding it would move a fill.
+ */
+export interface ClassedWallSet {
+  outline: ScenePrim | null;
+  fills: Array<{ hatch: HatchSpec; region: Point[][]; byClass: Array<{ cls: string; region: Point[][] }> }>;
+  /** Per class, in `classes` order: the outline's runs whose solid that class owns. */
+  faces: Array<{ cls: string; runs: PathLoop[] }>;
+}
+
+export function classifyWallSet(
+  walls: readonly SceneWall[],
+  classOf: (w: SceneWall) => string,
+  classes: readonly string[],
+): ClassedWallSet | null {
+  // A class `classes` does not list would have nowhere to go: its faces and fills would
+  // vanish from the split. That is a caller's bug, not a plan's, so it is thrown.
+  for (const w of walls) {
+    const cls = classOf(w);
+    if (!classes.includes(cls))
+      throw new RangeError(`classifyWallSet: class "${cls}" is not in [${classes.join(", ")}]`);
+  }
+  const hatches = hatchesUsed(walls);
+  const joined = joinWallSet(walls, hatches.map(hatchKey), { faceOf: classOf, faces: classes });
+  const split = joined?.result.split;
+  if (!joined || !split) return null;
+  const result = joined.result;
+  return {
+    outline: result.outline.length > 0 ? emitLoops(result.outline) : null,
+    fills: hatches.map((hatch) => {
+      const k = hatchKey(hatch);
+      const fill = result.fills.find((f) => f.group === k);
+      return {
+        hatch,
+        region: loopsToPolygons(fill?.loops ?? []),
+        byClass: classes.map((cls) => ({
+          cls,
+          region: loopsToPolygons(split.fills.find((f) => f.group === k && f.face === cls)?.loops ?? []),
+        })),
+      };
+    }),
+    faces: split.faces.map((f) => ({ cls: f.face, runs: f.runs.map(toPathLoop) })),
+  };
 }
 
 /**

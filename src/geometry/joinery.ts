@@ -110,6 +110,13 @@ export interface JoineryWall {
   thickness: number;
   /** The hatch/material group whose fill this wall contributes to. */
   group: string;
+  /**
+   * A second, independent classification of the wall, read only when {@link joinWalls} is
+   * asked for a {@link JoinerySplit} (an export that files walls on separate CAD layers).
+   * Never read by a decision: ownership stays thickest-wins, so the outline and the fills
+   * are the same with or without it.
+   */
+  face?: string;
   /** The wall's band, from `wallBand()`. */
   loops: EdgeLoop[];
   bbox: GridBox;
@@ -126,6 +133,31 @@ export interface JoineryCut {
 export interface JoineryResult {
   outline: EdgeLoop[];
   fills: Array<{ group: string; loops: EdgeLoop[] }>;
+  /** Present only when {@link joinWalls} was given `faces`. */
+  split?: JoinerySplit;
+}
+
+/**
+ * The same join, partitioned by each wall's {@link JoineryWall.face} — what a CAD export
+ * needs to put exterior and interior walls on separate layers WITHOUT a second joinery.
+ *
+ * Both halves are read off the one classification the outline and fills come from, so a
+ * split can only ever partition the drawing, never redraw it:
+ *
+ *  - `faces[f].runs` — the OUTLINE's edges whose solid side is face `f`'s: the owning wall's
+ *    face, except that a tie between walls of equal thickness and the same group goes to
+ *    the face listed first (see `faceAt`).
+ *    The outline's own chains are cut wherever the owner's face changes, so a loop one face
+ *    owns entirely comes out as that loop (merged and rotated exactly as the outline is), and
+ *    a loop two faces share comes out as OPEN runs that together trace it. A chain the
+ *    outline drops as dust is dropped here too.
+ *  - `fills[g, f]` — group `g`'s fill restricted to face `f`: kept iff exactly one side is
+ *    owned by that group and reads face `f`. The face is a function of the point, so the
+ *    pairs tile group `g`'s fill without overlapping, as the groups tile the solid.
+ */
+export interface JoinerySplit {
+  faces: Array<{ face: string; runs: EdgeLoop[] }>;
+  fills: Array<{ group: string; face: string; loops: EdgeLoop[] }>;
 }
 
 /* ---------------------------------------------------------------------------
@@ -440,6 +472,15 @@ function ownerAt(p: Point, wallsNear: readonly JoineryWall[], cuts: GridIndex<Jo
   if (inCut) return null;
   for (const w of wallsNear) if (bandContains(w, p)) return w;
   return null;
+}
+
+/** One edge group, read on both sides: the owner, and (only for a split) that side's face. */
+interface Classified {
+  edge: Edge;
+  plus: Owner;
+  minus: Owner;
+  plusFace?: string;
+  minusFace?: string;
 }
 
 /** Run length of an edge — arc length for a curve, never its chord. */
@@ -766,6 +807,7 @@ export function joinWalls(
   walls: readonly JoineryWall[],
   cuts: readonly JoineryCut[],
   groups: readonly string[],
+  faces?: readonly string[],
 ): JoineryResult {
   const empty: JoineryResult = { outline: [], fills: groups.map((group) => ({ group, loops: [] })) };
   if (walls.length === 0) return empty;
@@ -913,7 +955,7 @@ export function joinWalls(
     return { walls, dmin: Math.min(cap, dmin / 2) };
   };
 
-  const classified = edgeGroups.map((g) => {
+  const classified = edgeGroups.map((g): Classified => {
     const span = edgeLength(g.rep);
     // The ceiling is deliberately SMALL - four times the interner's own fusing distance,
     // or a quarter of the edge if that is smaller. It does not need to be the largest
@@ -928,21 +970,36 @@ export function joinWalls(
       const p = { x: g.mid.x + sign * n.x * d, y: g.mid.y + sign * n.y * d };
       return ownerAt(p, ctx.walls, cutIndex);
     };
-    return { edge: g.rep, plus: read(1), minus: read(-1) };
+    const plus = read(1);
+    const minus = read(-1);
+    if (!faces) return { edge: g.rep, plus, minus };
+    // A split also asks which FACE the solid on each side belongs to (`faceAt`), at the
+    // very probe point the owner was read at.
+    const face = (sign: 1 | -1, owner: Owner): string | undefined => {
+      const p = { x: g.mid.x + sign * n.x * d, y: g.mid.y + sign * n.y * d };
+      return faceAt(p, owner, ctx.walls, faces);
+    };
+    return { edge: g.rep, plus, minus, plusFace: face(1, plus), minusFace: face(-1, minus) };
   });
 
   // OUTLINE: exactly one side owned. Directed so the solid is on the +perp side, which is
   // the clockwise-positive orientation this codebase uses for "material inside". No
   // dedupe pass is needed — the groups ARE the deduplication.
   const outlineEdges: Edge[] = [];
+  // The face of each kept edge's solid side — recorded only for a split, which is the one
+  // reader. Keyed by the edge OBJECT the chainer is handed and hands back.
+  const faceOfEdge = faces ? new Map<Edge, string>() : null;
   for (const c of classified) {
     const inPlus = c.plus !== null;
     const inMinus = c.minus !== null;
     if (inPlus === inMinus) continue;
-    outlineEdges.push(inPlus ? c.edge : reverseEdge(c.edge));
+    const kept = inPlus ? c.edge : reverseEdge(c.edge);
+    outlineEdges.push(kept);
+    faceOfEdge?.set(kept, (inPlus ? c.plusFace : c.minusFace)!);
   }
 
-  const outline = finishLoops(chainLoops(outlineEdges, key), key);
+  const outlineChains = chainLoops(outlineEdges, key);
+  const outline = finishLoops(outlineChains, key);
 
   // FILL of group g: exactly one side owned BY THAT GROUP. A thinner wall's cap buried in
   // a thicker wall of another material therefore belongs to the thicker one, and two
@@ -968,7 +1025,115 @@ export function joinWalls(
     return { group, loops: finishLoops(chainLoops(kept, key), key) };
   });
 
-  return { outline, fills };
+  if (!faces || !faceOfEdge) return { outline, fills };
+
+  // SPLIT (see `JoinerySplit`). Fills: the same keep-and-direct rule as a group's fill,
+  // with "owned by that group" narrowed to "owned by that group, on that face".
+  const splitFills: JoinerySplit["fills"] = [];
+  for (const group of groups) {
+    for (const face of faces) {
+      const kept: Edge[] = [];
+      for (const c of classified) {
+        const inPlus = c.plus?.group === group && c.plusFace === face;
+        const inMinus = c.minus?.group === group && c.minusFace === face;
+        if (inPlus === inMinus) continue;
+        kept.push(inPlus ? c.edge : reverseEdge(c.edge));
+      }
+      splitFills.push({ group, face, loops: finishLoops(chainLoops(kept, key), key) });
+    }
+  }
+  const edgeFace = (e: Edge): string => faceOfEdge.get(e)!;
+  return { outline, fills, split: { faces: faceRuns(outlineChains, edgeFace, faces, key), fills: splitFills } };
+}
+
+/**
+ * The face of the solid at probe point `p`, whose owner is `owner` (`null`: open air).
+ *
+ * The owner's own face, unless the point is a TIE: another wall of the SAME thickness and
+ * the SAME group also covers it. Then the face listed first in `faces` wins — so a caller
+ * that lists its exterior class first gives every equal-thickness junction square to the
+ * envelope, whatever the statement order or the category's spelling. The tie is only ever
+ * re-decided inside one group, so it cannot move a group's fill (which is all the drawing
+ * reads): it re-files geometry, never redraws it. Precondition: every wall's face is listed
+ * (`classifyWallSet` checks it).
+ */
+function faceAt(
+  p: Point,
+  owner: Owner,
+  wallsNear: readonly JoineryWall[],
+  faces: readonly string[],
+): string | undefined {
+  if (owner === null) return undefined;
+  const rank = (w: JoineryWall): number => faces.indexOf(w.face ?? "");
+  let best = owner;
+  let bestRank = rank(owner);
+  for (const w of wallsNear) {
+    if (w === owner || w.thickness !== owner.thickness || w.group !== owner.group) continue;
+    const r = rank(w);
+    if (r < bestRank && bandContains(w, p)) {
+      best = w;
+      bestRank = r;
+    }
+  }
+  return best.face ?? "";
+}
+
+/**
+ * The outline's chains cut into per-face runs (see {@link JoinerySplit}).
+ *
+ * A chain is kept or dropped by the very test {@link finishLoops} applies to it, so a run
+ * never traces a loop the outline does not have. A chain one face owns throughout is that
+ * loop, finished the same way; a closed chain shared by several faces is first rotated to
+ * begin at a change of face (so no run straddles the seam where the walk happened to start),
+ * then cut at every change, and each run merged as an open chain is. `faceOf` is asked of
+ * the chainer's own edge objects only, never of a merged one. Runs are listed per face in
+ * start-vertex order (then end vertex), a function of the edges alone.
+ */
+function faceRuns(
+  chains: readonly Chain[],
+  faceOf: (e: Edge) => string,
+  faces: readonly string[],
+  key: KeyOf,
+): JoinerySplit["faces"] {
+  const out = new Map<string, EdgeLoop[]>(faces.map((f) => [f, []]));
+  const runsOf = (face: string): EdgeLoop[] => out.get(face)!;
+  for (const c of chains) {
+    const finished = c.closed ? canonicalRotation(mergeRuns(c.edges, key), key) : mergeInner(c.edges, key);
+    if (finished.length === 0 || Math.abs(loopArea(finished)) < MIN_LOOP_AREA) continue;
+    const edges = c.edges;
+    const first = faceOf(edges[0]!);
+    if (edges.every((e) => faceOf(e) === first)) {
+      runsOf(first).push(finished);
+      continue;
+    }
+    const n = edges.length;
+    const start = c.closed ? edges.findIndex((e, i) => faceOf(e) !== faceOf(edges[(i + n - 1) % n]!)) : 0;
+    const seq = [...edges.slice(start), ...edges.slice(0, start)];
+    let run: Edge[] = [];
+    let runFace = faceOf(seq[0]!);
+    for (const e of seq) {
+      const f = faceOf(e);
+      if (f !== runFace) {
+        runsOf(runFace).push(mergeInner(run, key));
+        run = [];
+        runFace = f;
+      }
+      run.push(e);
+    }
+    runsOf(runFace).push(mergeInner(run, key));
+  }
+  return faces.map((face) => {
+    const runs = out.get(face)!;
+    runs.sort((a, b) => {
+      const sa = key(edgeStart(a[0]!));
+      const sb = key(edgeStart(b[0]!));
+      if (sa !== sb) return sa < sb ? -1 : 1;
+      const ea = key(edgeEnd(a[a.length - 1]!));
+      const eb = key(edgeEnd(b[b.length - 1]!));
+      return ea < eb ? -1 : ea > eb ? 1 : 0;
+    });
+    return { face, runs };
+  });
 }
 
 /**
@@ -1033,19 +1198,25 @@ export function emitLoops(loops: readonly EdgeLoop[]): ScenePrim {
   if (!anyArc) {
     return { t: "region", loops: loops.map((l) => l.map((e) => edgeStart(e))) };
   }
-  const out: PathLoop[] = loops.map((l) => {
-    const edges: PathEdge[] = [];
-    for (const e of l) {
-      if (e.t === "line") edges.push({ t: "line", to: e.b });
-      else {
-        for (const piece of arcPieces(e.arc)) {
-          edges.push({ t: "arc", to: piece.end, center: piece.center, r: piece.r, sweep: piece.sweep });
-        }
+  return { t: "path", loops: loops.map(toPathLoop) };
+}
+
+/**
+ * One edge chain as a `path` loop: a line per straight edge, each arc cut into
+ * unambiguously MINOR pieces. Walked edge by edge from `start`, so it serves an OPEN run
+ * (a {@link JoinerySplit} face run) as well as a closed loop, whose closing edge is present.
+ */
+export function toPathLoop(l: EdgeLoop): PathLoop {
+  const edges: PathEdge[] = [];
+  for (const e of l) {
+    if (e.t === "line") edges.push({ t: "line", to: e.b });
+    else {
+      for (const piece of arcPieces(e.arc)) {
+        edges.push({ t: "arc", to: piece.end, center: piece.center, r: piece.r, sweep: piece.sweep });
       }
     }
-    return { start: edgeStart(l[0]!), edges };
-  });
-  return { t: "path", loops: out };
+  }
+  return { start: edgeStart(l[0]!), edges };
 }
 
 /** Loops → plain polygons, for a hatch fill (arcs tessellated once, shared ends dropped). */

@@ -53,6 +53,7 @@
  * parsed AST → re-emit via the formatter. No I/O, deterministic.
  */
 
+import { CLI_NAME } from "./command-name.js";
 import { parse } from "./parser.js";
 import { formatPlan } from "./format.js";
 import { fmt3 as numStr } from "./num-format.js";
@@ -1286,7 +1287,7 @@ function repairPass(source: string, book: SpanBook, record: boolean, pins: Pins)
 
   const parsed = parse(source);
   if (!parsed.plan || parsed.diagnostics.some((d) => d.severity === "error")) {
-    note("plan", "the source does not parse — fix the syntax errors first (`arch compile --json`)");
+    note("plan", `the source does not parse — fix the syntax errors first (\`${CLI_NAME} compile --json\`)`);
     return { source, changes: [], unresolved, changed: false };
   }
   // The parse stage memo shares its PlanNode across callers on the contract that it is
@@ -1299,7 +1300,7 @@ function repairPass(source: string, book: SpanBook, record: boolean, pins: Pins)
   if (!ir) {
     // No resolved geometry ⇒ no positions to reason about. Say so: a plan that does not
     // resolve is exactly the case where a silent `changed: false` reads as "all clear".
-    note("plan", "the plan does not resolve — fix the errors first (`arch validate`), then re-run repair");
+    note("plan", `the plan does not resolve — fix the errors first (\`${CLI_NAME} validate\`), then re-run repair`);
     return { source, changes: [], unresolved, changed: false };
   }
 

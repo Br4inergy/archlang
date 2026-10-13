@@ -17,6 +17,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // inline copy), welded by test/share-codec.test.ts. The home page's per-example links are
 // a fourth CONSUMER of that encoder, never a fourth copy of it.
 import { encodePlanHash } from "../scripts/gen-permalink.mjs";
+import { siteMarkdown } from "./site-markdown.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, "..");
@@ -25,9 +26,9 @@ const repo = join(here, "..");
 const PLAYGROUND = "https://playground.archlang.uk";
 
 // ───────────────────────────────────────────────────────────────────────────────
-// THE THREE SOURCE TABLES. Everything this script writes is derived from these
+// THE FOUR SOURCE TABLES. Everything this script writes is derived from these
 // plus the contents of `examples/` and `docs/adr/` — nothing downstream is
-// hand-listed twice. `scripts/smoke.mjs` and `test/docs-sync-list.test.ts` parse
+// hand-listed twice (the `_headers` `.md` rules are generated from PAGES + SITE_PAGES). `scripts/smoke.mjs` and `test/docs-sync-list.test.ts` parse
 // these same tables out of this file, so keep them literal, top-level, and in the
 // uniform `["src", "dest"],` tuple shape those parsers expect.
 // ───────────────────────────────────────────────────────────────────────────────
@@ -46,6 +47,25 @@ const PAGES = [
   ["docs/intent.md", "intent.md"],
   ["docs/error-codes.md", "errors.md"],
   ["spec.llm.md", "spec.md"],
+];
+
+/**
+ * The HAND-WRITTEN docs-site pages (tracked `docs-site/*.md`), each published as a raw
+ * markdown copy at `public/<dest>` (`/<dest>`) by `siteMarkdown()` (`site-markdown.mjs`) — Vue
+ * components and VitePress-only syntax replaced by their text fallback. Same tuple shape
+ * as `PAGES` (`["src", "dest"]`, src relative to the repo root) so `scripts/smoke.mjs`
+ * reads both. The `_headers` rule for every `.md` route is GENERATED from `PAGES` + this
+ * table (`npm run gen:docs-headers`), and `test/docs-sync-list.test.ts` fails when a
+ * tracked page is missing here — a page without a `.md` route cannot ship.
+ */
+const SITE_PAGES = [
+  ["docs-site/index.md", "index.md"],
+  ["docs-site/guide.md", "guide.md"],
+  ["docs-site/agents.md", "agents.md"],
+  ["docs-site/examples.md", "examples.md"],
+  ["docs-site/gallery.md", "gallery.md"],
+  ["docs-site/relational.md", "relational.md"],
+  ["docs-site/embed.md", "embed.md"],
 ];
 
 /**
@@ -247,8 +267,9 @@ const levelSvgName = (name, level) => `${name}.L${level}.svg`;
 const failures = [];
 let levelSvgCount = 0;
 let compile = null;
+let describe = null;
 try {
-  ({ compile } = await import(pathToFileURL(join(repo, "dist", "index.js")).href));
+  ({ compile, describe } = await import(pathToFileURL(join(repo, "dist", "index.js")).href));
 } catch (e) {
   failures.push(`cannot load the built core from dist/ — run \`npm run build\` at the repo root first (${e.message})`);
 }
@@ -264,6 +285,9 @@ if (compile) {
         continue;
       }
       writeFileSync(join(exDest, `${name}.svg`), svg);
+      // The source beside its drawing, so `<arch-plan src="https://archlang.uk/examples/<name>.arch">`
+      // (the /embed page) and any other fetcher can load a gallery plan by URL.
+      writeFileSync(join(exDest, `${name}.arch`), sources[name]);
       // A multi-storey plan is one drawing PER STOREY, and `.svg` above is only page 1
       // (the lowest level) — so a page that wants to show a building's floors has
       // nothing to point at. `pages` is absent for a single-storey plan, so this is
@@ -287,7 +311,16 @@ if (failures.length > 0) {
   );
   process.exit(1);
 }
-console.log(`  ${examples.length} example SVGs (+ ${levelSvgCount} per-storey pages) → public/examples/`);
+console.log(`  ${examples.length} example SVGs + sources (+ ${levelSvgCount} per-storey pages) → public/examples/`);
+
+// The hand-written pages' raw markdown at /<route>.md. After the gallery gate above because it
+// needs the built core (the home page's facts band is `describe()`, the agent gallery's sheet
+// names come from `compile().pages`); the transform itself lives in site-markdown.mjs.
+for (const [src, dest] of SITE_PAGES) {
+  const md = siteMarkdown(src, { repo, compile, describe, encodePlanHash, levelSvgName, playground: PLAYGROUND });
+  writeFileSync(join(publicDir, dest), md);
+  console.log(`  ${src} → public/${dest}  (+ /${dest})`);
+}
 
 // ───────────────────────────────────────────────────────────────────────────────
 // AGENT GALLERY (`/gallery`): plans written by AI agents from a one-paragraph brief.

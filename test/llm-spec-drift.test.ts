@@ -72,8 +72,9 @@ describe("spec.llm.md is in sync with the token source + examples", () => {
     // 1,600 characters, whose per-kind clause prose a machine-readable table would carry
     // better than a sentence.
     //
-    // 30,000 leaves 1,157 chars of headroom on a measured 28,843 — above the working margin the
-    // rules above ask for. It came from trimming duplication, not from raising the cap: the
+    // The cap is asserted on the in-memory render, in UTF-16 code units, so neither a CRLF
+    // checkout nor multi-byte characters count against it. Headroom came from trimming
+    // duplication, not from raising the cap: the
     // `## Keyword reference` enum bullet now lists only the value words no code span or fence
     // shows (derived), the CLI/settings blocks lost their alignment padding, and a few
     // sentences that restated another line were folded into it.

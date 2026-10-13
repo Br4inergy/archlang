@@ -57,7 +57,7 @@ describe("W_SWING_OBSTRUCTED states the measured deficit", () => {
     expect(d.hints?.length).toBeGreaterThanOrEqual(4);
     expect(d.hints!.join("\n")).toMatch(/hinge right/);
     expect(d.hints!.join("\n")).toMatch(/swing out/);
-    expect(d.hints!.join("\n")).toMatch(/arch repair/);
+    expect(d.hints!.join("\n")).toMatch(/`archlang repair`/);
     expect(d.hints!.join("\n")).toMatch(/leafless `opening`/);
   });
 

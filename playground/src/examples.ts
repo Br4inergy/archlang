@@ -24,12 +24,16 @@ import courtyardHouse from "../../examples/courtyard-house.arch?raw";
 import townhouse from "../../examples/townhouse.arch?raw";
 import twoStorey from "../../examples/two-storey.arch?raw";
 import furnishedFlat from "../../examples/furnished-flat.arch?raw";
+import sheetNotes from "../../examples/sheet-notes.arch?raw";
 import gardenHouse from "../../examples/garden-house.arch?raw";
 import museum from "../../examples/museum.arch?raw";
 import aquarium from "../../examples/aquarium.arch?raw";
 import library from "../../examples/library.arch?raw";
 import transitHall from "../../examples/transit-hall.arch?raw";
 import clinic from "../../examples/clinic.arch?raw";
+import practiceOffice from "../../examples/practice-office.arch?raw";
+import cornerCafe from "../../examples/corner-cafe.arch?raw";
+import classroomBlock from "../../examples/classroom-block.arch?raw";
 import galleryL from "../../examples/gallery-l.arch?raw";
 import hexagonPavilion from "../../examples/hexagon-pavilion.arch?raw";
 import terraceRow from "../../examples/terrace-row.arch?raw";
@@ -60,26 +64,21 @@ import materials from "../../examples/materials.arch?raw";
 //
 // Group order and item order are the menu's order, and the labels are the <select>'s
 // values as well as its text: the Playwright specs select by label, so a label is a
-// small public surface. Reorder deliberately, if at all.
+// small public surface. Reorder deliberately, if at all. The FIRST row is the plan a first
+// visit opens, so it must be lint-clean (`arch lint --json` returns no diagnostics).
 // ───────────────────────────────────────────────────────────────────────────────
 const EXAMPLE_ROWS = [
   [
-    "hillside-villa",
-    "Hillside Villa",
-    "Showpiece",
-    "A two-storey villa with an attached garage on one A2 sheet — the whole language in a single plan.",
+    "laneway-house",
+    "Laneway House",
+    "Start here",
+    "A 49 m² one-bedroom cottage where nothing is positioned by hand: every opening and fixture resolves against a wall or a room.",
   ],
   [
     "one-room",
     "One room",
     "Start here",
     "The smallest complete plan: one room, one door, one window and a dimension chain.",
-  ],
-  [
-    "laneway-house",
-    "Laneway House",
-    "Start here",
-    "A 49 m² one-bedroom cottage where nothing is positioned by hand: every opening and fixture resolves against a wall or a room.",
   ],
   [
     "garden-loft",
@@ -98,6 +97,12 @@ const EXAMPLE_ROWS = [
     "Studio (1BR)",
     "Start here",
     "The canonical example: a compact studio flat that passes arch lint, with every room opening off a central hall.",
+  ],
+  [
+    "hillside-villa",
+    "Hillside Villa",
+    "Showpiece",
+    "A two-storey villa with an attached garage on one A2 sheet — the whole language in a single plan.",
   ],
   [
     "two-bed",
@@ -142,6 +147,12 @@ const EXAMPLE_ROWS = [
     "A two-bedroom flat furnished from the symbol catalogue: thirty-eight drawn fixture kinds across five domains.",
   ],
   [
+    "sheet-notes",
+    "Issued Sheet (tags + notes)",
+    "Homes",
+    "A small flat issued on A3 with a drawing number, general notes and a tag on every door and window, keyed to a schedule.",
+  ],
+  [
     "garden-house",
     "Garden House (site plan)",
     "Homes",
@@ -176,6 +187,24 @@ const EXAMPLE_ROWS = [
     "Clinic (place ×6)",
     "Public buildings",
     "An outpatient wing whose six consulting rooms are one component placed six times, rather than six copies.",
+  ],
+  [
+    "practice-office",
+    "Practice Office (workplace)",
+    "Public buildings",
+    "A 225 m² office on a spine corridor: open workspace, meeting rooms, break room and an accessible WC, issued with tagged openings.",
+  ],
+  [
+    "corner-cafe",
+    "Corner Cafe (front and back)",
+    "Public buildings",
+    "A 15 x 10 m cafe split into front and back of house: a dining room for eighteen, a servery, a kitchen and a store.",
+  ],
+  [
+    "classroom-block",
+    "Classroom Block (school)",
+    "Public buildings",
+    "A single-storey school block: three 60 m² classrooms on a 2 m corridor, with lobby, staff prep, pupil WCs and an accessible WC.",
   ],
   [
     "gallery-l",
@@ -247,12 +276,16 @@ const SOURCES: Record<string, string> = {
   townhouse,
   "two-storey": twoStorey,
   "furnished-flat": furnishedFlat,
+  "sheet-notes": sheetNotes,
   "garden-house": gardenHouse,
   museum,
   aquarium,
   library,
   "transit-hall": transitHall,
   clinic,
+  "practice-office": practiceOffice,
+  "corner-cafe": cornerCafe,
+  "classroom-block": classroomBlock,
   "gallery-l": galleryL,
   "hexagon-pavilion": hexagonPavilion,
   "terrace-row": terraceRow,
@@ -293,6 +326,15 @@ export const EXAMPLE_GROUPS: readonly ExampleGroup[] = (() => {
 export const EXAMPLES: Record<string, string> = Object.fromEntries(
   EXAMPLE_GROUPS.flatMap((g) => g.items.map((i) => [i.label, i.source])),
 );
+
+/** The `examples/` basename whose source is exactly `src`, if `src` is an unedited preset. */
+export function exampleNameFor(src: string): string | undefined {
+  // The editor holds `\n` line ends whatever the checkout's were, so compare on those.
+  const lf = (s: string) => s.replace(/\r\n?/g, "\n");
+  const want = lf(src);
+  for (const [name] of EXAMPLE_ROWS) if (lf(SOURCES[name] ?? "") === want) return name;
+  return undefined;
+}
 
 /** The preset a first, unshared, unsaved visit loads: the table's first row. */
 export const DEFAULT_EXAMPLE: string = EXAMPLE_ROWS[0][1];

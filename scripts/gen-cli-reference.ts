@@ -1,6 +1,6 @@
 /**
- * Generate `docs/cli-reference.md` — the complete `arch` CLI reference — from the
- * capability manifest (`src/manifest.ts`), the same source `arch manifest --json`
+ * Generate `docs/cli-reference.md` — the complete `archlang` CLI reference — from the
+ * capability manifest (`src/manifest.ts`), the same source `archlang manifest --json`
  * serves.
  *
  * Why generated: the CLI grew from 13 verbs to 20 across v1.8 → v1.15 while the
@@ -15,7 +15,7 @@
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { buildManifest, type ManifestExample, type ManifestFlag } from "../src/manifest.js";
+import { buildManifest, CLI_NAME, type ManifestExample, type ManifestFlag } from "../src/manifest.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..");
@@ -80,17 +80,21 @@ export function renderCliReference(): string {
     "",
     "# CLI reference",
     "",
-    "Every `arch` command, flag, format and exit code — generated from the same capability",
-    "manifest that `arch manifest --json` serves, so this page cannot fall behind the CLI.",
+    `Every \`${CLI_NAME}\` command, flag, format and exit code — generated from the same capability`,
+    `manifest that \`${CLI_NAME} manifest --json\` serves, so this page cannot fall behind the CLI.`,
     "",
     "The CLI is ArchLang's **primary agent interface**. Every command takes `--json` (structured",
     "result on **stdout**, human messages on **stderr**), and every command that reads source",
     "accepts a file path or `-` for stdin.",
     "",
     "```bash",
-    "npx @chanmeng666/archlang help     # zero-install",
-    "arch manifest --json               # this page, as data",
+    "npx -y @chanmeng666/archlang help        # zero-install",
+    "npm i -g @chanmeng666/archlang           # or install the archlang command",
+    `${CLI_NAME} manifest --json                 # this page, as data`,
     "```",
+    "",
+    `\`arch\` is installed as an alias of \`${CLI_NAME}\`, but on Linux, macOS and Git Bash coreutils owns`,
+    "that name, so this page never uses it.",
     "",
     "## Exit codes",
     "",
@@ -118,7 +122,7 @@ export function renderCliReference(): string {
   for (const c of m.commands) {
     const aliases = c.aliases?.length ? ` _(alias: ${c.aliases.map((a) => `\`${a}\``).join(", ")})_` : "";
     out.push(
-      `### \`arch ${c.name}\`${aliases}`,
+      `### \`${CLI_NAME} ${c.name}\`${aliases}`,
       "",
       prose(c.summary),
       "",

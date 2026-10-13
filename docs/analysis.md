@@ -10,7 +10,7 @@ facts**. Two pure functions turn source into machine-readable, image-free output
   profile.
 
 Both are exported from the package (`import { describe, lint } from "@chanmeng666/archlang"`)
-and surfaced on the CLI as `arch describe` / `arch lint` (add `--json` for the
+and surfaced on the CLI as `archlang describe` / `archlang lint` (add `--json` for the
 structured form). They power the **Describe** and **Lint** tabs in the
 [playground](https://playground.archlang.uk). Neither renders anything, so a
 text-only agent can author a plan and **verify it matches intent without ever
@@ -24,7 +24,7 @@ looking at an image**.
 
 ## `describe` — the semantic summary
 
-`arch describe plan.arch --json` returns a `SceneSummary`. For
+`archlang describe plan.arch --json` returns a `SceneSummary`. For
 [`examples/studio.arch`](../examples/studio.arch) (abridged to the shapes that
 matter — run it yourself for the full object):
 
@@ -43,6 +43,7 @@ matter — run it yourself for the full object):
       "label": "Living / Kitchen",
       "uses": ["living", "kitchen"],
       "area_m2": 24,
+      "net_area_m2": 22.33,
       "bbox": { "x": 0, "y": 0, "w": 4000, "h": 6000 },
       "adjacent": ["r_bed", "r_hall", "r_bath"]
     },
@@ -51,6 +52,7 @@ matter — run it yourself for the full object):
       "label": "Bath",
       "uses": ["bath"],
       "area_m2": 4.8,
+      "net_area_m2": 4.13,
       "bbox": { "x": 4000, "y": 4400, "w": 3000, "h": 1600 },
       "adjacent": ["r_living", "r_hall"]
     }
@@ -70,7 +72,7 @@ matter — run it yourself for the full object):
     { "id": "sofa_5", "category": "sofa", "label": "Sofa" }
   ],
   "access": { "…": "see below" },
-  "totals": { "rooms": 4, "doors": 3, "windows": 3, "floor_area_m2": 42 }
+  "totals": { "rooms": 4, "doors": 3, "windows": 3, "floor_area_m2": 42, "net_floor_area_m2": 38.29 }
 }
 ```
 
@@ -80,7 +82,8 @@ matter — run it yourself for the full object):
 | `bbox` | overall extent on wall **centerlines** — the coordinate space the source is written in (room `at`/`size`, wall points), so this is the number to compute *with* |
 | `bbox_outer` | overall extent on the **outer wall faces** — `bbox` plus half a wall thickness at each end (7000×6000 inside a 200 shell is 7200×6200 outside). What a builder measures, what `dims auto`'s overall chain prints, and what to quote when someone asks how big the building is |
 | `rooms[].uses` | the room's [`uses` tags](language-reference.md#room) (or the inferred kind when none were authored) |
-| `rooms[].area_m2` | floor area in m², rounded to 2 dp — `w × h` for a rectangle, the exact **shoelace** area of the ring for a [polygon room](language-reference.md#polygonal-rooms-v1-23) |
+| `rooms[].area_m2` | floor area in m², rounded to 2 dp — `w × h` for a rectangle, the exact **shoelace** area of the ring for a [polygon room](language-reference.md#polygonal-rooms-v1-23). A room is drawn on wall **centrelines**, so this runs to the middle of every wall round it |
+| `rooms[].net_area_m2` | **net internal** area in m², rounded to 2 dp: the floor no wall stands on — the room's own shape less every part of it a wall's band covers, each band as the drawing draws it (faces, square caps at a free end, mitred joints, true arcs; openings not cut). A wall on the edge takes half of itself, a wall standing on the floor takes what it stands on. Always `<= area_m2`, and equal to it when no wall touches the room. Computed exactly in closed form, or **absent** when it cannot be (then `totals.net_floor_area_m2` is absent too). This is the figure to quote as a room's floor area (rule: [ADR 0027](adr/0027-net-internal-area.md)) |
 | `rooms[].floor_polygon` | the room's floor as a closed ring: a rectangle's four corners, or the polygon's own vertices. This — not `bbox` — is the room's shape |
 | `rooms[].bbox` | the room's **vertex extent**. For a polygon room it is the box the ring fits in, which is bigger than the floor |
 | `rooms[].adjacent` | ids of rooms whose walls touch this one within tolerance (a shared corner alone doesn't count) |
@@ -91,7 +94,7 @@ matter — run it yourself for the full object):
 | `voids` | the holes in this storey's floor plate — one `{ id, at, size, room }` per [`void`](language-reference.md#void--a-hole-in-the-floor-v1-29). **Present only when the storey declares one.** `room` is the room whose FLOOR contains the opening's centre (`null` when none does — a void in the notch of a U-shaped room belongs to no room, even though it is inside that room's `bbox`). The room's `area_m2` is **not** reduced by it: subtract `size.w × size.h` yourself if you need the net |
 | `outdoor` | the [ground surfaces](language-reference.md#outdoor--ground-outside-the-building-v1-31) outside the building — one `{ id, kind, label?, area_m2, bbox, rail? }` per `outdoor`. **Present only when the storey declares one.** `area_m2` is the exact **shoelace** area for the `polygon` spelling, never the `bbox`. `rail` is present on a `balcony` and absent on every other kind — an empty array there means "no railing", which is a different fact from the key being missing. **None of this is floor area:** a ground surface appears in no other part of the summary, and its area is totalled separately (below) |
 | `fences` | the [fence runs](language-reference.md#fence--a-boundary-line-on-the-ground-v1-31) — one `{ id, style, length_mm, closed }` each. **Present only when the storey declares one.** A fence is not a wall: it is absent from `walls`, from `access` and from `input_graph`, and it hosts no opening |
-| `totals` | room / door / window counts and total floor area |
+| `totals` | room / door / window counts and total floor area: `floor_area_m2` sums the rooms' `area_m2`, `net_floor_area_m2` their `net_area_m2` (each summed from the rounded per-room figures; absent when any room's net area is) |
 | `totals.outdoor_area_m2` | total ground area in m² — **present only when the storey declares an `outdoor` surface**. Deliberately a **sibling** of `floor_area_m2` rather than part of it: floor area is floor area, and a terrace is not it. A consumer that wants plot coverage adds the two, having decided that is what it means |
 | `accTitle` / `accDescr` | the plan's declared [accessible metadata](language-reference.md#accessible-metadata-acctitle-accdescr) — **present only when the source declares them** |
 | `axes` | the plan's declared [positioning axes](language-reference.md#positioning-axes-定位轴线) — **present only when the source declares an `axes` block** |
@@ -110,8 +113,8 @@ keeps only those rooms and the doors, windows, openings and furniture that touch
 (plan-level facts — `bbox`, `bbox_outer`, `totals`, `caption` — stay whole-plan).
 
 ```
-arch describe plan.arch --select rooms,totals --json
-arch describe plan.arch --room r_bath,r_hall --json
+archlang describe plan.arch --select rooms,totals --json
+archlang describe plan.arch --room r_bath,r_hall --json
 ```
 
 The **`caption`** is the same sentence the accessible SVG puts in its `<desc>`
@@ -150,7 +153,7 @@ to the edge" has no direction on a ring.
 
 Two rules keep the rectangle they are written about, and say so rather than guess:
 `W_FIXTURE_BACK_TO_ROOM` does not fire inside a polygon room (no north/south/east/west
-side to be the fixture's back), and `arch repair` declines to push a piece into one,
+side to be the fixture's back), and `archlang repair` declines to push a piece into one,
 reporting it in `unresolved`. `W_ROOM_OVERLAP`, by contrast, **was** generalised: it runs
 an exact ring-vs-ring intersection test, so a room tucked into an L's notch — overlapping
 boxes, disjoint floors — does not warn, while two floors that really do intersect still do.
@@ -163,6 +166,7 @@ A curve has two truthful descriptions — the circle it is, and a polygon close 
 | Fact | How it is computed |
 | --- | --- |
 | A circular room's `area_m2` (label, `describe()`, `schedule rooms`, Plan JSON) | **Exact** — πR², closed form |
+| Any room's `net_area_m2` crossed by a curved wall band | **Exact** — closed-form arc pieces (ends, centre, swept angle) on the boundary of the covered region; π(R − t/2)² for a circle walled all round by one concentric thickness. Angles are read through `atan2` ([ADR 0027](adr/0027-net-internal-area.md)) |
 | `floor_circle`, `dim diameter`, `dim radius`, the `dims auto` R/φ call-outs | **Exact** — the authored centre and radius |
 | The drawing extent, a wall's outer-face box, a spatial-index cell | **Exact** — the arc's closed-form extremes, so a bulge is never clipped |
 | Which wall hosts an opening, and how far along it sits | **Exact** — distance to the arc, and run length `R·θ` |
@@ -296,7 +300,7 @@ entrance. For the studio:
 }
 ```
 
-(Re-read from `arch describe examples/studio.arch --json`. The excerpt had drifted before the
+(Re-read from `archlang describe examples/studio.arch --json`. The excerpt had drifted before the
 tie rules too: `r_bath` and the route were already 4600 mm / 740 mm / 2.27 and 5100 mm / 740 mm
 / 1.31. Of the figures shown, the tie rules moved only `r_living` — 4000 mm, 1.29 → 3700 mm,
 1.26 — and the route — 5100 mm, 1.31 → 5000 mm, 1.32.)
@@ -368,7 +372,7 @@ edges) and a [`void`](language-reference.md#void--a-hole-in-the-floor-v1-29) (ha
 and doors carve, as always.
 
 Two advisory lint rules read this model, and the same model backs the opt-in
-`arch compile --overlay circulation` render overlay (see
+`archlang compile --overlay circulation` render overlay (see
 [ADR 0008 — circulation as facts](adr/0008-circulation-as-facts.md)).
 
 ### Grid resolution — why `cellSizeMm` is worth reading
@@ -442,16 +446,17 @@ agent can read the numbered table it just rendered without OCR'ing the image. Th
 
 ```json
 "schedule": [
-  { "no": "01", "id": "living", "name": "Living", "area_m2": 12 },
-  { "no": "02", "id": "bath",   "name": "bath",   "area_m2": 9 }
+  { "no": "01", "id": "living", "name": "Living", "area_m2": 12, "net_area_m2": 10.78 },
+  { "no": "02", "id": "bath",   "name": "bath",   "area_m2": 9,  "net_area_m2": 7.98 }
 ]
 ```
 
 - `no` is the drawn number: 1-based **source order**, zero-padded to one uniform width
   across the table (`01`…`09`, `001`…`100`) — cite it the way a reviewer will ("room 02").
 - `name` is the room's `label`, falling back to its `id` when unlabelled (`bath` above).
-- `area_m2` is byte-identical to that room's `rooms[].area_m2`, and the drawn `TOTAL` row
-  is `totals.floor_area_m2` — one derivation feeds both the drawing and this JSON, so the
+- `area_m2` and `net_area_m2` are byte-identical to that room's `rooms[].area_m2` and
+  `rooms[].net_area_m2`, and the drawn `TOTAL` row is `totals.floor_area_m2` and
+  `totals.net_floor_area_m2` — one derivation feeds both the drawing and this JSON, so the
   table on the sheet and the facts here can never disagree.
 
 The `legend` setting has **no counterpart here**, deliberately: it is pure rendering, and
@@ -503,7 +508,7 @@ when the plan declares no zone, so an existing summary is unchanged.
   on, so the same zone id on two floors is two entries. Top-level `zones` is the lowest
   storey's, like every other top-level fact; `levels[i].zones` is that storey's.
 
-Read one wing with `arch describe museum.arch --zone west --json`: the rooms narrow to that
+Read one wing with `archlang describe museum.arch --zone west --json`: the rooms narrow to that
 zone's members (nested zones included) and so do the doors/windows/openings/furniture
 touching them, marked `filtered: true` + `selected_zones`. Whole-plan facts (`bbox`,
 `totals`, `caption`) stay whole-plan, and — as with every other narrowing flag — `ok`,
@@ -586,7 +591,7 @@ storey. So `describe()` keeps its contract and appends one:
 ]
 ```
 
-Read one storey with `arch describe house.arch --level 2 --json`: that level's facts become
+Read one storey with `archlang describe house.arch --level 2 --json`: that level's facts become
 the top-level ones and `levels[]` narrows to it, marked `filtered: true` +
 `selected_level: 2`. Like `--room`/`--select` it is a **display filter** — `ok`,
 `diagnostics` and the exit code always come from the whole building, so reading one floor
@@ -767,7 +772,7 @@ failed to resolve, `freedom` is present with all-zero counts and an empty `eleme
 
 ## Symmetry — the plan's group and its repeats
 
-`describe(src, { facts: ["symmetry"] })` — `arch describe plan.arch --facts symmetry --json`
+`describe(src, { facts: ["symmetry"] })` — `archlang describe plan.arch --facts symmetry --json`
 — adds `symmetry`: which rigid motions of the page map the plan onto itself, and which of
 its rooms repeat. It is **opt-in**: without `--facts` the key is absent and every summary is
 byte-identical to one written before it existed.
@@ -848,7 +853,7 @@ one component, alternately mirrored — and `--facts symmetry` reports that the 
 drawn, has **no** symmetry and **no** exact repeat:
 
 ```bash
-arch describe examples/terrace-row.arch --facts symmetry,syntax --json
+archlang describe examples/terrace-row.arch --facts symmetry,syntax --json
 ```
 
 ```json
@@ -876,7 +881,7 @@ than a silently missing key.
 
 ## Space syntax — integration on the access graph
 
-`describe(src, { facts: ["syntax"] })` — `arch describe plan.arch --facts syntax --json` —
+`describe(src, { facts: ["syntax"] })` — `archlang describe plan.arch --facts syntax --json` —
 adds `syntax`: the space-syntax measures of Hillier and Hanson (*The Social Logic of
 Space*, 1984), computed on the [access graph](#the-access-graph) above. Opt-in like
 `symmetry`.
@@ -926,7 +931,7 @@ is `0` and its `integration` is `null`: it is as integrated as a space can be.
 
 ## `lint` — architectural soundness
 
-`arch lint plan.arch --json` returns advisory `W_*` diagnostics, each with a byte
+`archlang lint plan.arch --json` returns advisory `W_*` diagnostics, each with a byte
 `span`, a `line`/`col`, and a `fix`. Warnings never block rendering — they flag
 *habitability*, not *validity*. The rules, grouped by what they watch:
 
@@ -942,7 +947,7 @@ is `0` and its `integration` is `null`: it is as integrated as a space can be.
 | Circulation quality | `W_ROOM_NO_CLEAR_PATH`, `W_PATH_TOO_NARROW`, `W_CIRCUITOUS_PATH` |
 
 Every code is documented — with cause, fix, and example — in the
-[error catalog](error-codes.md), or run `arch explain W_SWING_OBSTRUCTED`. (In human
+[error catalog](error-codes.md), or run `archlang explain W_SWING_OBSTRUCTED`. (In human
 mode each diagnostic already prints its catalogued `= fix:` line, so the lookup is
 usually unnecessary.)
 
@@ -956,8 +961,8 @@ the ground floor does not excuse a first floor whose only bathroom is an en-suit
 Narrow a noisy report with `--code` or `--severity` — on `lint` and on `validate`:
 
 ```
-arch lint plan.arch --code W_ROOM_UNREACHABLE,W_NO_ENTRANCE --json   # only these codes
-arch validate plan.arch --severity error --json                      # only the blocking errors
+archlang lint plan.arch --code W_ROOM_UNREACHABLE,W_NO_ENTRANCE --json   # only these codes
+archlang validate plan.arch --severity error --json                      # only the blocking errors
 ```
 
 > **A display filter never changes gating.** `--code` and `--severity` (like `describe`'s
@@ -977,8 +982,8 @@ A **profile** is a named bundle of thresholds, applied with `--profile` (CLI) or
 | `accessibility-advisory` | doors ≥ 850 mm, rooms ≥ 5 m², walk clear ≥ 900 mm, detour ≤ 3.0×, 150 mm swing clearance |
 
 ```
-arch lint plan.arch                                  # residential-basic
-arch lint plan.arch --profile accessibility-advisory
+archlang lint plan.arch                                  # residential-basic
+archlang lint plan.arch --profile accessibility-advisory
 ```
 
 The flagship studio is **clean under the default profile**, but the stricter profile
@@ -1016,10 +1021,10 @@ Together, `describe` and `lint` close the author → render → **verify** loop 
 agent with no eyes on the drawing — see
 [Use ArchLang from an agent](https://archlang.uk/agents):
 
-1. `arch compile` — render and get errors as data.
-2. `arch describe --json` — confirm the room count, labels, areas, and access match
+1. `archlang compile` — render and get errors as data.
+2. `archlang describe --json` — confirm the room count, labels, areas, and access match
    the brief.
-3. `arch lint --json` — clear the habitability warnings (each carries a `fix`).
+3. `archlang lint --json` — clear the habitability warnings (each carries a `fix`).
 
 ### Diagnostics as data, and seeing a failure
 
@@ -1040,13 +1045,13 @@ The two feedback channels an agent relies on are both public, structured API:
 
 - **The opt-in error card.** By default a plan that fails to compile produces **no image** —
   correct for a pipeline, but blind for an agent watching the drawing. `compile(src, { onError:
-  "svg" })` / `--error-svg` (on `arch compile`, `arch preview`, and `arch md`) instead renders
+  "svg" })` / `--error-svg` (on `archlang compile`, `archlang preview`, and `archlang md`) instead renders
   a deterministic, self-describing SVG card — severity, code, `line:col`, message, and the
   catalogued fix — so the failure is visible, not just returned. Errors, diagnostics, and exit
   codes are unchanged; without the opt-in the failing plan still yields no bytes. The renderer
   is exported as `renderErrorSvg`. See
   [ADR 0009](adr/0009-ai-first-context-and-distribution.md).
 
-For a full cold start, `arch context` (and the shipped `llms-full.txt`) bundle this loop —
+For a full cold start, `archlang context` (and the shipped `llms-full.txt`) bundle this loop —
 the language spec, the `SKILL.md` workflow, the CLI reference, and the whole error catalog — into
 one system-prompt-ready document.

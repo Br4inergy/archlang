@@ -45,6 +45,9 @@ Owner decisions and laws that no test fully states. Do not re-propose, re-open o
   proxied (a Workers custom domain must be). Bot Fight Mode, Email Obfuscation, Rocket Loader and
   Browser Integrity Check stay OFF, or the smoke test and the nightly byte-equality probe break.
   Neither Worker has a `main` script.
+- **`archlang-mcp` (`packages/mcp-worker`, ADR 0026) is the third Worker and the only scripted
+  one**: its own deploy job, workers.dev until the owner attaches `mcp.archlang.uk`; DNS and the
+  Workers plan are owner-only. A site never gains a `main` to share its work.
 
 ## Language & geometry
 

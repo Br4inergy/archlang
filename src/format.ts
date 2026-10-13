@@ -11,6 +11,8 @@
  */
 
 import type { AxesNode, ComponentDef, ImportNode, PlanNode, SiteNode, Statement, TitleNode } from "./ast.js";
+import { TITLE_FIELD_KEY } from "./ast.js";
+import { TITLE_FIELDS } from "./grammar/tokens.js";
 import type { Comment } from "./lexer.js";
 import { parse } from "./parser.js";
 import { isNumericThemeKey, styleKeyFor, type Theme } from "./theme.js";
@@ -19,7 +21,7 @@ import { concat, type Doc, hardline, indent, join, printDoc } from "./doc.js";
 import { fmtSource as numStr } from "./num-format.js";
 // Expression re-emission lives in one place (shared with the fix producers) so
 // the formatter and `arch fix` render an expression byte-identically.
-import { exprToSource as exprStr } from "./expr-source.js";
+import { escapeStr, exprToSource as exprStr } from "./expr-source.js";
 // The leaf (non-block) statement kinds print through the one shared printer an
 // element's own fix producers also lower onto — see `statement-print.ts`'s header.
 import { ptStr, statementText } from "./statement-print.js";
@@ -103,11 +105,21 @@ function componentDoc(def: ComponentDef, comments: Comment[], source: string): D
   return concat([`component ${def.name}(${def.params.join(", ")}) `, blockDoc(def.body, def.span!, comments, source)]);
 }
 
+/** The title fields `fmt` has always quoted with `JSON.stringify` (see {@link titleDoc}). */
+const LEGACY_JSON_QUOTED: ReadonlySet<string> = new Set(["project", "drawn_by", "date"]);
+
 function titleDoc(title: TitleNode): Doc {
   const fields: Doc[] = [];
-  if (title.project !== undefined) fields.push(`project ${JSON.stringify(title.project)}`);
-  if (title.drawnBy !== undefined) fields.push(`drawn_by ${JSON.stringify(title.drawnBy)}`);
-  if (title.date !== undefined) fields.push(`date ${JSON.stringify(title.date)}`);
+  // Every field of `TITLE_FIELDS`, in its order. `number`/`revision` are quoted by the
+  // language's own escaper, so `fmt` is a fixed point for any string. The three older fields
+  // keep the `JSON.stringify` quoting they always had — which is NOT a fixed point for a control
+  // character (the lexer reads `\t` back as `t`) — because changing it would move `fmt` output
+  // on existing inputs; that is its own change (`docs/backlog.md`).
+  for (const word of TITLE_FIELDS) {
+    const v = title[TITLE_FIELD_KEY[word]];
+    if (v === undefined) continue;
+    fields.push(LEGACY_JSON_QUOTED.has(word) ? `${word} ${JSON.stringify(v)}` : `${word} "${escapeStr(v)}"`);
+  }
   if (fields.length === 0) return "title { }";
   return concat(["title {", indent(concat([hardline, join(hardline, fields)])), hardline, "}"]);
 }
@@ -257,7 +269,11 @@ export function formatPlan(plan: PlanNode, source: string): string {
   if (plan.site) settings.push(siteDoc(plan.site));
   if (plan.autoDims) settings.push(`dims auto ${plan.autoDims}`);
   if (plan.schedule) settings.push(`schedule ${plan.schedule}`);
+  if (plan.openingSchedule) settings.push("schedule openings");
   if (plan.legend) settings.push("legend");
+  // One `notes` line per note, in source order — repeated statements append, so this is a
+  // fixed point whether the author wrote one statement or several.
+  for (const n of plan.notes ?? []) settings.push(`notes "${escapeStr(n)}"`);
   if (plan.accTitle !== undefined) settings.push(`accTitle ${JSON.stringify(plan.accTitle)}`);
   if (plan.accDescr !== undefined) settings.push(`accDescr ${JSON.stringify(plan.accDescr)}`);
 

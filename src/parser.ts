@@ -38,6 +38,7 @@ import {
   NORTH_DIRS,
   SCHEDULE_SUBJECTS,
   STRIP_DIRS,
+  TITLE_FIELD_KEY,
   USE_KINDS,
 } from "./ast.js";
 import type { Expr } from "./expr.js";
@@ -51,7 +52,7 @@ import { fnv1a } from "./hash.js";
 import { idToken } from "./identity.js";
 import type { ParseCtx, Registry } from "./registry.js";
 import { BUILTIN_REGISTRY } from "./registry.js";
-import { STATEMENT_STARTS } from "./grammar/tokens.js";
+import { STATEMENT_STARTS, TITLE_FIELDS, type TitleField } from "./grammar/tokens.js";
 import type { PaperOrientation, PaperSize } from "./sheet.js";
 import { PAPER_ORIENTATIONS, PAPER_SIZES } from "./sheet.js";
 import { checkWhileDeprecation } from "./while-deprecation.js";
@@ -425,6 +426,9 @@ class Parser {
             this.next();
             plan.legend = true;
             break;
+          case "notes":
+            this.parseNotesSetting(plan);
+            break;
           case "accTitle":
             this.next();
             if (plan.accTitle !== undefined) this.warnDupAcc("accTitle", t);
@@ -723,10 +727,11 @@ class Parser {
 
   /**
    * `schedule <subject>` — opt into a sheet schedule table. The subject is required and
-   * closed (`SCHEDULE_SUBJECTS`, currently just `rooms`) so the surface can grow without
+   * closed (`SCHEDULE_SUBJECTS`: `rooms`, `openings`) so the surface can grow without
    * a respelling; an unknown word fails with the available list plus a `closest()`
    * did-you-mean, spanned on the OFFENDING WORD rather than the keyword. Repeating the
-   * statement is idempotent (declarative), never a duplicate error.
+   * statement is idempotent (declarative), never a duplicate error, and each subject is
+   * its own flag, so `schedule rooms` and `schedule openings` compose.
    */
   private parseScheduleSetting(plan: PlanNode): void {
     this.next();
@@ -740,7 +745,20 @@ class Parser {
         st,
       );
     }
-    plan.schedule = subject as ScheduleSubject;
+    if ((subject as ScheduleSubject) === "openings") plan.openingSchedule = true;
+    else plan.schedule = "rooms";
+  }
+
+  /**
+   * `notes "…" ["…" …]` — one or more general-note strings for the sheet's NOTES table.
+   * At least one string is required; repeated statements APPEND in source order (as
+   * `axes` rows do), so a long list may be written one note per line.
+   */
+  private parseNotesSetting(plan: PlanNode): void {
+    this.next();
+    const notes = [this.eatString()];
+    while (this.isType("string")) notes.push(this.eatString());
+    plan.notes = [...(plan.notes ?? []), ...notes];
   }
 
   /**
@@ -930,22 +948,10 @@ class Parser {
     while (!this.isType("rcurly") && !this.isType("eof")) {
       const t = this.peek();
       if (t.type !== "ident") this.fail(`Expected a title field but found ${describe(t)}`);
-      switch (t.value) {
-        case "project":
-          this.next();
-          node.project = this.eatString();
-          break;
-        case "drawn_by":
-          this.next();
-          node.drawnBy = this.eatString();
-          break;
-        case "date":
-          this.next();
-          node.date = this.eatString();
-          break;
-        default:
-          this.fail(`Unknown title field "${t.value}"`, t);
-      }
+      // One case per word of `TITLE_FIELDS`, each filling its `TitleNode` key.
+      if (!(TITLE_FIELDS as readonly string[]).includes(t.value)) this.fail(`Unknown title field "${t.value}"`, t);
+      this.next();
+      node[TITLE_FIELD_KEY[t.value as TitleField]] = this.eatString();
     }
     this.eat("rcurly");
     return node;

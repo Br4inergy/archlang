@@ -433,7 +433,12 @@ ${rooms}
     const legend = t.legend!;
     // 5 rooms: caption + headings + 5 + TOTAL = 8. The legend: caption + its entries.
     expect(sched.rows).toHaveLength(5);
-    const schedRows = scheduleRowCount({ rows: sched.rows, total_m2: sched.total_m2, groups: sched.groups });
+    const schedRows = scheduleRowCount({
+      rows: sched.rows,
+      total_m2: sched.total_m2,
+      net_total_m2: sched.net_total_m2,
+      groups: sched.groups,
+    });
     expect(schedRows).toBe(8);
     expect(sched.h).toBeCloseTo(tableRowsHeight(scene.sizes.refDim, schedRows), 6);
     expect(legend.h).toBeCloseTo(tableRowsHeight(scene.sizes.refDim, legendRowCount(legend.entries.length)), 6);
@@ -451,7 +456,12 @@ ${rooms}
   });
 
   it("the deeper of the two tables is what the band reserves", () => {
-    const schedule = { rows: [{ no: "01", id: "a", name: "A", area_m2: 1 }], total_m2: 1, groups: [] };
+    const schedule = {
+      rows: [{ no: "01", id: "a", name: "A", area_m2: 1, net_area_m2: 1 }],
+      total_m2: 1,
+      net_total_m2: 1,
+      groups: [],
+    };
     // Schedule: 3 + 1 = 4 rows. Legend: 1 + 9 = 10.
     const legend = Array.from({ length: 9 }, (_, i) => ({ kind: "fixture" as const, key: `k${i}`, name: `k${i}` }));
     expect(tableBandRows(schedule, null)).toBe(4);
@@ -657,7 +667,12 @@ suite("examples/museum.arch — the large-building flagship", () => {
     expect(d.diagnostics).toEqual([]);
     expect(d.bbox).toEqual({ w: 100000, h: 60000 });
     expect(d.bbox_outer).toEqual({ w: 100300, h: 60300 });
-    expect(d.totals).toEqual({ rooms: 14, doors: 7, windows: 9, floor_area_m2: 6000 });
+    // Net: the 14 rooms tile the 100 × 60 m shell, so the net total is 6000 m² less every
+    // wall band inside it, by hand: the shell's 150 mm inner band 47.91, the two spines
+    // 2 × 99.7 m × 0.2, the north cross walls 3 × 25.75 m + 21.75 m, the south ones
+    // 5 × 27.75 m and the two WC walls 2 × 9.8 m, all × 0.2 m: 139.26 m², so 5860.74. The
+    // reported total sums the rooms' already-rounded figures, one rounding step below it.
+    expect(d.totals).toEqual({ rooms: 14, doors: 7, windows: 9, floor_area_m2: 6000, net_floor_area_m2: 5860.73 });
     expect(d.access.hasEntrance).toBe(true);
     expect(d.access.rooms.filter((r) => !r.reachable)).toEqual([]);
   });

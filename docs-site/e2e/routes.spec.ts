@@ -33,6 +33,8 @@ import {
   PAGE_ROUTES,
   readRepoFile,
   ROOT_COPY_ROUTES,
+  SITE_PAGE_ROUTES,
+  tableRowCount,
 } from "./fixtures.js";
 
 test.describe("the homepage renders", { tag: "@prod" }, () => {
@@ -168,7 +170,10 @@ test.describe("machine-readable root artifacts", { tag: "@prod" }, () => {
 
 test.describe("the raw /<page>.md copies serve the canonical markdown", { tag: "@prod" }, () => {
   test("there are as many routes as sync-docs publishes pages", () => {
-    expect(PAGE_ROUTES.length).toBe(9);
+    // Counted from the PAGES table's own rows (a line-by-line reading, independent of the
+    // parser that built PAGE_ROUTES) — never a literal that a new page would have to chase.
+    expect(PAGE_ROUTES.length).toBe(tableRowCount("PAGES"));
+    expect(SITE_PAGE_ROUTES.length).toBe(tableRowCount("SITE_PAGES"));
   });
 
   for (const { route, source } of PAGE_ROUTES) {
@@ -187,6 +192,23 @@ test.describe("the raw /<page>.md copies serve the canonical markdown", { tag: "
       expect(firstHeading(body), `${route} is serving the wrong document`).toBe(firstHeading(canonical));
       // …and then the real contract: byte-for-byte the repo file.
       expect(body, `${route} is not a verbatim copy of ${source}`).toBe(canonical);
+    });
+  }
+});
+
+test.describe("the hand-written pages serve a raw /<page>.md copy", { tag: "@prod" }, () => {
+  for (const { route, source } of SITE_PAGE_ROUTES) {
+    test(`${route} is markdown rendered from ${source}`, async ({ request }) => {
+      const res = await request.get(route);
+      expect(res.status()).toBe(200);
+      expect(res.headers()["content-type"] ?? "").toContain("markdown");
+      const body = (await res.text()).replace(/\r\n/g, "\n");
+      expect(body.trim().length).toBeGreaterThan(200);
+      expect(body.startsWith("# "), `${route} should open with its title`).toBe(true);
+      // Component markup would be PROSE starting with a tag. Fenced code is code: /embed's HTML
+      // examples legitimately open lines with `<`, the exemption test/site-markdown.test.ts makes.
+      const prose = body.replace(/```[\s\S]*?```/g, "");
+      expect(prose, `${route} still carries component markup`).not.toMatch(/^<[A-Za-z]/m);
     });
   }
 });

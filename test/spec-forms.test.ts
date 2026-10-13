@@ -437,8 +437,22 @@ const POSITIVE: Snippet[] = [
   },
   {
     keyword: "schedule",
-    note: "`rooms` is the only subject",
+    note: "`rooms` subject",
     src: plan(`  paper A3\n  room id=r1 at (0,0) size 4000x3000 label "Hall"\n  schedule rooms`),
+  },
+  {
+    keyword: "schedule",
+    note: "`openings` subject, beside `rooms` (the two compose)",
+    src: plan(
+      `  paper A3\n  schedule rooms\n  schedule openings\n  wall id=w1 exterior thickness 200 { (0,0) (4000,0) (4000,3000) (0,3000) close }\n  room id=r1 at (0,0) size 4000x3000 label "Hall"\n  door on w1 at 1000 width 900\n  window on w1 at 5000 width 1200`,
+    ),
+  },
+  {
+    keyword: "notes",
+    note: "one or more strings; repeats append",
+    src: plan(
+      `  paper A3\n  notes "Do not scale." "Check on site."\n  notes "Third note."\n  room id=r1 at (0,0) size 4000x3000`,
+    ),
   },
   {
     keyword: "legend",
@@ -1071,7 +1085,7 @@ describe("spec.llm.md — the binding between what is documented and what is exe
         `  let xs = [1, 2, 3]\n  let n = 0\n  component unit(w) {\n    room at (0,0) size w x 2000\n  }\n` +
         `  set door(swing: out)\n  for i in 0..2 {\n    room at (0, i * 2500) size W x 2000 label "Unit {i}"\n  }\n` +
         `  if len(xs) > 2 { room id=big at (5000,0) size W x 2000 } else { room id=small at (5000,0) size 1000x1000 }\n` +
-        `  while n < 1 { n = n + 1 }\n  unit(3000)\n  title { project "P" drawn_by "D" date "2026-01-01" }`,
+        `  while n < 1 { n = n + 1 }\n  unit(3000)\n  title { project "P" drawn_by "D" date "2026-01-01" number "A-101" revision "B" }`,
     );
     expect(errorsOf(scripting)).toEqual([]);
     // The other two `theme` forms the new Scripting bullet teaches — a bare named base

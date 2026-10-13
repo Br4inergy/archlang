@@ -15,6 +15,18 @@ Write a floor plan as text. Get a precise, dimensioned drawing back.
 
 <br>
 
+## Send this to your agent
+Paste this into any coding agent. The skills are listed on skills.sh: https://skills.sh/ChanMeng666/archlang
+```text
+1. Run: npx -y skills add ChanMeng666/archlang --yes
+2. Run: npx -y @chanmeng666/archlang spec   (read it before writing anything)
+3. Write my floor plan as plan.arch from this brief: <describe rooms, areas, adjacencies>
+4. Run: npx -y @chanmeng666/archlang compile plan.arch -o plan.svg --json
+   then describe plan.arch --json, validate plan.arch --strict --json (same prefix); fix, recompile
+5. Run: npx -y @chanmeng666/archlang finish plan.arch, then compile again to export.
+```
+For MCP clients: `claude mcp add archlang -- npx -y @chanmeng666/archlang-mcp`.
+
 <a href="https://playground.archlang.uk"><img src="./.github/readme/card.svg" width="100%" alt="ArchLang compiles plain-text source into floor plans. The card shows source being typed and the drawing compiling beside it: five example plans, one constant changed, and a lint finding raised and cleared."></a>
 
 <br>
@@ -64,7 +76,7 @@ flowchart LR
 This page is all a person needs. Everything else is written for agents: clone the repo and point yours at [`AGENTS.md`](AGENTS.md), or give it the whole language in one call:
 
 ```bash
-npx @chanmeng666/archlang context
+npx -y @chanmeng666/archlang context
 ```
 
 <sub>[Full overview](docs/overview.md) · [Language reference](docs/language-reference.md) · [Release notes](https://github.com/ChanMeng666/archlang/blob/main/CHANGELOG.md) (installed: `node_modules/@chanmeng666/archlang/CHANGELOG.md`) · [Contributing](CONTRIBUTING.md) · [MIT](LICENSE)</sub>

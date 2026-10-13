@@ -10,7 +10,7 @@ reference, and every diagnostic code — sized to drop into a system prompt.
 
 ArchLang is built for agents: **deterministic** (same source → byte-identical output), **pure** (no
 runtime, no IO in the compiler), and **self-correcting** (every error carries a machine code and a
-`fix`). Author, render, and verify entirely through the `arch` CLI — never hand-render SVG.
+`fix`). Author, render, and verify entirely through the `archlang` CLI — never hand-render SVG.
 
 Contents:
 
@@ -55,7 +55,7 @@ plan "Title" {
   accDescr "…"   # …and description → <desc>, replacing the derived caption. Both plan-level only (E_ACC_PLACEMENT)
   height 3000   # OPTIONAL storey floor-to-floor in mm — the VERTICAL DATUM, and it DRAWS NOTHING (a plan is a horizontal cut, so heights move no byte). Overridden per storey (`level <n> height`) then per wall (`wall … height`); mm, never grid-snapped, E_HEIGHT_RANGE outside 0–100000, and an opening's `head` above its wall is E_OPENING_ABOVE_WALL. Defaults: 3000 storey, 2100 door head, 900/2100 window sill/head (900 is GB 50352-2019's residential minimum), host-wall height for a cased opening. `describe --json` reports `heights` (storey_height/elevation/per-wall) + `head`/`sill` on the openings, but ONLY if the source wrote one of these clauses somewhere; `arch manifest`'s `datum` has the defaults either way
   # … elements and scripting …
-  title { project "…" drawn_by "…" date "…" }
+  title { project "…" drawn_by "…" date "…" number "…" revision "…" }
 }
 ```
 
@@ -73,27 +73,28 @@ reports the result as `sheet`. Big plan? `paper A1` + `dims auto all` is the pro
 ```text
 wall [id=<name>] <category> thickness <mm> [material poche|concrete|brick|insulation|tile|none [scale <n>] [angle <deg>]] [height <mm>] { (x,y) (x,y) … [arc (x,y) radius <mm> [cw|ccw] [major]] … [close] }   # category e.g. exterior/partition. NAME IT (`id=`) if any `door on`/`window on`/`furniture against wall`/`dim radius` will reference it. An unlisted material is W_UNKNOWN_MATERIAL + the default hatch; `scale`/`angle`: either order, each once. `close` makes a loop. An `arc` clause makes THAT edge a circular arc from the PREVIOUS vertex (default: the minor arc turning `ccw` AS DRAWN, bulging left of travel; `cw`/`major` pick the other circle / the long way round; R < chord/2 = E_ARC_RADIUS + a fix supplying the minimum). A closed curve is two arcs. Faces draw as TRUE arcs. Openings work: `on <wall> at <pos>` walks RUN length (an arc contributes R·θ, not its chord) and a door's leaf/swing take the TANGENT there; `furniture … against wall` on an arc = E_FURN_AGAINST (use at+rotate). `height` overrides the storey's — see the `height` setting — and is the ceiling an opening's `head` is held to
 room [id=<name>] at (x,y) size <W>x<H> [label "…" [at (x,y)]] [uses living|kitchen|dining|bedroom|bath|wc|hall|circulation|storage|utility|office|entry|garage …]   # OR relational: room [id=…] (right-of|left-of|below|above) <roomId> [align <edge>] [gap <mm>] size <W>x<H> — align is CROSS-axis: top|middle|bottom after right-of|left-of, left|center|right after below|above (middle=center, both OK); wrong axis = E_ROOM_ALIGN_AXIS +fix, non-edge = E_ROOM_ALIGN. OR POLYGONAL: room [id=…] polygon (x,y) (x,y) (x,y) … — an implicitly-closed SIMPLE polygon (>=3 vertices) instead of at+size: exact shoelace area, label at the CENTROID (override: `label "…" at (x,y)`). A crossing or all-collinear ring errors (E_ROOM_POLY_SELF_INTERSECT/E_ROOM_POLY_DEGENERATE); rectangle-only clauses (relational placement, `furniture … in <poly> anchor|centered`) REFUSE it with E_PLACE_POLY — use `at (x,y)` [+ rotate]. OR CIRCULAR: room [id=…] circle at (cx,cy) radius <mm> — area is EXACT πR² (never the tessellation), reported as `floor_circle`; grids/overlap use a 48-gon ring
-door [id=<name>] [hinged|sliding|barn|bifold|pocket|garage] (at (x,y) | on <wall> at <pos>) width <mm> [wall <id|category>] [hinge left|right|near start|near end] [swing in|out|into <roomId>] [slide left|right] [open <0..1>] [head <mm>]   # `at (x,y)` must sit on a wall; `on <wall> at <pos>` pins it BY CONSTRUCTION (<pos> = an EXPRESSION: mm along the wall, `<expr>%`, or `center`; a `%` ENDS it — parenthesise a modulo) and can never be reported off-wall — prefer it. The trailing `wall <id|category>` pairs with the `at` form ONLY — after `on <wall>` the host is already named, so writing it is a PARSE ERROR. KIND leads; `hinged` (default) is identical to omitting it and is the ONLY kind with a swing arc — the rest sweep nothing, so W_SWING_OBSTRUCTED cannot apply to them. `swing` DIFFERS BY KIND: hinged = which side the leaf sweeps; barn/bifold = which FACE the panel hangs on / folds toward; sliding/pocket/garage take none. `garage` (a sectional/roller door) takes NO clause at all: it parks OVERHEAD, so there is no `open` position to draw and its projection side is DERIVED from which face has floor, never written. That projection is DASHED: a dash means above the cut plane or hidden (also a barn/bifold track, a pocket cavity); a hinged swing is SOLID. `hinge` is hinged-only and `slide`/`open` sliding-family-only; a wrong pairing REFUSES (E_DOOR_KIND_CLAUSE), as does any non-hinged kind on an `arc` wall (E_DOOR_KIND_CURVED). `slide` reads along the wall like `hinge`; `open` is DRAWING-only (nothing measured reads it), [0,1] or E_DOOR_OPEN_RANGE. A `pocket` needs its own width + clearance of wall past the slide-side jamb, or W_POCKET_RUN. A jamb closer to a wall CORNER than the wall is thick raises W_DOOR_NEAR_CORNER (arc length on a curve; a free end, a collinear vertex and a tangent junction are not corners). `head` trails everything; no `sill` — a doorway starts at the floor
+door [id=<name>] [hinged|sliding|barn|bifold|pocket|garage] (at (x,y) | on <wall> at <pos>) width <mm> [wall <id|category>] [hinge left|right|near start|near end] [swing in|out|into <roomId>] [slide left|right] [open <0..1>] [head <mm>]   # `at (x,y)` must sit on a wall; `on <wall> at <pos>` pins it BY CONSTRUCTION (<pos> = an EXPRESSION: mm along the wall, `<expr>%`, or `center`; a `%` ENDS it — parenthesise a modulo) and can never be reported off-wall — prefer it. The trailing `wall <id|category>` pairs with the `at` form ONLY — after `on <wall>` the host is already named, so writing it is a PARSE ERROR. KIND leads; `hinged` (default) is identical to omitting it and is the ONLY kind with a swing arc — the rest sweep nothing, so W_SWING_OBSTRUCTED cannot apply to them. `swing` DIFFERS BY KIND: hinged = which side the leaf sweeps; barn/bifold = which FACE the panel hangs on / folds toward; sliding/pocket/garage take none. `garage` (a sectional/roller door) takes NO clause at all: it parks OVERHEAD, so there is no `open` position to draw and its projection side is DERIVED from which face has floor, never written. DASHED = above the cut plane or hidden (that projection, a barn/bifold track, a pocket cavity); a hinged swing is SOLID. `hinge` is hinged-only and `slide`/`open` sliding-family-only; a wrong pairing REFUSES (E_DOOR_KIND_CLAUSE), as does any non-hinged kind on an `arc` wall (E_DOOR_KIND_CURVED). `slide` reads along the wall like `hinge`; `open` is DRAWING-only (nothing measured reads it), [0,1] or E_DOOR_OPEN_RANGE. A `pocket` needs its own width + clearance of wall past the slide-side jamb, or W_POCKET_RUN. A jamb closer to a wall CORNER than the wall is thick raises W_DOOR_NEAR_CORNER (arc length on a curve; a free end, a collinear vertex and a tangent junction are not corners). `head` trails everything; no `sill` — a doorway starts at the floor
 window [id=<name>] (at (x,y) | on <wall> at <pos>) width <mm> [wall <id|category>] [sill <mm>] [head <mm>]   # placement + `wall` clause exactly as door. `sill`/`head` bound the glazing; `sill 0` is legal (floor-length), sill >= head is E_SILL_ABOVE_HEAD. Drawn as double glazing + a sill nose on the face with NO floor (none when both or neither face has floor)
 opening [id=<name>] (at (x,y) | on <wall> at <pos>) width <mm> [wall <id|category>] [head <mm>]   # a leaf-less cased opening that still connects the two spaces in the access graph; placement + `wall` clause exactly as door. `head` defaults to the HOST WALL's height (drawn full height), not a constant; no `sill`
-furniture [id=<name>] <category> (at (x,y) | against wall <id|category> [segment <n>] [offset <mm>] [side left|right] | in <roomId> (centered | anchor <a> [flush] [inset <mm>])) [size <W>x<H>] [label "…"] [rotate 0|90|180|270] [in <roomId>]   # `at` size is plan W×H; `against` size is wall-relative along×depth and derives position+rotation (`side` inferred from `in <roomId>`); `rotate` is `at`/`in`-only — an `against` piece's comes FROM the wall (E_FURN_AGAINST; multi-segment wall ⇒ `segment <n>`). These + aliases may omit `size` when `against wall` (catalogued footprint): wc/basin/shower/bathtub/kitchen_sink/counter/stove/fridge/bed/double_bed/nightstand/wardrobe/tv_unit/bookshelf/dishwasher/upper_cabinet/washer/dryer/sofa_l/hedge/bbq/bin/mailbox/ev_charger/shed/bidet/urinal/laundry_sink/water_heater/mirror/range_hood/microwave/bar_counter/bunk_bed/crib/dresser/vanity/fireplace/radiator/sideboard/loveseat/chaise/tv/coat_rack/shoe_cabinet/meeting_table/reception_desk/filing_cabinet/locker/pool_table/treadmill. `anchor <a>` is top-left|top|top-right|left|center|right|bottom-left|bottom|bottom-right; `inset` (default 0) pulls it in from that edge, measured from the room rectangle (a wall CENTERLINE); `flush` measures from the backing wall's inner FACE instead, so `anchor bottom flush` sits on the plaster (it needs an anchored edge: E_FURN_FLUSH on `centered`/`anchor center`)
+furniture [id=<name>] <category> (at (x,y) | against wall <id|category> [segment <n>] [offset <mm>] [side left|right] | in <roomId> (centered | anchor <a> [flush] [inset <mm>])) [size <W>x<H>] [label "…"] [rotate 0|90|180|270] [in <roomId>]   # `at` size is plan W×H, a fixture's depth running AWAY from its wall (a WC is 400x700 on a N/S wall, 700x400 on E/W); `against` size is along×depth, `offset` = mm along the wall to the piece's CENTRE (default: midpoint), and it derives position+rotation (`side` inferred from `in <roomId>`); `rotate` is `at`/`in`-only (E_FURN_AGAINST; multi-segment wall ⇒ `segment <n>`). `against` may omit `size` for these + aliases (catalogued footprint): wc/basin/shower/bathtub/kitchen_sink/counter/stove/fridge/bed/double_bed/nightstand/wardrobe/tv_unit/bookshelf/dishwasher/upper_cabinet/washer/dryer/sofa_l/hedge/bbq/bin/mailbox/ev_charger/shed/bidet/urinal/laundry_sink/water_heater/mirror/range_hood/microwave/bar_counter/bunk_bed/crib/dresser/vanity/fireplace/radiator/sideboard/loveseat/chaise/tv/coat_rack/shoe_cabinet/meeting_table/reception_desk/filing_cabinet/locker/pool_table/treadmill. `anchor <a>` is top-left|top|top-right|left|center|right|bottom-left|bottom|bottom-right; `inset` (default 0) pulls it in from that edge, measured from the room rectangle (a wall CENTERLINE); `flush` measures from the backing wall's inner FACE instead, so `anchor bottom flush` sits on the plaster (it needs an anchored edge: E_FURN_FLUSH on `centered`/`anchor center`)
 dim [faces|clear] (x,y)->(x,y) [offset <mm>] [text "…"]   # `offset` is OPTIONAL (default 300; 0 on the curve forms). Endpoint ORDER + the offset sign choose which side it lands on (the offset runs along the LEFT normal of from→to), so a reversed pair draws it INSIDE the building — `W_DIM_INSIDE`. `faces` pushes each endpoint out onto the wall it runs into (outside-to-outside); `clear` pulls both in to the inner faces (a clear width). Or skip hand dims entirely with the plan-level `dims auto` setting — its `all` mode draws the GB/T openings + axis + overall chains outside every dimensioned facade. CURVES: `dim radius <wallId> [segment <n>]` (an R leader) and `dim diameter <roomId>` (a φ call-out) DERIVE both geometry and text from the named element and also take `[offset <mm>] [text "…"]`; `dims auto` adds one R per distinct arc + one φ per circular room; chains stay off curved facades
 column [id=<name>] at (x,y) size <W>x<H>
-stair [id=<name>] at (x,y) size <W>x<H> dir up|down [width <mm>]   # a flight: treads, a mid-flight break line, an UP/DN arrow. `at` = footprint TOP-LEFT; the flight runs along the LONG axis; `dir up` is entered at that axis's larger-coordinate end (arrow points N/W), `dir down` at the opposite end (arrow reversed). `dir` is declared per storey. MULTI-STOREY: the SAME id on two `level` blocks is ONE SHAFT — a `describe().vertical` connection: from a room you can reach, it reaches the other storey with no front door (an id on one storey only = `W_STAIR_UNMATCHED`)
+stair [id=<name>] at (x,y) size <W>x<H> dir up|down [width <mm>]   # a flight. `at` = footprint TOP-LEFT; the flight runs along the LONG axis; `dir up` is entered at that axis's larger-coordinate end (arrow points N/W), `dir down` at the opposite end (arrow reversed). `dir` is declared per storey. MULTI-STOREY: the SAME id on two `level` blocks is ONE SHAFT — a `describe().vertical` connection: from a room you can reach, it reaches the other storey with no front door (an id on one storey only = `W_STAIR_UNMATCHED`)
 elevator [id=<name>] at (x,y) size <W>x<H>   # a lift shaft: car rectangle + crossed diagonals. No `dir`. Same shaft identity as `stair`
 escalator [id=<name>] at (x,y) size <W>x<H> dir up|down   # a moving stair: chevrons along the run + an UP/DN arrow; both narrow ends are entries. Same shaft identity as `stair`
-roof (overhang <mm> [wall <id>] | polygon (x,y) (x,y) (x,y) …)   # the eaves line: ONE dashed outline of what oversails. DRAWING-ONLY — no `describe()` key, no lint rule — though it does grow the page. `overhang` offsets a CLOSED wall ring outward by thickness/2 + <mm>, mitred: the named `wall`, else the plan's one closed `exterior` wall (none/several = E_ROOF_AMBIGUOUS, unknown/unclosed = E_ROOF_WALL, <= 0 = E_ROOF_OVERHANG). REFUSES rather than approximating — an `arc` edge is E_ROOF_CURVED, an offset that crosses itself E_ROOF_SELF_INTERSECT — so write `polygon` instead: the ring verbatim, implicitly closed, >= 3 effective vertices (E_ROOF_POLY_DEGENERATE). Not inside a `component` (E_ROOF_PLACEMENT)
+roof (overhang <mm> [wall <id>] | polygon (x,y) (x,y) (x,y) …)   # the eaves line: ONE dashed outline of what oversails. DRAWING-ONLY (no `describe()` key, no lint rule), though it grows the page. `overhang` offsets a CLOSED wall ring outward by thickness/2 + <mm>, mitred: the named `wall`, else the plan's one closed `exterior` wall (none/several = E_ROOF_AMBIGUOUS, unknown/unclosed = E_ROOF_WALL, <= 0 = E_ROOF_OVERHANG). REFUSES rather than approximating — an `arc` edge is E_ROOF_CURVED, an offset that crosses itself E_ROOF_SELF_INTERSECT — so write `polygon` instead: the ring verbatim, implicitly closed, >= 3 effective vertices (E_ROOF_POLY_DEGENERATE). Not inside a `component` (E_ROOF_PLACEMENT)
 void [id=<name>] at (x,y) size <W>x<H>   # a hole in THIS storey's floor (stair well, atrium, double-height room): dashed rectangle + both diagonals, `at` = TOP-LEFT. It OBSTRUCTS circulation (no walking across it, though you may stand at its edge) and does NOT reduce the containing room's area; `describe --json`'s `voids[]` gives the extent to subtract. Rectangle-only (E_VOID_SIZE)
-outdoor [id=<name>] lawn|planting|paving|deck|gravel|water|driveway|patio|balcony (at (x,y) size <W>x<H> | polygon (x,y) (x,y) (x,y) …) [label "…"] [rail top|bottom|left|right|all|none …]   # GROUND outside the building: a scale-aware material hatch over a tint (a `balcony`: tint + railing, no hatch) (L-PLNT/L-SITE/A-FLOR-BALC). NOT a room — absent from `rooms[]`, `totals.floor_area_m2`, `schedule rooms`, the access graph and Plan JSON — and it obstructs NOTHING (you may walk on any of it, water included). Its facts are `describe --json`'s `outdoor[]` + `totals.outdoor_area_m2`, area by exact shoelace on the ring form. `label` draws the name AND the m²; unlabelled ground draws neither. `rail` is `balcony`-only (E_OUTDOOR_RAIL) and rectangle-only (E_OUTDOOR_POLY_DEGENERATE); omitted, it is DERIVED — every edge with no wall one thickness behind it. W_OUTDOOR_OVERLAPS_ROOM covers a surface over a room's floor, W_BALCONY_NO_DOOR a balcony with no opening within a wall thickness. It grows the page, so a site plan wants `paper` (E_OUTDOOR_SIZE, E_OUTDOOR_POLY_SELF_INTERSECT)
-fence [id=<name>] [picket|panel|post] { (x,y) (x,y) … [close] }   # a posted boundary line on L-SITE — dense ticks / a double line / sparse ticks; the style word LEADS and defaults to the first. NOT a thin wall: no thickness, no poché, hosts NO opening, absent from `describe().walls` and the access graph (a gate is deferred by name). It draws, it measures (`fences[]`: `length_mm` + `closed`) and it grows the page. An `arc` edge is E_FENCE_CURVED — write short straight runs
+outdoor [id=<name>] lawn|planting|paving|deck|gravel|water|driveway|patio|balcony (at (x,y) size <W>x<H> | polygon (x,y) (x,y) (x,y) …) [label "…"] [rail top|bottom|left|right|all|none …]   # GROUND outside the building: a scale-aware material hatch over a tint (a `balcony`: tint + railing, no hatch). NOT a room — absent from `rooms[]`, `totals.floor_area_m2`, `schedule rooms`, the access graph and Plan JSON — and it obstructs NOTHING (water included). Its facts are `describe --json`'s `outdoor[]` + `totals.outdoor_area_m2`, area by exact shoelace on the ring form. `label` draws the name AND the m²; unlabelled ground draws neither. `rail` is `balcony`-only (E_OUTDOOR_RAIL) and rectangle-only (E_OUTDOOR_POLY_DEGENERATE); omitted, it is DERIVED — every edge with no wall one thickness behind it. W_OUTDOOR_OVERLAPS_ROOM covers a surface over a room's floor, W_BALCONY_NO_DOOR a balcony with no opening within a wall thickness. It grows the page, so a site plan wants `paper` (E_OUTDOOR_SIZE, E_OUTDOOR_POLY_SELF_INTERSECT)
+fence [id=<name>] [picket|panel|post] { (x,y) (x,y) … [close] }   # a posted boundary line — dense ticks / a double line / sparse ticks; the style word LEADS and defaults to the first. NOT a thin wall: no thickness, no poché, hosts NO opening, absent from `describe().walls` and the access graph (a gate is deferred by name). It draws, it measures (`fences[]`: `length_mm` + `closed`) and it grows the page. An `arc` edge is E_FENCE_CURVED — write short straight runs
 strip <right|left|down|up> at (x,y) gap <mm> [height|width <mm>] { room [id=<id>] size <main>[x<cross>] [label "…"] [uses …] … }   # a row/column of rooms laid end to end: each room's offset is the running sum of the previous extents + gap, and the shared cross dimension is the strip's height (right/left) or width (down/up). Pure sugar — expands to absolute rooms. Plan-level block only
 level <int> ["Name"] [height <mm>] { … }   # ONE STOREY = one whole drawing. `height` is this storey's floor-to-floor and sits in the HEADER (a setting in the body is E_LEVEL_MIX); `heights.elevation` ACCUMULATES the storeys below, so it is NOT level × height. A plan is single-storey or ALL levels (a drawable statement beside them = E_LEVEL_MIX); settings/`component`/`import`/plan-global `let`/`set` stay OUTSIDE, applying to every level. Integers, unique, 0/negative legal, ASCENDING — lowest = page 1. Ids unique WITHIN a level (see `stair`). `arch compile` writes plan.L1.svg, plan.L2.svg … (`--level <n>` = one); `describe --json` adds `levels[]`. Plan-level only
 zone <id> ["Label"] { … }   # a WING/DEPARTMENT grouping: pure metadata, ZERO geometry — every statement inside resolves as if the wrapper were deleted (same coordinates, same ids; a zone is NOT a scope), so the SVG is byte-identical. Membership is DECLARED, never inferred from position. Nests (`zone west { zone galleries { … } }` → path `west.galleries`, innermost wins) and is legal wherever a statement is, incl. inside `level`. `describe --json` adds `zones[]` (path/rooms/floor_area_m2; nested rooms roll UP, so summing zones double-counts) + `describe --zone <path>` to read one wing
 place <component>(<args>) as <name> at (x,y) [rotate 0|90|180|270] [mirror x|y]   # instantiate a component as an ADDRESSABLE instance, authored in LOCAL coords from (0,0); `as`+`at` required. Ids inside become `<name>.<id>` (auto-ids restart per instance) and the plan addresses them dotted — `door on west.perimeter at 50%`, `furniture bed in west.main centered`, `describe --room west.main`. `mirror x` flips left↔right, `y` top↔bottom: a real reflection, so door swings mirror. `import "wing.arch" as wing` makes a WHOLE FILE a zero-arg component. Bare `<component>(<args>)` stays the old INLINE macro — caller's coords and id space, no namespace
 axes { x at <mm>, <mm>, … y at <mm>, <mm>, … }   # GB/T 50001 positioning axes (定位轴线): dash-dot datum lines with a labelled bubble. `x` are vertical (numbered 1,2,3… left-to-right), `y` horizontal (lettered A,B,C… BOTTOM-to-top, skipping I/O/Z). Positions are expressions; labels are DERIVED from sorted position, never authored. With `dims auto rooms|all` the middle chain measures the AXES instead of room boundaries. Plan-level block only
-schedule rooms   # draw the ROOM SCHEDULE table below the title block: NO. (01, 02, … source order) · NAME (label, else id) · AREA (m²) + a TOTAL row, all derived from the rooms. `rooms` is the only subject (anything else is a parse error). Same rows as `describe --json`'s `schedule[]`. With `zone` blocks the rows group by zone, each closed by a SUBTOTAL row
-legend   # draw the LEGEND table beside the schedule: a row per wall hatch material used and per placed fixture category that has a plan symbol, each with a real swatch. Fully derived; nothing to configure. Pure rendering — no `describe()` field
-site { street north|south|east|west [hemisphere north|south] [boundary (x,y) (x,y) (x,y) …] }   # `street`/`hemisphere` are semantics only and draw NOTHING; `boundary` is the LOT LINE and is the one part that draws (a dash-dot property line on C-PROP) and grows the page, adding `site.lot_area_m2` (exact shoelace) + `site.lot_bbox` (E_SITE_BOUNDARY_DEGENERATE, E_SITE_BOUNDARY_SELF_INTERSECT). `street` is a TRUE compass direction (read WITH `north`, not instead of it) and names five on `describe --json`'s `site`: `street`, `back` (opposite), `equator_side` (S north of the equator, N south of it), `sunrise_side` (E), `sunset_side` (W). An intent's `windows.facing` may assert those NAMES instead of a letter (no `site` = E_INTENT_NO_SITE). They are a DRAFTING HEURISTIC for an aspect, NOT daylight — there is no sun model. `street` required (E_SITE_NO_STREET), one block (E_SITE_DUP), plan-level only
+schedule rooms|openings   # DERIVED tables under the title block, either or both. `rooms`: NO. · NAME (label, else id) · AREA · NET AREA (m²) + TOTALs = `describe --json`'s `schedule[]`, grouped by `zone` with SUBTOTALs. `openings`: D01…/W01… tags + a DOOR & WINDOW SCHEDULE: room(s) · width · kind · hinged hand (EN/DIN: seen from the side it opens into; ANSI reverses inswing)
+legend   # draw the LEGEND table beside the schedule: a row per wall hatch material used and per placed fixture category that has a plan symbol, each with a real swatch. Fully derived
+site { street north|south|east|west [hemisphere north|south] [boundary (x,y) (x,y) (x,y) …] }   # `street`/`hemisphere` are semantics only and draw NOTHING; `boundary` is the LOT LINE and is the one part that draws (a dash-dot property line) and grows the page, adding `site.lot_area_m2` (exact shoelace) + `site.lot_bbox` (E_SITE_BOUNDARY_DEGENERATE, E_SITE_BOUNDARY_SELF_INTERSECT). `street` is a TRUE compass direction (read WITH `north`, not instead of it) and names five on `describe --json`'s `site`: `street`, `back` (opposite), `equator_side` (S north of the equator, N south of it), `sunrise_side` (E), `sunset_side` (W). An intent's `windows.facing` may assert those NAMES instead of a letter (no `site` = E_INTENT_NO_SITE). They are a DRAFTING HEURISTIC for an aspect, NOT daylight — there is no sun model. `street` required (E_SITE_NO_STREET), one block (E_SITE_DUP), plan-level only
+notes "…" ["…" …]   # a numbered NOTES table, wrapped to its column; repeats append. Drawing-only, like `legend`, `schedule openings` and title `number`/`revision`
 ```
 
 ## Scripting (all expand-time, deterministic)
@@ -113,19 +114,21 @@ site { street north|south|east|west [hemisphere north|south] [boundary (x,y) (x,
 
 (Elements and plan settings are fully specced above; these are the rest.)
 
-- **Settings / control:** `plan`, `component`, `let`, `theme`, `title`, `style`, `import`, `for`, `if`, `while`, `else`, `set`, `strip`, `level`, `zone`, `place`, `axes`, `schedule`, `legend`, `site`
+- **Settings / control:** `plan`, `component`, `let`, `theme`, `title`, `style`, `import`, `for`, `if`, `while`, `else`, `set`, `strip`, `level`, `zone`, `place`, `axes`, `schedule`, `legend`, `site`, `notes`
 - **Enums / values not shown above:** `true`
 
 ## CLI loop (how an agent drives it)
 
 Every command takes `--json` (structured result on **stdout**, human messages on **stderr**) and
 reads source from a file or stdin (`-`). Exit codes: `0` ok · `1` internal / IO error · `2` user-source error (deterministic — fix it, don't blindly retry) · `3` bad usage.
+In a shell, every `arch` in this spec means `archlang` (or `npx -y @chanmeng666/archlang`): coreutils owns `arch` on Linux, macOS and Git Bash.
 
 ```text
-arch compile  # render a plan to SVG/DXF/TXT/PDF/PNG
+arch compile  # render a plan to SVG/DXF/TXT/PDF/PNG, or to Plan JSON
 arch batch  # render many .arch files in one call, concurrently
 arch md  # render every ```arch block in a Markdown file and rewrite to image links
 arch preview  # render a PNG you can look at (zero-install where the optional binary is present)
+arch link  # print a playground URL that opens the plan, rendered, with nothing to install
 arch watch  # recompile on save (interactive)
 arch validate  # parse + resolve + lint, no render (is it valid & sound?)
 arch describe  # semantic facts: rooms, areas, adjacency, what doors connect
@@ -158,8 +161,8 @@ arch score plan.arch --brief brief.json --json  # satisfied/total — measures, 
 ```
 
 **Self-correction loop:** compile/validate → if `ok` is false, read each `diagnostics[].fix` (and
-`line`/`col`/`span`), edit the source, recompile. Then `describe --json` to confirm intent (room count,
-areas, adjacency) without rendering an image. **Before shipping, gate with `arch validate --strict --json`**
+`line`/`col`/`span`), edit the source, recompile. Then `describe --json` to confirm intent without rendering
+an image (floor area: `net_area_m2`; `area_m2` runs to wall centrelines). **Before shipping, gate with `arch validate --strict --json`**
 — lint flags furniture through a wall, a fixture blocking a doorway, a room you can't step into or
 reach, a walk too narrow (`W_PATH_TOO_NARROW`) or circuitous (`W_CIRCUITOUS_PATH`); none passes silently.
 
@@ -175,8 +178,8 @@ wardrobe), each with a rationale, referencing a wall only by a stable ref (autho
 category) or absolute coordinates, never a re-bindable positional auto-id; pick one and insert it. If nothing fits, read
 `describe --json` (`access.rooms[].reachable`, room `bbox`/`adjacent`, building extent =
 min/max of room boxes) and attach the opening yourself — an exterior entrance into a cut-off living
-space beats routing a bath through a bedroom — then re-`repair` and `validate --strict`. See
-SKILL.md for the full recipe.
+space beats routing a bath through a bedroom — then re-`repair` and `validate --strict`. Full recipe:
+`skills/archlang/SKILL.md` (`archlang context --section workflow`).
 
 ## Common mistakes
 
@@ -296,38 +299,45 @@ plan "Parametric — Studio Row" {
 
 ArchLang turns a small `.arch` text file into a professional floor-plan drawing. It is built for
 agents: deterministic, self-correcting (errors carry a machine code, a prose `fix`, and often a
-**machine-applicable** fix `arch fix` can apply), and verifiable without ever looking at an image
-(`arch describe`).
+**machine-applicable** fix `archlang fix` can apply), and verifiable without ever looking at an image
+(`archlang describe`).
 
 ## Setup (zero-install)
 
 The CLI runs straight from npm — no clone, no build:
 
 ```bash
-npx @chanmeng666/archlang help
+npx -y @chanmeng666/archlang --help
 ```
 
-(Or `npm i -g @chanmeng666/archlang` to get a persistent `arch` binary.)
+Or `npm i -g @chanmeng666/archlang` for a global `archlang` command. Every call below is written
+`archlang <cmd>`; without the global install, write `npx -y @chanmeng666/archlang <cmd>`. Never run
+a bare `arch`: the package installs it as an alias, but on Linux, macOS and Git Bash coreutils
+owns that name, so the shell runs the wrong program.
 
 ## The loop (always follow this)
 
-1. **Learn the language first.** Run `arch spec` and read it — the entire language in one page
-   (~2k tokens). (`arch context` prints *everything*: spec + this workflow + CLI reference + error
-   catalog.) Do this before writing any `.arch`.
+1. **Learn the language first.** Run `archlang spec` and read it — the entire language in one page.
+   (`archlang context` prints *everything*: spec + this workflow + CLI reference + error catalog.)
+   Do this before writing any `.arch`.
 2. **Write the plan** to a `.arch` file (or pipe via stdin with `-`), preferring the **placement
    sugar** below so you never hand-compute a coordinate.
-3. **Render it:** `arch compile plan.arch -o plan.svg --json`. The JSON is `{ ok, diagnostics,
+3. **Render it:** `archlang compile plan.arch -o plan.svg --json`. The JSON is `{ ok, diagnostics,
    summary }`.
-4. **Auto-fix the mechanical faults:** if `ok` is false, run `arch fix plan.arch --dry-run --json`
+4. **Auto-fix the mechanical faults:** if `ok` is false, run `archlang fix plan.arch --dry-run --json`
    to preview the **machine-applicable** edits (off-wall opening → attachment form, out-of-range
    position clamped, …), then re-run without `--dry-run` to apply. Anything `fix` can't resolve stays
    in `diagnostics[].fix` for you to edit by hand. Exit code `2` means a deterministic user error —
    fix it, don't blindly retry (`1` = IO/internal, `3` = bad usage).
-5. **See the plan without an image:** `arch compile plan.arch -f txt` (or `arch preview plan.arch
+5. **See the plan without an image:** `archlang compile plan.arch -f txt` (or `archlang preview plan.arch
    --ascii`) prints a zero-dependency ASCII floor plan you can read straight from stdout.
-6. **Verify intent:** `arch describe plan.arch --json` returns the rooms (areas, adjacency), what each
+6. **Verify intent:** `archlang describe plan.arch --json` returns the rooms (areas, adjacency), what each
    door connects, and totals. Confirm the room count, labels, and areas match what was asked.
-7. **Gate on soundness — don't ship a flagged plan.** `arch validate plan.arch --strict --json`
+   Each room reports two areas: `area_m2` on wall centrelines and `net_area_m2`, the floor no wall
+   stands on (the room less every wall band inside it, computed exactly, or absent when it cannot
+   be, and then so is the net total); `totals` sums both. Quote `net_area_m2` as floor area, and name
+   which figure you report.
+7. **Gate on soundness — don't ship a flagged plan.** `archlang validate plan.arch --strict --json`
    (parse + resolve + lint). `--strict` makes **every advisory warning fail** (exit `2`) — the gate a
    generation pipeline runs before it ships. Add `--graph g.json` to also assert the intended
    room-to-room adjacency (`{ "living": ["kitchen","hall"], … }`); a mismatch fails. Read each
@@ -337,29 +347,32 @@ npx @chanmeng666/archlang help
    adjacency/reachability). Two disciplines keep it brief-grounded: assert an area band only where the
    brief gives a number ("about/~N" → ±10%; "at least N" → `min` only; qualitative words → nothing),
    and assert the top-level room `count` only when the brief **enumerates** the rooms. Gate with
-   `arch validate plan.arch --intent intent.json --feedback --json`: a gating miss (room
+   `archlang validate plan.arch --intent intent.json --feedback --json`: a gating miss (room
    count/existence/area/total-area/window) fails (exit `2`) with a per-violation correction prompt —
    iterate on the feedback and re-run. Adjacency/reachability are advisory (reported, never fail the
-   gate). Use `arch score plan.arch --brief intent.json --json` as a continuous satisfaction meter
+   gate). Use `archlang score plan.arch --brief intent.json --json` as a continuous satisfaction meter
    (always exit `0`) to watch the plan approach the brief across edits. See
    [`/intent.schema.json`](https://archlang.uk/intent.schema.json).
-9. **Fix furniture geometry:** `arch repair plan.arch -o fixed.arch` pushes furniture out of
+9. **Fix furniture geometry:** `archlang repair plan.arch -o fixed.arch` pushes furniture out of
    walls/doorways/swing arcs (the geometric corrector; distinct from `fix`). It rewrites a piece in
    the form you wrote it (an `at` point, or the `inset` of an `in <room> anchor …` placement) — and
    **always read `unresolved`**: a piece it may not rewrite (one `for`/component statement drawing
    several pieces, expression coordinates, an `against wall` anchor) is reported there with the fault
    and why, never silently skipped. `changed: false` with a non-empty `unresolved` means *you* edit
    the source.
-10. **Finish the drawing:** once lint is clean, run `arch finish plan.arch --dry-run --json`, then
+10. **Finish the drawing:** once lint is clean, run `archlang finish plan.arch --dry-run --json`, then
    without `--dry-run` to apply. It first furnishes each rectangular room that holds no furniture,
-   by the room's use (single-storey plans; a furnished room is never touched), then adds the sheet
+   by the room's use (single-storey plans; a furnished room is never touched — a partly furnished one is
+   named in `unresolved` with the categories it lacks, not topped up), then adds the sheet
    statements the plan lacks — `paper`, `scale`, `dims auto`, `title`, `schedule rooms`,
    `legend` — on the smallest sheet the drawing fits. It fills only what is missing and deletes
    nothing. Read `unresolved`: a room it left empty or a statement it left out is named there
    with the reason (`--only furnish`/`--only sheet` runs one step; `--reissue` lets it replace a
    `paper`/`scale` the drawing does not fit).
-11. **Show the user:** `arch preview plan.arch -o plan.png` renders a PNG (`--install` fetches the
-   optional renderer if missing).
+11. **Show the user:** `archlang preview plan.arch -o plan.png` renders a PNG (`--install` fetches the
+   optional renderer if missing). To hand the user the plan itself, rendered and with nothing to
+   install, run `archlang link plan.arch` (or `npx -y @chanmeng666/archlang link plan.arch`): it
+   prints a playground URL that opens the plan; `--json` adds the embed URL.
 
 ## Write it right the first time (placement sugar — the preferred path)
 
@@ -390,7 +403,7 @@ physically wrong (openings off their wall, furniture through walls). Author by *
 - **Absolute `at (x,y)` is the fallback**, not the default — reach for it only when no attachment
   expresses what you mean.
 
-See `examples/attached.arch` for a full one-bedroom authored this way, and `arch spec` for the grammar.
+See `examples/attached.arch` for a full one-bedroom authored this way, and `archlang spec` for the grammar.
 
 ## Author a repeating piece ONCE, then place it (v1.22)
 
@@ -412,7 +425,7 @@ place wing() as east at (42000,0) mirror x
 
 - **`as` names the instance, `at` places it; both are required.** Ids inside become
   `west.main` / `east.main`, and you address them by that dotted name everywhere a reference is
-  taken: `wall west.shell`, `in west.main`, `arch describe --room west.main`. (A dotted name in a
+  taken: `wall west.shell`, `in west.main`, `archlang describe --room west.main`. (A dotted name in a
   *declaration* is `E_DOTTED_DECL` — the namespace belongs to the `place`.)
 - **`rotate 0|90|180|270` and `mirror x|y` are exact**, and a mirror is real physics: door swings,
   fire exits and fixture facings all come out mirror-image. Prefer `mirror x` over `rotate 180` for a
@@ -420,32 +433,32 @@ place wing() as east at (42000,0) mirror x
 - **A whole FILE can be the component:** `import "wing.arch" as wing` binds that file's top-level
   drawable statements as a zero-argument component (its plan settings are ignored — the root plan
   owns the sheet). One file, one room or wing, exactly as you would organise components in code.
-- **A `place`d instance is also a zone**, so `describe().zones`, `arch describe --zone west` and the
+- **A `place`d instance is also a zone**, so `describe().zones`, `archlang describe --zone west` and the
   grouped `schedule rooms` table work with no extra declaration.
 - **The bare call `wing()` is the OLD inline macro** — caller's coordinates, caller's id counters, no
   namespace. Keep it for a small parameterised motif; use `place` for a piece of building.
 - **A component is a closed world going out:** the plan can reach into it (`wall west.shell`), but
   the component cannot reach out. Let the parent draw the connecting doors — that is the whole
-  composition contract. Verify with `arch describe --json` → `instances[]`.
+  composition contract. Verify with `archlang describe --json` → `instances[]`.
 
 See `examples/museum-wing.arch` + `examples/museum-wings.arch`.
 
 ## Self-correct with data, not guesswork
 
-`arch compile --json` returns every problem as a `Diagnostic` with a byte span, `line`/`col`, a
+`archlang compile --json` returns every problem as a `Diagnostic` with a byte span, `line`/`col`, a
 catalogued `E_*`/`W_*` code, and a prose `fix`. Where the correction is a mechanical text edit, the
 diagnostic also carries **machine-applicable `fixes`**:
 
-- **`arch fix`** applies them in a bounded, self-checking fixpoint — **only `machine-applicable` by
+- **`archlang fix`** applies them in a bounded, self-checking fixpoint — **only `machine-applicable` by
   default** (`--unsafe` also applies `maybe-incorrect`; `--dry-run` previews; `--force` keeps a pass
   that would otherwise roll back). Use it to clear the syntactic faults before you touch anything by
   hand.
-- **`arch fix` is syntactic; `arch repair` is geometric.** `fix` rewrites text where the right text is
+- **`archlang fix` is syntactic; `archlang repair` is geometric.** `fix` rewrites text where the right text is
   known (e.g. an off-wall door → the attachment form); `repair` *moves furniture* to a position no
   text edit could express. They compose — fix first, then repair.
-- **`arch fix` also applies fix-carrying *lint* advisories**, not only compile-stage faults — e.g.
+- **`archlang fix` also applies fix-carrying *lint* advisories**, not only compile-stage faults — e.g.
   `W_ALIAS_MATCH` (a room's use inferred from an indirect label alias) fixes by inserting the explicit
-  `uses …` it inferred. Before editing, `arch describe --json`'s **`freedom`** block tells you which
+  `uses …` it inferred. Before editing, `archlang describe --json`'s **`freedom`** block tells you which
   element positions were **hand-authored** (`absolute`) vs **derived** by the resolver
   (relational/strip/attached/anchored/against-wall), so you know which numbers are safe to nudge.
 
@@ -455,7 +468,7 @@ diagnostic also carries **machine-applicable `fixes`**:
 not make. When lint reports `W_ROOM_UNREACHABLE`, `W_ROOM_DISCONNECTED`, `W_NO_ENTRANCE`,
 `W_BATH_VIA_BEDROOM`, or `W_BEDROOM_NO_WINDOW`, ask ArchLang for candidates:
 
-- **`arch suggest plan.arch --json`** returns ready-to-paste `door`/`window` statements (furniture-aware
+- **`archlang suggest plan.arch --json`** returns ready-to-paste `door`/`window` statements (furniture-aware
   — a door candidate never opens onto a wardrobe; each references its wall by a **stable ref** — an
   authored id or a unique category — or absolute coordinates, never a re-bindable positional id) plus a
   rationale for each — for a room with no path back (`W_ROOM_UNREACHABLE`), a building with no way in
@@ -467,11 +480,11 @@ not make. When lint reports `W_ROOM_UNREACHABLE`, `W_ROOM_DISCONNECTED`, `W_NO_E
   into a living/kitchen/hall with an exterior edge (avoids routing through a bedroom); else (2) a
   `door on <shared wall> at <pos>` to an adjacent reachable, non-bedroom room; and give a windowless
   bedroom a `window on <its exterior wall> at <pos> width 1200`. Never make a bathroom reachable only
-  through a bedroom. Then `arch repair` (a new door may pinch furniture) and re-gate.
+  through a bedroom. Then `archlang repair` (a new door may pinch furniture) and re-gate.
 
 > An *existing* opening `validate` reports **off its wall** (`W_DOOR_OFF_WALL` /
 > `W_WINDOW_OFF_WALL` / `W_OPENING_OFF_WALL`) is a mis-coordinate, not a missing connector — run
-> `arch fix` (it rewrites it to the attachment form) rather than adding a new one.
+> `archlang fix` (it rewrites it to the attachment form) rather than adding a new one.
 
 ### Pick the door KIND before you widen the room
 
@@ -491,7 +504,7 @@ That makes the kind a legitimate answer to a diagnostic, and often the *right* o
   side it parks on is derived from which face has floor. A non-hinged kind on an `arc` wall also
   refuses (`E_DOOR_KIND_CURVED`).
 
-`arch spec` has the full grammar; `examples/bungalow.arch` is the worked plan.
+`archlang spec` has the full grammar; `examples/bungalow.arch` is the worked plan.
 
 ### Declare `site` when the brief mentions orientation
 
@@ -517,37 +530,38 @@ model, no latitude and no date, and `_side` names must not be read as more than 
 they draw nothing, because a plan is a horizontal cut, and `describe --json` reports them **only if
 the source wrote one** — so adding a height you were not asked for changes what every consumer sees
 for no gain. Write them when the brief names a ceiling, a parapet or a cill line; otherwise leave
-them out and read the defaults from `arch manifest --json`'s `datum` block.
+them out and read the defaults from `archlang manifest --json`'s `datum` block.
 
 ## Ask the CLI, and read only what you need
 
 The CLI documents itself, and every read can be narrowed at the source — never pull a whole plan's
 facts into context just to filter them yourself.
 
-- **`arch <cmd> --help`** (or `arch help <cmd>`) prints that one command's flags *and worked
-  examples* — every command carries at least one copy-pasteable invocation. `arch help` lists the
-  commands; `arch --version` prints the version. A flag a command doesn't take is a usage error
+- **`archlang <cmd> --help`** prints that one command's flags *and worked
+  examples* — every command carries at least one copy-pasteable invocation. `archlang --help` lists the
+  commands; `archlang --version` prints the version. A flag a command doesn't take is a usage error
   (exit `3`) with a did-you-mean, never a silently-swallowed filename — so a typo fails loudly
   instead of compiling the wrong thing.
-- **`arch describe --select <keys>`** emits only the named top-level keys (`rooms`, `doors`,
+- **`archlang describe --select <keys>`** emits only the named top-level keys (`rooms`, `doors`,
   `windows`, `openings`, `furniture`, `access`, `circulation`, `totals`, `freedom`, `caption`, …);
   the `ok`/`plan`/`units`/`diagnostics` envelope is always kept, so narrowing can't lose the verdict.
-  **`arch describe --room <ids>`** keeps only those rooms plus the doors/windows/furniture that touch
+  **`archlang describe --room <ids>`** keeps only those rooms plus the doors/windows/furniture that touch
   them (whole-plan facts — `bbox`, `totals`, `caption`, each room's `adjacent` — stay whole-plan, so a
   narrowed read never lies about the building). Both mark the result with `filtered: true`.
-- **`arch lint|validate --code <CODE,…>` / `--severity error|warning`** show only the diagnostics you
+- **`archlang lint|validate --code <CODE,…>` / `--severity error|warning`** show only the diagnostics you
   asked for. These are **display filters only**: `ok` and the exit code are always computed from the
   *unfiltered* set, so reading less can never turn a failing plan green. A filtered result carries
   `filtered: true` + `total_diagnostics`.
-- **`arch context --section spec|workflow|cli|errors`** prints one section of the ~50 KB bundle
-  instead of all of it — `errors` for the diagnostic catalog, `cli` for the command reference.
-- **`arch fix --dry-run`** prints the exact unified diff it would write (to stderr; `--json` also
+- **`archlang context --section spec|workflow|cli|errors`** prints one section of the bundle
+  instead of all of it (about 109 KB in all) — `errors` for the diagnostic catalog, `cli` for the
+  command reference.
+- **`archlang fix --dry-run`** prints the exact unified diff it would write (to stderr; `--json` also
   carries it as `diff`) and touches nothing. When you do apply in place, **`--backup`** keeps the
   original bytes at `<file>.bak`.
 
 ## Structured authoring & constrained generation (optional)
 
-- **Plan JSON.** Author or ingest the machine-native shape and compile it: `arch compile plan.json
+- **Plan JSON.** Author or ingest the machine-native shape and compile it: `archlang compile plan.json
   --from-json -o out.svg`. The schema is served at
   [`/plan.schema.json`](https://archlang.uk/plan.schema.json).
 - **GBNF.** To force a local model to emit only parseable ArchLang, constrain decoding with
@@ -556,43 +570,43 @@ facts into context just to filter them yourself.
 ## Commands
 
 ```bash
-arch spec                              # the whole language in one page — READ THIS FIRST
-arch context                           # everything in one call: spec + this workflow + CLI reference + error catalog
-arch context --section errors          # just one section of it (spec|workflow|cli|errors)
-arch help <cmd>                        # flags + worked examples for one command (same as `arch <cmd> --help`)
-arch manifest --json                   # the whole CLI API as data: commands, flags, formats, lint rules, error codes
-arch compile plan.arch -o out.svg --json   # render (also -f dxf|txt|pdf|png)
-arch compile plan.arch -f txt          # zero-dependency ASCII text plan on stdout (also `preview --ascii`)
-arch compile plan.json --from-json -o out.svg   # compile structured Plan JSON (see /plan.schema.json)
-echo '<source>' | arch compile - -o - -f svg    # compile stdin → SVG on stdout
-arch fix plan.arch --dry-run --json    # preview the machine-applicable fixes as a unified diff (drop --dry-run to apply; --backup keeps <file>.bak)
-arch suggest plan.arch --json          # advisory door/window statements: unreachable room / no entrance / bath-via-bedroom / windowless bedroom
-arch describe plan.arch --json         # semantic facts: rooms, areas, adjacency, door connections, circulation
-arch describe plan.arch --select rooms,totals --room kitchen --json   # narrow the facts to what you actually need
-arch lint plan.arch --json             # architectural soundness warnings
-arch lint plan.arch --code W_NO_ENTRANCE --json   # display filter only — never changes `ok` or the exit code
-arch validate plan.arch --strict --json           # parse + resolve + lint; --strict fails on warnings (the ship gate)
-arch validate plan.arch --graph g.json --json     # also check interior-door adjacency against an intended graph
-arch repair plan.arch -o fixed.arch    # geometric corrector: furniture out of walls/doorways/swings + change log
-arch finish plan.arch --dry-run --json # after lint is clean: preview the furniture and sheet statements it would add (drop --dry-run to apply)
-arch fmt plan.arch --write             # canonical formatting
-arch batch a.arch b.arch -f svg --json # render many plans/variants at once → results[]
-arch preview plan.arch -o plan.png     # render a PNG to SHOW the user (--install fetches resvg if missing)
-arch new -o plan.arch                  # scaffold a starter plan
-arch explain E_ROOM_SIZE --json        # look up any diagnostic code
+archlang spec                              # the whole language in one page — READ THIS FIRST
+archlang context                           # everything in one call: spec + this workflow + CLI reference + error catalog
+archlang context --section errors          # just one section of it (spec|workflow|cli|errors)
+archlang --help                            # list the commands
+archlang manifest --json                   # the whole CLI API as data: commands, flags, formats, lint rules, error codes
+archlang compile plan.arch -o out.svg --json   # render (also -f dxf|txt|json|pdf|png)
+archlang compile plan.arch -f txt          # zero-dependency ASCII text plan on stdout
+archlang compile plan.json --from-json -o out.svg   # compile structured Plan JSON (see /plan.schema.json)
+echo '<source>' | archlang compile - -o - -f svg    # compile stdin → SVG on stdout
+archlang fix plan.arch --dry-run --json    # preview the machine-applicable fixes as a unified diff (drop --dry-run to apply; --backup keeps <file>.bak)
+archlang suggest plan.arch --json          # advisory door/window statements: unreachable room / no entrance / bath-via-bedroom / windowless bedroom
+archlang describe plan.arch --json         # semantic facts: rooms, areas, adjacency, door connections, circulation
+archlang describe plan.arch --select rooms,totals --room kitchen --json   # narrow the facts to what you actually need
+archlang lint plan.arch --json             # architectural soundness warnings
+archlang lint plan.arch --code W_NO_ENTRANCE --json   # display filter only — never changes `ok` or the exit code
+archlang validate plan.arch --strict --json           # parse + resolve + lint; --strict fails on warnings (the ship gate)
+archlang validate plan.arch --graph g.json --json     # also check interior-door adjacency against an intended graph
+archlang repair plan.arch -o fixed.arch    # geometric corrector: furniture out of walls/doorways/swings + change log
+archlang finish plan.arch --dry-run --json # after lint is clean: preview the furniture and sheet statements it would add (drop --dry-run to apply)
+archlang fmt plan.arch --write             # canonical formatting
+archlang batch a.arch b.arch -f svg --json # render many plans/variants at once → results[]
+archlang preview plan.arch -o plan.png     # render a PNG to SHOW the user (--install fetches resvg if missing)
+archlang new -o plan.arch                  # scaffold a starter plan
+archlang explain E_ROOM_SIZE --json        # look up any diagnostic code
 ```
 
 (An optional MCP server, `@chanmeng666/archlang-mcp`, wraps these same library functions for
 MCP-native hosts — prefer the CLI when you have a shell; it costs nothing in context until called.)
 
-## Key rules (full detail in `arch spec`)
+## Key rules (full detail in `archlang spec`)
 
 - **Units are millimetres** (a 4 m wall is `4000`); **origin top-left, +x right, +y DOWN**. An
   optional metric suffix is exact sugar for the same mm value — `4m` = `4000`, `40cm` = `400`,
   `20mm` = `20` — so you can write `4m` instead of hand-multiplying; bare numbers are unchanged.
 - **Attach openings to walls** (`on <wall> at <pos>`) so they always sit on a segment; a raw `at`
-  that lands off any wall warns (and `arch fix` rewrites it).
-- **Furniture draws real symbols, not boxes.** Every catalogued kind (`arch manifest --json` →
+  that lands off any wall warns (and `archlang fix` rewrites it).
+- **Furniture draws real symbols, not boxes.** Every catalogued kind (`archlang manifest --json` →
   `fixtureCategories`) renders a plan symbol and **ignores `label`**; an uncatalogued word falls
   back to a labelled rectangle. Most kinds also carry a footprint, so `furniture <kind> against
   wall <id> in <room>` needs no `size` — `offset` is the piece's CENTRE along the wall run. Put
@@ -605,8 +619,8 @@ about SVG by hand.
 
 ## Task skills
 
-Four short skills sit in `skills/` beside this file, one job each
-(`npx skills add ChanMeng666/archlang --full-depth` installs them with this one). Each is a
+Four short skills sit beside this one in `skills/`, one job each
+(`npx skills add ChanMeng666/archlang` offers them with this one). Each is a
 checklist of CLI calls and holds no language reference of its own:
 
 - `archlang-brief-to-plan`: write a new plan from a written brief and check it against the brief.
@@ -618,7 +632,11 @@ checklist of CLI calls and holds no language reference of its own:
 
 ## 3. CLI reference
 
-The `arch` CLI is the agent interface. ArchLang compiler — agent-native CLI. Compile .arch floor-plan source to SVG/PNG/PDF/DXF.
+The `archlang` CLI is the agent interface. ArchLang compiler — agent-native CLI. Compile .arch floor-plan source to SVG/PNG/PDF/DXF.
+
+Without a global install (`npm i -g @chanmeng666/archlang`), write `npx -y @chanmeng666/archlang <cmd>`.
+The package also installs `arch` as an alias, but on Linux, macOS and Git Bash coreutils owns that
+name, so never run a bare `arch`.
 
 Every command takes `--json` (structured result on stdout, messages on stderr) and reads source
 from a file or stdin (`-`). This CLI is the primary agent interface; an optional stdio MCP shim
@@ -628,131 +646,136 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 
 **Global flags:** `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
 
-**Output formats (`-f`):** `svg` · `dxf` · `txt` · `pdf` (needs `pdfkit`) · `png` (needs `@resvg/resvg-js`)
+**Output formats (`-f`):** `svg` · `dxf` · `txt` · `json` · `pdf` (needs `pdfkit`) · `png` (needs `@resvg/resvg-js`)
 
 ### Commands
 
-**`arch compile`** — render a plan to SVG/DXF/TXT/PDF/PNG
+**`archlang compile`** — render a plan to SVG/DXF/TXT/PDF/PNG, or to Plan JSON
   - input: <file.arch|-> (Plan JSON with --from-json) → output: file (or stdout with -o -) — with --json and no -o nothing is written
-  - flags: `--out|-o <file|->` output file, or '-' for stdout (default: the input path with the format's extension) · `--format|-f <svg|dxf|txt|pdf|png>` output format (default svg) · `--level <n>` render only this storey of a multi-storey plan (level blocks) to the plain -o target, instead of one <stem>.L<level>.<ext> file per level · `--width|-w <px>` page width hint in pixels · `--scale|-s <n>` raster scale for the PNG backend (ignored by the non-raster formats) · `--cols <n>` text renderer (-f txt / preview --ascii) grid width in characters (default 80) · `--charset <unicode|ascii>` text renderer glyph set (default unicode) · `--overlay <circulation>` draw an opt-in diagnostic overlay (circulation walks + bottleneck markers); default output is unchanged · `--error-svg` on a broken plan, still emit a self-describing error-card image listing the diagnostics (exit code stays 2); it is an output like any other, so with --json and no -o nothing is written and the card is not in the payload — pass -o <file> to get the image · `--accessible` emit <title>/<desc>/role/aria accessibility metadata (the describe() caption) into the SVG; default output is unchanged · `--acc-id-prefix <prefix>` with --accessible, prefix the <title>/<desc> element ids (default arch, giving arch-title/arch-desc) so several plans inlined in one HTML page do not share them; ignored without --accessible · `--from-json` read the input as Plan JSON (RPLAN shape) instead of .arch, convert it, then compile · `--install` auto-install the optional dep for the chosen format if missing (PNG/PDF) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr · `--view <iso|axon>` DEPRECATED (removed in 2.0; ArchLang draws plans) — render an illustrative axonometric of the building instead of the plan (iso = true isometric, axon = the 30/60 plan oblique) — a picture, never a measured drawing: no scale, no title block, no dimensions, and `describe`/`lint` are unaffected
-  - example: `arch compile plan.arch -o plan.svg --json` — render to the named file; structured result on stdout
+  - flags: `--out|-o <file|->` output file, or '-' for stdout (default: the input path with the format's extension) · `--format|-f <svg|dxf|txt|json|pdf|png>` output format (default svg); json writes the Plan JSON that --from-json reads · `--level <n>` render only this storey of a multi-storey plan (level blocks) to the plain -o target, instead of one <stem>.L<level>.<ext> file per level · `--width|-w <px>` page width hint in pixels · `--scale|-s <n>` raster scale for the PNG backend (ignored by the non-raster formats) · `--cols <n>` text renderer (-f txt / preview --ascii) grid width in characters (default 80) · `--charset <unicode|ascii>` text renderer glyph set (default unicode) · `--overlay <circulation>` draw an opt-in diagnostic overlay (circulation walks + bottleneck markers); default output is unchanged · `--error-svg` on a broken plan, still emit a self-describing error-card image listing the diagnostics (exit code stays 2); it is an output like any other, so with --json and no -o nothing is written and the card is not in the payload — pass -o <file> to get the image · `--accessible` emit <title>/<desc>/role/aria accessibility metadata (the describe() caption) into the SVG; default output is unchanged · `--acc-id-prefix <prefix>` with --accessible, prefix the <title>/<desc> element ids (default arch, giving arch-title/arch-desc) so several plans inlined in one HTML page do not share them; ignored without --accessible · `--from-json` read the input as Plan JSON (RPLAN shape) instead of .arch, convert it, then compile · `--install` auto-install the optional dep for the chosen format if missing (PNG/PDF) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr · `--view <iso|axon>` DEPRECATED (removed in 2.0; ArchLang draws plans) — render an illustrative axonometric of the building instead of the plan (iso = true isometric, axon = the 30/60 plan oblique) — a picture, never a measured drawing: no scale, no title block, no dimensions, and `describe`/`lint` are unaffected
+  - example: `archlang compile plan.arch -o plan.svg --json` — render to the named file; structured result on stdout
 
-**`arch batch`** — render many .arch files in one call, concurrently
+**`archlang batch`** — render many .arch files in one call, concurrently
   - input: <a.arch> <b.arch> … → output: one file per input; --json gives a results[] array
-  - flags: `--out|-o <dir>` output DIRECTORY for every rendered file (default: alongside each input) · `--format|-f <svg|dxf|txt|pdf|png>` output format (default svg) · `--jobs|-j <n>` max concurrent renders (default: CPU count) · `--width|-w <px>` page width hint in pixels · `--scale|-s <n>` raster scale for the PNG backend (ignored by the non-raster formats) · `--cols <n>` text renderer (-f txt / preview --ascii) grid width in characters (default 80) · `--charset <unicode|ascii>` text renderer glyph set (default unicode) · `--overlay <circulation>` draw an opt-in diagnostic overlay (circulation walks + bottleneck markers); default output is unchanged · `--error-svg` on a broken plan, still emit a self-describing error-card image listing the diagnostics (exit code stays 2) · `--accessible` emit <title>/<desc>/role/aria accessibility metadata (the describe() caption) into the SVG; default output is unchanged · `--acc-id-prefix <prefix>` with --accessible, prefix the <title>/<desc> element ids (default arch, giving arch-title/arch-desc) so several plans inlined in one HTML page do not share them; ignored without --accessible · `--install` auto-install the optional dep for the chosen format if missing (PNG/PDF) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch batch a.arch b.arch c.arch -o out/ --json` — render design variants concurrently; one result row per input
+  - flags: `--out|-o <dir>` output DIRECTORY for every rendered file (default: alongside each input) · `--format|-f <svg|dxf|txt|json|pdf|png>` output format (default svg); json writes the Plan JSON that --from-json reads · `--jobs|-j <n>` max concurrent renders (default: CPU count) · `--width|-w <px>` page width hint in pixels · `--scale|-s <n>` raster scale for the PNG backend (ignored by the non-raster formats) · `--cols <n>` text renderer (-f txt / preview --ascii) grid width in characters (default 80) · `--charset <unicode|ascii>` text renderer glyph set (default unicode) · `--overlay <circulation>` draw an opt-in diagnostic overlay (circulation walks + bottleneck markers); default output is unchanged · `--error-svg` on a broken plan, still emit a self-describing error-card image listing the diagnostics (exit code stays 2) · `--accessible` emit <title>/<desc>/role/aria accessibility metadata (the describe() caption) into the SVG; default output is unchanged · `--acc-id-prefix <prefix>` with --accessible, prefix the <title>/<desc> element ids (default arch, giving arch-title/arch-desc) so several plans inlined in one HTML page do not share them; ignored without --accessible · `--install` auto-install the optional dep for the chosen format if missing (PNG/PDF) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
+  - example: `archlang batch a.arch b.arch c.arch -o out/ --json` — render design variants concurrently; one result row per input
 
-**`arch md`** (aliases: `markdown`) — render every ```arch block in a Markdown file and rewrite to image links
+**`archlang md`** (aliases: `markdown`) — render every ```arch block in a Markdown file and rewrite to image links
   - input: <doc.md> → output: out.md + one image per block
   - flags: `--out|-o <out.md|->` rewritten Markdown file, or '-' for stdout (default: <name>.out.md) · `--format|-f <svg|png>` image format for the blocks (default svg) · `--width|-w <px>` page width hint in pixels · `--scale|-s <n>` raster scale for the PNG backend (ignored by the non-raster formats) · `--overlay <circulation>` draw an opt-in diagnostic overlay (circulation walks + bottleneck markers); default output is unchanged · `--error-svg` on a broken plan, still emit a self-describing error-card image listing the diagnostics (exit code stays 2) · `--accessible` emit <title>/<desc>/role/aria accessibility metadata (the describe() caption) into the SVG; default output is unchanged · `--acc-id-prefix <prefix>` with --accessible, prefix the <title>/<desc> element ids (default arch, giving arch-title/arch-desc) so several plans inlined in one HTML page do not share them; ignored without --accessible · `--install` auto-install the optional dep for the chosen format if missing (PNG/PDF) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch md README.md -o README.out.md --json` — render the fenced arch blocks to SVGs and rewrite them to image links
+  - example: `archlang md README.md -o README.out.md --json` — render the fenced arch blocks to SVGs and rewrite them to image links
 
-**`arch preview`** — render a PNG you can look at (zero-install where the optional binary is present)
+**`archlang preview`** — render a PNG you can look at (zero-install where the optional binary is present)
   - input: <file.arch|-> → output: PNG file (or ASCII text on stdout with --ascii)
   - flags: `--out|-o <out.png|->` output PNG file, or '-' for stdout (default: <name>.png) · `--scale|-s <n>` raster scale (default 1; without -w/-s the page auto-targets ~1600px wide for legibility) · `--width|-w <px>` page width hint in pixels · `--ascii` print a zero-dependency ASCII text plan to stdout instead of a PNG · `--level <n>` preview this storey of a multi-storey plan (default: the lowest level, i.e. page 1) · `--cols <n>` text renderer (-f txt / preview --ascii) grid width in characters (default 80) · `--charset <unicode|ascii>` text renderer glyph set (default unicode) · `--overlay <circulation>` draw an opt-in diagnostic overlay (circulation walks + bottleneck markers); default output is unchanged · `--error-svg` on a broken plan, still emit a self-describing error-card image listing the diagnostics (exit code stays 2) · `--install` auto-install @resvg/resvg-js if missing, then render · `--view <iso|axon>` DEPRECATED (removed in 2.0; ArchLang draws plans) — render an illustrative axonometric of the building instead of the plan (iso = true isometric, axon = the 30/60 plan oblique) — a picture, never a measured drawing: no scale, no title block, no dimensions, and `describe`/`lint` are unaffected · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch preview plan.arch --ascii --json` — a zero-dependency text plan an agent can read on stdout
+  - example: `archlang preview plan.arch --ascii --json` — a zero-dependency text plan an agent can read on stdout
 
-**`arch watch`** — recompile on save (interactive)
+**`archlang link`** — print a playground URL that opens the plan, rendered, with nothing to install
+  - input: <file.arch|-> → output: the playground URL; --json gives { ok, playground, embed, bytes } (embed: the plan alone, for an iframe; bytes: the compressed plan). A plan that does not compile still gets a link: ok false with an errors count, one warning on stderr, exit 0
+  - flags: `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
+  - example: `archlang link plan.arch` — a URL to give the user: it opens the plan in the hosted playground
+
+**`archlang watch`** — recompile on save (interactive)
   - input: <file.arch> → output: file, rewritten on each save
-  - flags: `--out|-o <file|->` output file, or '-' for stdout (default: the input path with the format's extension) · `--format|-f <svg|dxf|txt|pdf|png>` output format (default svg) · `--level <n>` render only this storey of a multi-storey plan (level blocks) to the plain -o target, instead of one <stem>.L<level>.<ext> file per level · `--width|-w <px>` page width hint in pixels · `--scale|-s <n>` raster scale for the PNG backend (ignored by the non-raster formats) · `--cols <n>` text renderer (-f txt / preview --ascii) grid width in characters (default 80) · `--charset <unicode|ascii>` text renderer glyph set (default unicode) · `--overlay <circulation>` draw an opt-in diagnostic overlay (circulation walks + bottleneck markers); default output is unchanged · `--error-svg` on a broken plan, still emit a self-describing error-card image listing the diagnostics (exit code stays 2); it is an output like any other, so with --json and no -o nothing is written and the card is not in the payload — pass -o <file> to get the image · `--accessible` emit <title>/<desc>/role/aria accessibility metadata (the describe() caption) into the SVG; default output is unchanged · `--acc-id-prefix <prefix>` with --accessible, prefix the <title>/<desc> element ids (default arch, giving arch-title/arch-desc) so several plans inlined in one HTML page do not share them; ignored without --accessible · `--from-json` read the input as Plan JSON (RPLAN shape) instead of .arch, convert it, then compile · `--install` auto-install the optional dep for the chosen format if missing (PNG/PDF) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch watch plan.arch -o plan.svg` — recompile on every save (interactive; agents should use compile)
+  - flags: `--out|-o <file|->` output file, or '-' for stdout (default: the input path with the format's extension) · `--format|-f <svg|dxf|txt|json|pdf|png>` output format (default svg); json writes the Plan JSON that --from-json reads · `--level <n>` render only this storey of a multi-storey plan (level blocks) to the plain -o target, instead of one <stem>.L<level>.<ext> file per level · `--width|-w <px>` page width hint in pixels · `--scale|-s <n>` raster scale for the PNG backend (ignored by the non-raster formats) · `--cols <n>` text renderer (-f txt / preview --ascii) grid width in characters (default 80) · `--charset <unicode|ascii>` text renderer glyph set (default unicode) · `--overlay <circulation>` draw an opt-in diagnostic overlay (circulation walks + bottleneck markers); default output is unchanged · `--error-svg` on a broken plan, still emit a self-describing error-card image listing the diagnostics (exit code stays 2); it is an output like any other, so with --json and no -o nothing is written and the card is not in the payload — pass -o <file> to get the image · `--accessible` emit <title>/<desc>/role/aria accessibility metadata (the describe() caption) into the SVG; default output is unchanged · `--acc-id-prefix <prefix>` with --accessible, prefix the <title>/<desc> element ids (default arch, giving arch-title/arch-desc) so several plans inlined in one HTML page do not share them; ignored without --accessible · `--from-json` read the input as Plan JSON (RPLAN shape) instead of .arch, convert it, then compile · `--install` auto-install the optional dep for the chosen format if missing (PNG/PDF) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
+  - example: `archlang watch plan.arch -o plan.svg` — recompile on every save (interactive; agents should use compile)
 
-**`arch validate`** — parse + resolve + lint, no render (is it valid & sound?)
+**`archlang validate`** — parse + resolve + lint, no render (is it valid & sound?)
   - input: <file.arch|-> → output: diagnostics (plus a graph{} report with --graph and an intent{ ok, satisfied, total, subscores, violations } block with --intent)
   - flags: `--strict|--fail-on-warning` advisory warnings fail too (exit 2) · `--graph <graph.json>` also check the plan's interior-door adjacency against an intended graph (bare dict or {input_graph:{…}}); mismatch → exit 2 · `--intent <intent.json>` gate the plan against a brief's intent JSON; a failing gating assertion (room count/existence/area/windows) → exit 2. Adjacency/reachability score but never gate. Composes with --graph. · `--feedback` with --intent, append a deterministic per-violation correction prompt (advisory data, never applied) · `--code <CODE[,CODE…]>` show only diagnostics with these codes — a DISPLAY filter: the exit code and `ok` still come from the unfiltered set · `--severity <error|warning>` show only diagnostics of this severity — a DISPLAY filter, like --code (never changes the exit code) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch validate plan.arch --strict --json` — the ship gate: errors and advisory warnings both fail
+  - example: `archlang validate plan.arch --strict --json` — the ship gate: errors and advisory warnings both fail
 
-**`arch describe`** — semantic facts: rooms, areas, adjacency, what doors connect
+**`archlang describe`** — semantic facts: rooms, areas, adjacency, what doors connect
   - input: <file.arch|-> → output: facts (JSON or a summary), narrowed by --room/--zone/--select/--level
   - flags: `--room <id[,id…]>` keep only these rooms; doors/windows/openings/furniture narrow to the ones touching them (plan-level facts — bbox, totals, caption — stay whole-plan) · `--zone <path[,path…]>` keep only the rooms declared in these `zone` blocks (nested zones roll up; paths are dotted, e.g. west.galleries) — a DISPLAY filter: `ok` and the exit code still weigh the whole plan · `--select <key[,key…]>` emit only these top-level keys of the --json object (rooms, doors, totals, access, circulation, freedom, …); the ok/plan/units/diagnostics envelope is always kept · `--level <n>` report this storey of a multi-storey plan as the top-level facts (a DISPLAY filter — `ok` and the exit code still weigh the whole plan) · `--facts <symmetry|syntax[,…]>` also compute these opt-in facts: `symmetry` (the plan's symmetry group per layer — shell, rooms, full — and its repeated rooms) and `syntax` (space-syntax depth, mean depth, RA, integration and control on the access graph); absent by default · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch describe plan.arch --json` — rooms, areas, adjacency, door connections, caption, freedom — confirm the plan means what you intended
+  - example: `archlang describe plan.arch --json` — rooms, areas, adjacency, door connections, caption, freedom — confirm the plan means what you intended
 
-**`arch score`** — continuous intent satisfaction (satisfied/total) as data — the refine-loop reward. Measures, never gates (validate --intent is the gate).
+**`archlang score`** — continuous intent satisfaction (satisfied/total) as data — the refine-loop reward. Measures, never gates (validate --intent is the gate).
   - input: <file.arch|-> → output: { ok, satisfied, total, score, subscores, violations } (exit 0 on a successful measurement, even when assertions fail)
   - flags: `--brief <intent.json>` the intent JSON to measure satisfaction against (required) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch score plan.arch --brief brief.json --json` — continuous intent satisfaction as the refine-loop reward; always exits 0 on a measurement
+  - example: `archlang score plan.arch --brief brief.json --json` — continuous intent satisfaction as the refine-loop reward; always exits 0 on a measurement
 
-**`arch lint`** — architectural soundness warnings
+**`archlang lint`** — architectural soundness warnings
   - input: <file.arch|-> → output: W_* warnings (narrowed by --code/--severity; `filtered`/`total_diagnostics` mark a filtered result)
   - flags: `--profile <residential-basic|accessibility-advisory>` advisory ruleset · `--strict|--fail-on-warning` warnings fail (exit 2) · `--code <CODE[,CODE…]>` show only diagnostics with these codes — a DISPLAY filter: the exit code and `ok` still come from the unfiltered set · `--severity <error|warning>` show only diagnostics of this severity — a DISPLAY filter, like --code (never changes the exit code) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch lint plan.arch --json` — architectural soundness warnings as data, each with a fix
+  - example: `archlang lint plan.arch --json` — architectural soundness warnings as data, each with a fix
 
-**`arch ast`** — parse only (no resolve/render) and print the span-bearing AST as JSON
+**`archlang ast`** — parse only (no resolve/render) and print the span-bearing AST as JSON
   - input: <file.arch|-> → output: AST JSON (scripting nodes unexpanded)
   - flags: `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch ast plan.arch --json` — span-bearing parse tree with no resolve or render — locate a statement by byte offset
+  - example: `archlang ast plan.arch --json` — span-bearing parse tree with no resolve or render — locate a statement by byte offset
 
-**`arch complete`** — completion items in scope at a source byte offset (the LSP completion() core)
+**`archlang complete`** — completion items in scope at a source byte offset (the LSP completion() core)
   - input: <file.arch|-> → output: { items: [...] } completion items
   - flags: `--at <byteOffset>` source byte offset to list completions at (required) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch complete plan.arch --at 120 --json` — what may legally be written at byte offset 120
+  - example: `archlang complete plan.arch --at 120 --json` — what may legally be written at byte offset 120
 
-**`arch fmt`** — canonical formatting
+**`archlang fmt`** — canonical formatting
   - input: <file.arch|-> → output: formatted source (or in place with --write)
   - flags: `--write` format the file in place · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch fmt plan.arch --json` — canonical source plus a `changed` flag, nothing written
+  - example: `archlang fmt plan.arch --json` — canonical source plus a `changed` flag, nothing written
 
-**`arch repair`** — explicit source-to-source corrector (furniture out of walls) + change log
+**`archlang repair`** — explicit source-to-source corrector (furniture out of walls) + change log
   - input: <file.arch|-> → output: corrected source + change log on stderr
   - flags: `--out|-o <file|->` output file for the corrected source, or '-' for stdout (default: stdout) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch repair plan.arch --json` — the geometric corrector: `source` + a `changes[]` log of every furniture move
+  - example: `archlang repair plan.arch --json` — the geometric corrector: `source` + a `changes[]` log of every furniture move
 
-**`arch fix`** — apply the machine-applicable fix suggestions on a plan's diagnostics (bounded fixpoint)
+**`archlang fix`** — apply the machine-applicable fix suggestions on a plan's diagnostics (bounded fixpoint)
   - input: <file.arch|-> → output: fixed source (to the input file or -o) + a unified diff and change log on stderr
   - flags: `--out|-o <file|->` output file for the fixed source, or '-' for stdout (default: rewrite the input file in place) · `--unsafe` also apply `maybe-incorrect` fixes (default: machine-applicable only) · `--dry-run` compute the result but do not write it (the diff preview still prints) · `--backup` before rewriting a file in place, save the original bytes to <file>.bak · `--force` keep a pass even if it raises the error count · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch fix plan.arch --dry-run` — preview the exact unified diff `fix` would write, changing nothing on disk
+  - example: `archlang fix plan.arch --dry-run` — preview the exact unified diff `fix` would write, changing nothing on disk
 
-**`arch finish`** — furnish the rooms that hold no furniture, then add the sheet statements a plan lacks (paper, scale, dims auto, title, schedule rooms, legend); deletes nothing
+**`archlang finish`** — furnish the rooms that hold no furniture, then add the sheet statements a plan lacks (paper, scale, dims auto, title, schedule rooms, legend); deletes nothing
   - input: <file.arch|-> → output: finished source (to the input file or -o) + a unified diff and change log on stderr
   - flags: `--out|-o <file|->` output file for the finished source, or '-' for stdout (default: rewrite the input file in place) · `--only <sheet|furnish>` run only this stage (available: sheet, furnish; default: furnish, then sheet) · `--reissue` allow `paper` and `scale` (nothing else) to be replaced when the drawing does not fit the authored sheet · `--dry-run` compute the result but do not write it (the diff preview still prints) · `--backup` before rewriting a file in place, save the original bytes to <file>.bak · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch finish plan.arch --dry-run --json` — preview the furniture and sheet statements `finish` would add: `changes[]`, `unresolved[]` and the `diff`
+  - example: `archlang finish plan.arch --dry-run --json` — preview the furniture and sheet statements `finish` would add: `changes[]`, `unresolved[]` and the `diff`
 
-**`arch reroll`** — offer a proven-equivalent `for` loop for a repeated statement run
+**`archlang reroll`** — offer a proven-equivalent `for` loop for a repeated statement run
   - input: <file.arch|-> → output: suggestions (JSON or a summary), or the rewritten file with --write
   - flags: `--write` apply every non-overlapping suggestion and re-verify the combined result's compiled SVG is byte-identical to the original before writing (no --dry-run/--backup: a failed re-verify writes nothing, and every suggestion is already proven byte-for-byte before it is offered) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch reroll plan.arch --json` — each candidate run as { span, replacement, count, loopVar, tokensBefore, tokensAfter }
+  - example: `archlang reroll plan.arch --json` — each candidate run as { span, replacement, count, loopVar, tokensBefore, tokensAfter }
 
-**`arch suggest`** — advisory topology suggestions as data (door/window statements that resolve reachability/window faults)
+**`archlang suggest`** — advisory topology suggestions as data (door/window statements that resolve reachability/window faults)
   - input: <file.arch|-> → output: suggestions (JSON or a summary)
   - flags: `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch suggest plan.arch --json` — ready-to-paste door/window statements for unreachable rooms, no entrance, or a windowless bedroom
+  - example: `archlang suggest plan.arch --json` — ready-to-paste door/window statements for unreachable rooms, no entrance, or a windowless bedroom
 
-**`arch manifest`** (aliases: `capabilities`) — this document: the whole CLI API as structured data
+**`archlang manifest`** (aliases: `capabilities`) — this document: the whole CLI API as structured data
   - input: none → output: the manifest (JSON or a summary)
   - flags: `--json` structured result on stdout, messages on stderr
-  - example: `arch manifest --json` — discover every command, flag, format, and error code in one call
+  - example: `archlang manifest --json` — discover every command, flag, format, and error code in one call
 
-**`arch spec`** — print the one-prompt language spec (spec.llm.md)
+**`archlang spec`** — print the one-prompt language spec (spec.llm.md)
   - input: none → output: the spec
   - flags: `--json` structured result on stdout, messages on stderr
-  - example: `arch spec` — the whole language on one page — read this before authoring
+  - example: `archlang spec` — the whole language on one page — read this before authoring
 
-**`arch context`** — print the full bundled agent context (spec + workflow + CLI + errors)
+**`archlang context`** — print the full bundled agent context (spec + workflow + CLI + errors)
   - input: none → output: the full agent context (llms-full.txt), or one --section of it
-  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all ~50KB of it (spec = the language, workflow = the agent loop, cli = every command, errors = the diagnostic catalog) · `--json` structured result on stdout, messages on stderr
-  - example: `arch context` — the cold-start bundle: spec + workflow + CLI reference + every diagnostic
+  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 113 KB of it (spec = the language, 30 KB; workflow = the agent loop, 24 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 35 KB) · `--json` structured result on stdout, messages on stderr
+  - example: `archlang context` — the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 
-**`arch new`** (aliases: `init`) — scaffold a starter .arch
+**`archlang new`** (aliases: `init`) — scaffold a starter .arch
   - input: none → output: starter source
   - flags: `--out|-o <file|->` output file — refuses to overwrite an existing one without --force (default: stdout) · `--force` overwrite an existing file · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
-  - example: `arch new --json` — get the starter plan as a `template` string, writing nothing
+  - example: `archlang new --json` — get the starter plan as a `template` string, writing nothing
 
-**`arch explain`** — look up an error code (cause / fix / example)
+**`archlang explain`** — look up an error code (cause / fix / example)
   - input: <CODE> → output: catalog entry
   - flags: `--json` structured result on stdout, messages on stderr
-  - example: `arch explain E_ROOM_SIZE --json` — the catalog entry for a diagnostic code: cause, fix, example
+  - example: `archlang explain E_ROOM_SIZE --json` — the catalog entry for a diagnostic code: cause, fix, example
 
 ---
 
 ## 4. Diagnostic catalog
 
-Every diagnostic carries a stable code and a `fix`. Look one up with `arch explain <CODE>`.
-**101 errors** (abort rendering) · **52 warnings** (advisory; `validate --strict` fails on them too).
+Every diagnostic carries a stable code and a `fix`. Look one up with `archlang explain <CODE>`.
+**103 errors** (abort rendering) · **52 warnings** (advisory; `validate --strict` fails on them too).
 
 ### Errors
 
 - `E_ACC_PLACEMENT` — `accTitle`/`accDescr` used outside the plan level. **Fix:** Move the `accTitle`/`accDescr` line up to the plan body, alongside `units`/`north`.
-- `E_ARC_RADIUS` — Arc radius too small for its chord. **Fix:** Raise the radius to at least half the chord (the message states the minimum), or move the endpoints closer together. `arch fix` applies the minimum for you.
+- `E_ARC_RADIUS` — Arc radius too small for its chord. **Fix:** Raise the radius to at least half the chord (the message states the minimum), or move the endpoints closer together. `archlang fix` applies the minimum for you.
 - `E_ARGCOUNT` — Component called with the wrong number of arguments. **Fix:** Pass exactly one argument per declared parameter.
 - `E_ARITY` — Built-in function called with the wrong number of arguments. **Fix:** Check the function's arity; most built-ins take one argument.
 - `E_ASSIGN_UNDEF` — Assignment to an undeclared name. **Fix:** Declare it first with `let`, or fix a typo in the name.
@@ -765,7 +788,7 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `arch expla
 - `E_DOMAIN` — Math domain error. **Fix:** Pass a value within the function's domain.
 - `E_DOOR_KIND_CLAUSE` — That clause is not available on this kind of door. **Fix:** Delete the clause (the machine-applicable fix does exactly that), or change the door's kind to one the clause belongs to. `swing` on a `barn` or `bifold` door is legal and means which FACE of the wall the panel hangs on or folds toward — it is not a leaf arc.
 - `E_DOOR_KIND_CURVED` — A non-hinged door kind cannot sit on a curved wall. **Fix:** Use a `hinged` door on the curve (the default — delete the kind word), or move the door onto one of the wall's straight runs.
-- `E_DOOR_OPEN_RANGE` — `open` must be between 0 and 1. **Fix:** Give `open` a fraction in `[0,1]`; `arch fix` clamps it to the nearer end for you. Omit it entirely for the default 0.5.
+- `E_DOOR_OPEN_RANGE` — `open` must be between 0 and 1. **Fix:** Give `open` a fraction in `[0,1]`; `archlang fix` clamps it to the nearer end for you. Omit it entirely for the default 0.5.
 - `E_DOOR_WIDTH` — Door must have a positive width. **Fix:** Give the door a positive `width`.
 - `E_DOTTED_DECL` — A dotted name cannot be declared. **Fix:** Declare the short name and address it from outside as `<instance>.<name>`.
 - `E_DRAWING_LIMIT` — The drawing is larger than any plan may draw. **Fix:** Draw fewer or shorter runs, shrink the loop, or split the building into separate plans.
@@ -786,6 +809,7 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `arch expla
 - `E_IMPORT_NOT_FOUND` — Import path could not be resolved. **Fix:** Check the path (relative to the importing file) and that the file exists.
 - `E_IMPORT_PARSE` — Imported module has a parse error. **Fix:** Fix the syntax error in the imported module.
 - `E_INDEX` — Array index out of range. **Fix:** Clamp or check the index against `len(arr)`.
+- `E_INPUT_TOO_LARGE` — The source is larger than this host accepts. **Fix:** Compile it locally, where there is no cap: `npx -y @chanmeng666/archlang compile plan.arch`, or the stdio MCP server `npx -y @chanmeng666/archlang-mcp`. Or send a smaller plan.
 - `E_INSTANCE_NO_TRANSFORM` — A plugin element inside a `place`d component has no `transform()`. **Fix:** Give the plugin's `ElementDef` a `transform(el, t)` that maps its geometry with the `TransformCtx` it is handed (`t.point`, `t.rect`, `t.side`, `t.id`, …) — or write the element at plan level instead of inside the component.
 - `E_INTENT_NOT_ADJACENT` — Two rooms the brief wants adjacent share no interior door. **Fix:** Add a `door` (or `opening`) on the wall the two rooms share so they are directly connected. Advisory tier: this is scored and reported by `validateIntent` but does NOT fail `ok` (gate: false) — one-shot topology is what the loop tools address.
 - `E_INTENT_NO_DOOR` — The plan has no modeled entrance, so `reachable` cannot hold. **Fix:** Add an exterior entrance `door` on a perimeter wall. Advisory tier: reported and scored by `validateIntent` but does NOT fail `ok` (gate: false).
@@ -813,11 +837,12 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `arch expla
 - `E_OUTDOOR_RAIL` — A `rail` clause on something that is not a balcony, or an unknown edge word. **Fix:** Delete the clause, or make the surface an `outdoor balcony`. For an unknown word, use one of the six edge words.
 - `E_OUTDOOR_SIZE` — An outdoor surface must have a positive size. **Fix:** Give it a positive `size W x H` — the surface's extent in plan. For a shape that is not a rectangle, use the `polygon` spelling instead.
 - `E_OUT_OF_RANGE` — A coordinate, length or drawing setting is outside the modelling range. **Fix:** Use a realistic dimension. A plan is measured in millimetres (a 30 m wall is `30000`, or `30m`), so a value in the millions is usually a unit slip; a site larger than about 33 km is several plans, not one.
-- `E_PARSE` — The source could not be read: its SHAPE is wrong. **Fix:** Read the message: it names what was expected and what was found, at a byte span. Compare the statement against `arch spec`'s one line for that keyword — clause ORDER is part of the grammar, not a suggestion. Unlike every other code in this catalog, there is no machine-applicable fix to apply, because the compiler has no reading of the text to correct.
+- `E_PARSE` — The source could not be read: its SHAPE is wrong. **Fix:** Read the message: it names what was expected and what was found, at a byte span. Compare the statement against `archlang spec`'s one line for that keyword — clause ORDER is part of the grammar, not a suggestion. Unlike every other code in this catalog, there is no machine-applicable fix to apply, because the compiler has no reading of the text to correct.
 - `E_PLACE_POLY` — A rectangle-only placement clause aimed at a polygon room. **Fix:** Place the room or the fixture with explicit `at (x,y)` coordinates (a fixture may add `rotate`), or make the referenced room rectangular.
 - `E_PLACE_REF` — Furniture placed in an unknown or non-absolute room. **Fix:** Reference an existing room given absolute `at (x,y)` coordinates.
 - `E_PNG_DEPENDENCY` — PNG/PDF export needs an optional dependency that is not installed. **Fix:** Install the optional dependency (`npm install @resvg/resvg-js`), or re-run with `--install` to fetch it automatically, or render to SVG/DXF (zero-dependency).
 - `E_RANGE_LIMIT` — Range too large. **Fix:** Use a smaller range, or restructure to avoid materializing it.
+- `E_RATE_LIMITED` — This address sent more requests than the host answers per minute. **Fix:** Wait a minute and retry, or compile locally, where there is no limit: `npx -y @chanmeng666/archlang compile plan.arch`, or the stdio MCP server `npx -y @chanmeng666/archlang-mcp`.
 - `E_RECURSION` — Component recursion too deep. **Fix:** Add a base case so the recursion terminates.
 - `E_REDEF` — Name already defined in this scope. **Fix:** Rename one binding, or use `NAME = …` to reassign instead of redeclaring.
 - `E_ROOF_AMBIGUOUS` — `roof overhang` cannot tell which wall ring to follow. **Fix:** Name the ring (`roof overhang 600 wall <id>`), or state the outline yourself with `roof polygon (x,y) (x,y) (x,y) …`.
@@ -864,18 +889,18 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `arch expla
 - `W_DIM_INSIDE` — A hand-written dimension line lands inside the building. **Fix:** Swap the two endpoints — the machine-applicable fix does it for you, but only when the swap actually moves the line out. Swapping mirrors the line across the segment being measured (negating the `offset` does the same thing), so it reaches the outside only when that segment is at the building's edge. A dimension whose measured run cuts THROUGH the plan reads inside either way and carries no automatic fix: measure along a facade instead, or raise the `offset` until the line clears the building.
 - `W_DIM_NO_WALL` — A `dim faces`/`dim clear` endpoint has no wall to measure to. **Fix:** Put the endpoint on the centerline of the wall the dimension runs into (the room-rectangle corner coordinate), or drop the `faces`/`clear` keyword and write the face coordinate yourself.
 - `W_DIM_OVERLAP` — Two hand-written dimensions are drawn on top of each other. **Fix:** Move one of them out a tier: raise the magnitude of its `offset` (keeping its sign, which is the side it reads on). The machine-applicable fix computes the smallest whole number of chain tiers that clears the other dimension's line and text.
-- `W_DOORWAY_BLOCKED` — A doorway's landing is blocked. **Fix:** Move the obstruction clear of the opening by the shortfall the warning quotes (`arch repair` computes the smallest clearing shift), shrink it by that much on the axis facing the door, or move the door along its wall so its landing misses it.
+- `W_DOORWAY_BLOCKED` — A doorway's landing is blocked. **Fix:** Move the obstruction clear of the opening by the shortfall the warning quotes (`archlang repair` computes the smallest clearing shift), shrink it by that much on the axis facing the door, or move the door along its wall so its landing misses it.
 - `W_DOOR_CLEARANCE` — Door is narrower than the minimum clear width. **Fix:** Widen the door to at least the minimum clear width.
 - `W_DOOR_NEAR_CORNER` — A door leaves less wall between its jamb and a corner than the wall is thick. **Fix:** Move the door further from the corner by the shortfall the warning quotes (`on <wall> at <pos>` measures along the run, so the position is the one number to change), or lengthen the wall past the door so the corner moves away from the jamb instead. There is no machine-applicable fix: every remedy rewrites a number the author chose. Narrowing the leaf would also close the gap and is deliberately NOT offered — rewriting the width you asked for to satisfy a checker is the constraint-laundering pattern this project rules out, and it heads toward `W_DOOR_CLEARANCE`.
 - `W_DOOR_OFF_WALL` — Door does not lie on any wall. **Fix:** Move the door onto a wall, or name its host with `wall <id|category>`. The diagnostic points at the nearest wall.
 - `W_DRAWING_OVERFLOW` — The whole drawing does not fit the declared paper, even though the building does. **Fix:** Move up a paper size or pick a coarser scale — both also shrink the building, so check the drawing still reads — or draw less ground. There is deliberately NO machine fix: every remedy rewrites a decision the author made, and unlike a building overflow there is no defensible default, since re-scaling shrinks a building that was already sized correctly for the sheet (ADR 0005).
 - `W_DUP_ACC_METADATA` — Duplicate `accTitle`/`accDescr`. **Fix:** Keep a single `accTitle` and a single `accDescr`; delete the extra line(s).
 - `W_EMPTY_PLAN` — Empty plan. **Fix:** Add at least one element (wall, room, …).
-- `W_FIXTURE_BACK_TO_ROOM` — A fixture stands against a wall but faces the wrong way. **Fix:** Add the `rotate` that puts the back on the walled edge — the machine-applicable fix inserts it when exactly one edge is walled. Better still, place the piece with `against wall <id>` or `in <room> anchor <edge>` and let the rotation be derived.
+- `W_FIXTURE_BACK_TO_ROOM` — A fixture stands against a wall but faces the wrong way. **Fix:** Get the plan `size` right first, then the `rotate`. `size` is W×H in plan axes, and a fixture's catalogued depth runs AWAY from the wall it backs onto, so the size decides which walls it can back onto: a WC (400 along × 700 deep) is `size 400x700` against a north or south wall and `size 700x400` against an east or west one. With the size right, add the `rotate` that puts the back on the walled edge (0 = back to the north, 90 = east, 180 = south, 270 = west); the machine-applicable fix inserts it when exactly one walled edge fits the size. Or let it be derived: `in <room> anchor <edge>` derives the rotation once the size fits that edge, and `against wall <id>` takes `size` as along×depth and derives both. A `rotate` on a size the wrong way round silences this warning but draws the symbol squashed. A square size, or a family whose catalogued footprint is square (`counter`, `stove`), can back onto any edge.
 - `W_FIXTURE_FLOATING` — A plumbing/kitchen fixture is not against a wall. **Fix:** Move the fixture so one edge is against a wall (supply/waste/venting runs in the wall), or remove it.
 - `W_FIXTURE_WRONG_ROOM` — Fixture is not inside its declared room. **Fix:** Move the fixture inside the named room, or correct the `in <roomId>`.
 - `W_FURNITURE_OVERLAP` — Two pieces of furniture overlap. **Fix:** Move or resize one so they no longer intersect; leave a walkway between them.
-- `W_FURNITURE_WALL_COLLISION` — Furniture penetrates a wall. **Fix:** Move or resize the piece so it sits fully inside the room (against the wall face, not through it), or anchor it with `against wall <id>`.
+- `W_FURNITURE_WALL_COLLISION` — Furniture penetrates a wall. **Fix:** The message names the wall the piece crosses and how far into its thickness. For a piece placed `against wall <id>`, `offset` is the distance along that wall to the piece's CENTRE, not its edge (omitted, it is the segment's midpoint): a 600 mm fridge at `offset 4100` spans 3800–4400 along the wall, so it crosses a 100 mm partition standing at 4000; the hint gives the `offset` that clears it. Otherwise move or resize the piece so it sits fully inside the room, against the wall face rather than through it, or place it with `against wall <id>` or `in <room> anchor <edge> flush`.
 - `W_FURN_CLEARANCE` — A fixture's use-space is blocked. **Fix:** Move or shrink the obstructing furniture by the shortfall the warning quotes, turn the fixture so its front faces clear floor (its back must stay on a wall), or move the fixture to a wall run with the clearance free in front of it.
 - `W_GARAGE_TOO_NARROW` — A garage is too narrow to park in. **Fix:** Widen the room to the figure the warning quotes, park fewer cars in it, or drop the `uses garage` tag if the room is not one (a store that happens to be called a garage classifies as one from its label alone — an explicit `uses storage` overrides that).
 - `W_GLYPH_UNSUPPORTED` — PDF/PNG text has characters no embedded font can draw. **Fix:** Render to SVG, which uses the viewer's fonts, or rewrite the label in a covered script.
@@ -885,25 +910,25 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `arch expla
 - `W_OPENING_NOT_DIMENSIONED` — An opening on the outside of the building is on no `dims auto all` chain. **Fix:** Dimension the opening by hand: a `dim` from the nearest corner to a jamb states the position the auto chains cannot, and one drawn on the opening itself (`offset 0`, jamb to jamb) states its width. Either clears the warning. There is no machine-applicable fix, because where that dimension reads is a drafting decision.
 - `W_OPENING_OFF_WALL` — Opening does not lie on any wall. **Fix:** Move the opening onto a wall, or name its host with `wall <id|category>`. The diagnostic points at the nearest wall.
 - `W_OUTDOOR_OVERLAPS_ROOM` — A ground surface is laid over a room's floor. **Fix:** Move or resize the surface so it sits outside the building's rooms. If the overlap is deliberate (a covered terrace drawn under a room), the two are genuinely different things and one of them is the wrong element.
-- `W_PATH_TOO_NARROW` — The walk to a room squeezes below a passable width. **Fix:** Widen the tightest door/opening on the route to at least the minimum, move the furniture pinching it, or add a second way in so the pinch is avoidable. There is no machine-applicable fix: the bottleneck is a nav-grid cell, not a named element, so nothing can be rewritten for you.
+- `W_PATH_TOO_NARROW` — The walk to a room squeezes below a passable width. **Fix:** When doors set the limit, the message names the door or opening the walk squeezes through at that width (doors in series, or two tied ways in, are all named) and the hints give a `width` for each; widening every named one was re-measured to clear the minimum before it is quoted (a door loses a leaf-and-stop allowance from its nominal width; a leafless `opening` keeps all of it). When no door is named, widening doors alone was not enough or the pinch is furniture or a shaft: move the furniture pinching the route, or add a second way in so the pinch is avoidable. One bottleneck is reported once: a room or route whose pinch is a door already named is not reported again. There is no machine-applicable fix: widening a door rewrites a number you chose.
 - `W_POCKET_RUN` — A pocket door has no wall to slide into. **Fix:** Reverse the slide (`slide left` ↔ `slide right`) — a machine-applicable fix, emitted only after the reverse run is recomputed and proved to satisfy; move the door along its wall so the pocket lands on solid wall; or lengthen the wall. Narrowing the door is deliberately NOT offered as a fix: rewriting the author's stated width to satisfy a checker is the constraint-laundering pattern this project rules out, and it would also walk into `W_DOOR_CLEARANCE`.
-- `W_REASSIGN_DEPRECATED` — Reassignment (`NAME = expr`) is deprecated and will be removed in a future major version. **Fix:** Bind a new name with `let` instead of reassigning it, or express the surrounding loop as `for NAME in A..B { … }` — `arch fix` offers this on `W_WHILE_DEPRECATED` for the canonical shape, once proved against this file's own expansion (component sites need `--unsafe`).
+- `W_REASSIGN_DEPRECATED` — Reassignment (`NAME = expr`) is deprecated and will be removed in a future major version. **Fix:** Bind a new name with `let` instead of reassigning it, or express the surrounding loop as `for NAME in A..B { … }` — `archlang fix` offers this on `W_WHILE_DEPRECATED` for the canonical shape, once proved against this file's own expansion (component sites need `--unsafe`).
 - `W_ROOM_DISCONNECTED` — Room has no door — it can't be entered. **Fix:** Add a `door` on one of the room's walls.
 - `W_ROOM_LABEL_OUTSIDE` — A room's explicit label anchor falls outside the room. **Fix:** Move the anchor inside the room, or drop the `at (…)` — automatic placement uses the rectangle's centre, the circle's centre, or a polygon's area centroid (falling back to the interior point furthest from any edge where a concave ring puts that centroid off its own floor), so it lands inside either way.
 - `W_ROOM_NOT_ENCLOSED` — Bathroom is not fully enclosed. **Fix:** Extend the partition so the room's perimeter is walled on all sides (a door/window in the wall is fine — only a missing wall counts).
 - `W_ROOM_NOT_EQUATOR_FACING` — A habitable room has windows, but none faces the equator side. **Fix:** Move a window onto the room's equator-facing facade, or accept the aspect — an urban plot often has no equator-facing wall to spare. There is deliberately NO machine fix: the remedy is a geometric decision (which facade, which wall, what else it displaces) and the compiler does not make those (ADR 0005).
 - `W_ROOM_NO_CLEAR_PATH` — A room cannot be entered or crossed. **Fix:** Open up the layout: move or shrink the furniture nearest the door so there is a continuous walkable strip from each entrance into the room.
-- `W_ROOM_NO_FIXTURE` — Bathroom or kitchen has no fixtures. **Fix:** Place the expected fixtures — e.g. import `lib/fixtures.arch` and add a `wc`, `basin`, `shower`, or `kitchen_sink`.
+- `W_ROOM_NO_FIXTURE` — Bathroom or kitchen has no fixtures. **Fix:** Place a fixture inside the room; the categories are built in, so nothing needs importing. A bathroom or WC takes a `wc`, `basin`, `shower` or `bathtub` (e.g. `furniture wc in bath anchor top flush size 400x700`); a kitchen takes a `kitchen_sink`, `counter`, `stove` or `fridge` (e.g. `furniture kitchen_sink in kitchen anchor top flush size 800x600`). A bare `sink` counts for either. A `polygon` or `circle` room cannot take `anchor`: place the piece `at (x,y)` with `in <roomId>` instead.
 - `W_ROOM_OVERLAP` — Rooms overlap. **Fix:** Adjust positions/sizes if the overlap is unintended (it is allowed).
 - `W_ROOM_TOO_SMALL` — Room is implausibly small. **Fix:** Increase its `size`, or merge it into an adjacent space.
 - `W_ROOM_UNREACHABLE` — Room cannot be reached from the entrance. **Fix:** Add a door or cased `opening` linking it (directly or through a hall) to a space that reaches the entrance.
 - `W_SANITIZED_CONFIG` — A disallowed config value was stripped. **Fix:** Use a plain colour/string value (no `<`, `>`, or `url(data:…)`).
 - `W_SCALE_OVERFLOW` — The drawing does not fit the declared paper at the declared scale. **Fix:** Pick a coarser scale (a larger denominator draws the building smaller), move up a paper size, drop a margin table you can do without, or drop the `scale` line and let the sheet auto-fit choose the finest scale from 1:50 / 1:100 / 1:200 / 1:500.
 - `W_STAIR_UNMATCHED` — A run of vertical circulation appears on only one storey. **Fix:** Draw the same run with the SAME `id` on the neighbouring storey (each storey declares its own `dir` — `up` on the lower floor, `down` on the upper one), or fix the id.
-- `W_SWING_OBSTRUCTED` — Door swing is obstructed. **Fix:** Hang the leaf on the other jamb (`hinge left|right`) — a machine-applicable fix when the flipped swing is proved clear; or open it the other way (`swing in|out`), move the door along its wall, move the obstruction (`arch repair`), narrow the leaf to the width the warning quotes (never below the minimum passable width — that relocates the problem into `W_DOOR_CLEARANCE`), hang no swinging leaf at all (a `sliding`, `pocket` or `barn` door sweeps nothing, so this rule cannot apply to it), or make it a leafless `opening`.
+- `W_SWING_OBSTRUCTED` — Door swing is obstructed. **Fix:** Hang the leaf on the other jamb (`hinge left|right`) — a machine-applicable fix when the flipped swing is proved clear; or open it the other way (`swing in|out`), move the door along its wall, move the obstruction (`archlang repair`), narrow the leaf to the width the warning quotes (never below the minimum passable width — that relocates the problem into `W_DOOR_CLEARANCE`), hang no swinging leaf at all (a `sliding`, `pocket` or `barn` door sweeps nothing, so this rule cannot apply to it), or make it a leafless `opening`.
 - `W_SWING_ROOM_NOT_ADJACENT` — `swing into <room>` names a room the door does not border. **Fix:** Point `swing into` at a room the door actually opens onto, or use explicit `swing in|out`. The door falls back to its default swing.
 - `W_UNKNOWN_MATERIAL` — Unknown wall material; using the default hatch. **Fix:** Use a known material (e.g. brick, concrete, insulation, tile) or omit it.
 - `W_UNKNOWN_STYLE_KEY` — Unknown style key. **Fix:** Use a valid key (e.g. fill / stroke / label, depending on the kind).
 - `W_UNKNOWN_THEME_KEY` — Unknown theme key. **Fix:** Use a known theme key (see the language reference / hover).
-- `W_WHILE_DEPRECATED` — `while` is deprecated and will be removed in a future major version. **Fix:** Rewrite the loop as `for I in A..B { … }`. `compile()` never offers this fix — only `arch fix` proves it, against THIS file's own expansion: a shape that merely LOOKS canonical, but whose body calls a component that reads or writes `I`, that never actually ran (a library compiled standalone, a dead `if` branch), or that already caps out at `while`'s 10,000-iteration limit, is left as a warning with no fix. A proven fix at plan level is `machine-applicable`; one inside a `component` is `maybe-incorrect` (needs `arch fix --unsafe`) — the proof only covers how THIS file instantiates it, and an importer may call it differently. Anything the fix declines needs a hand rewrite.
+- `W_WHILE_DEPRECATED` — `while` is deprecated and will be removed in a future major version. **Fix:** Rewrite the loop as `for I in A..B { … }`. `compile()` never offers this fix — only `archlang fix` proves it, against THIS file's own expansion: a shape that merely LOOKS canonical, but whose body calls a component that reads or writes `I`, that never actually ran (a library compiled standalone, a dead `if` branch), or that already caps out at `while`'s 10,000-iteration limit, is left as a warning with no fix. A proven fix at plan level is `machine-applicable`; one inside a `component` is `maybe-incorrect` (needs `archlang fix --unsafe`) — the proof only covers how THIS file instantiates it, and an importer may call it differently. Anything the fix declines needs a hand rewrite.
 - `W_WINDOW_OFF_WALL` — Window does not lie on any wall. **Fix:** Move the window onto a wall, or name its host with `wall <id|category>`. The diagnostic points at the nearest wall.

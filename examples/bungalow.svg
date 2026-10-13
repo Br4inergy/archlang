@@ -163,8 +163,8 @@
 <polygon points="3940,8600 3940,8640 3260,8640 3260,8600" fill="none" stroke="#1b1b1b" stroke-width="18"/>
 </g>
 <g id="A-ANNO-TEXT" inkscape:groupmode="layer" inkscape:label="A-ANNO-TEXT">
-<text x="2100" y="3770" font-size="350" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Living / Dining</text>
-<text x="2100" y="4155" font-size="250" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">28.8 m²</text>
+<text x="3000" y="3770" font-size="350" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Living / Dining</text>
+<text x="3000" y="4155" font-size="250" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">28.8 m²</text>
 <text x="7500" y="3050" font-size="350" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Bedroom 1</text>
 <text x="7500" y="3435" font-size="250" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">14.4 m²</text>
 <text x="10500" y="3050" font-size="350" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Bedroom 2</text>
@@ -445,10 +445,10 @@
 <line x1="13584.85" y1="8515.15" x2="13415.15" y2="8684.85" stroke="#0E5484" stroke-width="18"/>
 <line x1="13584.85" y1="-184.85" x2="13415.15" y2="-15.15" stroke="#0E5484" stroke-width="18"/>
 <text x="13675" y="4250" font-size="250" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 13675 4250)">8700</text>
-<line x1="4500" y1="4850" x2="4500" y2="4750" stroke="#0E5484" stroke-width="18"/>
-<line x1="4584.85" y1="4765.15" x2="4415.15" y2="4934.85" stroke="#0E5484" stroke-width="18"/>
-<line x1="4584.85" y1="4665.15" x2="4415.15" y2="4834.85" stroke="#0E5484" stroke-width="18"/>
-<text x="4500" y="4392.5" font-size="250" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 4500 4392.5)">100</text>
+<line x1="6575" y1="4850" x2="6575" y2="4750" stroke="#0E5484" stroke-width="18"/>
+<line x1="6659.85" y1="4765.15" x2="6490.15" y2="4934.85" stroke="#0E5484" stroke-width="18"/>
+<line x1="6659.85" y1="4665.15" x2="6490.15" y2="4834.85" stroke="#0E5484" stroke-width="18"/>
+<text x="6575" y="4392.5" font-size="250" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 6575 4392.5)">100</text>
 <line x1="3025" y1="100" x2="3025" y2="-100" stroke="#0E5484" stroke-width="18"/>
 <line x1="3109.85" y1="15.15" x2="2940.15" y2="184.85" stroke="#0E5484" stroke-width="18"/>
 <line x1="3109.85" y1="-184.85" x2="2940.15" y2="-15.15" stroke="#0E5484" stroke-width="18"/>
@@ -458,49 +458,60 @@
 <polygon points="-700,-700 12700,-700 12700,9200 -700,9200" fill="none" stroke="#888888" stroke-width="18" stroke-dasharray="108 72"/>
 </g>
 <g id="A-ANNO" inkscape:groupmode="layer" inkscape:label="A-ANNO">
-<polygon points="-700,13265 2900,13265 2900,17005 -700,17005" fill="none" stroke="#333333" stroke-width="18"/>
+<polygon points="-700,13265 5450,13265 5450,17005 -700,17005" fill="none" stroke="#333333" stroke-width="18"/>
 <text x="-628" y="13435" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">ROOM SCHEDULE</text>
-<line x1="-700" y1="13605" x2="2900" y2="13605" stroke="#333333" stroke-width="18"/>
+<line x1="-700" y1="13605" x2="5450" y2="13605" stroke="#333333" stroke-width="18"/>
 <text x="-425" y="13775" font-size="152" fill="#888888" text-anchor="middle" dominant-baseline="central" font-weight="600">NO.</text>
 <text x="-78" y="13775" font-size="152" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">NAME</text>
 <line x1="-150" y1="13605" x2="-150" y2="16665" stroke="#333333" stroke-width="13"/>
-<text x="2828" y="13775" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">AREA (m²)</text>
+<text x="3978" y="13775" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">AREA (CENTRELINE, m²)</text>
 <line x1="1850" y1="13605" x2="1850" y2="17005" stroke="#333333" stroke-width="13"/>
-<line x1="-700" y1="13945" x2="2900" y2="13945" stroke="#333333" stroke-width="18"/>
+<text x="5378" y="13775" font-size="152" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">NET AREA (m²)</text>
+<line x1="4050" y1="13605" x2="4050" y2="17005" stroke="#333333" stroke-width="13"/>
+<line x1="-700" y1="13945" x2="5450" y2="13945" stroke="#333333" stroke-width="18"/>
 <text x="-425" y="14115" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">01</text>
 <text x="-78" y="14115" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Living / Dining</text>
-<text x="2828" y="14115" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">28.80</text>
+<text x="3978" y="14115" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">28.80</text>
+<text x="5378" y="14115" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">27.20</text>
 <text x="-425" y="14455" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">02</text>
 <text x="-78" y="14455" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Bedroom 1</text>
-<text x="2828" y="14455" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">14.40</text>
-<line x1="-700" y1="14285" x2="2900" y2="14285" stroke="#333333" stroke-width="13"/>
+<text x="3978" y="14455" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">14.40</text>
+<text x="5378" y="14455" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">13.49</text>
+<line x1="-700" y1="14285" x2="5450" y2="14285" stroke="#333333" stroke-width="13"/>
 <text x="-425" y="14795" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">03</text>
 <text x="-78" y="14795" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Bedroom 2</text>
-<text x="2828" y="14795" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">14.40</text>
-<line x1="-700" y1="14625" x2="2900" y2="14625" stroke="#333333" stroke-width="13"/>
+<text x="3978" y="14795" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">14.40</text>
+<text x="5378" y="14795" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">13.25</text>
+<line x1="-700" y1="14625" x2="5450" y2="14625" stroke="#333333" stroke-width="13"/>
 <text x="-425" y="15135" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">04</text>
 <text x="-78" y="15135" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Kitchen</text>
-<text x="2828" y="15135" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">11.10</text>
-<line x1="-700" y1="14965" x2="2900" y2="14965" stroke="#333333" stroke-width="13"/>
+<text x="3978" y="15135" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">11.10</text>
+<text x="5378" y="15135" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">10.12</text>
+<line x1="-700" y1="14965" x2="5450" y2="14965" stroke="#333333" stroke-width="13"/>
 <text x="-425" y="15475" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">05</text>
 <text x="-78" y="15475" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Hall</text>
-<text x="2828" y="15475" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">13.50</text>
-<line x1="-700" y1="15305" x2="2900" y2="15305" stroke="#333333" stroke-width="13"/>
+<text x="3978" y="15475" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">13.50</text>
+<text x="5378" y="15475" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">12.39</text>
+<line x1="-700" y1="15305" x2="5450" y2="15305" stroke="#333333" stroke-width="13"/>
 <text x="-425" y="15815" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">06</text>
 <text x="-78" y="15815" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Bath</text>
-<text x="2828" y="15815" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">6.16</text>
-<line x1="-700" y1="15645" x2="2900" y2="15645" stroke="#333333" stroke-width="13"/>
+<text x="3978" y="15815" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">6.16</text>
+<text x="5378" y="15815" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">5.54</text>
+<line x1="-700" y1="15645" x2="5450" y2="15645" stroke="#333333" stroke-width="13"/>
 <text x="-425" y="16155" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">07</text>
 <text x="-78" y="16155" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Laundry</text>
-<text x="2828" y="16155" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">4.84</text>
-<line x1="-700" y1="15985" x2="2900" y2="15985" stroke="#333333" stroke-width="13"/>
+<text x="3978" y="16155" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">4.84</text>
+<text x="5378" y="16155" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">4.31</text>
+<line x1="-700" y1="15985" x2="5450" y2="15985" stroke="#333333" stroke-width="13"/>
 <text x="-425" y="16495" font-size="190" fill="#333333" text-anchor="middle" dominant-baseline="central">08</text>
 <text x="-78" y="16495" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">Entry</text>
-<text x="2828" y="16495" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">8.80</text>
-<line x1="-700" y1="16325" x2="2900" y2="16325" stroke="#333333" stroke-width="13"/>
-<line x1="-700" y1="16665" x2="2900" y2="16665" stroke="#333333" stroke-width="18"/>
+<text x="3978" y="16495" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">8.80</text>
+<text x="5378" y="16495" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">7.89</text>
+<line x1="-700" y1="16325" x2="5450" y2="16325" stroke="#333333" stroke-width="13"/>
+<line x1="-700" y1="16665" x2="5450" y2="16665" stroke="#333333" stroke-width="18"/>
 <text x="-628" y="16835" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">TOTAL</text>
-<text x="2828" y="16835" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">102.00</text>
+<text x="3978" y="16835" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">102.00</text>
+<text x="5378" y="16835" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">94.19</text>
 </g>
 <g><polygon points="12250,-1975 12025,-1255 12250,-1412.5 12475,-1255" fill="#333333" transform="rotate(0 12250 -1525)"/><text x="12250" y="-2183" font-size="260" fill="#333333" text-anchor="middle" dominant-baseline="central">N</text></g>
 <g><rect x="-700" y="10925" width="1000" height="140" fill="#333333"/><rect x="300" y="10925" width="1000" height="140" fill="none" stroke="#333333" stroke-width="18"/><text x="-700" y="11265" font-size="200" fill="#333333" text-anchor="start" dominant-baseline="central">0</text><text x="1300" y="11265" font-size="200" fill="#333333" text-anchor="middle" dominant-baseline="central">2 m</text></g>

@@ -24,7 +24,7 @@ const GLAZING_GAP = 0.25;
  * the outside face (40 mm on a 200 mm wall) and how far it runs past each jamb (the
  * "horns" a sill is cut with, the same 40 mm).
  */
-const SILL_PROJECTION = 0.2;
+export const SILL_PROJECTION = 0.2;
 const SILL_HORN = 0.2;
 
 /**

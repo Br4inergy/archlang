@@ -4,38 +4,38 @@
  * wraps one pure, exported function; the core stays zero-dependency — the MCP SDK
  * lives ONLY in this package.
  *
- * Positioning (ADR 0012): the agent-native `arch` CLI remains the primary
+ * Positioning (ADR 0012): the agent-native `archlang` CLI remains the primary
  * interface — it costs nothing in an agent's context window until it is called,
  * whereas an MCP tool schema sits in the window permanently. This server exists so
  * MCP-speaking hosts can *discover* ArchLang through the registry; it is the
  * discoverability channel, not a replacement for the CLI.
+ *
+ * This file is the stdio host: it reads the five resources from disk and starts the stdio
+ * transport. The tools themselves live in `tools.ts`, which the hosted HTTP Worker
+ * (`packages/mcp-worker`) registers too.
  */
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  applyFixes,
-  checkGraph,
-  compile,
-  completion,
-  describe,
-  diagnosticToJson,
-  type Diagnostic,
-  feedbackForResult,
-  finish,
-  type FixSuggestion,
-  intentFromJson,
-  type IntentCheckResult,
-  lint,
-  planFromJson,
-  renderAscii,
-  repair,
-  suggestTopology,
-  validateIntent,
-} from "@chanmeng666/archlang";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
+import {
+  INSTRUCTIONS,
+  JSON_PAGES_NEED_NEWER_CORE,
+  type LinkUnavailable,
+  PNG_NEEDS_NEWER_CORE,
+  pngDependencyDiagnostic,
+  registerResources,
+  registerTools,
+} from "./tools.js";
+
+export {
+  INSTRUCTIONS,
+  JSON_PAGES_NEED_NEWER_CORE,
+  type LinkUnavailable,
+  PNG_NEEDS_NEWER_CORE,
+  pngDependencyDiagnostic,
+};
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // Repo root when the server runs from src/ (tests); irrelevant but harmless from dist/.
@@ -56,436 +56,72 @@ function readResource(flat: string, repoRel: string): string {
  * core's `readVersion()` (`src/cli/io.ts`): `../package.json` resolves from both `dist/`
  * (the packed artifact — npm always includes package.json) and `src/` (the tests).
  */
-function readShimVersion(): string {
+function readShimField(pick: (pkg: any) => unknown, fallback: string): string {
   for (const rel of ["../package.json", "../../package.json"]) {
     const p = resolve(HERE, rel);
     if (existsSync(p)) {
       try {
-        const v = JSON.parse(readFileSync(p, "utf8")).version;
+        const v = pick(JSON.parse(readFileSync(p, "utf8")));
         if (typeof v === "string") return v;
       } catch {
         /* fall through to the next candidate */
       }
     }
   }
-  return "0.0.0";
+  return fallback;
 }
-export const SHIM_VERSION = readShimVersion();
-
-// ---------------------------------------------------------------------------
-// helpers
-// ---------------------------------------------------------------------------
-
-/** Wrap a value as an MCP text-content tool result (pretty JSON). */
-function json(obj: unknown) {
-  return { content: [{ type: "text" as const, text: JSON.stringify(obj, null, 2) }] };
-}
-
-const errorCount = (ds: Diagnostic[]): number => ds.filter((d) => d.severity === "error").length;
-const toJson = (source: string, ds: Diagnostic[]) => ds.map((d) => diagnosticToJson(source, d));
-
-/** The agent-facing projection of one intent violation. The predicate objects are dropped
- *  on purpose — a band's `maxM2` can be `Infinity`, which `JSON.stringify` would null. */
-const violationJson = (v: IntentCheckResult["violations"][number]) => ({
-  code: v.code,
-  message: v.message,
-  gate: v.gate,
-});
+export const SHIM_VERSION = readShimField((pkg) => pkg.version, "0.0.0");
 
 /**
- * Run a raw intent object through the same gate/meter path the CLI uses. Returns pathed
- * shape errors as DATA (never a throw) when the intent JSON is malformed; otherwise the
- * checked result plus its deterministic per-violation feedback prompts.
+ * The core this shim was released against, from its own dependency range (`^1.x.y` → `1.x.y`).
+ * The lockstep test holds that range to the core that first exports `./link`, so this is the
+ * version to name when an older core is installed under the shim.
  */
-function checkIntent(
-  source: string,
-  intentRaw: unknown,
-): { intentErrors: string[] } | { result: IntentCheckResult; feedback: string[] } {
-  const { intent, errors } = intentFromJson(intentRaw);
-  if (intent === null) return { intentErrors: errors };
-  const result = validateIntent(source, intent);
-  return { result, feedback: feedbackForResult(result) };
-}
+const CORE_MIN = readShimField((pkg) => pkg.dependencies?.["@chanmeng666/archlang"], "").replace(/^[\^~]/, "");
 
-/** Resolve a tool's `source` | `plan_json` input to `.arch` source (or JSON error diagnostics). */
-function resolveSource(input: {
-  source?: string;
-  plan_json?: unknown;
-}): { source: string } | { diagnostics: ReturnType<typeof diagnosticToJson>[] } {
-  if (input.plan_json !== undefined) {
-    const { source, diagnostics } = planFromJson(input.plan_json);
-    if (source === undefined || errorCount(diagnostics) > 0) return { diagnostics: toJson(source ?? "", diagnostics) };
-    return { source };
+/**
+ * Load the share-link minter on first use, not at startup. The rest of the server needs only the
+ * core's main entry, so a host that resolved an older core without `./link` keeps ten working
+ * tools and gets this as data from `link`, instead of a server that dies at load.
+ *
+ * Two failures are data, told apart by Node's error code: `ERR_PACKAGE_PATH_NOT_EXPORTED` is a
+ * core too old to export `./link` (the fix is a newer core), `ERR_MODULE_NOT_FOUND` is a core that
+ * exports it but whose file is missing (the fix is a reinstall). Anything else is a bug and throws.
+ */
+export async function loadPlanLinks(
+  importer: () => Promise<typeof import("@chanmeng666/archlang/link")> = () => import("@chanmeng666/archlang/link"),
+): Promise<typeof import("@chanmeng666/archlang/link") | LinkUnavailable> {
+  try {
+    return await importer();
+  } catch (e) {
+    const { code, message } = e as { code?: unknown; message?: unknown };
+    if (code === "ERR_PACKAGE_PATH_NOT_EXPORTED") {
+      const need = CORE_MIN ? ` >= ${CORE_MIN}` : " with the ./link export";
+      return { ok: false, error: `link needs @chanmeng666/archlang${need}; the installed core has no ./link export` };
+    }
+    if (code === "ERR_MODULE_NOT_FOUND") {
+      const detail = String(message ?? "").split("\n")[0];
+      return {
+        ok: false,
+        error: `link could not load @chanmeng666/archlang/link; the core install looks incomplete, reinstall it (${detail})`,
+      };
+    }
+    throw e;
   }
-  if (typeof input.source === "string") return { source: input.source };
-  return { diagnostics: [] };
 }
-
-// ---------------------------------------------------------------------------
-// server
-// ---------------------------------------------------------------------------
 
 /** Build the fully-configured ArchLang MCP server (tools + resources). */
 export function createServer(): McpServer {
-  const server = new McpServer({ name: "archlang", version: SHIM_VERSION });
-
-  server.registerTool(
-    "compile",
-    {
-      title: "Compile ArchLang → SVG or ASCII",
-      description:
-        'Compile ArchLang `.arch` source (or a Plan-JSON object) to an SVG floor plan, or to a zero-dependency ASCII text plan (format:"txt"). Returns the rendered output plus diagnostics — each a byte span, line/col, catalogued E_/W_ code, and a machine-applicable fix. Errors are DATA, never exceptions: read `diagnostics` and correct the source. A MULTI-STOREY plan (`level <n> { … }`) is a set of drawings: `output` is the lowest storey and every storey comes back in `pages[]` ({ level, name, output }), so pass `level` to render just one.',
-      inputSchema: {
-        source: z.string().optional().describe('ArchLang source (a `plan "…" { … }`). Provide this OR plan_json.'),
-        plan_json: z
-          .record(z.string(), z.any())
-          .optional()
-          .describe("Plan JSON (RPLAN shape) as an alternative to `source`; converted to .arch then compiled."),
-        format: z.enum(["svg", "txt"]).optional().describe("svg (default) or txt (zero-dependency ASCII)."),
-        accessible: z.boolean().optional().describe("Emit <title>/<desc>/role/aria accessibility metadata (SVG only)."),
-        overlay: z.enum(["circulation"]).optional().describe("Draw an opt-in circulation overlay (SVG only)."),
-        level: z
-          .number()
-          .int()
-          .optional()
-          .describe("Render only this storey of a multi-storey plan. An undeclared level is an error, not a guess."),
-      },
-    },
-    async (a) => {
-      const r = resolveSource(a);
-      if ("diagnostics" in r) return json({ ok: false, diagnostics: r.diagnostics });
-      const format = a.format ?? "svg";
-      const { svg, diagnostics, scene, pages } = compile(r.source, {
-        noCache: true,
-        ...(a.accessible ? { accessible: true } : {}),
-        ...(a.overlay === "circulation" ? { overlays: ["circulation"] as const } : {}),
-        ...(format === "txt" ? { annotate: true } : {}),
-      });
-      const diags = toJson(r.source, diagnostics);
-      if (errorCount(diagnostics) > 0 || !scene) return json({ ok: false, format, diagnostics: diags });
-      const render = (pageSvg: string, pageScene: typeof scene) =>
-        format === "txt" ? renderAscii(pageScene) : pageSvg;
-      // A `level` this plan does not declare is refused with the real set — never silently
-      // answered with the ground floor, which would look like a successful render of it.
-      if (a.level !== undefined) {
-        const levels = pages?.map((p) => p.level) ?? [];
-        const want = pages?.find((p) => p.level === a.level);
-        if (!want)
-          return json({ ok: false, format, error: `no level ${a.level} in this plan`, levels, diagnostics: diags });
-        return json({
-          ok: true,
-          format,
-          level: want.level,
-          output: render(want.svg, want.scene),
-          levels,
-          diagnostics: diags,
-        });
-      }
-      return json({
-        ok: true,
-        format,
-        output: render(svg, scene),
-        // Present only for a genuinely multi-storey plan, so a single-storey result is unchanged.
-        ...(pages
-          ? {
-              pages: pages.map((p) => ({
-                level: p.level,
-                ...(p.name !== undefined ? { name: p.name } : {}),
-                output: render(p.svg, p.scene),
-              })),
-            }
-          : {}),
-        diagnostics: diags,
-      });
-    },
-  );
-
-  server.registerTool(
-    "describe",
-    {
-      title: "Describe a plan (facts, no render)",
-      description:
-        "Semantic facts about a plan without rendering: rooms (areas, bboxes, adjacency, uses, and the exact shape — `floor_polygon` for a `room polygon`, `floor_circle` for a `room circle`, whose area is exact πR²), doors (what they connect), windows, circulation (walk distance / bottleneck width / detour), zones, storeys (`levels[i]` carries the same facts per floor) with the shafts that join them and which storeys stay reachable (`vertical`), the drawing extent (`bbox`, `bbox_outer`), `freedom` (which positions are hand-authored vs resolver-derived), and totals. The channel a text-only agent uses to VERIFY that a plan matches intent.",
-      inputSchema: { source: z.string().describe("ArchLang source.") },
-    },
-    async ({ source }) => {
-      const s = describe(source);
-      return json({ ...s, diagnostics: toJson(source, s.diagnostics) });
-    },
-  );
-
-  server.registerTool(
-    "lint",
-    {
-      title: "Lint architectural soundness",
-      description:
-        'Advisory `W_*` soundness warnings as data: unreachable room, windowless bedroom, too-narrow door, blocked doorway, furniture through a wall, circuitous path, and more. `profile` selects a ruleset (e.g. "residential-basic", "accessibility-advisory").',
-      inputSchema: {
-        source: z.string().describe("ArchLang source."),
-        profile: z.string().optional().describe("Advisory ruleset name (default: the built-in ruleset)."),
-      },
-    },
-    async ({ source, profile }) => json({ ok: true, diagnostics: toJson(source, lint(source, { profile })) }),
-  );
-
-  server.registerTool(
-    "validate",
-    {
-      title: "Validate (parse + resolve + lint)",
-      description:
-        "The ship gate: parse + resolve + lint in one pass, no render. `strict:true` makes advisory warnings fail too. Optional `graph` checks the plan's interior-door adjacency against an intended room graph (`{ room: [neighbours] }`); a mismatch fails. Optional `intent` (a brief's expectations per /intent.schema.json) is checked against the plan — a failing GATING assertion (room count / existence / area / total-area / windows) fails validate, while adjacency and reachability are advisory and only score. A malformed intent returns `{ ok:false, intentErrors }` (data, never a throw). Returns { ok, diagnostics, graph?, intent? }.",
-      inputSchema: {
-        source: z.string().describe("ArchLang source."),
-        strict: z.boolean().optional().describe("Advisory warnings fail too."),
-        graph: z
-          .record(z.string(), z.array(z.string()))
-          .optional()
-          .describe("Intended interior-door adjacency: { room: [neighbour rooms] }."),
-        intent: z
-          .record(z.string(), z.any())
-          .optional()
-          .describe("A brief's intent JSON (per /intent.schema.json); gating assertions fail validate."),
-      },
-    },
-    async ({ source, strict, graph, intent }) => {
-      const { diagnostics } = compile(source, { noCache: true });
-      const all = [...diagnostics, ...lint(source)];
-      const errs = errorCount(all);
-      const warns = all.length - errs;
-      let graphReport: unknown;
-      let graphOk = true;
-      if (graph) {
-        const gc = checkGraph(source, graph);
-        graphOk = gc.ok;
-        graphReport = {
-          ok: gc.ok,
-          missing_rooms: gc.missing_rooms,
-          missing_connections: gc.missing_connections,
-          extra_connections: gc.extra_connections,
-        };
-      }
-      let intentBlock: Record<string, unknown> | undefined;
-      let intentErrors: string[] | undefined;
-      let intentOk = true;
-      if (intent !== undefined) {
-        const checked = checkIntent(source, intent);
-        if ("intentErrors" in checked) {
-          intentErrors = checked.intentErrors;
-          intentOk = false;
-        } else {
-          const { result, feedback } = checked;
-          intentOk = result.ok;
-          intentBlock = {
-            ok: result.ok,
-            satisfied: result.satisfied,
-            total: result.total,
-            subscores: result.subscores,
-            violations: result.violations.map(violationJson),
-            feedback,
-          };
-        }
-      }
-      const ok = errs === 0 && (!strict || warns === 0) && graphOk && intentOk;
-      if (intentErrors) return json({ ok: false, strict: strict ?? false, intentErrors });
-      return json({
-        ok,
-        strict: strict ?? false,
-        diagnostics: toJson(source, all),
-        ...(graph ? { graph: graphReport } : {}),
-        ...(intentBlock ? { intent: intentBlock } : {}),
-      });
-    },
-  );
-
-  server.registerTool(
-    "score",
-    {
-      title: "Score a plan against a brief (intent meter)",
-      description:
-        "The continuous intent-satisfaction METER: check a brief's intent JSON (per /intent.schema.json) against a plan and report how much it satisfies. Returns { ok, satisfied, total, score, subscores, violations } where `score` is satisfied/total in [0,1] (an empty intent scores 1). It MEASURES, it never gates — so you can watch a plan approach the brief across edits. A malformed intent returns `{ ok:false, intentErrors }` (data, never a throw).",
-      inputSchema: {
-        source: z.string().describe("ArchLang source."),
-        brief: z
-          .record(z.string(), z.any())
-          .describe("A brief's intent JSON (per /intent.schema.json) to measure against."),
-      },
-    },
-    async ({ source, brief }) => {
-      const checked = checkIntent(source, brief);
-      if ("intentErrors" in checked) return json({ ok: false, intentErrors: checked.intentErrors });
-      const { result } = checked;
-      const score = result.total === 0 ? 1 : Math.round((result.satisfied / result.total) * 10000) / 10000;
-      return json({
-        ok: result.ok,
-        satisfied: result.satisfied,
-        total: result.total,
-        score,
-        subscores: result.subscores,
-        violations: result.violations.map(violationJson),
-      });
-    },
-  );
-
-  server.registerTool(
-    "repair",
-    {
-      title: "Repair furniture placement",
-      description:
-        "The explicit source-to-source corrector (ADR 0006): push furniture out of walls / doorways / swing arcs, separate overlaps, relocate wrong-room fixtures, snap floating pieces to walls. Returns corrected `.arch` source + a change log. It NEVER adds doors or windows — that is a design choice; use `suggest` for topology.",
-      inputSchema: { source: z.string().describe("ArchLang source to correct.") },
-    },
-    async ({ source }) => {
-      const r = repair(source);
-      return json({ ok: true, changed: r.changed, changes: r.changes, unresolved: r.unresolved, source: r.source });
-    },
-  );
-
-  server.registerTool(
-    "fix",
-    {
-      title: "Apply machine-applicable diagnostic fixes",
-      description:
-        "Apply the machine-applicable fixes a compile attaches to its diagnostics — the SYNTACTIC corrector (off-wall openings → the attachment form, out-of-range positions clamped, …), distinct from `repair`'s geometric solver. Bounded fixpoint (≤4 passes; a pass that raises the error count is rolled back). `unsafe:true` also applies `maybe-incorrect` fixes. Returns { ok, passes, applied, skipped, source }.",
-      inputSchema: {
-        source: z.string().describe("ArchLang source to fix."),
-        unsafe: z
-          .boolean()
-          .optional()
-          .describe("Also apply `maybe-incorrect` fixes (default: machine-applicable only)."),
-      },
-    },
-    async ({ source, unsafe }) => {
-      const maxApplicability = unsafe ? ("maybe-incorrect" as const) : ("machine-applicable" as const);
-      const applied: Array<{ code?: string; title: string; applicability: string }> = [];
-      const skipped: Array<{ code?: string; reason: string }> = [];
-      let current = source;
-      let passes = 0;
-      for (let pass = 0; pass < 4; pass++) {
-        const { diagnostics } = compile(current, { noCache: true });
-        const fixes: FixSuggestion[] = [];
-        const codeOf = new Map<FixSuggestion, string | undefined>();
-        for (const d of diagnostics) {
-          for (const f of d.fixes ?? []) {
-            fixes.push(f);
-            codeOf.set(f, d.code);
-          }
-        }
-        if (fixes.length === 0) break;
-        const report = applyFixes(current, fixes, { maxApplicability });
-        if (report.applied.length === 0) break;
-        const errBefore = errorCount(diagnostics);
-        const errAfter = errorCount(compile(report.output, { noCache: true }).diagnostics);
-        if (errAfter > errBefore) break; // rolled back
-        current = report.output;
-        passes++;
-        for (const f of report.applied)
-          applied.push({ code: codeOf.get(f), title: f.title, applicability: f.applicability });
-        for (const s of report.skipped) skipped.push({ code: codeOf.get(s.suggestion), reason: s.reason });
-      }
-      const ok = errorCount(compile(current, { noCache: true }).diagnostics) === 0;
-      return json({ ok, passes, applied, skipped, source: current });
-    },
-  );
-
-  server.registerTool(
-    "finish",
-    {
-      title: "Finish the drawing",
-      description:
-        "The explicit completion transform (ADR 0024, ADR 0025), in two stages. `furnish`: put furniture, by room use, in each rectangular room that holds none (single-storey plans; a furnished room is never touched; placement is `against wall` / `in <room> anchor`, never absolute). `sheet`: add the sheet statements the plan lacks — `paper`, `scale`, `dims auto`, `title`, `schedule rooms`, `legend` — choosing the finest standard scale on the smallest sheet that holds the drawing. It fills only what is missing and deletes nothing; `only` runs one stage; `reissue:true` may REPLACE `paper`/`scale` (only those) when the drawing does not fit them. Run it once `lint` is clean. Returns { ok, changed, changes, unresolved, source }; a plan that does not compile comes back untouched with `ok:false`, and a room or a sheet that would raise a new diagnostic is left as it was with the reason in `unresolved`.",
-      inputSchema: {
-        source: z.string().describe("ArchLang source to finish."),
-        only: z
-          .enum(["sheet", "furnish"])
-          .optional()
-          .describe("Run only this stage. Default: `furnish`, then `sheet`."),
-        reissue: z
-          .boolean()
-          .optional()
-          .describe("Allow `paper` and `scale` to be replaced when the drawing does not fit the authored sheet."),
-      },
-    },
-    async ({ source, only, reissue }) => {
-      const r = finish(source, { ...(only ? { only } : {}), ...(reissue ? { reissue: true } : {}) });
-      const ok = errorCount(compile(source, { noCache: true }).diagnostics) === 0;
-      return json({ ok, changed: r.changed, changes: r.changes, unresolved: r.unresolved, source: r.source });
-    },
-  );
-
-  server.registerTool(
-    "suggest",
-    {
-      title: "Suggest topology fixes (advisory)",
-      description:
-        "Advisory topology suggestions as DATA — never applied (ADR 0005). For a room with no path back, a building with no entrance, a bath reachable only through a bedroom, or a windowless bedroom, returns ready-to-paste `door`/`window` statements (attachment form, furniture-aware) plus a rationale, for the agent to choose among and insert.",
-      inputSchema: { source: z.string().describe("ArchLang source.") },
-    },
-    async ({ source }) => json({ ok: true, suggestions: suggestTopology(source) }),
-  );
-
-  server.registerTool(
-    "complete",
-    {
-      title: "Completions at a source offset",
-      description:
-        "Completion items in scope at a source BYTE offset (the LSP `completion()` core): keywords, element names, ids, enum values — for structured or assisted authoring.",
-      inputSchema: {
-        source: z.string().describe("ArchLang source."),
-        at: z.number().int().nonnegative().describe("Source byte offset to complete at."),
-      },
-    },
-    async ({ source, at }) => json({ ok: true, items: completion(source, at) }),
-  );
-
+  const server = new McpServer({ name: "archlang", version: SHIM_VERSION }, { instructions: INSTRUCTIONS });
+  registerTools(server, { loadLinks: () => loadPlanLinks() });
   // Resources: the static context artifacts, read once at server start.
-  const RESOURCES: Array<[string, string, string, string, string, string]> = [
-    [
-      "spec",
-      "archlang://spec",
-      "ArchLang language spec",
-      "The whole language in one page (spec.llm.md).",
-      "text/markdown",
-      readResource("spec.llm.md", "spec.llm.md"),
-    ],
-    [
-      "context",
-      "archlang://context",
-      "ArchLang full agent context",
-      "Spec + workflow skill + CLI reference + error catalog (llms-full.txt) — drop into a system prompt.",
-      "text/markdown",
-      readResource("llms-full.txt", "llms-full.txt"),
-    ],
-    [
-      "schema",
-      "archlang://schema",
-      "Plan JSON schema",
-      "JSON Schema (2020-12) for the Plan-JSON compile input.",
-      "application/schema+json",
-      readResource("plan.schema.json", "schemas/plan.schema.json"),
-    ],
-    [
-      "grammar",
-      "archlang://grammar",
-      "ArchLang GBNF grammar",
-      "GBNF constrained-decoding grammar for guaranteed-parseable generation.",
-      "text/plain",
-      readResource("archlang.gbnf", "grammars/archlang.gbnf"),
-    ],
-    [
-      "intent-schema",
-      "archlang://intent-schema",
-      "ArchLang intent JSON schema",
-      "JSON Schema (2020-12) for a brief's Intent — the shape `validate`'s `intent` and `score`'s `brief` take.",
-      "application/schema+json",
-      readResource("intent.schema.json", "schemas/intent.schema.json"),
-    ],
-  ];
-  for (const [name, uri, title, description, mimeType, text] of RESOURCES) {
-    server.registerResource(name, uri, { title, description, mimeType }, async (u) => ({
-      contents: [{ uri: u.href, mimeType, text }],
-    }));
-  }
-
+  registerResources(server, {
+    spec: readResource("spec.llm.md", "spec.llm.md"),
+    context: readResource("llms-full.txt", "llms-full.txt"),
+    schema: readResource("plan.schema.json", "schemas/plan.schema.json"),
+    grammar: readResource("archlang.gbnf", "grammars/archlang.gbnf"),
+    "intent-schema": readResource("intent.schema.json", "schemas/intent.schema.json"),
+  });
   return server;
 }
 

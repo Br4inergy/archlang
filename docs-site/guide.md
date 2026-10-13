@@ -32,39 +32,43 @@ the dimension follow.
 - **Zero-dependency core** — the SVG path needs nothing installed. PNG, PDF, and
   angled-wall geometry are optional, lazily-loaded add-ons. See
   [ADR 0002](/adr/0002-optional-dep-geometry).
-- **Reads its own plans** — `arch describe` returns rooms, areas, adjacencies, and a
-  modelled access graph; `arch lint` flags habitability problems. Both are image-free
+- **Reads its own plans** — `archlang describe` returns rooms, areas, adjacencies, and a
+  modelled access graph; `archlang lint` flags habitability problems. Both are image-free
   facts and advice, never an auto-arranger. See [Analysis](/analysis).
 
 ## Install & use
 
 ```bash
-npm install @chanmeng666/archlang
+npm i -g @chanmeng666/archlang     # puts `archlang` on your path
 ```
+
+No install at all: write `npx -y @chanmeng666/archlang` wherever this page writes `archlang`. The
+package also installs `arch` as an alias, but on Linux, macOS and Git Bash that name is the
+coreutils command, so the docs never use it.
 
 ```bash
 # Compile to any format:
-arch compile plan.arch -o plan.svg              # SVG (default, zero-dep)
-arch compile plan.arch -f dxf -o plan.dxf       # DXF (zero-dep)
-arch compile plan.arch -f txt                   # ASCII plan on stdout (zero-dep)
-arch compile plan.arch -f pdf -o plan.pdf       # PDF (needs optional pdfkit)
-arch compile plan.arch -f png -o plan.png       # PNG (needs optional @resvg/resvg-js)
+archlang compile plan.arch -o plan.svg              # SVG (default, zero-dep)
+archlang compile plan.arch -f dxf -o plan.dxf       # DXF (zero-dep)
+archlang compile plan.arch -f txt                   # ASCII plan on stdout (zero-dep)
+archlang compile plan.arch -f pdf -o plan.pdf       # PDF (needs optional pdfkit)
+archlang compile plan.arch -f png -o plan.png       # PNG (needs optional @resvg/resvg-js)
 
 # Inspect and correct it:
-arch describe plan.arch --json                   # rooms, areas, adjacency, access graph — as data
-arch lint plan.arch --json                       # architectural soundness warnings
-arch validate plan.arch --strict                 # the ship-gate: valid AND sound
-arch fix plan.arch --dry-run                     # preview the machine-applicable diagnostic fixes
-arch fmt plan.arch --write                       # format in place
+archlang describe plan.arch --json                   # rooms, areas, adjacency, access graph — as data
+archlang lint plan.arch --json                       # architectural soundness warnings
+archlang validate plan.arch --strict                 # the ship-gate: valid AND sound
+archlang fix plan.arch --dry-run                     # preview the machine-applicable diagnostic fixes
+archlang fmt plan.arch --write                       # format in place
 ```
 
-That is a slice — the CLI has 20 commands. Ask it about any one of them with **`arch <cmd> --help`**
-(flags and worked examples for that command); `arch help` lists them all and `arch --version` prints
+That is a slice — the CLI has 20 commands. Ask it about any one of them with **`archlang <cmd> --help`**
+(flags and worked examples for that command); `archlang help` lists them all and `archlang --version` prints
 the version. The full, always-current list (every flag, format and exit code) is the
-**[CLI reference](/cli)**, generated from the same manifest that `arch manifest --json` serves — the
+**[CLI reference](/cli)**, generated from the same manifest that `archlang manifest --json` serves — the
 manifest the help itself is rendered from.
 
-Or call it as a library:
+Or call it as a library (`npm install @chanmeng666/archlang` in your project):
 
 ```js
 import { compile } from "@chanmeng666/archlang";

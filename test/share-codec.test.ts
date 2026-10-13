@@ -5,8 +5,10 @@
  * of that codec exist in the repo:
  *
  *   1. `playground/src/share.ts`  — CANONICAL. The playground and the embed page read it.
- *   2. `scripts/gen-permalink.mjs` — the generator that mints the README's permalinks
- *      (Node `zlib`, because a script has no `CompressionStream` on old Node).
+ *   2. `src/cli/share-codec.mjs` — the one Node encoder (`zlib`, because Node 18's
+ *      `CompressionStream` has no deflate-raw). `scripts/gen-permalink.mjs` mints the README's
+ *      permalinks with it, and `archlang link` and the MCP `link` tool hand it to users
+ *      (`test/cli-link.test.ts`).
  *   3. the inline `playgroundUrl()` in `docs-site/.vitepress/theme/components/ArchLive.vue`
  *      — the docs widget's "Open in playground" button, duplicated so the docs site stays
  *      self-contained.

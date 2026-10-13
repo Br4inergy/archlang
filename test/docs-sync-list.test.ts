@@ -24,6 +24,10 @@
  *    different one on the site. They were untracked in WS-D; this asserts the class stays
  *    empty, deriving the full output list from sync-docs' own source tables rather than
  *    naming those three.
+ *
+ * 3. EVERY HAND-WRITTEN PAGE HAS A `.md` ROUTE. `SITE_PAGES` must list exactly the tracked
+ *    top-level `docs-site/*.md` pages, so a new page cannot ship without its raw copy (and
+ *    its generated `_headers` rule).
  */
 
 import { execFileSync } from "node:child_process";
@@ -63,8 +67,8 @@ function tupleTable(name: string): Array<[string, string]> {
   const block = new RegExp(`const ${name} = \\[([\\s\\S]*?)\\n\\];`).exec(syncSrc);
   expect(
     block,
-    `${SYNC} no longer declares \`const ${name} = [ … ];\` as a literal table. The three tables ` +
-      `(PAGES, ROOT_COPIES, EXCLUDED_EXAMPLES) are the docs site's single source of truth for what ` +
+    `${SYNC} no longer declares \`const ${name} = [ … ];\` as a literal table. The four tables ` +
+      `(PAGES, SITE_PAGES, ROOT_COPIES, EXCLUDED_EXAMPLES) are the docs site's single source of truth for what ` +
       `it publishes, and both this gate and scripts/smoke.mjs parse them. Restore the shape, or ` +
       `update both parsers together.`,
   ).toBeTruthy();
@@ -160,10 +164,13 @@ describe("no sync-docs output is tracked by git", () => {
       // page(): the bannered page source AND the raw copy served at /<dest>.
       ...pages.map((d) => `docs-site/${d}`),
       ...pages.map((d) => `docs-site/public/${d}`),
+      // siteMarkdown(): the raw copy of each hand-written page (its source stays tracked).
+      ...tupleTable("SITE_PAGES").map(([, d]) => `docs-site/public/${d}`),
       ...rootCopies.map((d) => `docs-site/public/${d}`),
       ...adrs.map((f) => `docs-site/adr/${f}`),
       "docs-site/adr/index.md",
       ...galleryExamples().map((n) => `docs-site/public/examples/${n}.svg`),
+      ...galleryExamples().map((n) => `docs-site/public/examples/${n}.arch`),
       "docs-site/.vitepress/theme/adr-data.js",
       "docs-site/.vitepress/theme/examples-data.js",
     ];
@@ -217,5 +224,35 @@ describe("no sync-docs output is tracked by git", () => {
         `\nAn uncovered output shows up as an untracked file after every docs build and will be ` +
         `committed by the first \`git add -A\`. Add it to docs-site/.gitignore.`,
     ).toEqual([]);
+  });
+});
+
+describe("every hand-written docs page has a raw `.md` route", () => {
+  const sitePages = tupleTable("SITE_PAGES");
+  const generatedDests = new Set(tupleTable("PAGES").map(([, dest]) => dest));
+
+  /** Tracked top-level `docs-site/*.md` = the hand-written page sources (generated ones are ignored). */
+  const handWritten = execFileSync("git", ["ls-files", "-z", "docs-site"], { encoding: "utf8" })
+    .split("\0")
+    .filter((f) => /^docs-site\/[^/]+\.md$/.test(f))
+    .sort();
+
+  it("SITE_PAGES rows are `docs-site/<name>.md` → `<name>.md`, none colliding with PAGES", () => {
+    for (const [src, dest] of sitePages) {
+      expect(src, `${SYNC} SITE_PAGES row ${src}`).toMatch(/^docs-site\/[^/]+\.md$/);
+      expect(dest, `${SYNC} SITE_PAGES row ${src}`).toBe(src.slice("docs-site/".length));
+      expect(generatedDests.has(dest), `${dest} is in both PAGES and SITE_PAGES`).toBe(false);
+    }
+  });
+
+  it("lists every tracked hand-written page, and only those", () => {
+    expect(handWritten.length).toBeGreaterThan(3);
+    expect(
+      sitePages.map(([src]) => src).sort(),
+      `${SYNC}'s SITE_PAGES must list exactly the tracked docs-site/*.md pages. A page missing ` +
+        `from it has no /<route>.md copy (and, with the per-route _headers rules, would 404 for ` +
+        `a machine reader); a row with no page breaks the build. Add a row, then run ` +
+        `\`npm run gen:docs-headers\`.`,
+    ).toEqual(handWritten);
   });
 });

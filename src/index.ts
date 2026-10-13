@@ -35,6 +35,8 @@ export { formatDiagnostic, offsetToLineCol } from "./diagnostics.js";
 // consumers (playground, LSP embedders, SDK users).
 export { diagnosticToJson } from "./diagnostic-json.js";
 export type { DiagnosticJson, FixSuggestionJson } from "./diagnostic-json.js";
+// A host's refusals (`E_INPUT_TOO_LARGE`, `E_RATE_LIMITED`), checked BEFORE compiling; compile() never calls them.
+export { inputTooLarge, rateLimited, utf8ByteLength } from "./input-limit.js";
 // Machine-applicable fixes: the `Diagnostic.fixes` model + a deterministic,
 // pure piece-table applier (ported from rustfix). `applyFixes` filters by
 // `Applicability`, applies each `FixSuggestion` atomically, and reports what it
@@ -177,6 +179,7 @@ export {
 } from "./plan-json.js";
 export type {
   PlanJson,
+  PlanJsonPage,
   RoomJson,
   WallJson,
   OpeningJson,
@@ -361,6 +364,8 @@ export type {
   RenderPass,
   RenderSizes,
   SceneSheet,
+  // `Scene.walls` — export metadata (the DXF wall-layer split), never drawn.
+  SceneWall,
   LineWeight,
   LineType,
 } from "./scene.js";
@@ -393,7 +398,7 @@ export { toDxf } from "./export/dxf.js";
 export { toPdf } from "./export/pdf.js";
 // PNG raster backend. Rasterizes the Scene's SVG with the OPTIONAL,
 // lazy-loaded `@resvg/resvg-js`; deterministic via a bundled font. Node-only.
-export { renderPng, renderPngFromSvg } from "./backends/png.js";
+export { renderPng, renderPngFromSvg, PNG_PREVIEW_WIDTH, isOptionalDepError } from "./backends/png.js";
 export type { PngOptions } from "./backends/png.js";
 // Error-card backend (opt-in). `compile(src, { onError: "svg" })` and the CLI's
 // `--error-svg` flag route a broken plan's diagnostics through this instead of

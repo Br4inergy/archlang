@@ -27,6 +27,9 @@ body {
    controls — the drafting title block, not a strip of pills. */
 header {
   display: flex;
+  /* A fallback, not the layout: at ≥1280px the cells fit one row (the compaction
+     below sees to it); narrower, they wrap instead of scrolling the page sideways. */
+  flex-wrap: wrap;
   align-items: stretch;
   background: var(--src-bg);
   color: var(--src-fg);
@@ -198,6 +201,30 @@ header {
   color: var(--src-fg);
 }
 .tb-nav a:focus-visible {
+  outline: 2px solid var(--plum-deep);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* A quiet text link among the Share controls (the agents page): same ink as the NAV
+   links, no box, so it adds ~55px to the row rather than a full button. */
+.tb-controls a.tb-link {
+  font-family: var(--font-display);
+  font-variation-settings:
+    "wdth" 90,
+    "wght" 500;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--src-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 0;
+  transition: color 0.15s;
+}
+.tb-controls a.tb-link:hover {
+  color: var(--src-fg);
+}
+.tb-controls a.tb-link:focus-visible {
   outline: 2px solid var(--plum-deep);
   outline-offset: 2px;
   border-radius: 2px;
@@ -531,15 +558,37 @@ main {
   }
   .tb-nav-more {
     display: block;
+    /* The agents link joined the Share cell; this gutter keeps "⋯" on the one row at 1280
+       (the cell padding below does the same work at 1440–1599; under 1440 the tighter
+       7px rule further down takes over). */
+    margin-right: 4px;
+  }
+  .tb-cell {
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+}
+
+/* <1440px: tighter cells and no "Playground" stamp (the page's H1 says it), so the
+   whole title block still fits one row at 1280px. */
+@media (max-width: 1439px) {
+  .tb-cell {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+  .tb-controls select,
+  .tb-controls button,
+  .tb-ai > summary {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .tb-brand .badge {
+    display: none;
   }
 }
 
 /* <760px: title-block cells wrap; panes stack; the seam becomes a hairline. */
 @media (max-width: 760px) {
-  header {
-    flex-wrap: wrap;
-    align-items: stretch;
-  }
   .tb-cell {
     border-bottom: 1px solid var(--src-border);
   }
@@ -550,6 +599,23 @@ main {
   .pane + .pane {
     border-left: 0;
     border-top: 1px solid var(--src-border);
+  }
+  /* The plan above the editor on a narrow screen: visual order only (the DOM, and so the
+     tab order and every handler, are unchanged). The seam hairline moves with it. */
+  main > .pane:nth-child(2) {
+    order: -1;
+    border-top: 0;
+  }
+  main > .pane:first-child {
+    border-top: 1px solid var(--src-border);
+  }
+  /* A title-block cell is as wide as the screen, never wider: its controls wrap. */
+  .tb-cell {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .tb-controls {
+    flex-wrap: wrap;
   }
   .divider {
     display: none;
@@ -580,4 +646,78 @@ main {
 }
 .tb-check:hover {
   border-color: var(--plum-deep);
+}
+
+/* "Open in AI" disclosure — a header control that opens a small panel holding the
+   privacy note and the two chat-host links. The summary matches the buttons. */
+.tb-ai {
+  position: relative;
+}
+.tb-ai > summary {
+  list-style: none;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.2;
+  padding: 5px 10px;
+  border: 1px solid var(--src-rule);
+  border-radius: 3px;
+  background: var(--src-surface);
+  color: var(--src-fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tb-ai > summary::-webkit-details-marker {
+  display: none;
+}
+.tb-ai > summary:hover {
+  border-color: var(--plum);
+  background: color-mix(in srgb, var(--plum) 8%, var(--src-surface));
+}
+.tb-ai > summary:focus-visible {
+  outline: 2px solid var(--plum-deep);
+  outline-offset: 1px;
+}
+.tb-ai-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: min(300px, calc(100vw - 32px));
+  padding: 8px;
+  background: var(--src-surface);
+  border: 1px solid var(--src-rule);
+  border-radius: 3px;
+  box-shadow: 0 8px 24px rgb(28 36 48 / 18%);
+}
+.tb-ai-note {
+  margin: 0 0 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--src-muted);
+  white-space: normal;
+}
+.tb-ai-panel a {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--src-fg);
+  text-decoration: none;
+  padding: 6px 8px;
+  border-radius: 2px;
+}
+.tb-ai-panel a:hover {
+  background: color-mix(in srgb, var(--plum) 8%, transparent);
+}
+.tb-ai-panel a:focus-visible {
+  outline: 2px solid var(--plum-deep);
+  outline-offset: 1px;
+}
+@media (max-width: 760px) {
+  .tb-ai-panel {
+    right: auto;
+    left: 0;
+  }
 }

@@ -418,7 +418,7 @@ do it for you.
 **A drawn symbol ignores its `label`.** A `label` reaches the drawing only through the
 labelled-rectangle fallback — that is, only for a kind the catalogue does **not** know.
 Writing `furniture bed … label "Bed"` is harmless but inert: the word stays in the source
-and in `arch describe --json`, and no text appears in the SVG. The fallback is the escape
+and in `archlang describe --json`, and no text appears in the SVG. The fallback is the escape
 hatch, and it is deliberate: an uncatalogued word (`furniture hammock at … label "Hammock"`)
 still draws a rectangle with its name in it, which is how you annotate something ArchLang
 has no symbol for.
@@ -441,7 +441,7 @@ and four rules read the same fact — every one of them declining a check rather
 - **It never blocks a fixture's use-space.** A rug reaching under the basin is not what
   `W_FURN_CLEARANCE` is about; you stand on it.
 - **It never blocks a route.** Both walkability models — the whole-plan circulation grid
-  behind `arch describe --json`'s `circulation` block and the per-room flood fill behind
+  behind `archlang describe --json`'s `circulation` block and the per-room flood fill behind
   `W_ROOM_NO_CLEAR_PATH` — drop it before they inflate anything by a body radius, so a rug
   across the only way into a room does not seal that room off.
 
@@ -484,7 +484,7 @@ depths of table, up to four, and each end seats one; a chair is tucked under the
 of its depth, so the seats meet the table rather than float beside it. A square table seats
 one a side — the four-seater — and stays the same drawing under a quarter-turn.
 
-**The ASCII plan shows none of this.** `arch compile -f txt` (and `arch preview --ascii`)
+**The ASCII plan shows none of this.** `archlang compile -f txt` (and `archlang preview --ascii`)
 reduces each piece to a **single uppercase letter** at its centre — the first letter of
 its category — because a character grid has no room for a symbol. The CLI turns on the
 `annotate` metadata the text backend needs to recover a category, so this works out of the
@@ -527,11 +527,11 @@ Imports need a filesystem, so they work from the CLI and the library but not in 
 browser playground — the flagship `examples/studio.arch` uses inline `furniture` for
 exactly this reason. `examples/furnished-flat.arch` is the worked example: a two-bedroom
 flat furnished with twenty-nine of the thirty-six kinds across all five domains,
-`arch validate --strict` clean.
+`archlang validate --strict` clean.
 
-## Furnishing empty rooms — `arch finish`
+## Furnishing empty rooms — `archlang finish`
 
-`arch finish plan.arch` furnishes the rooms that hold no furniture, then completes the sheet
+`archlang finish plan.arch` furnishes the rooms that hold no furniture, then completes the sheet
 (`--only furnish` runs the first step alone). It is an explicit source transform
 ([ADR 0025](adr/0025-furnish-as-explicit-transform.md)): `compile` never adds a piece. The room's
 use comes from `uses`, else from its label. A room with several uses gets the union, the wall
@@ -557,8 +557,17 @@ A use's wall fixtures form one run: the stove next to the sink, the fridge next 
 one wall. A use whose required pieces cannot be placed together is left out whole and named in
 `unresolved`.
 
-- **Fill only.** A room that holds any piece is not touched. Nothing authored is moved, resized
-  or deleted.
+- **Fill only.** A room gains pieces only when nothing stands on its floor and nothing is
+  declared `in` it. A piece stands on a room's floor when its footprint reaches it; a piece
+  declared `in` another room must reach more than 100 mm onto it, the overhang
+  `W_FIXTURE_WRONG_ROOM` allows at a wall. Nothing authored is moved, resized or deleted.
+  - A room that holds some pieces but lacks one its use requires (a living room with a lamp
+    and no sofa) is named in `unresolved` with the missing pieces, and is not filled. A piece
+    that does the job counts: a `double_bed` for a `bed`, and a `urinal` for a `wc` in any
+    wet room, a dwelling bathroom included.
+  - A room whose only pieces are declared `in` it but stand outside it is named in
+    `unresolved` as holding no piece on its floor, with `W_FIXTURE_WRONG_ROOM`, and is not
+    filled: fix the piece's position or its `in` first.
 - **Relative placement.** A services fixture is written `against wall <id> offset …`; a
   free-standing piece `in <room> anchor … flush size WxH rotate …`. Never `at (x,y)`.
 - **Never worse.** A room's pieces are kept only when the plan still compiles and raises no
@@ -570,7 +579,7 @@ one wall. A use whose required pieces cannot be placed together is left out whol
 
 ## Furniture-aware lint rules
 
-Placing fixtures meaningfully lets `arch lint` reason about habitability. The
+Placing fixtures meaningfully lets `archlang lint` reason about habitability. The
 furniture and fixture rules (each documented in the [error catalog](error-codes.md)):
 
 | Code | Flags |

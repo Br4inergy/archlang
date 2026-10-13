@@ -23,6 +23,7 @@
  *   spec      print the one-prompt language spec (spec.llm.md)
  *   new       scaffold a starter .arch
  *   explain   look up an error code
+ *   link      print a playground URL that opens the plan
  *
  * This file is the argument-parse + dispatch entry point; the commands themselves
  * (and their shared IO/render helpers) live in `src/cli/`. Node APIs and real time
@@ -41,7 +42,7 @@ import {
   usageErrorFor,
 } from "./cli/io.js";
 import { findCommand, renderCommandHelp, renderTopHelp } from "./cli/help.js";
-import { buildManifest, MANIFEST_COMMAND_NAMES } from "./manifest.js";
+import { buildManifest, CLI_NAME, MANIFEST_COMMAND_NAMES } from "./manifest.js";
 import { closest } from "./expr.js";
 import { cmdBatch, cmdCompile, cmdMd, cmdPreview, cmdWatch } from "./cli/commands-render.js";
 import { cmdDescribe, cmdLint, cmdScore, cmdValidate } from "./cli/commands-analyze.js";
@@ -56,11 +57,12 @@ import {
   cmdSuggest,
 } from "./cli/commands-author.js";
 import { cmdContext, cmdExplain, cmdManifest, cmdNew, cmdSpec } from "./cli/commands-meta.js";
+import { cmdLink } from "./cli/commands-share.js";
 
 /**
  * Help is no longer a hand-written string: `renderTopHelp`/`renderCommandHelp`
- * (`src/cli/help.ts`) derive it from this manifest, the same document `arch manifest
- * --json` serves — so `arch <cmd> --help` cannot list a flag the command doesn't take.
+ * (`src/cli/help.ts`) derive it from this manifest, the same document `archlang manifest
+ * --json` serves — so `archlang <cmd> --help` cannot list a flag the command doesn't take.
  */
 const MANIFEST = buildManifest(VERSION);
 
@@ -100,7 +102,7 @@ async function main(): Promise<void> {
     process.exit(EXIT.OK);
   }
 
-  // 3. `arch help [cmd]` / `arch --help` — asking for help succeeds (stdout, exit 0).
+  // 3. `archlang help [cmd]` / `archlang --help` — asking for help succeeds (stdout, exit 0).
   if (cmd === "help" || cmd === "--help" || cmd === "-h") {
     const target = rest[0] ? findCommand(MANIFEST, rest[0]) : null;
     process.stdout.write(target ? renderCommandHelp(MANIFEST, target) : renderTopHelp(MANIFEST));
@@ -111,15 +113,15 @@ async function main(): Promise<void> {
   const command = findCommand(MANIFEST, cmd);
   if (!command) {
     const hint = closest(cmd, [...MANIFEST_COMMAND_NAMES]);
-    const mean = hint ? ` — did you mean \`arch ${hint}\`?` : "";
-    process.exit(usageError(`unknown command "${cmd}"${mean} (try \`arch help\`)`));
+    const mean = hint ? ` — did you mean \`${CLI_NAME} ${hint}\`?` : "";
+    process.exit(usageError(`unknown command "${cmd}"${mean} (try \`${CLI_NAME} help\`)`));
   }
 
   // Parsed against the RESOLVED command, so a flag it does not declare is rejected below
   // instead of being swallowed as an input filename.
   const args = parseArgs(rest, command);
 
-  // 5. `arch <cmd> --help`, handled before the command runs — so it works with no input file.
+  // 5. `archlang <cmd> --help`, handled before the command runs — so it works with no input file.
   if (args.help) {
     process.stdout.write(renderCommandHelp(MANIFEST, command));
     process.exit(EXIT.OK);
@@ -130,7 +132,7 @@ async function main(): Promise<void> {
     const bad = args.unknownFlags[0]!;
     const hint = closest(bad, allowedFlags(command));
     const mean = hint ? ` — did you mean \`${hint}\`?` : "";
-    process.exit(usageErrorFor(command.name, `unknown flag "${bad}" for \`arch ${command.name}\`${mean}`));
+    process.exit(usageErrorFor(command.name, `unknown flag "${bad}" for \`${CLI_NAME} ${command.name}\`${mean}`));
   }
 
   switch (cmd) {
@@ -183,8 +185,10 @@ async function main(): Promise<void> {
       return finish(cmdNew(args));
     case "explain":
       return finish(cmdExplain(args));
+    case "link":
+      return finish(cmdLink(args));
     default:
-      return finish(usageError(`unknown command "${cmd}" (try \`arch help\`)`));
+      return finish(usageError(`unknown command "${cmd}" (try \`${CLI_NAME} help\`)`));
   }
 }
 

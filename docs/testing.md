@@ -89,7 +89,9 @@ table literal. Record the measured tree and the patch in the baseline's header.
 - **A missing optional dependency skips visibly locally and fails under `CI`.** A suite must never
   go green having asserted nothing.
 - **`@prod`** only for a case that purely navigates, reads and asserts (no downloads, clipboard,
-  forms, persisted state or typing). Follow each spec file's stated tagging rule.
+  forms, persisted state or typing). Follow each spec file's stated tagging rule. A `@prod` case
+  that depends on a third party (the real jsDelivr core in `docs-site/e2e/arch-plan.spec.ts`) also
+  skips unless `E2E_PROD=1`, which the nightly e2e-prod job sets; run it by hand after a release.
 - **Docs are scanned too**: every tracked `.md` by `docs-table-pipes`; published pages by
   `docs-fences`; the `DOCS` list in `docs-flags.test.ts` for `arch …` flags. Publishing a page means
   adding it to `sync-docs.mjs`'s `PAGES`, which also enrols it in the smoke test and the docs E2E.
@@ -113,7 +115,7 @@ table literal. Record the measured tree and the patch in the baseline's header.
   pin. It hashes only: every page's SVG in `pages[]` order, `describe()`, `lint()` (default ruleset)
   and `compile().diagnostics`, joined by single spaces — not the accessibility profile or the
   overlay. Corpus: `examples/` (incl. `lib`), `test/fixtures`, `test/recovery-corpus`, the eval
-  goldens, `fidelity-plans` and faults, AND every `arch` fence in `docs/`, README, SKILL and spec.
+  goldens, `fidelity-plans` and faults, AND every `arch` fence in `docs/`, README and spec (skills hold none: `test/task-skills.test.ts` bans it).
   The "before" side is a `git archive` of the integration tip, never a rebuilt working tree; plant a
   change first, and cross-check with a differently-shaped second measurement.
 - **Zero corpus movement is not evidence the new path ran.** Instrument it with a counter, show which

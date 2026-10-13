@@ -14,12 +14,17 @@ import {
   rectInRoomBox,
   rectOf,
   rotateForBackEdge,
+  type RectEdge,
   wallBackedEdges,
 } from "../../analyze.js";
-import { actOnQuarterTurn, inverse } from "../../algebra/d4.js";
+import { actOnQuarterTurn, type D4, inverse } from "../../algebra/d4.js";
 import type { Diagnostic } from "../../diagnostics.js";
-import { rectsOverlap, wallIntrusionDepth } from "../../geometry/rect.js";
+import { type BBox, doorLandingRect, rectsOverlap, wallIntrusionDepth } from "../../geometry/rect.js";
+import { doorSwing } from "../../geometry.js";
+import type { WallSegment } from "../../geometry.js";
+import type { RFurniture } from "../../ir.js";
 import { pointInPolygon } from "../../geometry/polygon.js";
+import { fmt2 } from "../../num-format.js";
 import { fixesFrom, fixtureRotateFix } from "../../fix-producers.js";
 import {
   cutPlaneLayer,
@@ -30,15 +35,8 @@ import {
   requiresWall,
 } from "../../fixtures-catalog.js";
 import type { LintContext, LintRule } from "../context.js";
+import { placementClear, WALL_COLLISION_SLACK_MM } from "../fixture-paste.js";
 import { frontGapMm, mm, shortfall } from "../measure.js";
-
-/**
- * Minimum intrusion (mm) into a wall solid that counts as a collision. Above plausible
- * grid-snap noise from `against wall` placement, below any real penetration (a piece
- * straddling even a 100 mm partition intrudes far more), so flush/anchored fixtures
- * stay quiet while a sofa drawn through a wall is caught.
- */
-const WALL_COLLISION_SLACK_MM = 30;
 
 /** Furniture that overlaps another piece — a physical collision (each unordered
  *  pair reported once, in source order, against the second piece's span).
@@ -158,6 +156,38 @@ export const fixtureFloating: LintRule = {
 };
 
 /**
+ * The `W_FIXTURE_BACK_TO_ROOM` hint when EVERY walled edge is ruled out by the footprint's
+ * aspect ({@link backCandidateEdges}): the size is the wrong way round, so the fix is to swap
+ * it, not to pick a `rotate`. A `rotate` alone would silence the rule while drawing the symbol
+ * squashed into the box (`furniture.render()` swaps the pre-rotation footprint for 90/270).
+ *
+ * The numbers are written in the statement's own frame: a placed component's quarter-turn
+ * swaps the plan axes (`g.k` odd), and the rotation is pulled back through g⁻¹ exactly as the
+ * machine-applicable fix's is. No frame (`g === null`) means no numbers, only the rule.
+ */
+function sizeTurnHint(
+  size: { w: number; h: number },
+  walled: readonly RectEdge[],
+  g: D4 | null,
+  anchored: boolean,
+): string {
+  const side = walled.join("/");
+  const why = "a fixture's catalogued depth runs away from the wall it backs onto";
+  // An anchored piece's rotation is DERIVED once the size fits its edge, so it is not
+  // asked for a `rotate` it does not need.
+  const then = anchored ? "the anchor then derives the rotation" : null;
+  if (g === null)
+    return `Its plan \`size\` runs its depth along the wall on its ${side} side: swap W and H (${why}); ${then ?? "then add the `rotate` that backs it onto that wall"}.`;
+  const local = g.k % 2 === 1 ? { w: size.h, h: size.w } : size;
+  const turn =
+    then ??
+    (walled.length === 1
+      ? `then add \`rotate ${actOnQuarterTurn(inverse(g), rotateForBackEdge(walled[0]!))}\``
+      : "then add the `rotate` that backs it onto the wall you mean");
+  return `Its ${fmt2(local.w)}x${fmt2(local.h)} size puts its depth along the wall on its ${side} side, so its symbol cannot face that wall without being squashed: write \`size ${fmt2(local.h)}x${fmt2(local.w)}\` (${why}); ${turn}.`;
+}
+
+/**
  * A wall-requiring fixture that IS touching a wall but has its **back to the room**
  * — the WC whose cistern faces the space instead of the wall it stands on. Distinct
  * from `W_FIXTURE_FLOATING` (which is about a fixture touching no wall at all): here
@@ -208,7 +238,9 @@ export const fixtureBackToRoom: LintRule = {
         hints: [
           unique !== null
             ? `Add \`rotate ${unique}\` so the symbol's back faces the wall (rotate 0 = back to the north).`
-            : "Give it an explicit `rotate` for the wall you mean it to back onto, or place it with `against wall <id>` / `in <room> anchor <edge>` and let the rotation be derived.",
+            : targets.length === 0
+              ? sizeTurnHint(f.size, walled, g, f._authored?.mode === "anchor")
+              : "Give it an explicit `rotate` for the wall you mean it to back onto, or place it with `against wall <id>` / `in <room> anchor <edge>` and let the rotation be derived.",
         ],
         ...(unique !== null ? fixesFrom(fixtureRotateFix(f, unique)) : {}),
       });
@@ -255,24 +287,148 @@ export const fixtureWrongRoom: LintRule = {
  *  wall it hits, in source order. */
 export const furnitureWallCollision: LintRule = {
   name: "furniture-wall-collision",
-  check({ furniture, wallSegs, wallOpenings, at }: LintContext): Diagnostic[] {
+  check(ctx: LintContext): Diagnostic[] {
+    const { furniture, wallSegs, wallOpenings, at } = ctx;
     const out: Diagnostic[] = [];
     for (const f of furniture) {
       const fr = rectOf(f);
-      const hit = wallSegs.some((s) => wallIntrusionDepth(fr, s, wallOpenings) > WALL_COLLISION_SLACK_MM);
+      // The FIRST segment it intrudes past the slack, in segment order — the same wall the
+      // `.some()` this replaced stopped at, now kept so the message can name it.
+      let hit: WallSegment | undefined;
+      let depth = 0;
+      for (const s of wallSegs) {
+        const d = wallIntrusionDepth(fr, s, wallOpenings);
+        if (d > WALL_COLLISION_SLACK_MM) {
+          hit = s;
+          depth = d;
+          break;
+        }
+      }
       if (hit) {
         const name = f.label ?? f.category;
+        const where = axisLine(hit);
         out.push({
           severity: "warning",
           code: "W_FURNITURE_WALL_COLLISION",
           ...at(f),
-          message: `Furniture "${name}" penetrates a wall.`,
-          hints: [
-            "Move or resize it so it sits against the wall face, not through it — or anchor it with `against wall <id>`.",
-          ],
+          message: `Furniture "${name}" penetrates ${hit.category} wall "${hit.wallId}"${where} — ${mm(depth)} mm into its ${mm(hit.thickness)} mm thickness.`,
+          hints: [collisionHint(f, fr, hit, ctx)],
         });
       }
     }
     return out;
   },
 };
+
+/** ` at x 4000` / ` at y 3000` for a straight axis-aligned segment, else nothing. */
+function axisLine(s: WallSegment): string {
+  if (s.arc) return "";
+  if (s.a.x === s.b.x && s.a.y !== s.b.y) return ` at x ${mm(s.a.x)}`;
+  if (s.a.y === s.b.y && s.a.x !== s.b.x) return ` at y ${mm(s.a.y)}`;
+  return "";
+}
+
+/**
+ * The remedy for a wall collision. For a piece placed `against wall …` the usual cause is
+ * reading `offset` as an edge when it is the piece's CENTRE (`placeAgainst`,
+ * `elements/furniture.ts`), so the hint says so with the run the piece actually covers and,
+ * when there is one, the nearest `offset` that is CHECKED clear.
+ *
+ * The host segment is found from the authored clause and accepted only if it reproduces the
+ * piece's own centre along it (to 1 mm): a `place`d component's wall names are local, and a
+ * lookup that found a different wall must not produce numbers. Anything it cannot verify
+ * falls back to the generic sentence.
+ *
+ * A suggested `offset` is never a guess. The candidates are the positions that put the piece
+ * just clear of each wall standing square across its strip, each other piece of furniture,
+ * each doorway landing and the box round each door's swing (either side), plus the two ends of
+ * the segment. Each is moved to and re-measured: inside the segment's run; when the piece is
+ * declared `in` a room, its footprint still on that room's floor ({@link rectInRoomBox}, the
+ * room's own shape, which also keeps its `side` inferable); and {@link placementClear}, the
+ * terms of the wall-collision, overlap, swing, doorway and clearance rules. The nearest that
+ * passes wins (the lower on a tie); when none does, the hint says so instead of quoting a
+ * number that would trade this warning for another one.
+ */
+function collisionHint(f: RFurniture, fr: BBox, hit: WallSegment, ctx: LintContext): string {
+  const { wallSegs, roomRects } = ctx;
+  const generic = `Move or resize it so it clears wall "${hit.wallId}" — against its face, not through it — or place it with \`against wall <id>\` (whose \`offset\` is the distance along the wall to the piece's CENTRE) or \`in <room> anchor <edge> flush\`.`;
+  const ag = f._authored;
+  if (ag?.mode !== "against") return generic;
+  const hosts = wallSegs.filter((s) => s.wallId === ag.wall || s.category === ag.wall);
+  const wallIds = new Set(hosts.map((s) => s.wallId));
+  if (wallIds.size !== 1) return generic;
+  const host = hosts.find((s) => s.index === (ag.segment ?? 0));
+  if (!host || host.arc) return generic;
+  const d = unitOf(host);
+  if (d === null) return generic;
+  const len = Math.hypot(host.b.x - host.a.x, host.b.y - host.a.y);
+  const n = { x: -d.y, y: d.x };
+  const along = (p: { x: number; y: number }): number => (p.x - host.a.x) * d.x + (p.y - host.a.y) * d.y;
+  const across = (p: { x: number; y: number }): number => (p.x - host.a.x) * n.x + (p.y - host.a.y) * n.y;
+  const corners = [
+    { x: fr.x, y: fr.y },
+    { x: fr.x + fr.w, y: fr.y + fr.h },
+  ];
+  const lo = Math.min(...corners.map(along));
+  const hi = Math.max(...corners.map(along));
+  const centre = (lo + hi) / 2;
+  const half = (hi - lo) / 2;
+  const written = ag.offset ?? len / 2;
+  if (Math.abs(written - centre) > 1) return generic;
+  const run = `\`offset\` is the distance along "${host.wallId}" to the piece's CENTRE, not its edge: at ${mm(centre)} this ${mm(hi - lo)} mm piece spans ${mm(lo)}–${mm(hi)} along it, through wall "${hit.wallId}"`;
+  const hd = hit.arc ? null : unitOf(hit);
+  // A wall that runs ALONG the host is a depth problem: no `offset` can clear it.
+  if (hd !== null && Math.abs(hd.x * d.x + hd.y * d.y) > 1 - 1e-9)
+    return `${run}, which runs along it: reduce the piece's depth.`;
+  const nlo = Math.min(...corners.map(across));
+  const nhi = Math.max(...corners.map(across));
+  const raw: number[] = [Math.ceil(half), Math.floor(len - half)];
+  for (const s of wallSegs) {
+    const sd = s.arc ? null : unitOf(s);
+    if (sd === null || Math.abs(sd.x * d.x + sd.y * d.y) > 1e-9) continue; // not square across the run
+    const a = across(s.a);
+    const b = across(s.b);
+    if (Math.max(a, b) <= nlo || Math.min(a, b) >= nhi) continue; // misses the piece's strip
+    const p = along(s.a);
+    raw.push(Math.floor(p - s.thickness / 2 - half), Math.ceil(p + s.thickness / 2 + half));
+  }
+  const room = f.room !== undefined ? roomRects.get(f.room) : undefined;
+  // Other obstacles in the strip: the piece just clear of each, either side. Their rects are
+  // the other furniture, each door's doorway landing, and the box round each door's swing.
+  const obstacles: BBox[] = ctx.furniture.filter((o) => o !== f).map((o) => rectOf(o));
+  for (const door of ctx.doors) {
+    const landing = doorLandingRect(door, ctx.rules.doorwayLandingMm);
+    if (landing) obstacles.push(landing);
+    const sw = doorSwing(door);
+    if (sw) {
+      const r = sw.radius + ctx.rules.swingClearanceMm;
+      obstacles.push({ x: sw.hinge.x - r, y: sw.hinge.y - r, w: 2 * r, h: 2 * r });
+    }
+  }
+  for (const o of obstacles) {
+    const oc = [
+      { x: o.x, y: o.y },
+      { x: o.x + o.w, y: o.y + o.h },
+    ];
+    if (Math.max(...oc.map(across)) <= nlo || Math.min(...oc.map(across)) >= nhi) continue;
+    raw.push(Math.floor(Math.min(...oc.map(along)) - half), Math.ceil(Math.max(...oc.map(along)) + half));
+  }
+  const clear = (o: number): boolean => {
+    if (o - half < 0 || o + half > len) return false;
+    const shift = o - centre;
+    const moved = { x: fr.x + d.x * shift, y: fr.y + d.y * shift, w: fr.w, h: fr.h };
+    if (room !== undefined && !rectInRoomBox(moved, room)) return false;
+    return placementClear(ctx, moved, f.category, f.rotate ?? 0, f);
+  };
+  const valid = [...new Set(raw)].filter(clear).sort((a, b) => Math.abs(a - centre) - Math.abs(b - centre) || a - b);
+  if (valid.length > 0) return `${run}. \`offset ${mm(valid[0]!)}\` clears it.`;
+  const where = f.room !== undefined ? ` inside "${f.room}"` : "";
+  return `${run}, and no position along "${host.wallId}"${where} clears every wall: move it to another wall or shorten it.`;
+}
+
+/** A straight segment's unit direction, or `null` for an arc or a degenerate segment. */
+function unitOf(s: WallSegment): { x: number; y: number } | null {
+  if (s.arc) return null;
+  const l = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y);
+  return l > 0 ? { x: (s.b.x - s.a.x) / l, y: (s.b.y - s.a.y) / l } : null;
+}

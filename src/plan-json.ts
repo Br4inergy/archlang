@@ -26,12 +26,28 @@
  * plan's compiled interior-door connectivity.
  */
 
-import type { AutoDimsMode, CompassWord, FurnitureAnchor, Hemisphere, NorthDir, PlanNode, UseKind } from "./ast.js";
-import { AUTO_DIMS_MODES, COMPASS_DIRECTIONS, FURNITURE_ANCHORS, HEMISPHERES, USE_KINDS } from "./ast.js";
+import type {
+  AutoDimsMode,
+  CompassWord,
+  FurnitureAnchor,
+  Hemisphere,
+  NorthDir,
+  PlanNode,
+  TitleNode,
+  UseKind,
+} from "./ast.js";
+import {
+  AUTO_DIMS_MODES,
+  COMPASS_DIRECTIONS,
+  FURNITURE_ANCHORS,
+  HEMISPHERES,
+  TITLE_FIELD_KEY,
+  USE_KINDS,
+} from "./ast.js";
 import type { RRoom, RDoor, RWindow, ROpening, RFurniture, RDim, RColumn, RWall, ResolvedPlan } from "./ir.js";
 import type { Diagnostic } from "./diagnostics.js";
-import type { DoorEnumClause, DoorHinge, DoorKind, DoorSlideDir, DoorSwingDir } from "./grammar/tokens.js";
-import { DOOR_ENUMS, DOOR_KIND_CLAUSES, DOOR_KINDS, enumList } from "./grammar/tokens.js";
+import type { DoorEnumClause, DoorHinge, DoorKind, DoorSlideDir, DoorSwingDir, TitleField } from "./grammar/tokens.js";
+import { DOOR_ENUMS, DOOR_KIND_CLAUSES, DOOR_KINDS, enumList, TITLE_FIELDS } from "./grammar/tokens.js";
 import { parse } from "./parser.js";
 import { isDrawableHeight, isPlacedHeight, MAX_HEIGHT } from "./datum.js";
 import {
@@ -342,11 +358,8 @@ export interface ColumnJson {
   height: number;
 }
 
-export interface TitleJson {
-  project?: string;
-  drawn_by?: string;
-  date?: string;
-}
+/** One optional string per `TITLE_FIELDS` word. */
+export type TitleJson = { [K in TitleField]?: string };
 
 /** One connector edge (output-only), from the modeled door/opening access graph. */
 export interface EdgeJson {
@@ -662,23 +675,46 @@ function northIsDefault(n: NorthDir): boolean {
   return n === "up";
 }
 
-function titleToJson(t: { project?: string; drawnBy?: string; date?: string }): TitleJson {
-  return {
-    ...(t.project !== undefined ? { project: t.project } : {}),
-    ...(t.drawnBy !== undefined ? { drawn_by: t.drawnBy } : {}),
-    ...(t.date !== undefined ? { date: t.date } : {}),
-  };
+/** The title block, one JSON key per `TITLE_FIELDS` word (`drawn_by`, not `drawnBy`). */
+function titleToJson(t: TitleNode): TitleJson {
+  const out: TitleJson = {};
+  for (const word of TITLE_FIELDS) {
+    const v = t[TITLE_FIELD_KEY[word]];
+    if (v !== undefined) out[word] = v;
+  }
+  return out;
+}
+
+/** One storey of a multi-storey plan, projected on its own (see {@link planToJson}). */
+export interface PlanJsonPage {
+  level: number;
+  name?: string;
+  json: PlanJson;
 }
 
 /**
  * Parse + resolve `source` and project it to {@link PlanJson} with output-only
  * enrichments. On a fatal user-source error, `json` is absent and `diagnostics`
  * carries the problems.
+ *
+ * Plan JSON is single-storey, so `json` is the LOWEST storey of a multi-storey plan (the
+ * page `compile().svg` draws). `pages` carries every storey, each projected alone in
+ * ascending level order, exactly as `compile().pages` carries one drawing per storey; it is
+ * absent for a single-storey plan, so that result is unchanged.
  */
-export function planToJson(source: string, opts: AnalyzeOptions = {}): { json?: PlanJson; diagnostics: Diagnostic[] } {
-  const { ir, diagnostics } = resolvePlan(source, opts);
+export function planToJson(
+  source: string,
+  opts: AnalyzeOptions = {},
+): { json?: PlanJson; pages?: PlanJsonPage[]; diagnostics: Diagnostic[] } {
+  const { ir, diagnostics, levels } = resolvePlan(source, opts);
   if (!ir) return { diagnostics };
-  return { json: resolvedToJson(ir), diagnostics };
+  if (levels.length === 0) return { json: resolvedToJson(ir), diagnostics };
+  const pages = levels.map((l) => ({
+    level: l.level,
+    ...(l.name !== undefined ? { name: l.name } : {}),
+    json: resolvedToJson(l.ir),
+  }));
+  return { json: resolvedToJson(ir), pages, diagnostics };
 }
 
 // ---------------------------------------------------------------------------
@@ -1067,9 +1103,10 @@ function emitArch(p: PlanJson): string {
 
   if (p.title) {
     L.push(`  title {`);
-    if (p.title.project !== undefined) L.push(`    project ${q(p.title.project)}`);
-    if (p.title.drawn_by !== undefined) L.push(`    drawn_by ${q(p.title.drawn_by)}`);
-    if (p.title.date !== undefined) L.push(`    date ${q(p.title.date)}`);
+    for (const word of TITLE_FIELDS) {
+      const v = p.title[word];
+      if (v !== undefined) L.push(`    ${word} ${q(v)}`);
+    }
     L.push(`  }`);
   }
 
@@ -1665,6 +1702,8 @@ export const PLAN_JSON_SCHEMA = {
         project: { type: "string", description: "Project name." },
         drawn_by: { type: "string", description: "Author / drafter." },
         date: { type: "string", description: "Date string." },
+        number: { type: "string", description: "Drawing number, e.g. A-101." },
+        revision: { type: "string", description: "Drawing revision, e.g. B." },
       },
     },
     edges: {

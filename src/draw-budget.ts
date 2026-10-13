@@ -22,8 +22,17 @@ import type { Diagnostic, Span } from "./diagnostics.js";
 import type { RFurniture, ROutdoor, RRoom, ResolvedElement, ResolvedPlan } from "./ir.js";
 import type { Registry } from "./registry.js";
 import { autoDimCount } from "./scene-build.js";
-import { legendEntries, roomSchedule } from "./sheet-tables.js";
+import {
+  legendEntries,
+  MAX_NOTE_LINES,
+  NOTE_LINE_CHARS,
+  noteLineCount,
+  notesRowCount,
+  roomSchedule,
+} from "./sheet-tables.js";
+import { openingCount, TAG_PRIMITIVES } from "./opening-schedule.js";
 import { siteBoundaryNodes } from "./site.js";
+import { netAreaWorkUnits } from "./analyze/net-area.js";
 import { hatchesUsed } from "./hatches.js";
 import { groundMaterialsUsed } from "./elements/outdoor.js";
 import { DEFAULT_THEME } from "./theme.js";
@@ -79,7 +88,8 @@ const AXIS_PRIMITIVES = 3;
  * What one storey's plan-wide passes draw, beyond its elements: the `dims auto` chains (each a
  * `dim`, estimated as the `dim` kind is), the axis bubbles, the lot line and the margin
  * tables (`sheet-tables.ts`: a flat schedule is 11 + 4 per room, a grouped one adds 7 per
- * zone; a legend row is a rule, a swatch and a name, a fixture's swatch its glyph).
+ * zone; a legend row is a rule, a swatch and a name, a fixture's swatch its glyph; the
+ * opening tags and their schedule; the NOTES).
  */
 export function storeyPassUnits(ir: ResolvedPlan, registry: Registry): number {
   let n = 0;
@@ -95,8 +105,11 @@ export function storeyPassUnits(ir: ResolvedPlan, registry: Registry): number {
   }
   const rooms = ir.elements.filter((e): e is RRoom => e.kind === "room");
   if (ir.schedule) {
+    // Rows only (no walls passed, so no net area is measured here), then the net-area work
+    // the drawn table will do, charged as a count BEFORE any of it runs.
     const s = roomSchedule(rooms, ir.zones);
-    n += 16 + 4 * s.rows.length + 8 * s.groups.length;
+    n += 16 + 5 * s.rows.length + 9 * s.groups.length;
+    n += netAreaWorkUnits(rooms, ir.walls);
   }
   if (ir.legend) {
     const outdoors = ir.elements.filter((e): e is ROutdoor => e.kind === "outdoor");
@@ -105,6 +118,13 @@ export function storeyPassUnits(ir: ResolvedPlan, registry: Registry): number {
     n += 4;
     for (const e of entries) n += e.kind === "fixture" ? 4 + DEFAULT_DRAW_COST : 5;
   }
+  if (ir.openingSchedule) {
+    // A tag per door/window (`TAG_PRIMITIVES`), and the table: 13 + 6 per row.
+    const openings = openingCount(ir.elements);
+    n += TAG_PRIMITIVES * openings + 13 + 6 * openings;
+  }
+  // The NOTES table: frame, caption and rule, then a number and a text per drawn line.
+  if (ir.notes) n += 3 + 2 * notesRowCount(ir.notes);
   return n;
 }
 
@@ -119,6 +139,21 @@ export function drawBudgetDiagnostic(
   registry: Registry,
   headerSpan: Span | undefined,
 ): Diagnostic | undefined {
+  // The NOTES table's own bound, checked first: its width is fixed and each note wraps to it,
+  // so authored text grows it only downward — and that is capped here, so a pasted essay is
+  // refused rather than drawn as a page metres tall. Plan-level, so one check covers every page.
+  const notes = storeys[0]?.ir.notes;
+  const noteLines = notes ? noteLineCount(notes) : 0;
+  if (noteLines > MAX_NOTE_LINES) {
+    return {
+      severity: "error",
+      message:
+        `The \`notes\` wrap to more than ${MAX_NOTE_LINES} lines of ${NOTE_LINE_CHARS} characters, the most a ` +
+        "sheet may draw; shorten them, or keep the long text in a separate document and reference it in one note",
+      code: "E_DRAWING_LIMIT",
+      ...(headerSpan ? { span: headerSpan } : {}),
+    };
+  }
   let total = 0;
   let over: { el?: ResolvedElement; level?: number } | undefined;
   for (const s of storeys) {

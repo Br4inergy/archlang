@@ -19,8 +19,8 @@ import { add, mul, normal, segmentsOfWall, sub, unit } from "./geometry.js";
 import { arcPointAt, diameterText, radiusText } from "./geometry/arc.js";
 import type { Point } from "./ast.js";
 import { hatchesUsed } from "./hatches.js";
-import { lowerWallSet } from "./wall-lowering.js";
-import type { SideGeom } from "./facade.js";
+import { attachSceneWalls, lowerWallSet } from "./wall-lowering.js";
+import type { FacadeOpening, SideGeom } from "./facade.js";
 import { SIDES, cleanTicks, facadeAt, facadeOpenings, measureExtent, openingsBySide, sideGeoms } from "./facade.js";
 import { anchorChromeToSheet, dimReach, layoutChrome } from "./chrome-layout.js";
 import { axesNodes } from "./axes.js";
@@ -34,6 +34,7 @@ import { textWidth } from "./text-metrics.js";
 import type { LabelGroup } from "./label-placement.js";
 import { relocateLabels, wrapLabels } from "./label-placement.js";
 import { legendEntries, roomSchedule, sheetTableNodes } from "./sheet-tables.js";
+import { openingRows, openingTagNodes } from "./opening-schedule.js";
 import { circulationOverlayNodes } from "./overlays/circulation.js";
 import { captionForPlan } from "./describe.js";
 import type { RoomBox } from "./analyze.js";
@@ -89,20 +90,22 @@ export function themeBaseLookup(name: string | undefined, runtime: Runtime): Par
  * Each is a plain {@link RDim} with no `text`, so the dim element formats the
  * measured length itself — the same value a hand-written `dim` would show.
  */
-function synthDims(ir: ResolvedPlan, sizes: RenderSizes): RDim[] {
+function synthDims(ir: ResolvedPlan, sizes: RenderSizes, registry: Registry = BUILTIN_RUNTIME.registry): RDim[] {
   const dims: RDim[] = [];
   if (ir.autoDims !== "walls") {
     synthGbChains(ir, sizes, dims);
     synthCurveDims(ir, dims);
   }
-  if (ir.autoDims === "walls" || ir.autoDims === "all") synthWallDims(ir, sizes, dims);
+  if (ir.autoDims === "walls" || ir.autoDims === "all") synthWallDims(ir, sizes, dims, registry);
   return dims;
 }
 
 /**
  * How many dimensions `dims auto` will draw on this storey, for the drawing budget
  * (`src/draw-budget.ts`): the same {@link synthDims} the drawing calls. The pens only move
- * a chain outward or flip a number's side, never add or remove a dimension, so any pens do.
+ * a chain outward or flip a number's side, never add or remove a dimension, so any pens do;
+ * likewise the registry (furniture footprints) only moves a call-out's station, so the
+ * built-in one does.
  */
 export function autoDimCount(ir: ResolvedPlan): number {
   return ir.autoDims ? synthDims(ir, renderSizes(ir.sheet, 1000, 1000, 1)).length : 0;
@@ -451,8 +454,8 @@ function segmentBand(s: WallSegment): Bounds {
 }
 
 /**
- * WHERE along its wall a thickness call-out is taken: the middle of the segment's widest
- * run clear of every other wall.
+ * WHERE along its wall a thickness call-out is taken: a station clear of every other wall
+ * and, where the wall allows it, of the openings on it and the furniture beside it.
  *
  * The segment midpoint is the obvious station and the wrong one — on a shell it is very
  * often exactly where a partition tees in, which is the common case. The
@@ -461,11 +464,40 @@ function segmentBand(s: WallSegment): Bounds {
  *
  * Every wall band that comes within the number's reach of this segment's centreline blocks
  * the run it covers, widened by a cap height at each end so the digits clear it rather than
- * touch it. What is left is a set of free runs; the widest one's midpoint is the station.
- * Closed form — merge the intervals once, take the maximum — and it falls back to the
- * segment midpoint when a wall is crossed end to end (a call-out has to go somewhere).
+ * touch it. Two more things block a run the same way, each read from its own shape:
+ *
+ *  - every OPENING on this wall line (`openings`) — its extent along the wall is its centre
+ *    ± half its width, from the opening model. The dimension's ticks would cross the jambs
+ *    and its number would sit in the doorway or across the door's swing (which spans the
+ *    same run);
+ *  - every piece of FURNITURE whose footprint reaches into the band the number occupies —
+ *    from the wall face out to `reach`, on the side the number is written (`side`, the unit
+ *    normal {@link thicknessSideFlipped} chose). The footprint is the polygon the element's
+ *    own `bounds()` reports; its vertices are projected onto the wall axis for the run it
+ *    blocks and onto the normal for the reach test, so a piece on the far side of the wall
+ *    cannot collide with the number and blocks nothing.
+ *
+ * Walls and the rest are NOT equals: a number in poché is unreadable, a number in a doorway
+ * is only untidy. So the station is chosen in tiers, each the midpoint of a widest free run
+ * (closed form — sort the intervals once, take the maximum):
+ *
+ *  1. the widest run clear of WALLS, when that station is also clear of every opening and
+ *     piece of furniture — so a call-out that collides with nothing never moves;
+ *  2. otherwise the widest run clear of walls, openings and furniture;
+ *  3. otherwise (nothing is clear of all three) the widest run clear of walls alone, which
+ *     keeps the number out of poché at the cost of a doorway or a fixture;
+ *  4. otherwise (walls cross the segment end to end) the segment midpoint — a call-out has
+ *     to go somewhere.
  */
-function thicknessStation(rep: { a: Point; b: Point; t: number }, ir: ResolvedPlan, reach: number, pad: number): Point {
+function thicknessStation(
+  rep: { a: Point; b: Point; t: number },
+  ir: ResolvedPlan,
+  reach: number,
+  pad: number,
+  side: Vec,
+  openings: readonly FacadeOpening[],
+  registry: Registry,
+): Point {
   const horiz = rep.a.y === rep.b.y;
   const lo = horiz ? Math.min(rep.a.x, rep.b.x) : Math.min(rep.a.y, rep.b.y);
   const hi = horiz ? Math.max(rep.a.x, rep.b.x) : Math.max(rep.a.y, rep.b.y);
@@ -494,8 +526,63 @@ function thicknessStation(rep: { a: Point; b: Point; t: number }, ir: ResolvedPl
       blocked.push({ lo: Math.max(lo, aLo), hi: Math.min(hi, aHi) });
     }
   }
-  blocked.sort((p, q) => p.lo - q.lo || p.hi - q.hi);
+  // Openings and furniture: the runs a doorway or a fixture takes.
+  const extra: { lo: number; hi: number }[] = [];
+  const block = (aLo: number, aHi: number): void => {
+    if (aHi <= lo || aLo >= hi) return;
+    extra.push({ lo: Math.max(lo, aLo), hi: Math.min(hi, aHi) });
+  };
+  const axis = horiz ? "h" : "v";
+  for (const op of openings) {
+    if (op.axis !== axis || op.line !== c) continue;
+    block(op.along - op.width / 2 - pad, op.along + op.width / 2 + pad);
+  }
+  // The band across the wall the number is written in: from the face to its far end.
+  const out = horiz ? side.y : side.x;
+  const face = c + out * (rep.t / 2);
+  const tip = c + out * reach;
+  const bandLo = Math.min(face, tip);
+  const bandHi = Math.max(face, tip);
+  // The footprint is whatever this compile's registry says furniture covers, so a plugin that
+  // replaces the kind is honoured; a footprint with a non-finite vertex (a plugin piece
+  // resolved without a position or size) is not a footprint and blocks nothing.
+  const furniture = registry.byKind.get("furniture");
+  for (const el of ir.elements) {
+    if (el.kind !== "furniture" || !furniture) continue;
+    let aLo = Number.POSITIVE_INFINITY;
+    let aHi = Number.NEGATIVE_INFINITY;
+    let xLo = Number.POSITIVE_INFINITY;
+    let xHi = Number.NEGATIVE_INFINITY;
+    for (const p of furniture.bounds(el)) {
+      const along = horiz ? p.x : p.y;
+      const across = horiz ? p.y : p.x;
+      aLo = Math.min(aLo, along);
+      aHi = Math.max(aHi, along);
+      xLo = Math.min(xLo, across);
+      xHi = Math.max(xHi, across);
+    }
+    if (![aLo, aHi, xLo, xHi].every(Number.isFinite)) continue;
+    if (xHi <= bandLo || xLo >= bandHi) continue;
+    block(aLo - pad, aHi + pad);
+  }
 
+  const at = (v: number): Point => (horiz ? { x: v, y: c } : { x: c, y: v });
+  // Tier 1: the wall-clear station, kept when nothing else stands on it.
+  const wallClear = widestFreeRun(lo, hi, blocked);
+  if (wallClear === null) return mid; // tier 4 — no run is clear of walls, so none is clear of all
+  if (!extra.some((e) => e.lo < wallClear && wallClear < e.hi)) return at(wallClear);
+  // Tier 2: clear of everything; tier 3: clear of walls alone.
+  const allClear = widestFreeRun(lo, hi, [...blocked, ...extra]);
+  return at(allClear ?? wallClear);
+}
+
+/**
+ * The midpoint of the widest run of `[lo, hi]` left free by `blocked` (each interval already
+ * clipped to the segment), or `null` when the intervals cover it end to end. Sorts a copy, so
+ * the caller's list keeps its order; on equal widths the first run wins.
+ */
+function widestFreeRun(lo: number, hi: number, blocked: readonly { lo: number; hi: number }[]): number | null {
+  const sorted = [...blocked].sort((p, q) => p.lo - q.lo || p.hi - q.hi);
   let bestLen = 0;
   let bestAt = 0;
   let cursor = lo;
@@ -505,13 +592,12 @@ function thicknessStation(rep: { a: Point; b: Point; t: number }, ir: ResolvedPl
       bestAt = (from + to) / 2;
     }
   };
-  for (const b of blocked) {
+  for (const b of sorted) {
     consider(cursor, b.lo);
     cursor = Math.max(cursor, b.hi);
   }
   consider(cursor, hi);
-  if (bestLen <= 0) return mid;
-  return horiz ? { x: bestAt, y: c } : { x: c, y: bestAt };
+  return bestLen > 0 ? bestAt : null;
 }
 
 /** One thickness call-out per distinct wall thickness (deduped so eight identical
@@ -522,11 +608,12 @@ function thicknessStation(rep: { a: Point; b: Point; t: number }, ir: ResolvedPl
  *  offset keeps it on the wall, and because the number is far wider than the wall the
  *  dim element writes it past the far station (`outsideStations` in `elements/dim.ts`).
  *  That makes two derived positions, and both come from the shape rather than a box:
- *  {@link thicknessStation} picks WHERE along the wall (a run no other wall crosses) and
+ *  {@link thicknessStation} picks WHERE along the wall (a run no other wall crosses and,
+ *  where one exists, no opening or furniture footprint either) and
  *  {@link thicknessSideFlipped} picks WHICH SIDE (the one with floor under it, not the
  *  annotation band outside the building). Presentation only — never expands bounds
  *  meaningfully (faces sit ½-thickness off a centerline already inside the plan). */
-function synthWallDims(ir: ResolvedPlan, sizes: RenderSizes, dims: RDim[]): void {
+function synthWallDims(ir: ResolvedPlan, sizes: RenderSizes, dims: RDim[], registry: Registry): void {
   const repByThickness = new Map<number, { a: Point; b: Point; n: Vec; t: number; len: number }>();
   for (const w of ir.walls) {
     for (const s of segmentsOfWall(w)) {
@@ -548,6 +635,7 @@ function synthWallDims(ir: ResolvedPlan, sizes: RenderSizes, dims: RDim[]): void
     }
   }
   const rooms = ir.elements.filter((el): el is RRoom => el.kind === "room").map(roomBox);
+  const openings = repByThickness.size > 0 ? facadeOpenings(ir) : [];
   for (const t of [...repByThickness.keys()].sort((a, c) => a - c)) {
     const rep = repByThickness.get(t)!;
     // How far off the centreline the number reaches, and how tall it is — the same two
@@ -555,12 +643,13 @@ function synthWallDims(ir: ResolvedPlan, sizes: RenderSizes, dims: RDim[]): void
     // run actually used.
     const text = fmtMm(rep.t);
     const reach = rep.t / 2 + DIM_TEXT_GAP * sizes.dimFont + textWidth(text, sizes.dimFont);
-    const at = thicknessStation(rep, ir, reach, sizes.dimFont);
-    const half = mul(rep.n, rep.t / 2);
     // The endpoints keep their historical order (which is what fixes the number's reading
     // direction); the SIDE the number is written on is `calloutFrom`, so a flip moves the
-    // text and nothing else.
+    // text and nothing else. It is decided first because the station avoids what stands on
+    // that side.
     const onPlusSide = thicknessSideFlipped(rep.a, rep.b, rep.n, rep.t, rooms);
+    const at = thicknessStation(rep, ir, reach, sizes.dimFont, onPlusSide ? rep.n : mul(rep.n, -1), openings, registry);
+    const half = mul(rep.n, rep.t / 2);
     dims.push({
       ...mkDim(add(at, half), add(at, mul(half, -1)), 0, text),
       ...(onPlusSide ? { calloutFrom: true } : {}),
@@ -810,7 +899,8 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
     const dimDef = registry.byKind.get("dim");
     if (dimDef) {
       const dimCtx = ctxFor("dim");
-      for (const dm of synthDims(ir, sizes)) for (const pushed of dimDef.render(dm, dimCtx)) nodes.push(pushed);
+      for (const dm of synthDims(ir, sizes, runtime.registry))
+        for (const pushed of dimDef.render(dm, dimCtx)) nodes.push(pushed);
     }
   }
 
@@ -828,6 +918,11 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
   // skips `C-PROP` outright — see `label-placement.ts`). Nothing is emitted for a plan
   // with no `boundary`, so every existing drawing is byte-identical.
   if (ir.siteBoundary) nodes.push(...siteBoundaryNodes(ir.siteBoundary, theme, sizes));
+
+  // `schedule openings` — a tag beside every door and window (`opening-schedule.ts`), placed
+  // from each opening's own wall. Before the label pass, so a room name moves off a tag
+  // rather than sitting on it; nothing is emitted without the opt-in.
+  if (ir.openingSchedule) nodes.push(...openingTagNodes(ir.elements, theme, sizes, nodes));
 
   // Obstacle-aware area labels (`src/label-placement.ts`). It has to run HERE — after the
   // walls are lowered and after `dims auto` has emitted its numbers — because a dimension
@@ -852,6 +947,7 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
       ? roomSchedule(
           ir.elements.filter((e): e is RRoom => e.kind === "room"),
           ir.zones,
+          ir.walls,
         )
       : null;
   const legendData = ir.legend
@@ -873,6 +969,8 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
     scale: ir.scale,
     schedule: scheduleData,
     legend: legendData,
+    ...(ir.openingSchedule ? { openings: openingRows(ir.elements) } : {}),
+    ...(ir.notes ? { notes: ir.notes } : {}),
     // Multi-storey: stamp the page with its storey, so a drawing SET is readable (a plan
     // with no `level` block passes nothing and its chrome is byte-identical).
     ...(ir.level !== undefined
@@ -918,7 +1016,7 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
     for (const pushed of circulationOverlayNodes(ir, theme, sizes)) nodes.push(pushed);
   }
 
-  return {
+  const scene: Scene = {
     width: sheet ? sheet.page.w : content.w,
     height: sheet ? sheet.page.h : content.h,
     bounds: b,
@@ -939,4 +1037,8 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
     // for the desc. Off by default → the Scene is byte-identical. Never read by geometry.
     ...(opts.accessible ? { name: ir.accTitle ?? ir.name, caption: ir.accDescr ?? captionForPlan(ir) } : {}),
   };
+  // Export metadata for the DXF wall-layer split (`Scene.walls`): the very list the wall
+  // lowering above was handed, in its order, projected lazily. No backend draws it.
+  attachSceneWalls(scene, ir.walls);
+  return scene;
 }

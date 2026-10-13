@@ -3,7 +3,7 @@
 
 # The axonometric view
 
-`arch compile plan.arch --view iso` draws the building the plan describes, instead of the plan.
+`archlang compile plan.arch --view iso` draws the building the plan describes, instead of the plan.
 
 ![An isometric view of examples/studio.arch — extruded walls with their door and window openings cut, and the floor plates inside](/view/studio-iso.svg)
 
@@ -13,9 +13,9 @@ produces ordinary Scene primitives, every export ArchLang has already works —
 `-f svg`, `-f pdf`, `-f png`, `-f dxf`.
 
 ```bash
-arch compile house.arch --view iso  -o house-iso.svg
-arch compile house.arch --view axon -o house-axon.pdf -f pdf
-arch preview house.arch --view iso  -o house.png
+archlang compile house.arch --view iso  -o house-iso.svg
+archlang compile house.arch --view axon -o house-axon.pdf -f pdf
+archlang preview house.arch --view iso  -o house.png
 ```
 
 ## What it is NOT
@@ -23,7 +23,7 @@ arch preview house.arch --view iso  -o house.png
 **It is a picture, not a drawing.** That sentence is the whole design, and every limitation
 below follows from it.
 
-- **Nothing measures it.** `arch describe` and `arch lint` take no `--view` and never learn
+- **Nothing measures it.** `archlang describe` and `archlang lint` take no `--view` and never learn
   it exists — no area, adjacency, circulation route or diagnostic is derived from a
   projection. If you want a number, ask the plan.
 - **It carries no scale, no title block, no north arrow and no dimensions.** All four would
@@ -107,7 +107,7 @@ its courtyards and its holes already cut.
 Openings get their **real millimetres** from the vertical datum, never a fraction of the
 wall. A window is solid from the floor to its `sill`, glazed from `sill` to `head`, and
 solid again from `head` to the top of the wall; a door and a cased opening get the header
-alone. Those are the same numbers `arch describe --json` reports under `heights`.
+alone. Those are the same numbers `archlang describe --json` reports under `heights`.
 
 ## CAD layers
 

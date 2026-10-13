@@ -35,6 +35,42 @@ Sizes, measured at the migration: docs-site builds to 235 files / 14 MB (largest
 are **20,000 assets per version** and **25 MiB per file** — both sites sit far inside them, but the
 docs site's `examples.html` is the file to watch if the example gallery keeps growing.
 
+### The third Worker: the hosted MCP server, the only one with code
+
+`packages/mcp-worker` deploys a third Worker, **`archlang-mcp`**, and it is the one Worker here with
+a `main` script ([ADR 0026](adr/0026-hosted-mcp-worker.md)). It does not share anything with the
+two sites: its own `wrangler.jsonc`, its own job in `deploy.yml` (`deploy-mcp`), its own smoke
+site (`node scripts/smoke.mjs --site mcp --base <url>`). The sites keep no `main`; their job did not
+change when this one was added.
+
+| Route | Answers |
+|-------|---------|
+| `POST /mcp` | Streamable-HTTP MCP, stateless (no sign-in, no session), the npm server's tools plus `read_me` |
+| `GET /svg/<payload>` | the `#z=` payload compiled to `image/svg+xml`, `max-age=300` + `ETag`; `Content-Location` names the pinned copy |
+| `GET /v/<render version>/svg/<payload>` | the same drawing pinned to one compiler, the only `immutable` path; an older version 302s to `/svg/` |
+| `GET /` | the `read_me` text |
+
+- **Reached at workers.dev only**, until the owner attaches `mcp.archlang.uk` (`workers_dev: true`,
+  no `routes`, no `account_id` in the file). Attaching the domain is the same one-step custom-domain
+  attachment as the sites; do not hand-make the DNS record.
+- **It is metered.** Every request runs the script, so it counts against the plan's daily requests
+  and per-request CPU limit, unlike the sites. ADR 0026 has the per-tool measurement and why it
+  points at Workers Paid. A request that runs out of CPU fails with the platform's 5xx; inputs that
+  are merely large are refused first, by bytes, with `E_INPUT_TOO_LARGE`, and an address over its
+  rate with `E_RATE_LIMITED` (600 `/mcp` or 3000 `/svg/` misses a minute: an abuse guard set high
+  because connector platforms call from shared egress addresses). The spend bound is
+  `limits.cpu_ms` (5 s of CPU per request) plus a billing notification set before announcing it.
+- **It needs Workers Paid before it reaches `main`.** `limits` is supported only on the Standard
+  usage model, which only Paid has; on a Free account `deploy-mcp` should fail, and its last step
+  names Paid as the likely cause.
+- **It logs nothing and keeps no source.** Workers Logs (`observability`) is off and the code logs
+  nothing, because a `/svg/` path is a whole plan. It stores only rendered SVGs in the edge cache,
+  keyed by render version. One Analytics Engine data point per MCP message (dataset
+  `archlang_mcp`) holds the method and the tool name, each from a fixed list, nothing else.
+- **Build:** `npm run mcp-worker:build` (the core first, then one bundled module,
+  `packages/mcp-worker/dist/worker.js`). Locally: `wrangler dev --local --port <port>` from
+  `packages/mcp-worker`, never `wrangler deploy`.
+
 ## Iron law: public URL ≠ Worker name ≠ workspace name
 
 The strings `archlang-docs` and `archlang-playground` are **Cloudflare Worker names and npm
@@ -270,9 +306,15 @@ The rest of the rules:
   every page load. Vite and VitePress hash everything under `/assets/`, so those URLs can never
   change identity. Every other route keeps the revalidating default, which is what makes a deploy
   visible immediately.
-- **`/*.md` → `text/markdown; charset=utf-8`** (docs only). Cloudflare types `.md` as
-  `text/markdown` with **no charset**; Vercel sent the charset. A `text/*` response without one is
-  latin-1 by default in some clients, which mojibakes every em-dash in the raw markdown copies.
+- **`/<page>.md` → `text/markdown; charset=utf-8`** (docs only), one exact-path rule per raw
+  markdown copy. Cloudflare types `.md` as `text/markdown` with **no charset**; Vercel sent the
+  charset. A `text/*` response without one is latin-1 by default in some clients, which mojibakes
+  every em-dash in the raw markdown copies. The rules are **generated** between the marker lines in
+  `docs-site/public/_headers` by `npm run gen:docs-headers`, from the `PAGES` and `SITE_PAGES`
+  tables in `docs-site/sync-docs.mjs`; a hand edit inside the markers fails `check:drift`. They
+  are deliberately not a `/*.md` glob: a glob also matches a missing page, and its 404 HTML would
+  go out labelled `text/markdown`. `vitepress preview` ignores `_headers`, so only
+  `scripts/smoke.mjs` against the deployed host proves the charset and the unlabelled 404.
 - **`/archlang.gbnf` → `text/plain; charset=utf-8`** (docs only). Cloudflare sends **no
   `Content-Type` at all** for that extension; Vercel sent `application/octet-stream`. Both deliver
   a machine-readable route as an opaque download.
@@ -343,7 +385,7 @@ artifacts. Two traps caught us during the 2026-07-15 migration:
    `archlang-docs` (no dots) to catch both the literal and escaped forms.
 2. **Edit sources, then regenerate — never hand-edit generated files.** The JSON Schema `$id`s live in
    `src/plan-json.ts` / `src/intent.ts` (→ `npm run gen:plan-schema` / `gen:intent-schema`); the
-   agent-context URLs live in `SKILL.md` (→ `npm run gen:llms`). `check:drift` fails if you edit the
+   agent-context URLs live in `skills/archlang/SKILL.md` (→ `npm run gen:llms`). `check:drift` fails if you edit the
    generated `schemas/*.json` / `llms-full.txt` directly. The README `#z=` playground permalinks are
    **base-independent** (the compressed hash encodes only the example source), so only the host prefix
    changes — the hash stays valid.

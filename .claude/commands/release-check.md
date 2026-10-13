@@ -34,6 +34,10 @@ you observed. Do NOT push anything — this command only verifies.
      at pack time and refresh ONLY with a version bump — a legitimate reason to bump with an empty
      diff. Its core dep range is pinned as the string `^` + the root version, so every core release
      reddens `packages/mcp/test/lockstep.test.ts` on purpose: re-pin, rebuild, bump. Never relax it.
+   - Publish order is core → shim. The shim's `link` tool loads `@chanmeng666/archlang/link`, so the
+     shim must not publish while npm's latest core lacks `./link` (`npm view @chanmeng666/archlang exports`).
+     `release.yml` enforces it: `packages/mcp/scripts/check-core-exports.ts` fails the shim publish when
+     npm's copy of the range's minimum lacks a subpath the server loads.
    - Claude Code plugin manifest (`plugins/archlang/.claude-plugin/plugin.json`): its `version` is
      the core's and its `npx` pin is the shim's exact version. After the version bumps run
      `npm run gen:plugin` and commit the manifest; `check:drift` fails on a stale one. The release
@@ -41,6 +45,13 @@ you observed. Do NOT push anything — this command only verifies.
      plugin installed from `main` can fail to launch its server for those few minutes; accepted.
      Confirm `npm view @chanmeng666/archlang-mcp version` equals the pin once the tag run finishes.
    - Same range pin for `editors/vscode` (`editors/vscode/test/lockstep.test.ts`).
+   - The served `<arch-plan>` (`docs-site/public/arch-plan.js`) names the core version in its
+     jsDelivr URL: after the version bump run `npm run gen:arch-plan` (or `npm run gen:all`) and
+     commit it with the plugin manifest; `check:drift` fails on a stale one.
+   - `packages/web-component`'s peer range on the core is a caret range
+     (`packages/web-component/test/peer-range.test.ts`). A core MAJOR (2.0) fails that test on
+     purpose: check that `compile`, `diagnosticToJson` and `THEMES` still exist with the same
+     shapes, then move the range.
    - `packages/font-cjk`: `release.yml` publishes it before the core and refuses a version/pin
      mismatch with the core's exact `optionalDependencies` pin.
 
@@ -70,6 +81,20 @@ you observed. Do NOT push anything — this command only verifies.
 
 ## After the tag (human / external steps)
 
+- **Tag straight after the bump merges, then prove the embed URL.** Pushing `main` deploys
+  `https://archlang.uk/arch-plan.js` and the `/embed` recipe, both pinned to the new version, but
+  npm only has it once the tag's `release.yml` finishes. Until then every embed shows
+  `arch-plan: could not load the ArchLang compiler` (jsDelivr 404s, cached about 30 s). When the
+  publish is done:
+
+  ```bash
+  curl -sI https://cdn.jsdelivr.net/npm/@chanmeng666/archlang@<version>/+esm   # expect 200
+  ```
+
+  then open `https://archlang.uk/arch-plan-demo.html` and check that both plans draw and the third
+  element shows its `E_PARSE` box, or run its `@prod` case:
+  `E2E_PROD=1 E2E_BASE_URL=https://archlang.uk npx playwright test -c docs-site arch-plan --grep @prod`.
+
 - **Release is tokenless OIDC.** The tag runs `.github/workflows/release.yml` (npm with provenance,
   then the MCP registry via github-oidc); re-runs are idempotent. Never add an npm token; an auth
   failure means redo the npmjs trusted-publisher registration (human with 2FA).
@@ -86,7 +111,7 @@ you observed. Do NOT push anything — this command only verifies.
   2. Verify INSIDE the `.vsix` before uploading: `Identity Version`/`Publisher` in
      `extension.vsixmanifest`; `extension/package.json`'s version and core range;
      `ARCHLANG_CORE_VERSION` in `dist/server.js`; the release's new keywords/error codes present in
-     the bundle. Search the bundle with a literal matcher, never a regex.
+     `dist/core.mjs` (the core is bundled there once, not in `dist/server.js`). Search it with a literal matcher, never a regex.
   3. Upload the HIGHEST un-uploaded `.vsix` (`.vsix` files are gitignored and several can pile up).
   4. The gallery lags an upload by minutes; a disagreeing probe means wait and re-probe.
 - **MCPB bundle / Smithery (human step; no credential in CI).** `release.yml` builds

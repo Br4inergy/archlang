@@ -206,7 +206,8 @@ suite("docs-site/examples.md quotes figures the compiler agrees with", () => {
   it("every section is linked to an example by its own <ArchLive> widget", () => {
     // The page is a tour of every publishable example; if this number moves, a section
     // was added or removed and the figure sweep below has to have followed it.
-    expect(secs.length).toBe(27);
+    // 28 since the Issued Sheet section (`sheet-notes`) was added; 31 with the office, cafe and classroom.
+    expect(secs.length).toBe(31);
     expect(new Set(secs.map((s) => s.example)).size).toBe(secs.length);
   });
 
@@ -311,7 +312,7 @@ suite("docs-site/examples.md quotes figures the compiler agrees with", () => {
       const lintDiags = lint(src);
 
       for (const m of body.matchAll(
-        new RegExp(String.raw`\`arch lint\`(?: still)? raises (?:exactly )?${NUM} warnings?`, "g"),
+        new RegExp(String.raw`\`arch(?:lang)? lint\`(?: still)? raises (?:exactly )?${NUM} warnings?`, "g"),
       )) {
         say(sec, `\`arch lint\` raises ${m[1]} warnings`, countOf(m[1]!), lintDiags.length);
       }
@@ -319,11 +320,11 @@ suite("docs-site/examples.md quotes figures the compiler agrees with", () => {
       for (const _ of body.matchAll(/\blint-clean\b/g)) say(sec, "lint-clean", 0, lintDiags.length);
 
       const vd = validateDiags(src);
-      for (const _ of body.matchAll(/`arch validate` is clean/g)) {
+      for (const _ of body.matchAll(/`arch(?:lang)? validate` is clean/g)) {
         say(sec, "`arch validate` is clean (errors)", 0, vd.filter((d) => d.severity === "error").length);
       }
       for (const m of body.matchAll(
-        new RegExp(String.raw`\`arch validate --strict\` reports (?:exactly )?${NUM} warnings?`, "g"),
+        new RegExp(String.raw`\`arch(?:lang)? validate --strict\` reports (?:exactly )?${NUM} warnings?`, "g"),
       )) {
         say(
           sec,

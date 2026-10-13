@@ -1,8 +1,8 @@
 /**
  * `arch context --section` — bounded agent context.
  *
- * The whole bundle is ~50KB; an agent that only needs the diagnostic catalog should
- * not have to read the spec, the workflow, and the CLI reference to get it. The CLI
+ * The whole bundle is large (`src/context-size.ts` holds its measured size); an agent that
+ * only needs the diagnostic catalog should not have to read the spec, the workflow, and the CLI reference to get it. The CLI
  * hands back one section by splitting the shipped `llms-full.txt` on the exact rule
  * `renderLlmsFull()` joins its chunks with — so the important test here is the
  * COUPLING one: it runs the generator in memory and asserts the splitter still finds
@@ -14,7 +14,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { renderLlmsFull } from "../scripts/gen-llms-full.js";
+import { renderLlmsFull, SKILL_SOURCE } from "../scripts/gen-llms-full.js";
 import { splitContext } from "../src/cli/commands-meta.js";
 import { ERROR_CATALOG, ERROR_CODES } from "../src/error-catalog.js";
 import { buildManifest } from "../src/manifest.js";
@@ -39,7 +39,7 @@ function regenerate(): string {
   const version = JSON.parse(readFileSync(resolve("package.json"), "utf8")).version ?? "0.0.0";
   return renderLlmsFull({
     spec: readFileSync(resolve("spec.llm.md"), "utf8"),
-    skill: readFileSync(resolve("SKILL.md"), "utf8"),
+    skill: readFileSync(resolve(SKILL_SOURCE), "utf8"),
     manifest: buildManifest(version),
     errorCatalog: ERROR_CATALOG,
     errorCodes: ERROR_CODES,

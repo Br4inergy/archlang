@@ -37,6 +37,7 @@ import type {
 import { resolvePlan } from "../analyze.js";
 // The zero-dep levenshtein behind every "did you mean" hint the CLI prints.
 import { closest } from "../expr.js";
+import { CLI_NAME } from "../manifest.js";
 import {
   type Args,
   EXIT,
@@ -411,7 +412,7 @@ function parseDiagFilter(args: Args): DiagFilter | CheckError {
       if (!ERROR_CODES.includes(c)) {
         return {
           exit: usageError(
-            `unknown diagnostic code "${c}"${didYouMean(c, ERROR_CODES)} — see \`arch explain <CODE>\` or \`arch manifest --json\` for all ${ERROR_CODES.length}`,
+            `unknown diagnostic code "${c}"${didYouMean(c, ERROR_CODES)} — see \`${CLI_NAME} explain <CODE>\` or \`${CLI_NAME} manifest --json\` for all ${ERROR_CODES.length}`,
           ),
         };
       }

@@ -5,6 +5,7 @@
  */
 
 import { det } from "../../algebra/d4.js";
+import { CLI_NAME } from "../../command-name.js";
 import { connectorClearWidth, DEFAULT_CLEAR_ALLOWANCE_MM, rectOf } from "../../analyze.js";
 import type { Point } from "../../ast.js";
 import type { Diagnostic } from "../../diagnostics.js";
@@ -100,7 +101,7 @@ export const swingObstructed: LintRule = {
         hints: [
           `Hang the leaf on the other jamb — \`hinge ${flipped}\`${flipClears ? " (this clears it)" : ""}.`,
           `Open it to the other side of the wall — \`swing ${writtenSwing === "in" ? "out" : "in"}\`.`,
-          `Move the door along its wall (\`on <wall> at <pos>\`), or the obstruction — \`arch repair\` computes the smallest clearing shift.`,
+          `Move the door along its wall (\`on <wall> at <pos>\`), or the obstruction — \`${CLI_NAME} repair\` computes the smallest clearing shift.`,
           // Only a width strictly under the door's own, recomputed and proved clear, is
           // quoted; with no such width (not even 1 mm) the hint is left out.
           ...(narrowTo === null
@@ -131,7 +132,7 @@ export const swingObstructed: LintRule = {
  * trade `W_SWING_OBSTRUCTED` for either. (Default ruleset: 760 mm; `accessibility-advisory`:
  * 960 mm.) Clear width grows with the nominal one, so the upward scan ends.
  */
-function passableDoorWidthMm(rules: LintContext["rules"]): number {
+export function passableDoorWidthMm(rules: LintContext["rules"]): number {
   const passes = (w: number): boolean =>
     w >= rules.minDoorWidthMm &&
     connectorClearWidth("door", w, DEFAULT_CLEAR_ALLOWANCE_MM) >= rules.minPathClearWidthMm;
@@ -210,7 +211,7 @@ export const doorwayBlocked: LintRule = {
           ...at(d),
           message: `Doorway is blocked — the approach needs ${mm(depth)} mm clear on each side but "${gn}" leaves ${mm(gap)} mm (${mm(short)} mm short).`,
           hints: [
-            `Move "${gn}" ${mm(short)} mm clear of the opening — \`arch repair\` computes the smallest clearing shift.`,
+            `Move "${gn}" ${mm(short)} mm clear of the opening — \`${CLI_NAME} repair\` computes the smallest clearing shift.`,
             `Or shrink it by ${mm(short)} mm on the axis facing the door, so it stops ${mm(depth)} mm short of the opening.`,
             `Or move the door along its wall (\`on <wall> at <pos>\`) so its landing misses "${gn}".`,
           ],

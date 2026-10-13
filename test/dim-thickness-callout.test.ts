@@ -8,6 +8,15 @@ import { DIM_TEXT_GAP } from "../src/sheet.js";
 import { pointInPolygon } from "../src/geometry/polygon.js";
 import type { Point } from "../src/ast.js";
 import type { Scene } from "../src/scene.js";
+import { parse } from "../src/parser.js";
+import { link } from "../src/import.js";
+import { resolveAll } from "../src/ir.js";
+import type { ResolvedPlan, RFurniture } from "../src/ir.js";
+import { BUILTIN_REGISTRY } from "../src/registry.js";
+import type { ElementDef } from "../src/registry.js";
+import { rectCorners, segmentsOfWall } from "../src/geometry.js";
+import { fmt2 } from "../src/num-format.js";
+import type { World } from "../src/world.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const examplesDir = join(__dirname, "..", "examples");
@@ -33,7 +42,9 @@ const example = (name: string): string => readFileSync(join(examplesDir, name), 
  *     the space outside its stations), and only when it genuinely does not fit.
  *  2. `thicknessStation` (`scene-build.ts`) picks WHERE along the wall to take the
  *     call-out: the middle of the widest run no other wall crosses, so the number is not
- *     pushed straight into a partition tee-ing in at the segment midpoint.
+ *     pushed straight into a partition tee-ing in at the segment midpoint — and no opening
+ *     on the wall and no furniture footprint on the number's side blocks, so it is not
+ *     written in a doorway or over a sink either (the second suite below).
  *  3. `thicknessSideFlipped` picks WHICH SIDE: the one with floor under it, probed off the
  *     wall's own faces. On a shell the other side is the annotation band the `dims auto`
  *     chains live in.
@@ -236,3 +247,336 @@ suite("wall-thickness call-outs are never drawn in the poché", () => {
     expect(compile(src, { noCache: true }).svg).toBe(compile(src, { noCache: true }).svg);
   });
 });
+
+/** An axis-aligned box in plan millimetres. */
+interface Box {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+
+/** A thickness call-out's NUMBER as drawn: its text box (the shared width estimate, turned
+ *  with the text) and the wall line whose thickness it reads. */
+interface Callout {
+  value: string;
+  box: Box;
+  /** The wall segment runs along x (its line is `y = c`), else along y (`x = c`). */
+  horiz: boolean;
+  c: number;
+}
+
+const overlaps = (a0: number, a1: number, b0: number, b1: number): boolean => a0 < b1 && b0 < a1;
+
+/**
+ * The thickness call-outs of one storey, found from the drawing and the walls rather than
+ * from the code that placed them: a dims-layer number that reads a straight segment's
+ * thickness and sits exactly where `outsideStations` writes a pushed number — half the wall,
+ * one text gap and half the number off that segment's centreline, within its run.
+ */
+function thicknessCallouts(s: Scene, ir: ResolvedPlan): Callout[] {
+  const gap = DIM_TEXT_GAP * s.sizes.dimFont;
+  const out: Callout[] = [];
+  for (const n of s.nodes) {
+    if (n.layer !== "dims" || n.prim.t !== "text") continue;
+    const { value, at, size } = n.prim;
+    const w = textWidth(value, size);
+    const turned = Math.abs(n.prim.rotate ?? 0) === 90;
+    const hx = (turned ? size : w) / 2;
+    const hy = (turned ? w : size) / 2;
+    const box = { x0: at.x - hx, x1: at.x + hx, y0: at.y - hy, y1: at.y + hy };
+    const host = ir.walls
+      .flatMap((wall) => segmentsOfWall(wall))
+      .find((seg) => {
+        if (seg.arc || fmt2(seg.thickness) !== value) return false;
+        const horiz = seg.a.y === seg.b.y && seg.a.x !== seg.b.x;
+        if (!horiz && seg.a.x !== seg.b.x) return false;
+        const along = horiz ? at.x : at.y;
+        const c = horiz ? seg.a.y : seg.a.x;
+        const lo = horiz ? Math.min(seg.a.x, seg.b.x) : Math.min(seg.a.y, seg.b.y);
+        const hi = horiz ? Math.max(seg.a.x, seg.b.x) : Math.max(seg.a.y, seg.b.y);
+        const off = Math.abs((horiz ? at.y : at.x) - c);
+        return along >= lo && along <= hi && Math.abs(off - (seg.thickness / 2 + gap + w / 2)) < 1e-6;
+      });
+    if (!host) continue;
+    const horiz = host.a.y === host.b.y;
+    out.push({ value, box, horiz, c: horiz ? host.a.y : host.a.x });
+  }
+  return out;
+}
+
+/**
+ * What a call-out's number collides with: every opening on its own wall line whose run
+ * (centre ± half its width, from the opening model) the number's run along the wall
+ * overlaps, and every furniture footprint the number's box overlaps.
+ */
+function calloutClashes(co: Callout, ir: ResolvedPlan): string[] {
+  const hits: string[] = [];
+  const [a0, a1] = co.horiz ? [co.box.x0, co.box.x1] : [co.box.y0, co.box.y1];
+  for (const wall of ir.walls) {
+    for (const op of wall.openings) {
+      // The opening's host is the straight segment of its wall it sits on.
+      const host = segmentsOfWall(wall).find((seg) =>
+        !seg.arc && seg.a.y === seg.b.y && seg.a.x !== seg.b.x
+          ? op.at.y === seg.a.y && op.at.x >= Math.min(seg.a.x, seg.b.x) && op.at.x <= Math.max(seg.a.x, seg.b.x)
+          : !seg.arc &&
+            seg.a.x === seg.b.x &&
+            op.at.x === seg.a.x &&
+            op.at.y >= Math.min(seg.a.y, seg.b.y) &&
+            op.at.y <= Math.max(seg.a.y, seg.b.y),
+      );
+      if (!host || (host.a.y === host.b.y) !== co.horiz || (co.horiz ? host.a.y : host.a.x) !== co.c) continue;
+      const centre = co.horiz ? op.at.x : op.at.y;
+      if (overlaps(a0, a1, centre - op.width / 2, centre + op.width / 2))
+        hits.push(`opening ${op.ownerId} ${centre - op.width / 2}..${centre + op.width / 2}`);
+    }
+  }
+  for (const el of ir.elements) {
+    if (el.kind !== "furniture") continue;
+    const f = el as RFurniture;
+    const fx1 = f.at.x + f.size.w;
+    const fy1 = f.at.y + f.size.h;
+    if (overlaps(co.box.x0, co.box.x1, f.at.x, fx1) && overlaps(co.box.y0, co.box.y1, f.at.y, fy1))
+      hits.push(`furniture ${f.id} (${f.at.x},${f.at.y})..(${fx1},${fy1})`);
+  }
+  return hits;
+}
+
+/** The same call-out with its number moved to another station along its wall. */
+function atStation(co: Callout, along: number): Callout {
+  const box = co.horiz
+    ? { ...co.box, x0: along - (co.box.x1 - co.box.x0) / 2, x1: along + (co.box.x1 - co.box.x0) / 2 }
+    : { ...co.box, y0: along - (co.box.y1 - co.box.y0) / 2, y1: along + (co.box.y1 - co.box.y0) / 2 };
+  return { ...co, box };
+}
+
+/** Every storey of a plan: its Scene and the resolved plan it was drawn from. */
+function storeys(src: string, world?: World): { s: Scene; ir: ResolvedPlan }[] {
+  const out = compile(src, { noCache: true, ...(world ? { world } : {}) });
+  expect(out.errors).toEqual([]);
+  const scenes = out.pages ? out.pages.map((p) => p.scene) : [out.scene as Scene];
+  const w = world ?? { read: () => null, now: () => new Date(0) };
+  const linked = link(parse(src).plan!, w, BUILTIN_REGISTRY);
+  const resolved = resolveAll(linked.plan, BUILTIN_REGISTRY, w);
+  const irs = resolved.levels.length > 0 ? resolved.levels.map((l) => l.ir) : [resolved.ir];
+  expect(irs).toHaveLength(scenes.length);
+  return scenes.map((s, i) => ({ s, ir: irs[i]! }));
+}
+
+suite("wall-thickness call-outs stay off doorways and fixtures", () => {
+  // The agent-UX audit's plan: the "100" call-out sat in doorway `d_bed2` and the "200" on the
+  // kitchen sink. Committed verbatim (under a header comment) so the defect stays reproducible.
+  const audit = readFileSync(join(__dirname, "callout-fixtures", "agent-ux-flat.arch"), "utf8");
+
+  it("moves the audit plan's call-outs out of doorway d_bed2 and off the kitchen sink", () => {
+    const { s, ir } = storeys(audit)[0]!;
+    const callouts = thicknessCallouts(s, ir);
+    expect(callouts.map((c) => c.value).sort()).toEqual(["100", "200"]);
+
+    // "100" reads the hall's west partition, the wall `d_bed2` is hung in.
+    const c100 = callouts.find((c) => c.value === "100")!;
+    expect(c100.horiz).toBe(false);
+    expect(c100.c).toBe(3600);
+    const bed2 = ir.walls.flatMap((w) => w.openings).find((o) => o.ownerId === "d_bed2")!;
+    const [d0, d1] = [bed2.at.y - bed2.width / 2, bed2.at.y + bed2.width / 2];
+    expect([d0, d1]).toEqual([4600, 5400]); // the audit's reading of the doorway
+    expect(overlaps(c100.box.y0, c100.box.y1, d0, d1)).toBe(false);
+
+    // "200" reads the north shell, which the kitchen run stands against.
+    const c200 = callouts.find((c) => c.value === "200")!;
+    expect(c200.horiz).toBe(true);
+    expect(c200.c).toBe(0);
+    const sink = ir.elements.find((e): e is RFurniture => e.kind === "furniture" && e.category === "kitchen_sink")!;
+    const sinkBox = { x0: sink.at.x, x1: sink.at.x + sink.size.w, y0: sink.at.y, y1: sink.at.y + sink.size.h };
+    expect(
+      overlaps(c200.box.x0, c200.box.x1, sinkBox.x0, sinkBox.x1) &&
+        overlaps(c200.box.y0, c200.box.y1, sinkBox.y0, sinkBox.y1),
+    ).toBe(false);
+
+    // And nothing else: no opening on either wall line, no footprint under either number.
+    expect(calloutClashes(c100, ir)).toEqual([]);
+    expect(calloutClashes(c200, ir)).toEqual([]);
+  });
+
+  it("is not vacuous — the stations the audit found are caught by the same predicate", () => {
+    // The audit's drawing put "100" at y = 4975 and "200" at x = 7775 (the midpoints of the
+    // widest runs clear of WALLS only). Moved back there, each call-out must clash.
+    const { s, ir } = storeys(audit)[0]!;
+    const callouts = thicknessCallouts(s, ir);
+    const c100 = callouts.find((c) => c.value === "100")!;
+    const c200 = callouts.find((c) => c.value === "200")!;
+    expect(calloutClashes(atStation(c100, 4975), ir)).toEqual(["opening d_bed2 4600..5400"]);
+    expect(calloutClashes(atStation(c200, 7775), ir)).toEqual(["furniture kitchen_sink_3 (7300,100)..(8100,700)"]);
+  });
+
+  it("holds over the corpus: no call-out in poché, in a doorway or over a piece of furniture", () => {
+    // The shipped examples, the test fixtures (this file's own included) and recovery-corpus
+    // copies, and the eval goldens — every plan here that draws a thickness call-out. The site's
+    // agent gallery is deliberately not read: it stays out of the language's corpus
+    // (`test/agent-gallery.test.ts`).
+    const root = join(__dirname, "..");
+    const dirs = ["examples", "test/fixtures", "test/callout-fixtures", "test/recovery-corpus", "eval/goldens"];
+    const offenders: string[] = [];
+    let seen = 0;
+    let plans = 0;
+    for (const dir of dirs) {
+      const abs = join(root, dir);
+      const world: World = {
+        read: (p) => {
+          try {
+            return readFileSync(join(abs, p), "utf8");
+          } catch {
+            return null;
+          }
+        },
+        now: () => new Date(0),
+      };
+      for (const file of readdirSync(abs)
+        .filter((f) => f.endsWith(".arch"))
+        .sort()) {
+        plans++;
+        for (const [i, { s, ir }] of storeys(readFileSync(join(abs, file), "utf8"), world).entries()) {
+          const where = `${dir}/${file} storey ${i + 1}`;
+          for (const hit of readingsInPoche(s)) offenders.push(`${where} in poché: ${hit}`);
+          for (const co of thicknessCallouts(s, ir)) {
+            seen++;
+            const hits = calloutClashes(co, ir);
+            if (hits.length > 0) offenders.push(`${where} "${co.value}": ${hits.join(", ")}`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+    // Not vacuous: the corpus is walked, and its call-outs really are found by the finder.
+    expect(plans).toBeGreaterThan(70);
+    expect(seen).toBeGreaterThan(60);
+  });
+
+  it("never trades poché for a clear doorway: walls first, then openings and furniture", () => {
+    // The red team's repro. Partition `p` carries two 1600 mm openings that, with the shell
+    // and `q` teeing in at p's midpoint, leave no run clear of everything. The station must
+    // fall back to the widest run clear of WALLS (in an opening — untidy, readable), never to
+    // the segment midpoint, which is exactly where `q`'s poché is.
+    const src = [
+      'plan "Tee" {',
+      "  units mm",
+      "  dims auto all",
+      "  wall id=shell exterior thickness 200 { (0,0) (6000,0) (6000,4000) (0,4000) close }",
+      "  wall id=p partition thickness 100 { (3000,0) (3000,4000) }",
+      "  wall id=q partition thickness 100 { (3000,2000) (6000,2000) }",
+      '  room id=w at (0,0) size 3000x4000 label "W" uses living',
+      '  room id=n at (3000,0) size 3000x2000 label "N" uses bedroom',
+      '  room id=s at (3000,2000) size 3000x2000 label "S" uses bedroom',
+      "  opening id=o1 on p at 1000 width 1600",
+      "  opening id=o2 on p at 3000 width 1600",
+      "}",
+    ].join("\n");
+    const s = scene(src);
+    expect(readingsInPoche(s)).toEqual([]);
+    const c100 = dimTexts(s).filter((t) => t.value === "100");
+    expect(c100).toHaveLength(1);
+    // q's band is y 1950..2050; the number is a cap height tall, centred on its station.
+    const { y, size } = c100[0]!;
+    expect(y + size / 2 <= 1950 || y - size / 2 >= 2050).toBe(true);
+  });
+
+  it("leaves a call-out that collides with nothing exactly where walls alone put it", () => {
+    // The stability tier: an opening ELSEWHERE on the wall changes which run is widest once
+    // openings block, but the wall-clear station is already clear, so it must not move.
+    const without = scene([...CALM, "}"].join("\n"));
+    const withDoor = scene([...CALM, "  door id=d on spine at 7200 width 800", "}"].join("\n"));
+    // The door (6800..7600) shortens the widest wall-clear run (2050..7900), so the widest run
+    // clear of everything has a different midpoint: without the stability tier this moves.
+    expect(calm100(without).x).toBeLessThan(6800);
+    expect(calm100(withDoor)).toEqual(calm100(without));
+  });
+
+  it("…and the same for a piece of furniture elsewhere on the number's side", () => {
+    // The number is written into room `a` (y < 3000), in the band y ≈ 2650..2950 off the
+    // spine's face. A wardrobe against the spine at x 6700..7300 stands in that band, so it
+    // blocks a run once furniture counts; the clear call-out at x 4975 must still stay put.
+    const without = scene([...CALM, "}"].join("\n"));
+    const withPiece = scene([...CALM, "  furniture wardrobe at (6700,2400) size 600x550", "}"].join("\n"));
+    expect(calm100(without).y).toBeLessThan(2950);
+    expect(calm100(withPiece)).toEqual(calm100(without));
+  });
+
+  it("reads the footprint from the compile's own registry, and ignores a non-finite one", () => {
+    // A plugin may REPLACE the built-in `furniture` kind (`createRegistry`); the call-out
+    // must then avoid the footprint the plugin's `bounds()` reports, not the built-in one.
+    const builtin = BUILTIN_REGISTRY.byKind.get("furniture")!;
+    const src = [...CALM, "  furniture wardrobe at (500,500) size 600x600", "}"].join("\n");
+    const at = (plugins: ElementDef[]) => {
+      const out = compile(src, { noCache: true, plugins });
+      expect(out.errors).toEqual([]);
+      expect(out.svg).not.toContain("NaN");
+      return calm100(out.scene as Scene);
+    };
+    const plain = at([]);
+    // The built-in footprint (500..1100, 500..1100) is far from the spine: the station is the
+    // wall-clear one, x 4975.
+    expect(plain.x).toBe(4975);
+    // A replacement whose footprint stands across that station, in the number's band.
+    const moved = at([{ ...builtin, bounds: () => rectCorners(4700, 2400, 600, 550) }]);
+    expect(Math.abs(moved.x - 4975)).toBeGreaterThan(300 + moved.size);
+    // A footprint with a non-finite vertex blocks nothing and never reaches the interval sort
+    // as NaN. Here the spine stops short of the east wall (x 7000), so its last free run ends
+    // at the segment's end, not at a wall band; and a real wardrobe stands on the wall-clear
+    // station, so the station leaves tier 1 for the widest run clear of everything — that last
+    // run, from the wardrobe to x 7000, the one a NaN cursor would lose (it draws at x 1025
+    // instead when the guard is removed). The far piece at (500,500) reports an
+    // extra vertex at y 2800, inside the number's band, whose x is NaN. The range check would
+    // drop such a piece before the drawing, so it goes non-finite only when the station asks
+    // (read off the call stack) — the guard itself is what is under test.
+    const blocked = [
+      'plan "Open end" {',
+      "  units mm",
+      "  dims auto walls",
+      "  wall id=shell exterior thickness 200 { (0,0) (8000,0) (8000,6000) (0,6000) close }",
+      "  wall id=spine partition thickness 100 { (0,3000) (7000,3000) }",
+      "  wall id=tee partition thickness 100 { (2000,3000) (2000,6000) }",
+      '  room id=a at (0,0) size 8000x3000 label "A" uses living',
+      '  room id=b at (0,3000) size 2000x3000 label "B" uses bedroom',
+      '  room id=c at (2000,3000) size 6000x3000 label "C" uses bedroom',
+      "  furniture wardrobe at (500,500) size 600x600",
+      "  furniture wardrobe at (4100,2400) size 600x550",
+      "}",
+    ];
+    const run = (plugins: ElementDef[]) => {
+      const out = compile(blocked.join("\n"), { noCache: true, plugins });
+      expect(out.errors).toEqual([]);
+      expect(out.svg).not.toContain("NaN");
+      return calm100(out.scene as Scene);
+    };
+    const tier2 = run([]);
+    expect(tier2.x).toBeGreaterThan(4700 + tier2.size); // the last run, past the wardrobe
+    let asked = 0;
+    const nan = run([
+      {
+        ...builtin,
+        bounds: (el) => {
+          const far = (el as RFurniture).at.x === 500;
+          if (!far || !new Error().stack?.includes("thicknessStation")) return builtin.bounds(el);
+          asked++;
+          return [{ x: Number.NaN, y: 2800 }, ...builtin.bounds(el)];
+        },
+      },
+    ]);
+    expect(asked).toBeGreaterThan(0);
+    expect(nan).toEqual(tier2);
+  });
+});
+
+/** A spine wall with a tee: the "100" call-out's wall-clear station is x 4975 on the spine. */
+const CALM = [
+  'plan "Calm" {',
+  "  units mm",
+  "  dims auto walls",
+  "  wall id=shell exterior thickness 200 { (0,0) (8000,0) (8000,6000) (0,6000) close }",
+  "  wall id=spine partition thickness 100 { (0,3000) (8000,3000) }",
+  "  wall id=tee partition thickness 100 { (2000,3000) (2000,6000) }",
+  '  room id=a at (0,0) size 8000x3000 label "A" uses living',
+  '  room id=b at (0,3000) size 2000x3000 label "B" uses bedroom',
+  '  room id=c at (2000,3000) size 6000x3000 label "C" uses bedroom',
+];
+const calm100 = (sc: Scene) => dimTexts(sc).find((t) => t.value === "100")!;

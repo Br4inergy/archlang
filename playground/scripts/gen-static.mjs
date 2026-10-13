@@ -1016,6 +1016,30 @@ if (failures.length > 0) {
 writeFileSync(join(outDir, "examples", "index.html"), indexPage(rows, { fonts, thumbs }), "utf8");
 writeFileSync(join(outDir, "sitemap.xml"), sitemap(rows), "utf8");
 
+// /llms.txt for THIS host: a pointer, not a copy. The agent-facing context lives once, on the
+// docs site (`llms.txt`, `llms-full.txt`, `/agents`); duplicating it here would be a second
+// file to keep in step. Built output like everything above, so it is never committed.
+writeFileSync(
+  join(outDir, "llms.txt"),
+  [
+    "# ArchLang Playground",
+    "",
+    "> A browser editor for ArchLang, a declarative language that compiles to SVG floor plans. The plans and the language are documented on the docs site.",
+    "",
+    "## Agent context",
+    "",
+    `- [llms.txt](${DOCS}/llms.txt): the concise map of the project for language models`,
+    `- [llms-full.txt](${DOCS}/llms-full.txt): the whole language, workflow and error catalog in one file`,
+    `- [Agents](${DOCS}/agents): use ArchLang from an agent (CLI, MCP server, skill)`,
+    "",
+    "## Plans",
+    "",
+    `- [Examples](${ORIGIN}/examples/): every example plan as a crawlable page with its source`,
+    "",
+  ].join("\n"),
+  "utf8",
+);
+
 process.stdout.write(
   `gen-static: ${written} example pages + /examples/index.html + sitemap.xml (${written + 2} urls) → playground/dist/\n` +
     `gen-static: ${thumbs.size} thumbnails (${Math.round(thumbBytes / 1024)} KB) → playground/dist/examples/thumbs/\n` +

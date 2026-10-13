@@ -6,8 +6,9 @@
   "description": "Documentation site for ArchLang (VitePress). Not published.",
   "scripts": {
     "sync": "node sync-docs.mjs",
-    "dev": "npm run sync && vitepress dev",
-    "build": "npm run sync && vitepress build",
+    "standalone": "tsx ../packages/web-component/scripts/build.ts --standalone-to public/arch-plan.standalone.js",
+    "dev": "npm run sync && npm run standalone && vitepress dev",
+    "build": "npm run sync && npm run standalone && vitepress build",
     "preview": "vitepress preview",
     "typecheck": "npm run sync && vue-tsc --noEmit -p . && tsc -p tsconfig.e2e.json --noEmit"
   },

@@ -4,6 +4,7 @@
  *
  *   node scripts/smoke.mjs --site docs       --base https://archlang.uk
  *   node scripts/smoke.mjs --site playground --base https://playground.archlang.uk
+ *   node scripts/smoke.mjs --site mcp        --base https://archlang-mcp.<account>.workers.dev
  *
  * Why more than `curl -o /dev/null`: a deploy can serve a 200 on `/` while the
  * things machines actually consume are gone — the raw `/<page>.md` copies, `/llms-full.txt`,
@@ -35,7 +36,7 @@ const RETRY_MS = 5000;
 
 /**
  * Pull one of sync-docs.mjs's literal `["src", "dest"],` tuple tables out of the file.
- * The three tables (`PAGES`, `ROOT_COPIES`, `EXCLUDED_EXAMPLES`) are the site's single
+ * The four tables (`PAGES`, `SITE_PAGES`, `ROOT_COPIES`, `EXCLUDED_EXAMPLES`) are the site's single
  * source of truth for what it publishes, and they are declared in that uniform shape
  * precisely so this parser (and test/docs-sync-list.test.ts) can read them instead of
  * retyping the list — a retyped list is exactly how a generator goes stale (AGENTS.md).
@@ -54,11 +55,12 @@ function tupleTable(syncSrc, name) {
 
 /**
  * The raw-markdown routes the docs site publishes at `/<route>.md`: every `PAGES` row
- * writes both the bannered page and `public/<dest>`. Parsed, so a new doc page is
+ * writes both the bannered page and `public/<dest>`, and every `SITE_PAGES` row (the
+ * hand-written pages) writes `public/<dest>`. Parsed, so a new doc page is
  * smoke-tested the day it is added.
  */
 function docsPageRoutes(syncSrc) {
-  return tupleTable(syncSrc, "PAGES").map(([, dest]) => `/${dest}`);
+  return [...tupleTable(syncSrc, "PAGES"), ...tupleTable(syncSrc, "SITE_PAGES")].map(([, dest]) => `/${dest}`);
 }
 
 /**
@@ -165,11 +167,15 @@ const json =
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchOk(url) {
+async function fetchOk(url, init = {}) {
   let last = "no attempt made";
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
-      const res = await fetch(url, { redirect: "follow", headers: { "user-agent": "archlang-smoke/1" } });
+      const res = await fetch(url, {
+        redirect: "follow",
+        ...init,
+        headers: { "user-agent": "archlang-smoke/1", ...(init.headers ?? {}) },
+      });
       if (res.status === 200) return { res, body: await res.text() };
       last = `HTTP ${res.status}`;
     } catch (e) {
@@ -192,6 +198,37 @@ function route(path, ...assertions) {
       const ctx = { base, path, notes: [] };
       for (const assert of assertions) await assert(body, res, ctx);
       return ctx.notes;
+    },
+  };
+}
+
+/**
+ * A `.md` path that does not exist must 404 and must NOT be labelled markdown. The `_headers`
+ * rules are exact paths precisely so a missing page's HTML 404 is never typed `text/markdown`;
+ * this is the post-deploy proof (`vitepress preview` ignores `_headers`, so no local server can
+ * show it). A 404 is the expected answer, so it is fetched once, not through the retry envelope
+ * (a network error alone is retried).
+ */
+function missingMarkdownCheck() {
+  const path = "/__no-such-page__.md";
+  return {
+    name: `${path} (404, not markdown)`,
+    run: async (base) => {
+      let res;
+      for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+        try {
+          res = await fetch(base + path, { redirect: "follow", headers: { "user-agent": "archlang-smoke/1" } });
+          break;
+        } catch (e) {
+          if (attempt === ATTEMPTS) throw new Error(`network error: ${e.message}`);
+          await sleep(RETRY_MS);
+        }
+      }
+      await res.arrayBuffer();
+      const ct = res.headers.get("content-type") ?? "";
+      if (res.status !== 404) throw new Error(`HTTP ${res.status}, expected 404`);
+      if (ct.toLowerCase().includes("markdown")) throw new Error(`the 404 is labelled "${ct}"`);
+      return [`404 ${ct}`];
     },
   };
 }
@@ -236,8 +273,32 @@ function docsChecks() {
     route("/archlang.gbnf", contains("root ::=")),
     // The raw-markdown copies must serve VERBATIM, not get swallowed by the page router —
     // so assert the media type as well as the bytes (a VitePress 404 would be text/html).
-    ...docsPageRoutes(syncSrc).map((p) => route(p, contentType("text/markdown"), nonEmpty())),
+    // `charset=utf-8` is asserted too: Cloudflare already sends a bare `text/markdown` for any
+    // existing .md, so the type alone passes with or without the generated `_headers` rule.
+    ...docsPageRoutes(syncSrc).map((p) =>
+      route(p, contentType("text/markdown"), contentType("charset=utf-8"), nonEmpty()),
+    ),
+    missingMarkdownCheck(),
     ...docsExampleRoutes(syncSrc).map((p) => route(p, startsWith("<svg"))),
+    // The `<arch-plan>` element (/embed): a module script, so a browser needs a JavaScript type
+    // AND CORS to load it from another origin, and the sources it fetches by URL.
+    route(
+      "/arch-plan.js",
+      contentType("javascript"),
+      header("access-control-allow-origin", "*"),
+      contains('customElements.define("arch-plan"'),
+    ),
+    // The standalone build (core inlined), written by the docs build rather than committed.
+    route("/arch-plan.standalone.js", contentType("javascript"), contains('customElements.define("arch-plan"')),
+    ...docsExampleRoutes(syncSrc).map((p) =>
+      route(
+        p.replace(/\.svg$/, ".arch"),
+        contentType("text/plain"),
+        contentType("charset=utf-8"),
+        header("access-control-allow-origin", "*"),
+        contains("plan "),
+      ),
+    ),
   ];
 }
 
@@ -327,6 +388,8 @@ function playgroundChecks() {
     // perfectly healthy 200.
     route("/examples/thumbs/one-room.svg", contentType("image/svg+xml"), isSvg()),
     route("/sitemap.xml", contains("<urlset"), contains("/examples/one-room.html")),
+    // Written by gen-static.mjs: a pointer at the docs site's llms.txt / llms-full.txt.
+    route("/llms.txt", nonEmpty(), contains("https://archlang.uk/llms-full.txt")),
     // The header, not the meta tag: it is what a crawler that never parses the markup
     // acts on, and it comes from public/_headers, which nothing else here executes.
     route(
@@ -346,7 +409,94 @@ function playgroundChecks() {
   ];
 }
 
-const SITES = { docs: docsChecks, playground: playgroundChecks };
+// ---------------------------------------------------------------------------
+// The hosted MCP Worker (packages/mcp-worker). Its contract is the protocol and one image URL:
+// `initialize` must carry the server's instructions, `tools/list` the tool set, and an /svg/ URL
+// minted by the SHARED encoder (the one `archlang link` uses) must answer exactly the bytes
+// `compile()` produces for that plan — so this site reads the built core (`npm run build` first).
+// ---------------------------------------------------------------------------
+
+/** A JSON-RPC POST to /mcp, with the Accept header Streamable HTTP requires. */
+function mcpCall(name, method, params, ...assertions) {
+  return {
+    name,
+    run: async (base) => {
+      const { res, body } = await fetchOk(`${base}/mcp`, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      const ctx = { base, path: "/mcp", notes: [] };
+      for (const assert of assertions) await assert(body, res, ctx);
+      return ctx.notes;
+    },
+  };
+}
+
+/** The JSON-RPC `result`, or a throw carrying the `error`. */
+const rpcResult = (body) => {
+  const msg = JSON.parse(body);
+  if (msg.error) throw new Error(`JSON-RPC error ${msg.error.code}: ${msg.error.message}`);
+  return msg.result;
+};
+
+async function mcpChecks() {
+  const { encodePlanHash } = await import("../src/cli/share-codec.mjs");
+  const { compile } = await import("../dist/index.js");
+  const studio = readFileSync(join(ROOT, "examples", "studio.arch"), "utf8");
+  const svgPath = `/svg/${encodePlanHash(studio)}`;
+  return [
+    mcpCall(
+      "/mcp initialize",
+      "initialize",
+      { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "archlang-smoke", version: "1" } },
+      contentType("application/json"),
+      (body, _res, ctx) => {
+        const r = rpcResult(body);
+        if (r.serverInfo?.name !== "archlang") throw new Error(`serverInfo is ${JSON.stringify(r.serverInfo)}`);
+        if (typeof r.instructions !== "string" || !r.instructions.includes("archlang://spec")) {
+          throw new Error("initialize carries no ArchLang instructions");
+        }
+        ctx.notes.push(`server ${r.serverInfo.version}, protocol ${r.protocolVersion}`);
+      },
+    ),
+    mcpCall("/mcp tools/list", "tools/list", {}, (body, _res, ctx) => {
+      const names = (rpcResult(body).tools ?? []).map((t) => t.name);
+      for (const need of ["compile", "describe", "lint", "validate", "link", "read_me"]) {
+        if (!names.includes(need)) throw new Error(`tools/list lacks ${need} (has ${names.join(", ")})`);
+      }
+      ctx.notes.push(`${names.length} tools`);
+    }),
+    {
+      // Named, not the path: the path is a whole plan.
+      ...route(
+        svgPath,
+        contentType("image/svg+xml"),
+        // Unpinned: the compiler is not in the URL, so it must stay revalidatable, never immutable.
+        header("cache-control", "max-age=300"),
+        header("etag", '"'),
+        isSvg(),
+        async (body, res, ctx) => {
+          const want = compile(studio, { noCache: true }).svg;
+          if (body !== want)
+            throw new Error(`body (${body.length} chars) is not compile()'s SVG (${want.length} chars)`);
+          // The pinned copy it names is the immutable one, with the same bytes.
+          const pinned = res.headers.get("content-location");
+          if (!pinned?.startsWith("/v/"))
+            throw new Error(`content-location is ${JSON.stringify(pinned)}, expected /v/…`);
+          const { res: pres, body: pbody } = await fetchOk(new URL(pinned, ctx.base).href);
+          if (!(pres.headers.get("cache-control") ?? "").includes("immutable"))
+            throw new Error(`the pinned copy is not immutable: ${pres.headers.get("cache-control")}`);
+          if (pbody !== want) throw new Error("the pinned copy's bytes are not compile()'s SVG");
+          ctx.notes.push(`studio.arch, ${body.length} chars = compile(); pinned ${pinned.split("/")[2]} immutable`);
+        },
+      ),
+      name: "/svg/<studio.arch payload>",
+    },
+  ];
+}
+
+const SITES = { docs: docsChecks, playground: playgroundChecks, mcp: mcpChecks };
 
 // ---------------------------------------------------------------------------
 // CLI.
@@ -373,11 +523,11 @@ function parseArgs(argv) {
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.error) {
-    process.stderr.write(`${opts.error}\nusage: node scripts/smoke.mjs --site docs|playground --base <url>\n`);
+    process.stderr.write(`${opts.error}\nusage: node scripts/smoke.mjs --site docs|playground|mcp --base <url>\n`);
     process.exit(2);
   }
 
-  const checks = SITES[opts.site]();
+  const checks = await SITES[opts.site]();
   process.stdout.write(`smoke: ${opts.site} @ ${opts.base} — ${checks.length} checks\n`);
 
   const failures = [];

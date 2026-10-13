@@ -4,6 +4,8 @@ import { ADRS } from "./theme/adr-data.js";
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+// The `%ARCHLANG_VERSION%` substitution, shared with the raw `.md` copies (sync-docs.mjs).
+import { withVersion } from "../site-markdown.mjs";
 
 // The ArchLang TextMate grammar — generated from the single source of truth
 // (scripts/gen-grammars.ts → editors/archlang.tmLanguage.json, the same grammar
@@ -104,6 +106,11 @@ const PAGE_META = [
     "How an AI agent drives ArchLang end to end from the CLI: one context bundle, JSON output, exit codes, and checking a plan against a brief without an image.",
   ],
   [
+    "/embed",
+    "Embed a floor plan in a web page",
+    "Put an ArchLang floor plan on a web page: import the compiler from jsDelivr and set the SVG yourself, or use the arch-plan element with a .arch file.",
+  ],
+  [
     "/gallery",
     "Floor plans written by AI agents",
     "Eleven floor plans, each written by an AI agent from a one-paragraph brief: the brief as given, the ArchLang source the agent delivered, and the compiled drawing.",
@@ -126,7 +133,7 @@ const PAGE_META = [
   [
     "/cli",
     "CLI reference",
-    "Every arch command, flag, export format and exit code, generated from the same capability manifest the CLI itself serves, so this page cannot fall behind it.",
+    "Every archlang command, flag, export format and exit code, generated from the same capability manifest the CLI itself serves, so this page cannot fall behind it.",
   ],
   [
     "/furniture",
@@ -141,17 +148,17 @@ const PAGE_META = [
   [
     "/axonometric",
     "The axonometric view",
-    "arch compile --view iso draws the building instead of the plan: extruded walls with their openings cut. It is an illustration, so it measures nothing.",
+    "archlang compile --view iso draws the building instead of the plan: extruded walls with their openings cut. It is an illustration, so it measures nothing.",
   ],
   [
     "/intent",
     "The intent contract",
-    "Write a brief down as data, then check a plan against it. arch validate --intent reports code by code which expectations the drawing meets, with no image.",
+    "Write a brief down as data, then check a plan against it. archlang validate --intent reports code by code which expectations the drawing meets, with no image.",
   ],
   [
     "/errors",
     "Error and warning codes",
-    "Every ArchLang diagnostic code with its meaning and a worked example. Errors abort rendering, warnings do not, and arch explain prints any code from the CLI.",
+    "Every ArchLang diagnostic code with its meaning and a worked example. Errors abort rendering, warnings do not, and archlang explain prints any code from the CLI.",
   ],
   [
     "/spec",
@@ -281,12 +288,22 @@ const PAGE_META = [
   [
     "/adr/0024-finish-as-explicit-transform",
     "ADR 24 — finish is an explicit transform",
-    "arch finish adds the sheet statements a plan lacks (paper, scale, dimensions, title, schedule, legend) as an explicit source transform, never inside compile.",
+    "archlang finish adds the sheet statements a plan lacks (paper, scale, dimensions, title, schedule, legend) as an explicit source transform, never inside compile.",
   ],
   [
     "/adr/0025-furnish-as-explicit-transform",
     "ADR 25 — furnish is an explicit transform",
-    "arch finish furnishes the rooms a plan left empty, by room use, as an explicit source transform: fill-only, relative placement, never worse, never inside compile.",
+    "archlang finish furnishes the rooms a plan left empty, by room use, as an explicit source transform: fill-only, relative placement, never worse, never inside compile.",
+  ],
+  [
+    "/adr/0026-hosted-mcp-worker",
+    "ADR 26 — a scripted Worker hosts the MCP server",
+    "Why ArchLang's MCP server also runs as one scripted Cloudflare Worker: stateless HTTP, an SVG image URL, a byte cap before compiling, and the measured CPU cost.",
+  ],
+  [
+    "/adr/0027-net-internal-area",
+    "ADR 27 — net area beside centreline area",
+    "describe() reports each room's net internal area: its shape inset by half of each bounding wall's thickness, exact, beside the unchanged centreline area_m2.",
   ],
 ] as const;
 
@@ -539,19 +556,22 @@ export default defineConfig({
   srcExclude: ["public/**"],
   // The reference/errors pages are synced verbatim from the canonical repo docs,
   // which contain relative links to repo files (examples/*.arch, playground/,
-  // CHANGELOG.md, SKILL.md, error-codes.md → the site's /errors page) that are
+  // CHANGELOG.md, error-codes.md → the site's /errors page) that are
   // valid on GitHub but not pages on this site under the same name. Don't fail
   // the build on them.
   ignoreDeadLinks: [
     /\.\.\/(examples|playground)\//,
     /\.\.\/\.\.\//,
-    /\.\.\/(CHANGELOG|SKILL)/,
+    /\.\.\/CHANGELOG/,
     /error-codes/,
     /language-reference/,
     // Machine-readable artifacts served verbatim from public/ (sync-docs.mjs). VitePress
     // knows .txt/.json are assets, but not the unknown .gbnf extension — it takes
     // /archlang.gbnf for a page route and calls it dead. It is a real, served file.
     /^\/archlang\.gbnf$/,
+    // The `<arch-plan>` sample page (/embed links to it): a hand-written file in public/, served
+    // verbatim, which VitePress takes for a page route because of its `.html`.
+    /^\/arch-plan-demo\.html$/,
   ],
   // Register the ArchLang grammar with Shiki under the `arch` fence id (the
   // grammar's own `name` is "ArchLang"; its scopeName stays `source.arch`). The
@@ -570,6 +590,10 @@ export default defineConfig({
     // stays a plain highlighted block. `arch` is still the first info token so
     // Shiki highlights it as ArchLang either way.
     config(md) {
+      // A page names the core's version as `%ARCHLANG_VERSION%` (the `/embed` page's pinned
+      // jsDelivr URL), never as a typed number: substituted before parsing, so fences get it too.
+      const parse = md.parse.bind(md);
+      md.parse = (src, env) => parse(withVersion(src, CORE_VERSION), env);
       const defaultFence = md.renderer.rules.fence!;
       md.renderer.rules.fence = (tokens, idx, options, env, self) => {
         // markdown-it only ever calls a fence rule with an in-range `idx`; the `!`
@@ -635,6 +659,7 @@ export default defineConfig({
         items: [
           { text: "Use it from an agent", link: "/agents" },
           { text: "Plans written by agents", link: "/gallery" },
+          { text: "Embed in a web page", link: "/embed" },
           { text: "One-page spec", link: "/spec" },
           { text: "CLI reference", link: "/cli" },
         ],
@@ -667,6 +692,7 @@ export default defineConfig({
         items: [
           { text: "Use it from an agent", link: "/agents" },
           { text: "Plans written by agents", link: "/gallery" },
+          { text: "Embed in a web page", link: "/embed" },
           { text: "One-page spec", link: "/spec" },
         ],
       },

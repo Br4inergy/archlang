@@ -9,7 +9,8 @@
   the four workspaces. Run `npm run build` first: without `dist/` the playground resolves the bare
   `archlang` specifier to the wrong package and reports dozens of spurious "no exported member" errors.
 - `npm run check:drift` is separate from `check` and is a CI gate. `gen:all` orders `gen:spec`
-  before `gen:llms`. Run `gen:example-svgs` after any rendering change.
+  before `gen:llms` before `gen:cli` (the CLI reference states the bundle size `gen:llms`
+  measures). Run `gen:example-svgs` after any rendering change.
 - `npm test` runs the vitest include list in `vitest.config.ts` — `test/`, `playground/test/`,
   `packages/*/test/`, `editors/vscode/test/`. `check:test-wiring` fails on a test outside it.
 - `*:build:only` scripts skip the core rebuild; `npm run build` must have run.
@@ -26,7 +27,8 @@
   transcendental agreement: a 1-ulp `Math.cos` difference is invisible by design, and `hypot` is
   caught only where it feeds an exact comparison. It measures, it fixes nothing. Set `PLAYWRIGHT_BROWSERS_PATH` to keep the browsers off the default cache.
 - `gen:plugin` (in `gen:all`, drift-gated) writes `plugins/archlang/`: the Claude Code plugin's
-  manifest and its copies of the skills. Edit the root `SKILL.md` / `skills/`, never the copies.
+  manifest and its copies of the skills. Edit `skills/` (the umbrella `skills/archlang/` included), never the copies.
+- `gen:agent-manifests` (in `gen:all`, drift-gated) writes the other hosts' files: `plugins/archlang/plugin.json`, `.cursor-plugin/plugin.json`, `rules/archlang.mdc` and `integrations/copilot/*`. Details: `docs/integrations.md`.
 - `build:mcpb` rebuilds the core, then writes both `.mcpb` bundles to the gitignored `dist-mcpb/`;
   `prove:mcpb` unpacks one outside the repo and drives it over stdio. Neither runs in `ci.yml`: only
   `release.yml` runs them, last and best-effort, so a broken bundle shows as a yellow step on a
@@ -59,6 +61,6 @@ workflows are manual and owner-only — never dispatch `eval-l2.yml`.
 
 Every command takes `--json` (result on stdout, messages on stderr) and `-` for stdin. Exit codes:
 `0` ok · `2` user-source error · `1` IO/internal · `3` bad usage. `arch manifest` prints the whole
-CLI as data; `arch <cmd> --help` is rendered from `src/manifest.ts`. `-f svg|dxf|txt|pdf|png`
+CLI as data; `arch <cmd> --help` is rendered from `src/manifest.ts`. `-f svg|dxf|txt|json|pdf|png`
 (`pdf`/`png` need the optional deps). `annotate` has no CLI flag, so the element controls that
 `accessible` + `annotate` produce are library-only.

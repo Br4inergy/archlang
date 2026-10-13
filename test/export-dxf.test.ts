@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -8,6 +8,7 @@ import { toScene } from "../src/scene-build.js";
 import { toDxf } from "../src/export/dxf.js";
 import { compile } from "../src/index.js";
 import { RENDER_PASSES, aiaLayer, layerOf } from "../src/scene.js";
+import type { World } from "../src/world.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const studio = readFileSync(join(__dirname, "..", "examples", "studio.arch"), "utf8");
@@ -35,7 +36,8 @@ describe("DXF export", () => {
     expect(dxf).toContain("\nARC\n"); // door swing arcs
     expect(dxf).toContain("\nTEXT\n");
     expect(dxf).toContain("Bedroom"); // room label text
-    expect(dxf).toContain("A-WALL"); // AIA wall layer
+    expect(dxf).toContain("\nA-WALL-EXTR\n"); // AIA exterior wall layer
+    expect(dxf).toContain("\nA-WALL-INTR\n"); // AIA interior wall layer
     expect(dxf).toContain("A-FLOR"); // AIA floor (room) layer
   });
 
@@ -232,9 +234,18 @@ describe("AIA CAD layers", () => {
     `);
   });
 
-  it("declares every pass's AIA layer in the LAYER table", () => {
+  it("declares every pass's AIA layer in the LAYER table (the wall passes as their two class layers)", () => {
+    // The wall passes' default `A-WALL` is what the SVG's layer groups use; the DXF files
+    // a compiled plan's wall nodes on `A-WALL-EXTR`/`A-WALL-INTR` instead (see the
+    // "DXF units and wall layers" suite), so it is those two a CAD user must find.
     const declared = declaredLayers(dxf);
-    for (const pass of RENDER_PASSES) expect(declared).toContain(aiaLayer(pass));
+    for (const pass of RENDER_PASSES) {
+      if (pass === "wallFill" || pass === "wallFace") continue;
+      expect(declared).toContain(aiaLayer(pass));
+    }
+    expect(declared).toContain("A-WALL-EXTR");
+    expect(declared).toContain("A-WALL-INTR");
+    expect(declared).not.toContain("A-WALL");
   });
 
   it("declares every layer an entity actually references", () => {
@@ -245,7 +256,15 @@ describe("AIA CAD layers", () => {
   });
 
   it("declares no dead layer — every name is one a node can land on", () => {
-    const reachable = new Set<string>([...RENDER_PASSES.map(aiaLayer), ...scene.nodes.map(layerOf)]);
+    // A wall class layer is reachable when an entity of this fixture lands on it — the
+    // fixture has an `exterior` shell and a `part` partition, so both must.
+    const reachable = new Set<string>([
+      ...RENDER_PASSES.map(aiaLayer),
+      ...scene.nodes.map(layerOf),
+      ...entityLayers(dxf),
+    ]);
+    expect(entityLayers(dxf)).toContain("A-WALL-EXTR");
+    expect(entityLayers(dxf)).toContain("A-WALL-INTR");
     expect(declaredLayers(dxf).filter((l) => !reachable.has(l))).toEqual([]);
   });
 
@@ -264,4 +283,423 @@ describe("AIA CAD layers", () => {
     const declared = declaredLayers(dxf);
     expect(declared).toEqual([...new Set(declared)]);
   });
+});
+
+/*
+ * DXF units and wall layers.
+ *
+ * Units: the HEADER says millimetres (`$INSUNITS` 4) and metric (`$MEASUREMENT` 1), so a CAD
+ * program inserts the plan at true size instead of "unitless".
+ *
+ * Walls: a compiled plan's wall nodes are RE-FILED, never redrawn — an `exterior` wall's
+ * share of the joined outline and poché goes on `A-WALL-EXTR`, every other wall's on
+ * `A-WALL-INTR`. The oracle for "never redrawn" is the plain export of the same Scene
+ * without its `walls` (a hand-built Scene), which writes every wall node as itself on
+ * `A-WALL`: the two must carry the same non-wall entities, the same face length, the same
+ * hatched area, and every split face line must lie on a plain one.
+ */
+
+/** One entity: its type, its layer (group 8) and its remaining group pairs. */
+interface Ent {
+  type: string;
+  layer: string;
+  body: [number, string][];
+}
+
+function dxfEntities(dxf: string): Ent[] {
+  const p = dxfPairs(dxf);
+  const start = p.findIndex(([c, v]) => c === 2 && v === "ENTITIES");
+  const out: Ent[] = [];
+  let cur: Ent | null = null;
+  for (let i = start + 1; i < p.length; i++) {
+    const [c, v] = p[i]!;
+    if (c === 0) {
+      if (cur) out.push(cur);
+      cur = null;
+      if (v === "ENDSEC") break;
+      cur = { type: v, layer: "", body: [] };
+    } else if (cur) {
+      if (c === 8 && cur.layer === "") cur.layer = v;
+      else cur.body.push([c, v]);
+    }
+  }
+  return out;
+}
+
+/** The HEADER section's `$VAR` → `[code, value]` pairs. */
+function headerVars(dxf: string): Map<string, [number, string]> {
+  const p = dxfPairs(dxf);
+  const out = new Map<string, [number, string]>();
+  const start = p.findIndex(([c, v]) => c === 2 && v === "HEADER");
+  for (let i = start + 1; i + 1 < p.length && !(p[i]![0] === 0 && p[i]![1] === "ENDSEC"); i++) {
+    if (p[i]![0] === 9) out.set(p[i]![1], p[i + 1]!);
+  }
+  return out;
+}
+
+const groupNum = (e: Ent, code: number): number => Number(e.body.find(([c]) => c === code)![1]);
+const isWallEnt = (e: Ent): boolean => e.layer.startsWith("A-WALL");
+const faceLength = (es: readonly Ent[]): number =>
+  es.reduce((s, e) => {
+    if (e.type === "LINE") {
+      return s + Math.hypot(groupNum(e, 11) - groupNum(e, 10), groupNum(e, 21) - groupNum(e, 20));
+    }
+    if (e.type === "ARC") {
+      const sweep = (((groupNum(e, 51) - groupNum(e, 50)) % 360) + 360) % 360;
+      return s + (groupNum(e, 40) * sweep * Math.PI) / 180;
+    }
+    return s;
+  }, 0);
+
+/**
+ * Hatched area: per HATCH, the ABSOLUTE value of its boundaries' signed sum (the 10/20
+ * vertices after each 93 count; holes run the other way and cancel inside one HATCH), summed
+ * over the HATCHes. Absolute per entity, so an overlap between two HATCHes can never be
+ * cancelled by a gap elsewhere.
+ */
+const hatchArea = (es: readonly Ent[]): number => {
+  let total = 0;
+  for (const e of es.filter((x) => x.type === "HATCH")) {
+    let own = 0;
+    let pts: [number, number][] = [];
+    let left = 0;
+    for (let i = 0; i < e.body.length; i++) {
+      const [c, v] = e.body[i]!;
+      if (c === 93) left = Number(v);
+      else if (c === 10 && left > 0) {
+        pts.push([Number(v), Number(e.body[i + 1]![1])]);
+        if (--left === 0) {
+          let a = 0;
+          for (let k = 0; k < pts.length; k++) {
+            const [x1, y1] = pts[k]!;
+            const [x2, y2] = pts[(k + 1) % pts.length]!;
+            a += x1 * y2 - x2 * y1;
+          }
+          own += a / 2;
+          pts = [];
+        }
+      }
+    }
+    total += Math.abs(own);
+  }
+  return total;
+};
+
+type AnyScene = NonNullable<ReturnType<typeof compile>["scene"]>;
+
+/** A World over `examples/`, so the two plans that `import` are covered, not skipped. */
+const examplesWorld: World = {
+  read: (p) => {
+    try {
+      return readFileSync(join(__dirname, "..", "examples", p), "utf8");
+    } catch {
+      return null;
+    }
+  },
+  now: () => new Date(0),
+};
+
+/** Every page's Scene of a compiled example (one for a single-storey plan). */
+function scenesOf(src: string): AnyScene[] {
+  const r = compile(src, { noCache: true, world: examplesWorld });
+  expect(r.errors).toEqual([]);
+  return r.pages ? r.pages.map((p) => p.scene) : [r.scene!];
+}
+
+/** The same Scene as a hand-built one would be: no `walls`, so every node exports as itself. */
+function plain(scene: AnyScene): AnyScene {
+  const { walls: _walls, ...rest } = scene;
+  return rest;
+}
+
+const EXAMPLES = readdirSync(join(__dirname, "..", "examples"))
+  .filter((f) => f.endsWith(".arch"))
+  .sort();
+const exampleSrc = (f: string): string => readFileSync(join(__dirname, "..", "examples", f), "utf8");
+
+/**
+ * The red-team repros of the two tie defects (the joinery breaks a thickness tie by the
+ * wall's list index): `[name, first statement, second statement]`, as reported.
+ *  - "C": an envelope and a same-material 200 mm wall whose category sorts before
+ *    `exterior` — the envelope must keep the junction squares and its whole outer face.
+ *  - "Tie": a brick partition stated before a concrete envelope, both 200 mm — the DXF fell
+ *    back to A-WALL because it re-joined in a different order from the drawing.
+ *  - "S": the same material at a different hatch SCALE is a different hatch, so the tie is
+ *    the drawing's (statement order), not exterior-first — pinned so the docs stay exact.
+ */
+const TIE_REPROS: ReadonlyArray<readonly [string, string, string]> = [
+  [
+    "C",
+    "wall id=shell exterior thickness 200 { (0,0) (5000,0) (5000,4000) (0,4000) close }",
+    "wall id=part core thickness 200 { (2500,0) (2500,4000) }",
+  ],
+  [
+    "Tie",
+    "wall id=part interior thickness 200 material brick { (2500,0) (2500,4000) }",
+    "wall id=shell exterior thickness 200 material concrete { (0,0) (5000,0) (5000,4000) (0,4000) close }",
+  ],
+  [
+    "S",
+    "wall id=part interior thickness 200 material concrete scale 2 { (2500,0) (2500,4000) }",
+    "wall id=shell exterior thickness 200 material concrete { (0,0) (5000,0) (5000,4000) (0,4000) close }",
+  ],
+];
+const tieSource = (name: string, a: string, b: string): string => `plan "${name}" { units mm\n  ${a}\n  ${b} }`;
+
+describe("DXF units and wall layers", () => {
+  it("declares millimetres and metric in the HEADER, for the AC1015 the header declares", () => {
+    for (const src of [studio, 'plan "Empty" { }']) {
+      const vars = headerVars(dxfOf(src));
+      expect(vars.get("$ACADVER")).toEqual([1, "AC1015"]);
+      expect(vars.get("$INSUNITS")).toEqual([70, "4"]);
+      expect(vars.get("$MEASUREMENT")).toEqual([70, "1"]);
+    }
+  });
+
+  it("files an `exterior` wall on A-WALL-EXTR and every other category on A-WALL-INTR", () => {
+    const layersOf = (src: string) => [
+      ...new Set(
+        dxfEntities(dxfOf(src))
+          .filter(isWallEnt)
+          .map((e) => e.layer),
+      ),
+    ];
+    const ring = "{ (0,0) (4000,0) (4000,3000) (0,3000) close }";
+    expect(layersOf(`plan "E" { wall id=shell exterior thickness 200 ${ring} }`)).toEqual(["A-WALL-EXTR"]);
+    expect(layersOf(`plan "P" { wall partition thickness 100 ${ring} }`)).toEqual(["A-WALL-INTR"]);
+    // Any category the core does not read as `exterior` is interior — the rule the roof
+    // ring, the door access graph and `dims auto` already use.
+    expect(layersOf(`plan "O" { wall outer thickness 200 ${ring} }`)).toEqual(["A-WALL-INTR"]);
+  });
+
+  it("puts examples/studio.arch's walls on both layers, and nothing on A-WALL", () => {
+    const walls = dxfEntities(dxfOf(studio)).filter(isWallEnt);
+    expect(walls.filter((e) => e.layer === "A-WALL-EXTR").length).toBeGreaterThanOrEqual(1);
+    expect(walls.filter((e) => e.layer === "A-WALL-INTR").length).toBeGreaterThanOrEqual(1);
+    expect(walls.filter((e) => e.layer === "A-WALL-EXTR" && e.type === "HATCH")).toHaveLength(1);
+    expect(walls.filter((e) => e.layer === "A-WALL-INTR" && e.type === "HATCH")).toHaveLength(1);
+    expect(walls.filter((e) => e.layer === "A-WALL")).toEqual([]);
+  });
+
+  it("still exports a wall-less plan and a single-room plan", () => {
+    const ring = "wall exterior thickness 200 { (0,0) (3000,0) (3000,3000) (0,3000) close }";
+    for (const src of [
+      'plan "Empty" { }',
+      'plan "Room" { room at (0,0) size 3000x3000 label "Hall" }',
+      `plan "One" { ${ring} room at (0,0) size 3000x3000 }`,
+    ]) {
+      const dxf = dxfOf(src);
+      expect(dxf.trimEnd().endsWith("EOF")).toBe(true);
+      const declared = declaredLayers(dxf);
+      expect(declared).toContain("A-WALL-EXTR");
+      expect(declared).toContain("A-WALL-INTR");
+      expect(declared).not.toContain("A-WALL");
+      expect(dxfEntities(dxf).filter((e) => e.layer === "A-WALL")).toEqual([]);
+    }
+    // The ring is all exterior: its 8 face LINEs and 1 HATCH, and an empty interior layer.
+    const one = dxfEntities(dxfOf(`plan "One" { ${ring} }`));
+    expect(one.filter((e) => e.layer === "A-WALL-EXTR").map((e) => e.type)).toEqual([
+      "HATCH",
+      ...Array<string>(8).fill("LINE"),
+    ]);
+    expect(one.filter((e) => e.layer === "A-WALL-INTR")).toEqual([]);
+  });
+
+  it("a Scene without `walls` (hand-built) exports its wall nodes as before, on A-WALL, declared once", () => {
+    const scene = toScene(resolve(parse(studio).plan!).ir);
+    expect(scene.walls?.length).toBeGreaterThan(0);
+    const dxf = toDxf(plain(scene));
+    expect(declaredLayers(dxf).filter((l) => l === "A-WALL")).toHaveLength(1);
+    const walls = dxfEntities(dxf).filter(isWallEnt);
+    expect(walls.length).toBeGreaterThan(0);
+    expect(walls.every((e) => e.layer === "A-WALL")).toBe(true);
+  });
+
+  it("`Scene.walls` is lazy but writable: reassigning or clearing it works, and the export follows", () => {
+    const scene = toScene(resolve(parse(studio).plan!).ir);
+    const walls = scene.walls!;
+    expect(walls.length).toBeGreaterThan(0);
+    // Clearing it is the documented way to get the unsplit, hand-built export.
+    expect(() => {
+      scene.walls = undefined;
+    }).not.toThrow();
+    expect(scene.walls).toBeUndefined();
+    expect(
+      dxfEntities(toDxf(scene))
+        .filter(isWallEnt)
+        .every((e) => e.layer === "A-WALL"),
+    ).toBe(true);
+    // Putting the same list back restores the split, byte for byte.
+    scene.walls = walls;
+    expect(scene.walls).toBe(walls);
+    expect(toDxf(scene)).toBe(dxfOf(studio));
+    // And it stays an ordinary data property for every reader that copies a Scene.
+    expect(Object.keys(scene)).toContain("walls");
+    expect(JSON.parse(JSON.stringify(scene)).walls).toHaveLength(walls.length);
+  });
+
+  it("re-files only the nodes the walls drew: a wall-pass node added by hand stays itself, on A-WALL", () => {
+    const scene = toScene(resolve(parse(studio).plan!).ir);
+    const before = dxfEntities(toDxf(scene)).filter(isWallEnt);
+    scene.nodes.push({
+      layer: "wallFace",
+      prim: { t: "line", a: { x: 0, y: 0 }, b: { x: 1000, y: 0 } },
+      paint: { stroke: scene.theme.wallStroke, width: scene.sizes.wallStroke },
+    });
+    const dxf = toDxf(scene);
+    const after = dxfEntities(dxf).filter(isWallEnt);
+    expect(after.slice(0, before.length)).toEqual(before); // the drawn walls are still split
+    expect(after.slice(before.length).map((e) => [e.type, e.layer])).toEqual([["LINE", "A-WALL"]]);
+    expect(declaredLayers(dxf).filter((l) => l === "A-WALL")).toHaveLength(1);
+  });
+
+  it("C: in either statement order, the envelope's outer face and its whole poche are on A-WALL-EXTR", () => {
+    const [name, a, b] = TIE_REPROS[0]!;
+    for (const src of [tieSource(name, a, b), tieSource(name, b, a)]) {
+      const walls = dxfEntities(dxfOf(src)).filter(isWallEnt);
+      // DXF flips Y: the outer face lines are x = -100 / 5100 and y = 100 / -4100.
+      const onOuter = (e: Ent): boolean =>
+        ([10, 11] as const).every((c) => groupNum(e, c) === -100) ||
+        ([10, 11] as const).every((c) => groupNum(e, c) === 5100) ||
+        ([20, 21] as const).every((c) => groupNum(e, c) === 100) ||
+        ([20, 21] as const).every((c) => groupNum(e, c) === -4100);
+      const outer = walls.filter((e) => e.type === "LINE" && onOuter(e));
+      expect(outer.length).toBeGreaterThanOrEqual(4);
+      expect(outer.filter((e) => e.layer !== "A-WALL-EXTR")).toEqual([]);
+      // The ring band (5200x4200 - 4800x3800) is EXTR, the 200 x 3800 between faces INTR.
+      expect(hatchArea(walls.filter((e) => e.layer === "A-WALL-EXTR"))).toBeCloseTo(5200 * 4200 - 4800 * 3800, 3);
+      expect(hatchArea(walls.filter((e) => e.layer === "A-WALL-INTR"))).toBeCloseTo(200 * 3800, 3);
+    }
+  });
+
+  it("Tie: both statement orders split; they differ only by the junction squares the DRAWING gives differently", () => {
+    const [name, a, b] = TIE_REPROS[1]!;
+    const asReported = compile(tieSource(name, a, b), { noCache: true }).scene!;
+    const swapped = compile(tieSource(name, b, a), { noCache: true }).scene!;
+    const hatchesOf = (scene: AnyScene): { extr: number; intr: number } => {
+      const dxf = toDxf(scene);
+      expect(declaredLayers(dxf)).not.toContain("A-WALL");
+      const walls = dxfEntities(dxf).filter(isWallEnt);
+      expect(walls.filter((e) => e.layer === "A-WALL")).toEqual([]);
+      return {
+        extr: hatchArea(walls.filter((e) => e.layer === "A-WALL-EXTR")),
+        intr: hatchArea(walls.filter((e) => e.layer === "A-WALL-INTR")),
+      };
+    };
+    // Not byte-identical, and rightly: across MATERIALS the drawing itself breaks a thickness
+    // tie by statement order (the earlier wall's hatch fills the two 200 x 200 junction
+    // squares), and the DXF files exactly what is drawn. The scene's own fills show it:
+    const drawnArea = (scene: AnyScene, material: string): number => {
+      const node = scene.nodes.find(
+        (n) => n.layer === "wallFill" && n.prim.t === "hatch" && n.prim.material === material,
+      );
+      if (node?.prim.t !== "hatch") throw new Error(`no ${material} fill`);
+      return Math.abs(
+        node.prim.region.reduce((acc, loop) => {
+          let x = 0;
+          for (let i = 0; i < loop.length; i++) {
+            const p = loop[i]!;
+            const q = loop[(i + 1) % loop.length]!;
+            x += p.x * q.y - q.x * p.y;
+          }
+          return acc + x / 2;
+        }, 0),
+      );
+    };
+    const squares = 2 * 200 * 200;
+    expect(drawnArea(asReported, "brick") - drawnArea(swapped, "brick")).toBeCloseTo(squares, 3);
+    const r = hatchesOf(asReported);
+    const s = hatchesOf(swapped);
+    expect(r.intr - s.intr).toBeCloseTo(squares, 3);
+    expect(s.extr - r.extr).toBeCloseTo(squares, 3);
+    expect(r.extr + r.intr).toBeCloseTo(s.extr + s.intr, 3);
+  });
+
+  it("S: exterior-first is a SAME-HATCH rule — a different scale is a different hatch, so the drawing's order decides", () => {
+    const [name, a, b] = TIE_REPROS[2]!;
+    // DXF flips Y: the envelope's bottom outer face is y = 100.
+    const bottomFace = (src: string): Ent[] =>
+      dxfEntities(dxfOf(src)).filter(
+        (e) => e.type === "LINE" && isWallEnt(e) && groupNum(e, 20) === 100 && groupNum(e, 21) === 100,
+      );
+    // As reported (the scale-2 partition stated first): the drawing gives the junction
+    // squares to the partition's hatch, so the two 200 mm pieces of the envelope's outer face
+    // in front of it are the partition's, on A-WALL-INTR, as the drawn hatch shows them.
+    const reported = bottomFace(tieSource(name, a, b));
+    const piece = (e: Ent): boolean => [2400, 2600].includes(groupNum(e, 10)) && [2400, 2600].includes(groupNum(e, 11));
+    expect(reported.filter(piece).map((e) => e.layer)).toEqual(["A-WALL-INTR"]);
+    // Swapped (envelope first): the envelope owns the squares and its whole bottom face.
+    const swapped = bottomFace(tieSource(name, b, a));
+    expect(swapped.length).toBeGreaterThan(0);
+    expect(swapped.filter((e) => e.layer !== "A-WALL-EXTR")).toEqual([]);
+  });
+
+  it("a one-class plan's entities are the plain export's, byte for byte, with only the layer renamed", () => {
+    const src = `plan "E" {
+      wall id=a exterior thickness 200 { (0,0) (6000,0) (6000,4000) (0,4000) close }
+      wall exterior thickness 200 { (3000,0) (3000,4000) }
+      door at (1500,0) width 900 wall a
+    }`;
+    const scene = compile(src, { noCache: true }).scene!;
+    const entities = (d: string): string => d.slice(d.indexOf("\nENTITIES\n"));
+    expect(entities(toDxf(scene))).toBe(
+      entities(toDxf(plain(scene))).replaceAll("\n8\nA-WALL\n", "\n8\nA-WALL-EXTR\n"),
+    );
+  });
+
+  // The partition oracle, over every storey of every shipped example and the two tie repros
+  // in both statement orders. It FAILS if any wall node falls back to A-WALL (the re-join did
+  // not reproduce it), so a fallback is loud, never silent.
+  const CASES: Array<[string, string]> = [
+    ...EXAMPLES.map((f): [string, string] => [f, exampleSrc(f)]),
+    ...TIE_REPROS.flatMap(
+      ([name, a, b]): Array<[string, string]> => [
+        [`${name} (as reported)`, tieSource(name, a, b)],
+        [`${name} (statements swapped)`, tieSource(name, b, a)],
+      ],
+    ),
+  ];
+  for (const [f, src] of CASES) {
+    it(`${f}: the wall split re-files the drawn walls and adds nothing`, () => {
+      for (const scene of scenesOf(src)) {
+        const split = dxfEntities(toDxf(scene));
+        const base = dxfEntities(toDxf(plain(scene)));
+        // Every wall entity is on exactly one of the two wall layers.
+        for (const e of split.filter(isWallEnt)) expect(["A-WALL-EXTR", "A-WALL-INTR"]).toContain(e.layer);
+        // Everything that is not a wall is untouched, in order.
+        expect(split.filter((e) => !isWallEnt(e))).toEqual(base.filter((e) => !isWallEnt(e)));
+        const sw = split.filter(isWallEnt);
+        const bw = base.filter(isWallEnt);
+        // The same face length and the same hatched area: a partition of the drawing. The
+        // area is equal up to two honest approximations, hence a relative bound: each boundary
+        // vertex is printed at 4 dp, and a HATCH boundary is a POLYGON, so a curved wall's arc
+        // cut where the class changes is tessellated as two pieces rather than one. Measured
+        // worst case: aquarium, 1.1e-6 of its hatched area; pinned at 2e-6. The exact tiling
+        // (no overlap, no gap, arcs exact) is `test/joinery-split.test.ts`. The face entities
+        // carry the arcs exactly, so their length is held tight.
+        expect(faceLength(sw)).toBeCloseTo(faceLength(bw), 6);
+        const area = hatchArea(bw);
+        expect(Math.abs(hatchArea(sw) - area)).toBeLessThanOrEqual(area * 2e-6);
+        // And every split face LINE lies on a drawn one — it can only be a piece of it.
+        const seg = (e: Ent): [number, number, number, number] => [
+          groupNum(e, 10),
+          groupNum(e, 20),
+          groupNum(e, 11),
+          groupNum(e, 21),
+        ];
+        const on = (px: number, py: number, [ax, ay, bx, by]: [number, number, number, number]): boolean => {
+          const dx = bx - ax;
+          const dy = by - ay;
+          const len = Math.hypot(dx, dy);
+          const t = ((px - ax) * dx + (py - ay) * dy) / (len * len);
+          return Math.abs((px - ax) * dy - (py - ay) * dx) / len < 1e-3 && t > -1e-9 && t < 1 + 1e-9;
+        };
+        const drawn = bw.filter((e) => e.type === "LINE").map(seg);
+        for (const e of sw.filter((x) => x.type === "LINE")) {
+          const [ax, ay, bx, by] = seg(e);
+          expect(drawn.some((d) => on(ax, ay, d) && on(bx, by, d))).toBe(true);
+        }
+      }
+    });
+  }
 });
