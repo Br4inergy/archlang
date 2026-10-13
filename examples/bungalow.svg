@@ -163,8 +163,8 @@
 <polygon points="3940,8600 3940,8640 3260,8640 3260,8600" fill="none" stroke="#1b1b1b" stroke-width="18"/>
 </g>
 <g id="A-ANNO-TEXT" inkscape:groupmode="layer" inkscape:label="A-ANNO-TEXT">
-<text x="2100" y="3770" font-size="350" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Living / Dining</text>
-<text x="2100" y="4155" font-size="250" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">28.8 m²</text>
+<text x="3000" y="3770" font-size="350" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Living / Dining</text>
+<text x="3000" y="4155" font-size="250" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">28.8 m²</text>
 <text x="7500" y="3050" font-size="350" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Bedroom 1</text>
 <text x="7500" y="3435" font-size="250" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">14.4 m²</text>
 <text x="10500" y="3050" font-size="350" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Bedroom 2</text>
@@ -445,10 +445,10 @@
 <line x1="13584.85" y1="8515.15" x2="13415.15" y2="8684.85" stroke="#0E5484" stroke-width="18"/>
 <line x1="13584.85" y1="-184.85" x2="13415.15" y2="-15.15" stroke="#0E5484" stroke-width="18"/>
 <text x="13675" y="4250" font-size="250" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 13675 4250)">8700</text>
-<line x1="4500" y1="4850" x2="4500" y2="4750" stroke="#0E5484" stroke-width="18"/>
-<line x1="4584.85" y1="4765.15" x2="4415.15" y2="4934.85" stroke="#0E5484" stroke-width="18"/>
-<line x1="4584.85" y1="4665.15" x2="4415.15" y2="4834.85" stroke="#0E5484" stroke-width="18"/>
-<text x="4500" y="4392.5" font-size="250" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 4500 4392.5)">100</text>
+<line x1="6575" y1="4850" x2="6575" y2="4750" stroke="#0E5484" stroke-width="18"/>
+<line x1="6659.85" y1="4765.15" x2="6490.15" y2="4934.85" stroke="#0E5484" stroke-width="18"/>
+<line x1="6659.85" y1="4665.15" x2="6490.15" y2="4834.85" stroke="#0E5484" stroke-width="18"/>
+<text x="6575" y="4392.5" font-size="250" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 6575 4392.5)">100</text>
 <line x1="3025" y1="100" x2="3025" y2="-100" stroke="#0E5484" stroke-width="18"/>
 <line x1="3109.85" y1="15.15" x2="2940.15" y2="184.85" stroke="#0E5484" stroke-width="18"/>
 <line x1="3109.85" y1="-184.85" x2="2940.15" y2="-15.15" stroke="#0E5484" stroke-width="18"/>

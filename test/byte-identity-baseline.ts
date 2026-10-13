@@ -827,29 +827,90 @@
  * `describe()`, diagnostics, both `lint()` profiles): no SVG, `describe()` or diagnostics
  * payload moved, and every `lint()` move was a carded text, `arch repair` → `archlang repair`
  * in a door hint, or a withdrawn duplicate `W_PATH_TOO_NARROW`; none other in this table.
+ *
+ * ## Sixteen whole-surface rows re-measured: thickness call-outs keep off doorways and fixtures
+ *
+ * Case (1), the compiler changed, in the drawing only. A `dims auto all`/`walls` thickness
+ * call-out was taken at the middle of the widest run of its wall clear of crossing WALLS
+ * (`thicknessStation`, `src/scene-build.ts`), so the number was written in doorways and over
+ * fixtures: 33 call-outs over the shipped examples sat in an opening on their own wall or on a
+ * furniture footprint (`test/dim-thickness-callout.test.ts` names each on the old tree). The
+ * station is now chosen in tiers: the wall-clear station is KEPT when it is also at least a
+ * cap height clear of every opening on the wall line and every footprint reaching the
+ * number's band on its side; otherwise the widest run clear of all three; otherwise (none
+ * exists) the wall-clear station, so a number never trades poché for a clear doorway. So
+ * only a call-out that stood in or against an opening or a fixture moves; "edge on the jamb"
+ * below is one whose number touched the jamb, inside the cap-height clearance. Field by
+ * field, every changed SVG node is a thickness call-out (its `<text>` and three `<line>`s: the
+ * dim line and two ticks) or a room label (name + area `<text>`) that `relocateLabels`
+ * re-placed because the call-out it steers around moved. Every storey of every row:
+ * `describe()`, both `lint()` profiles and `compile().diagnostics` byte-identical, and the OLD
+ * SVG put back into the NEW payload reproduces each old row, in every table that pins it
+ * (here, `while-byte-identity-baseline.ts`, `import-module-lets.test.ts`, `outdoor-`,
+ * `roof-void-` and `garage-byte-identity.test.ts`). The `SEMANTIC_BASELINE` rows did not move.
+ * Swept over 281 corpus plans (every storey; SVG, diagnostics, `describe()`, both `lint()`
+ * profiles, the circulation overlay), after a planted one-millimetre station shift was caught
+ * on every plan that draws a call-out: 33 plans moved, SVG and overlay only. Each moved
+ * call-out, value, along-wall coordinate old → new, and what it cleared:
+ *
+ *     - `aquarium`: "300" x 10525 → 30000, out of window_3.
+ *     - `bungalow`: "100" x 4500 → 6575, out of o_living; label "Living / Dining" x 2100 → 3000.
+ *     - `clinic`: "100" x 6750 → 2975, out of o_entry; "200" x 4525 → 7475, out of window_7.
+ *     - `courtyard-house`: "150" y 6000 → 4600, out of d_study; "300" x 6250 → 1800, out of
+ *       n_living and off sofa_1; "100" y 4775 → 6575, edge on d_bath's jamb; "200" x 7025 →
+ *       14200, edge on d_court_l's jamb; label "Living" x 5425 → 6250 (where it sits with no
+ *       call-out drawn).
+ *     - `gallery-l`: "200" y 10975 → 9250, out of the opening `inner`.
+ *     - `garden-loft`: "100" y 1625 → 2575, out of d_bed; "200" x 2125 → 3725, out of window_2.
+ *     - `hillside-villa` level 1: "100" x 11850 → 10750, out of d_pantry; "300" x 6000 → 12950,
+ *       out of d_front. Level 2: "100" x 2050 → 3200, out of d_bed2; "300" x 2050 → 6900, off
+ *       bed_1.
+ *     - `laneway-house`: "200" x 2125 → 5375, out of d_front.
+ *     - `library`: "200" y 4025 → 11250, out of o_ref_stacks.
+ *     - `materials`: "150" x 13980 → 12537.5, off f_rug; "200" y 4000 → 7650, out of win_w;
+ *       "230" y 1537.5 → 4825, out of win_o and off f_rug; "300" x 6025 → 3900, out of win_n2.
+ *     - `museum-wing`: "200" and "300" x 9000 → 5050, out of o2 and w2.
+ *     - `museum-wings`: "200" and "300" x 9000 → 5050, out of west.o2 and west.w2.
+ *     - `museum`: "200" x 39000 → 20200, out of opening_3; "300" x 39000 → 20450, out of
+ *       window_2.
+ *     - `townhouse` level 1: "200" y 2350 → 3650, out of d_living; label "Hall" y 3465 → 2415
+ *       (the new "200" stands where it was). Level 2: "100" x 1625 → 2275, off bathtub_3.
+ *       Level 3: no move (its SVG is byte-identical; the row moves for levels 1–2).
+ *     - `transit-hall`: "200" y 23750 → 19425, out of o_shop2; "300" x 44000 → 62850, out of
+ *       opening_7.
+ *     - `two-storey` level 1: "100" y 1825 → 2900, out of d_living; "200" x 5075 → 1125, out of
+ *       w_living. Level 2: "100" y 1825 → 5775, out of d_bed1; "200" x 5075 → 6825, out of
+ *       w_bed1.
+ *
+ * Outside this table the same change moves, for the same reason and the drawing only:
+ * `test/fixtures/axes-grid` and `schedule-sheet`, the `test/recovery-corpus/` copies of
+ * `clinic`, `materials` and `two-storey`, `eval/goldens/dims-auto-cottage`, nine
+ * `docs/gallery/*.arch` (all but `narrow-plot`) and the `docs/overview.md` fence. Each PNG
+ * golden's changed pixels lie in the boxes around the old and new call-out (and moved label)
+ * positions.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
 export const BASELINE: [string, string][] = [
   ["accessible", "9ca87c1c9c2cb8cb4afb8428c3ea8120c134c8b0af2fd30ece8ef922fc2bb1a7"],
-  ["aquarium", "f89c3bf506d7737046e0412e5bc3ebfc7bbf4c9e6fb2c81c6a5a59ede302aa19"],
+  ["aquarium", "6f1cab74108929fc86d11ec8f8b82a437237398da8ccc9017da0384fe38af878"],
   ["attached", "5a6374e3fec477aa55bc8e94586d4c60501608a2764830d6ee32c2b61d66d055"],
-  ["bungalow", "9990304f76493e86abee175aeab14cd21040601b86cd73e175150884d36ed8b9"],
-  ["clinic", "0eca2334d5986ce27ad5a0fa4455c1f1ad70308ccf2aec1750d4f12ca731a908"],
-  ["courtyard-house", "41f6ff56cc47f383795c0c9c11585de2d9846546d4fd3c96c2637a0ef2cd0447"],
+  ["bungalow", "4385f60b8dae41c7f1b5e8b14f52171242bcfeb378602c2523c843dcfba8c4dc"],
+  ["clinic", "ab7fb5f7e1d006ebedb4c851753523b2d55704e821329056d81b520b34f13c3d"],
+  ["courtyard-house", "aeb8e2e52f34552fceb7a5715f9b7a730624183c51a7c1eb8f5d1abd7ad68af4"],
   ["furnished-flat", "889f4246f5e98f589952d5e20e0acdfd6057f542e0620c8d20bce01dd17c88f0"],
-  ["gallery-l", "af339b015babaa7a4cfa6fe45e4afe01a2643674f883f441b3066af686bc5601"],
+  ["gallery-l", "129f74f2511f818d4b76d1d5d956a23b6619080a4712524f4b90f110b36dd1a9"],
   ["garden-house", "ade0cdc23758924a0dbc9fec12e549ea826bb874ce8ed94e7b8e2ce26bc25af7"], // re-measured, see header
-  ["garden-loft", "bcbf52e5d8b7875906721d8367552e463d642428516530d733c8b9feb29c2f9f"],
+  ["garden-loft", "e4751a5ed14d68f87e8a4ca2d8d379407d2d2b361eb432d4ee5bfa522d533601"],
   ["hexagon-pavilion", "22030edea2fcaddfdc5d94d776849a8065bd287196664967e3f415285b0458cc"],
-  ["hillside-villa", "d76d1903df60d8d2f64e2172724a1e3bc9beb00f6e711fa6339398466fb0fa35"], // re-measured, see header
+  ["hillside-villa", "081c33b43a74cb1620954fa00ee7fd704f7a62df7c1940aa3d71209d2bace72a"], // re-measured, see header
   ["imports", "3490c17b19f31dfc3a82ce20a2218a4e8f48f0fd979a2c88f23e6a7ddfd75b00"],
-  ["laneway-house", "f9c3b29a51508234ab6f8426be062f3087f482cfa2b124ba75fdab150b4d18bc"],
-  ["library", "51d1c1a151192315fa19c2fa526ca9192ce84abdd9e6084c4dff4d30aed1c086"],
-  ["materials", "de930c93e3cdfc023d78e20f4ca10d0ff3be5ed11492cb856d9679da613de8df"],
-  ["museum-wing", "5caaeb9a2e06e070098d50b54b252c7a54721e13af82e055f76aa947d52d4f56"],
-  ["museum-wings", "fa6b137f9739cae7edd27642d604ed8d2fa08f034f57851d05cb9c292b187885"], // re-measured, see header
-  ["museum", "6e7cee1fa1ea32375d2b17a5872726d33b304815f85c423e41c68765f48ba24a"],
+  ["laneway-house", "db057207a832b3c0bce1cdb9580acb50a0eba0562db7332b3465c210c7910811"],
+  ["library", "2d4619478b74b8042cfb7c76012880c99582a2a936571e7b2294d4d8e9cd8b5a"],
+  ["materials", "f66e15f472be69ccec247de9a68b411fa90ffd120f57fb78f7bd574cb2cd1afa"],
+  ["museum-wing", "4deb492a9b40ef6b15e4bfed1b741017c6ada19c3f67bd6f6888d3ce7a34a060"],
+  ["museum-wings", "0301690fdd488885a50ebeedd67660e238ebadad8ae536202b41451c88bc5d2d"], // re-measured, see header
+  ["museum", "9ea9489fcbfea83974bb42884299390e2db37e3fcca7b6a658741d3cdd08e352"],
   ["one-room", "006f9e2008584250fa6aa645769f01ad4ad3dcc5053d76c1c4fa963c6dbc3283"],
   ["parametric", "b8055080fe56197849ab4624be16eed46510ac467de6218df59f093979e8235c"],
   ["relational", "776f94d7f8a94ebf78b752697fa433cf49a05b1e4309430e8725a71e15780354"],
@@ -858,10 +919,10 @@ export const BASELINE: [string, string][] = [
   ["terrace-row", "5c7a1b1380f8ca14f6927a1fefa481ffba57deb85deee79fc83930863bbab898"], // re-measured, see header
   ["themed", "b6ba97d9000126e4355dd8c4a853c19fb8aa8790be0603dedf3e10fb1620cccf"],
   ["tiny-house", "2c025f9656c85121ccb84b6a73c085501e4ddcfe0f043c325c64384ba21deda1"],
-  ["townhouse", "e2d1a4cdec5e46edfd6d697efdda877062d80d155b65a97d7de371a96c10ab46"], // re-measured, see header
-  ["transit-hall", "e584d228e637e8783bdc626da4246ddbaf073e25f6834bec047349bf2d755340"],
+  ["townhouse", "7971bc304f073da8b98a0d12433fa90bc81cca1faa33aac5f660868731ac7e81"], // re-measured, see header
+  ["transit-hall", "eebaf3c12bd8c1be218c4c5ecf4e59171ac81975a15b9b73eabf7f097472634c"],
   ["two-bed", "e2df66666ea707a11618a9b718820fe12998123d03e6f2cd5ab4698539eac1d5"],
-  ["two-storey", "8c1d0f225d7e5b8147913097ffd8be4513a11e9878653d2b234bfcdac0bdd762"], // re-measured, see header
+  ["two-storey", "0ba0df74f4bd3e5705db94ef078bc6548b43c2b27f703697c11d06ab5c6d681b"], // re-measured, see header
 ];
 
 /**

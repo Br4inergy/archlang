@@ -151,10 +151,14 @@ const ROOT = join(HERE, "..");
 // Rows re-measured for circulation v2 (backlog E.6–E.10) with this file's own digest body:
 // SVG and lint() byte-identical, only describe().circulation moved — each field, and the
 // rule that moved it, in ./byte-identity-baseline.ts ("Circulation v2").
+// `laneway-house` and `bungalow` re-measured again for the thickness call-out station, the
+// drawing only: the OLD SVG put back into the new payload reproduces each old row, and
+// SEMANTIC_BASELINE did not move. Each moved call-out in ./byte-identity-baseline.ts
+// ("thickness call-outs keep off doorways and fixtures").
 const BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "daacc21fb471e0d7d29c88191b838607a07b3f73e82a0508d42a8cbd8184bef3",
-  "laneway-house.arch": "f9c3b29a51508234ab6f8426be062f3087f482cfa2b124ba75fdab150b4d18bc",
-  "bungalow.arch": "9990304f76493e86abee175aeab14cd21040601b86cd73e175150884d36ed8b9",
+  "laneway-house.arch": "db057207a832b3c0bce1cdb9580acb50a0eba0562db7332b3465c210c7910811",
+  "bungalow.arch": "4385f60b8dae41c7f1b5e8b14f52171242bcfeb378602c2523c843dcfba8c4dc",
   // Re-measured for the `overhead` flag. Its SOURCE gained two statements —
   // a `range_hood` over the stove and a `mirror` over the basin, the two correct drawings
   // the missing flag had kept out of the flagship — so this plan is a different building

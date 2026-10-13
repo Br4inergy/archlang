@@ -155,10 +155,10 @@
 <line x1="12065.15" y1="-1634.85" x2="12234.85" y2="-1465.15" stroke="#3c6b8a" stroke-width="19.8"/>
 <line x1="-234.85" y1="-1634.85" x2="-65.15" y2="-1465.15" stroke="#3c6b8a" stroke-width="19.8"/>
 <text x="6000" y="-1725" font-size="250" fill="#3c6b8a" text-anchor="middle" dominant-baseline="central" transform="rotate(0 6000 -1725)">12300</text>
-<line x1="5900" y1="10975" x2="6100" y2="10975" stroke="#3c6b8a" stroke-width="19.8"/>
-<line x1="5984.85" y1="11059.85" x2="5815.15" y2="10890.15" stroke="#3c6b8a" stroke-width="19.8"/>
-<line x1="6184.85" y1="11059.85" x2="6015.15" y2="10890.15" stroke="#3c6b8a" stroke-width="19.8"/>
-<text x="6457.5" y="10975" font-size="250" fill="#3c6b8a" text-anchor="middle" dominant-baseline="central" transform="rotate(0 6457.5 10975)">200</text>
+<line x1="5900" y1="9250" x2="6100" y2="9250" stroke="#3c6b8a" stroke-width="19.8"/>
+<line x1="5984.85" y1="9334.85" x2="5815.15" y2="9165.15" stroke="#3c6b8a" stroke-width="19.8"/>
+<line x1="6184.85" y1="9334.85" x2="6015.15" y2="9165.15" stroke="#3c6b8a" stroke-width="19.8"/>
+<text x="6457.5" y="9250" font-size="250" fill="#3c6b8a" text-anchor="middle" dominant-baseline="central" transform="rotate(0 6457.5 9250)">200</text>
 <line x1="150" y1="7000" x2="-150" y2="7000" stroke="#3c6b8a" stroke-width="19.8"/>
 <line x1="65.15" y1="6915.15" x2="234.85" y2="7084.85" stroke="#3c6b8a" stroke-width="19.8"/>
 <line x1="-234.85" y1="6915.15" x2="-65.15" y2="7084.85" stroke="#3c6b8a" stroke-width="19.8"/>

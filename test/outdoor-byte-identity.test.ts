@@ -186,11 +186,15 @@ import { type CompilerApi, semanticDigestWith } from "./byte-identity-digest.js"
 // Rows re-measured for circulation v2 (backlog E.6–E.10) with this file's own digest body:
 // SVG and lint() byte-identical, only describe().circulation moved — each field, and the
 // rule that moved it, in ./byte-identity-baseline.ts ("Circulation v2").
+// `laneway-house`, `gallery-l` and `aquarium` re-measured again for the thickness call-out
+// station, the drawing only: the OLD SVG put back into the new payload reproduces each old
+// row, and SEMANTIC_BASELINE did not move. Each moved call-out in ./byte-identity-baseline.ts
+// ("thickness call-outs keep off doorways and fixtures").
 const BASELINE: [string, string][] = [
-  ["laneway-house", "e961c05bae73c9f6d3cf9b97c620bef1d44eab691f213a6a290ecc3ea35d7d9c"],
+  ["laneway-house", "779d485d40bc85d86a029a8552d1f69dc5f337e322d81d01f467b265973f3232"],
   ["studio", "a673da24ae4ecee5a7de64e34efbf5f24df2cf6bfb85d4d8e79bcfd54c7a1acb"],
-  ["gallery-l", "62d46c232a2666d1febda3e427785419f4773eb15372258e0e41f6bfd53c1f74"],
-  ["aquarium", "8b9cf5972a4ba21a5601c87042ef2be69ded3b525ea63f248e9f5619a4300d72"],
+  ["gallery-l", "ffd6dd1847abaddeb7fc923e60bc66b7d798250ef53f29f2db918f1dee9583a0"],
+  ["aquarium", "e665a074e8738a1ac4aeded2cb719c7ac7267cbd8758ab74465d5dfd922b2538"],
 ];
 
 /** The SUMMARY half of the same law — see the header. Re-measured once, for `aquarium`, because its rooms were wrong. */
