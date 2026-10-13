@@ -20,7 +20,7 @@ import { createEditor } from "./editor-setup.js";
 import { createPreview } from "./preview.js";
 import { selectPage } from "./levels.js";
 import { mountLevelSwitcher } from "./level-switcher.js";
-import { mountActions } from "./actions.js";
+import { type ActionsHandle, mountActions } from "./actions.js";
 import { renderFacts } from "./facts-strip.js";
 import { renderDescribe } from "./describe-panel.js";
 import { renderLint } from "./lint-panel.js";
@@ -351,10 +351,13 @@ function render(source: string, refit = false) {
 }
 
 let debounce: ReturnType<typeof setTimeout>;
+/** Set once the header actions mount; told of every document change. */
+let actions: ActionsHandle | undefined;
 const onDocChanged = (source: string) => {
   // The Finish log describes the document it ran on; any later change (an edit, an
   // undo, a new example) makes it stale. Finish re-shows it after its own edit.
   if (finishPanel) finishPanel.hidden = true;
+  actions?.sourceChanged();
   clearTimeout(debounce);
   debounce = setTimeout(() => {
     render(source);
@@ -420,7 +423,7 @@ async function init() {
 
   // Header/panel action buttons: format, repair, embed, copy link, snapshots,
   // download, and the pane divider.
-  mountActions({
+  actions = mountActions({
     getSource: currentSource,
     loadSource,
     flash,

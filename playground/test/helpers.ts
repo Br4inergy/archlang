@@ -5,6 +5,21 @@
  * freely — these doubles deliberately implement a partial surface.
  */
 
+/**
+ * Whether this runtime can do what `encodeSrc` needs for the compressed `#z=` form.
+ * Probes the ACTUAL capability: Node 18 has a global CompressionStream but no
+ * "deflate-raw" (added in Node 21.2), so `encodeSrc` falls back to the raw `#src=`.
+ */
+export const supportsDeflateRaw: boolean = (() => {
+  if (typeof CompressionStream === "undefined") return false;
+  try {
+    new CompressionStream("deflate-raw");
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
 /** Install a plain in-memory `localStorage` on globalThis. Returns the backing map. */
 export function installLocalStorage(): Map<string, string> {
   const store = new Map<string, string>();

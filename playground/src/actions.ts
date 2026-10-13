@@ -64,7 +64,13 @@ interface ActionsCtx {
   };
 }
 
-export function mountActions(ctx: ActionsCtx): void {
+/** What the page tells the actions after mounting. */
+export interface ActionsHandle {
+  /** The editor text changed (any edit, undo or load). */
+  sourceChanged: () => void;
+}
+
+export function mountActions(ctx: ActionsCtx): ActionsHandle {
   const {
     getSource,
     loadSource,
@@ -180,14 +186,28 @@ export function mountActions(ctx: ActionsCtx): void {
     if (chatEncoded?.source !== getSource()) return { url: CHAT_HOSTS[host].base, fits: false };
     return chatHostUrl(host, buildChatPrompt(`${shareBase()}${chatEncoded.hash}`));
   };
+  /**
+   * Point every link's `href` at what it would open NOW — the prefilled URL while the
+   * encoding is current, the bare host otherwise — so the paths that read the `href`
+   * as it stands (middle-click, "open in new tab", drag) never carry an older plan.
+   * `data-ready` marks a current encoding.
+   */
+  function syncChatLinks() {
+    const fresh = chatEncoded?.source === getSource();
+    for (const link of els.chatLinks) {
+      if (!isChatHost(link.dataset.chatHost)) continue;
+      link.href = chatTarget(link.dataset.chatHost).url;
+      if (fresh) link.dataset.ready = "true";
+      else delete link.dataset.ready;
+    }
+  }
   async function encodeForChat() {
     const source = getSource();
     if (chatEncoded?.source === source) return;
     const hash = await encodeSrc(source);
     if (getSource() !== source) return; // edited meanwhile; the next trigger re-encodes
     chatEncoded = { source, hash };
-    for (const link of els.chatLinks)
-      if (isChatHost(link.dataset.chatHost)) link.href = chatTarget(link.dataset.chatHost).url;
+    syncChatLinks();
   }
   /** Copy the full prompt, THEN open the host: a tab opened first can take focus and
    *  make the clipboard write fail. If the popup is then refused, say where to paste. */
@@ -225,9 +245,13 @@ export function mountActions(ctx: ActionsCtx): void {
       e.preventDefault();
       void copyThenOpen(host, fresh ? "Plan too long for a link" : "Link not ready");
     });
-    // A middle-click opens the href as it stands; when that is the bare host, still copy.
+    // A middle-click opens the href as it stands. Stale: open nothing, copy instead.
+    // Current but too long (the href is the bare host): let it open, and copy too.
     link.addEventListener("auxclick", (e) => {
-      if (e.button !== 1 || chatTarget(host).fits) return;
+      if (e.button !== 1) return;
+      const fresh = chatEncoded?.source === getSource();
+      if (fresh && chatTarget(host).fits) return;
+      if (!fresh) e.preventDefault();
       navigator.clipboard.writeText(llmPrompt()).then(
         () => flash(`Full prompt copied, paste it into ${CHAT_HOSTS[host].name}`),
         () => flash("Copy failed"),
@@ -372,7 +396,9 @@ export function mountActions(ctx: ActionsCtx): void {
       `<label for="embedMd">${
         imageUrl
           ? "Markdown (this example's drawing, linking to the plan)"
-          : "Markdown link (an edited plan has no hosted image; download an SVG for one)"
+          : example
+            ? "Markdown link (the hosted drawing is in the plan's own theme, not a theme override; download an SVG for this one)"
+            : "Markdown link (an edited plan has no hosted image; download an SVG for one)"
       }</label>` +
       `<input id="embedMd" class="embed-link embed-md" readonly value="${escapeHtml(md)}" />` +
       `<label for="embedLink">Live editable link</label><input id="embedLink" class="embed-link embed-live" readonly value="${escapeHtml(embedUrl)}&editable=1" />` +
@@ -442,6 +468,13 @@ export function mountActions(ctx: ActionsCtx): void {
       onExportError(format, err);
     }
   }
+
+  return {
+    // Called on every document change: a chat link must never keep pointing at an older plan.
+    sourceChanged: () => {
+      if (chatEncoded?.source !== getSource()) syncChatLinks();
+    },
+  };
 }
 
 /** Draggable split divider over the pane seam (desktop two-column layout). */

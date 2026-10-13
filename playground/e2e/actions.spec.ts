@@ -1,6 +1,7 @@
 import { expect, type Download, type Page, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import { AUTOSAVE_KEY, SIMPLE_PLAN, setEditorSource, shareHash, waitForPlan, watchStatus } from "./fixtures.js";
+import { srcFromHash } from "../src/share.js";
+import { AUTOSAVE_KEY, SIMPLE_PLAN, setEditorSource, waitForPlan, watchStatus } from "./fixtures.js";
 
 /** Sloppy but valid — `format()` must rewrite it, which is what makes the test honest. */
 const UNFORMATTED = `plan "E2E" {
@@ -9,6 +10,21 @@ units mm
 room id=main at (0,0) size 6000x4000 label "Main"
       door at (3000,4000) width 900 wall exterior
 }`;
+
+/**
+ * The plan source a chat prompt carries, decoded from the `#z=` token in it. Compares
+ * SOURCES, never deflate bytes: the page compresses in Chromium and this runs in Node,
+ * and two zlib builds may legitimately emit different bytes for the same input.
+ */
+async function planInPrompt(q: string): Promise<string | null> {
+  const token = /#z=[A-Za-z0-9_-]+/.exec(q)?.[0];
+  return token ? srcFromHash(token) : null;
+}
+
+/** Wait until a chat link carries the current plan (the encoding runs ahead of the click). */
+async function chatLinkReady(page: Page, name: string): Promise<void> {
+  await expect(page.getByRole("link", { name })).toHaveAttribute("data-ready", "true");
+}
 
 /** Click `#download` for `format` and return the resulting browser download. */
 async function downloadAs(page: Page, format: string): Promise<Download> {
@@ -105,7 +121,9 @@ test.describe("header actions", () => {
     await editor.click();
     await page.keyboard.press("ControlOrMeta+End");
     await page.keyboard.type("\n# typed");
-    await page.getByRole("button", { name: "Finish", exact: true }).click();
+    // Pressed from the page in the same breath as the typing: a Playwright click waits
+    // for actionability and could land past the 500 ms window, making the test vacuous.
+    await page.evaluate(() => document.getElementById("finishSrc")?.click());
     await expect(editor).toContainText("dims auto all");
     await editor.click();
     await page.keyboard.press("ControlOrMeta+z");
@@ -170,6 +188,7 @@ test.describe("header actions", () => {
       await expect(note).toContainText("never sends");
       const link = page.getByRole("link", { name });
       await expect(link).toHaveAccessibleDescription(/in the chat host's URL/);
+      await chatLinkReady(page, name);
       const [popup] = await Promise.all([context.waitForEvent("page"), link.click()]);
       await popup.waitForURL((u) => u.href.startsWith(base));
       const url = new URL(popup.url());
@@ -178,7 +197,8 @@ test.describe("header actions", () => {
       const q = url.searchParams.get("q") ?? "";
       // The prompt carries this plan's share link (the real codec), and how to decode it.
       const origin = await page.evaluate(() => location.origin + location.pathname);
-      expect(q).toContain(`${origin}${await shareHash(SIMPLE_PLAN)}`);
+      expect(q).toContain(`${origin}#z=`);
+      expect(await planInPrompt(q)).toBe(SIMPLE_PLAN);
       expect(q).toContain("zlib.decompress(");
       await popup.close();
       await expect(note).toBeHidden(); // choosing a link closes the menu
@@ -201,13 +221,14 @@ test.describe("header actions", () => {
       "\n",
     );
     await page.getByText("Ask AI").click();
+    await chatLinkReady(page, "Open in Claude ↗");
     const [popup] = await Promise.all([
       context.waitForEvent("page"),
       page.getByRole("link", { name: "Open in Claude ↗" }).click(),
     ]);
     await popup.waitForURL((u) => u.href.startsWith("https://claude.ai/new"));
     const q = new URL(popup.url()).searchParams.get("q") ?? "";
-    expect(q).toContain(await shareHash(villa));
+    expect(await planInPrompt(q)).toBe(villa);
   });
 
   test("a plan too long for a chat URL copies the full prompt and opens the host empty", async ({ page, context }) => {
@@ -227,6 +248,8 @@ test.describe("header actions", () => {
     const status = await watchStatus(page);
 
     await page.getByText("Ask AI").click();
+    // Encoded and current, so the copy is for length, not a click that beat the encoding.
+    await chatLinkReady(page, "Open in ChatGPT ↗");
     const [popup] = await Promise.all([
       context.waitForEvent("page"),
       page.getByRole("link", { name: "Open in ChatGPT ↗" }).click(),
@@ -377,7 +400,9 @@ test.describe("header actions", () => {
     // Under a View theme override the gallery drawing is not what is on screen: plain link.
     await page.locator("#theme").selectOption("blueprint");
     await page.locator("#embed").click();
-    await expect(page.locator(".embed-dialog").getByLabel(/Markdown link/)).toHaveValue(/^\[ArchLang floor plan/);
+    await expect(page.locator(".embed-dialog").getByLabel(/not a theme override/)).toHaveValue(
+      /^\[ArchLang floor plan/,
+    );
   });
 });
 
