@@ -140,8 +140,8 @@ For the [studio example](/examples), `archlang describe --json` returns (abridge
   "plan": "Studio 1BR",
   "bbox": { "w": 7000, "h": 6000 },
   "rooms": [
-    { "id": "r_living", "label": "Living / Kitchen", "uses": ["living", "kitchen"], "area_m2": 24, "adjacent": ["r_bed", "r_hall", "r_bath"] },
-    { "id": "r_bed", "label": "Bedroom", "uses": ["bedroom"], "area_m2": 9, "adjacent": ["r_living", "r_hall"] }
+    { "id": "r_living", "label": "Living / Kitchen", "uses": ["living", "kitchen"], "area_m2": 24, "net_area_m2": 22.33, "adjacent": ["r_bed", "r_hall", "r_bath"] },
+    { "id": "r_bed", "label": "Bedroom", "uses": ["bedroom"], "area_m2": 9, "net_area_m2": 8.12, "adjacent": ["r_living", "r_hall"] }
   ],
   "doors": [ { "id": "d_bath", "between": ["r_hall", "r_bath"], "width": 800 } ],
   "openings": [ { "id": "o_living", "between": ["r_living", "r_hall"], "width": 900 } ],
@@ -149,13 +149,13 @@ For the [studio example](/examples), `archlang describe --json` returns (abridge
     "entrances": ["d_main"], "hasEntrance": true,
     "rooms": [ { "id": "r_bath", "depthFromEntrance": 3, "reachable": true, "bottleneckClearWidth": 740 } ]
   },
-  "totals": { "rooms": 4, "floor_area_m2": 42 }
+  "totals": { "rooms": 4, "floor_area_m2": 42, "net_floor_area_m2": 38.29 }
 }
 ```
 
-A text-only agent can read this and confirm "4 rooms, 42 m², the bath reached off the hall (not
-through the bedroom), every room reachable from the front door" — no rendering required. See the
-[full schema](/analysis).
+A text-only agent can read this and confirm "4 rooms, 42 m² on wall centrelines (38.29 m² net,
+inside the walls), the bath reached off the hall (not through the bedroom), every room reachable
+from the front door" — no rendering required. See the [full schema](/analysis).
 
 `describe --json` also reports **`freedom`**: for every placed element, whether its coordinates were
 hand-authored or derived by the resolver. Read it before nudging a number — it tells you which

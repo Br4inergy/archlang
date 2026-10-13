@@ -41,8 +41,9 @@ owns that name, so the shell runs the wrong program.
    --ascii`) prints a zero-dependency ASCII floor plan you can read straight from stdout.
 6. **Verify intent:** `archlang describe plan.arch --json` returns the rooms (areas, adjacency), what each
    door connects, and totals. Confirm the room count, labels, and areas match what was asked.
-   Room areas (`area_m2`, and the `schedule rooms` table) are measured on wall centrelines, so they
-   exceed the floor area inside the walls; say so whenever you report an area to the user.
+   Each room reports two areas: `area_m2` on wall centrelines and `net_area_m2` inside the walls (its
+   shape inset by half of each bounding wall's thickness); `totals` sums both. Quote `net_area_m2` as
+   floor area, and name which figure you report.
 7. **Gate on soundness — don't ship a flagged plan.** `archlang validate plan.arch --strict --json`
    (parse + resolve + lint). `--strict` makes **every advisory warning fail** (exit `2`) — the gate a
    generation pipeline runs before it ships. Add `--graph g.json` to also assert the intended

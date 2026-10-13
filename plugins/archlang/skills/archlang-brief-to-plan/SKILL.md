@@ -46,7 +46,8 @@ This skill is a workflow, not a language reference. The language is whatever `ar
 
 - The file you wrote and the drawing you rendered.
 - Every requirement of the brief the plan does not meet, or "none".
-- That the room areas you quote are centreline areas, larger than the floor inside the walls.
+- Which area you quote: `net_area_m2` is the floor inside the walls, `area_m2` the larger
+  centreline figure.
 - Every lint warning still present, with the reason it stays.
 
 ## When something goes wrong

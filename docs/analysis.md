@@ -43,6 +43,7 @@ matter — run it yourself for the full object):
       "label": "Living / Kitchen",
       "uses": ["living", "kitchen"],
       "area_m2": 24,
+      "net_area_m2": 22.33,
       "bbox": { "x": 0, "y": 0, "w": 4000, "h": 6000 },
       "adjacent": ["r_bed", "r_hall", "r_bath"]
     },
@@ -51,6 +52,7 @@ matter — run it yourself for the full object):
       "label": "Bath",
       "uses": ["bath"],
       "area_m2": 4.8,
+      "net_area_m2": 4.13,
       "bbox": { "x": 4000, "y": 4400, "w": 3000, "h": 1600 },
       "adjacent": ["r_living", "r_hall"]
     }
@@ -70,7 +72,7 @@ matter — run it yourself for the full object):
     { "id": "sofa_5", "category": "sofa", "label": "Sofa" }
   ],
   "access": { "…": "see below" },
-  "totals": { "rooms": 4, "doors": 3, "windows": 3, "floor_area_m2": 42 }
+  "totals": { "rooms": 4, "doors": 3, "windows": 3, "floor_area_m2": 42, "net_floor_area_m2": 38.29 }
 }
 ```
 
@@ -80,7 +82,8 @@ matter — run it yourself for the full object):
 | `bbox` | overall extent on wall **centerlines** — the coordinate space the source is written in (room `at`/`size`, wall points), so this is the number to compute *with* |
 | `bbox_outer` | overall extent on the **outer wall faces** — `bbox` plus half a wall thickness at each end (7000×6000 inside a 200 shell is 7200×6200 outside). What a builder measures, what `dims auto`'s overall chain prints, and what to quote when someone asks how big the building is |
 | `rooms[].uses` | the room's [`uses` tags](language-reference.md#room) (or the inferred kind when none were authored) |
-| `rooms[].area_m2` | floor area in m², rounded to 2 dp — `w × h` for a rectangle, the exact **shoelace** area of the ring for a [polygon room](language-reference.md#polygonal-rooms-v1-23) |
+| `rooms[].area_m2` | floor area in m², rounded to 2 dp — `w × h` for a rectangle, the exact **shoelace** area of the ring for a [polygon room](language-reference.md#polygonal-rooms-v1-23). A room is drawn on wall **centrelines**, so this runs to the middle of every wall round it |
+| `rooms[].net_area_m2` | **net internal** area in m², rounded to 2 dp: the room's shape inset by half the thickness of each wall whose centreline runs along its edge, each wall its own thickness. An edge with no wall is not inset, a circle is inset only by concentric arc walls, and a curved wall never insets a straight edge. Always `<= area_m2`, and equal to it for a room with no wall on its edge. This is the figure to quote as a room's floor area (rule: [ADR 0027](adr/0027-net-internal-area.md)) |
 | `rooms[].floor_polygon` | the room's floor as a closed ring: a rectangle's four corners, or the polygon's own vertices. This — not `bbox` — is the room's shape |
 | `rooms[].bbox` | the room's **vertex extent**. For a polygon room it is the box the ring fits in, which is bigger than the floor |
 | `rooms[].adjacent` | ids of rooms whose walls touch this one within tolerance (a shared corner alone doesn't count) |
@@ -91,7 +94,7 @@ matter — run it yourself for the full object):
 | `voids` | the holes in this storey's floor plate — one `{ id, at, size, room }` per [`void`](language-reference.md#void--a-hole-in-the-floor-v1-29). **Present only when the storey declares one.** `room` is the room whose FLOOR contains the opening's centre (`null` when none does — a void in the notch of a U-shaped room belongs to no room, even though it is inside that room's `bbox`). The room's `area_m2` is **not** reduced by it: subtract `size.w × size.h` yourself if you need the net |
 | `outdoor` | the [ground surfaces](language-reference.md#outdoor--ground-outside-the-building-v1-31) outside the building — one `{ id, kind, label?, area_m2, bbox, rail? }` per `outdoor`. **Present only when the storey declares one.** `area_m2` is the exact **shoelace** area for the `polygon` spelling, never the `bbox`. `rail` is present on a `balcony` and absent on every other kind — an empty array there means "no railing", which is a different fact from the key being missing. **None of this is floor area:** a ground surface appears in no other part of the summary, and its area is totalled separately (below) |
 | `fences` | the [fence runs](language-reference.md#fence--a-boundary-line-on-the-ground-v1-31) — one `{ id, style, length_mm, closed }` each. **Present only when the storey declares one.** A fence is not a wall: it is absent from `walls`, from `access` and from `input_graph`, and it hosts no opening |
-| `totals` | room / door / window counts and total floor area |
+| `totals` | room / door / window counts and total floor area: `floor_area_m2` sums the rooms' `area_m2`, `net_floor_area_m2` their `net_area_m2` (each summed from the rounded per-room figures) |
 | `totals.outdoor_area_m2` | total ground area in m² — **present only when the storey declares an `outdoor` surface**. Deliberately a **sibling** of `floor_area_m2` rather than part of it: floor area is floor area, and a terrace is not it. A consumer that wants plot coverage adds the two, having decided that is what it means |
 | `accTitle` / `accDescr` | the plan's declared [accessible metadata](language-reference.md#accessible-metadata-acctitle-accdescr) — **present only when the source declares them** |
 | `axes` | the plan's declared [positioning axes](language-reference.md#positioning-axes-定位轴线) — **present only when the source declares an `axes` block** |
@@ -163,6 +166,7 @@ A curve has two truthful descriptions — the circle it is, and a polygon close 
 | Fact | How it is computed |
 | --- | --- |
 | A circular room's `area_m2` (label, `describe()`, `schedule rooms`, Plan JSON) | **Exact** — πR², closed form |
+| A circular room's `net_area_m2` | **Exact** — π(R − t/2)² in closed form when one concentric arc wall of thickness t runs all round; over each angular interval otherwise, its ends read through `atan2` ([ADR 0027](adr/0027-net-internal-area.md)) |
 | `floor_circle`, `dim diameter`, `dim radius`, the `dims auto` R/φ call-outs | **Exact** — the authored centre and radius |
 | The drawing extent, a wall's outer-face box, a spatial-index cell | **Exact** — the arc's closed-form extremes, so a bulge is never clipped |
 | Which wall hosts an opening, and how far along it sits | **Exact** — distance to the arc, and run length `R·θ` |
@@ -442,16 +446,17 @@ agent can read the numbered table it just rendered without OCR'ing the image. Th
 
 ```json
 "schedule": [
-  { "no": "01", "id": "living", "name": "Living", "area_m2": 12 },
-  { "no": "02", "id": "bath",   "name": "bath",   "area_m2": 9 }
+  { "no": "01", "id": "living", "name": "Living", "area_m2": 12, "net_area_m2": 10.78 },
+  { "no": "02", "id": "bath",   "name": "bath",   "area_m2": 9,  "net_area_m2": 7.98 }
 ]
 ```
 
 - `no` is the drawn number: 1-based **source order**, zero-padded to one uniform width
   across the table (`01`…`09`, `001`…`100`) — cite it the way a reviewer will ("room 02").
 - `name` is the room's `label`, falling back to its `id` when unlabelled (`bath` above).
-- `area_m2` is byte-identical to that room's `rooms[].area_m2`, and the drawn `TOTAL` row
-  is `totals.floor_area_m2` — one derivation feeds both the drawing and this JSON, so the
+- `area_m2` and `net_area_m2` are byte-identical to that room's `rooms[].area_m2` and
+  `rooms[].net_area_m2`, and the drawn `TOTAL` row is `totals.floor_area_m2` and
+  `totals.net_floor_area_m2` — one derivation feeds both the drawing and this JSON, so the
   table on the sheet and the facts here can never disagree.
 
 The `legend` setting has **no counterpart here**, deliberately: it is pure rendering, and

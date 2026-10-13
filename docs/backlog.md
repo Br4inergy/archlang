@@ -2204,7 +2204,8 @@ draw a clear width and depth on the plan. This entry is the drawing half, an opt
 It is a drawing change, so it needs a byte-identity law and bounds that cover what it draws.
 
 **Gate:** an opt-in form draws clear sizes for rect rooms; plans not using it are
-byte-identical; `bounds()` and `drawCost` cover the text. **Size:** M. Wait for D1.
+byte-identical; `bounds()` and `drawCost` cover the text. **Size:** M. D1 has landed
+(`net_area_m2`, `docs/adr/0027-net-internal-area.md`), so this is unblocked.
 
 ### U.10 · The legend has one wall swatch and no wall types — `todo`
 
