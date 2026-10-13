@@ -4,7 +4,7 @@
  * wraps one pure, exported function; the core stays zero-dependency — the MCP SDK
  * lives ONLY in this package.
  *
- * Positioning (ADR 0012): the agent-native `arch` CLI remains the primary
+ * Positioning (ADR 0012): the agent-native `archlang` CLI remains the primary
  * interface — it costs nothing in an agent's context window until it is called,
  * whereas an MCP tool schema sits in the window permanently. This server exists so
  * MCP-speaking hosts can *discover* ArchLang through the registry; it is the
@@ -125,16 +125,37 @@ function resolveSource(input: {
 // server
 // ---------------------------------------------------------------------------
 
+/**
+ * The `instructions` every host reads at `initialize`, on every session — so it stays short
+ * (a test caps it at 900 characters). It is SKILL.md's loop, condensed: a test holds the
+ * commands it names to the CLI manifest and to the order SKILL.md's loop names them in, so the
+ * two cannot drift apart silently.
+ */
+export const INSTRUCTIONS = [
+  "ArchLang compiles a small `.arch` text language to SVG floor plans. Before writing any `.arch`, read the " +
+    "`archlang://spec` resource: the whole language on one page (from a shell: `npx -y @chanmeng666/archlang spec`).",
+  "The loop:",
+  "1. Write the plan as `.arch` source.",
+  "2. `compile` it. Errors come back as diagnostics with byte spans and a fix; `fix` applies the " +
+    "machine-applicable ones, edit the rest by hand.",
+  "3. `describe` it; check rooms, areas and doors against the brief.",
+  "4. `validate` with strict:true (parse, resolve and `lint` in one pass); fix every warning, then back to 2.",
+  "5. `finish` once lint is clean, before export: it furnishes empty rooms and adds the missing sheet " +
+    "statements (paper, scale, dimensions, title, room schedule, legend).",
+  "With a shell, the CLI runs the same loop at no context cost: `archlang <cmd>`, " +
+    "or `npx -y @chanmeng666/archlang <cmd>` without a global install.",
+].join("\n");
+
 /** Build the fully-configured ArchLang MCP server (tools + resources). */
 export function createServer(): McpServer {
-  const server = new McpServer({ name: "archlang", version: SHIM_VERSION });
+  const server = new McpServer({ name: "archlang", version: SHIM_VERSION }, { instructions: INSTRUCTIONS });
 
   server.registerTool(
     "compile",
     {
       title: "Compile ArchLang → SVG or ASCII",
       description:
-        'Compile ArchLang `.arch` source (or a Plan-JSON object) to an SVG floor plan, or to a zero-dependency ASCII text plan (format:"txt"). Returns the rendered output plus diagnostics — each a byte span, line/col, catalogued E_/W_ code, and a machine-applicable fix. Errors are DATA, never exceptions: read `diagnostics` and correct the source. A MULTI-STOREY plan (`level <n> { … }`) is a set of drawings: `output` is the lowest storey and every storey comes back in `pages[]` ({ level, name, output }), so pass `level` to render just one.',
+        'Compile ArchLang `.arch` source (or a Plan-JSON object) to an SVG floor plan, or to a plain-text ASCII plan with format:"txt". Returns the output plus diagnostics; each diagnostic carries a byte span, line/col, an E_/W_ code and a fix, often one the `fix` tool can apply. Errors come back as data, never as exceptions: read `diagnostics` and correct the source. A multi-storey plan (`level <n> { … }`) returns the lowest storey in `output` and every storey in `pages[]` ({ level, name, output }); pass `level` to render just one.',
       inputSchema: {
         source: z.string().optional().describe('ArchLang source (a `plan "…" { … }`). Provide this OR plan_json.'),
         plan_json: z
@@ -205,7 +226,7 @@ export function createServer(): McpServer {
     {
       title: "Describe a plan (facts, no render)",
       description:
-        "Semantic facts about a plan without rendering: rooms (areas, bboxes, adjacency, uses, and the exact shape — `floor_polygon` for a `room polygon`, `floor_circle` for a `room circle`, whose area is exact πR²), doors (what they connect), windows, circulation (walk distance / bottleneck width / detour), zones, storeys (`levels[i]` carries the same facts per floor) with the shafts that join them and which storeys stay reachable (`vertical`), the drawing extent (`bbox`, `bbox_outer`), `freedom` (which positions are hand-authored vs resolver-derived), and totals. The channel a text-only agent uses to VERIFY that a plan matches intent.",
+        "Report a plan's facts without rendering, so you can check it against the brief without looking at an image. Returns rooms (area, bbox, adjacency, use, and the exact shape: `floor_polygon` for a `room polygon`, `floor_circle` for a `room circle`, whose area is exactly πR²), doors (what each connects), windows, circulation (walk distance, bottleneck width, detour), zones, storeys (`levels[i]` carries the same facts per floor) with the shafts that join them and which storeys stay reachable (`vertical`), the drawing extent (`bbox`, `bbox_outer`), `freedom` (which positions are hand-authored and which are derived), and totals.",
       inputSchema: { source: z.string().describe("ArchLang source.") },
     },
     async ({ source }) => {
@@ -219,7 +240,7 @@ export function createServer(): McpServer {
     {
       title: "Lint architectural soundness",
       description:
-        'Advisory `W_*` soundness warnings as data: unreachable room, windowless bedroom, too-narrow door, blocked doorway, furniture through a wall, circuitous path, and more. `profile` selects a ruleset (e.g. "residential-basic", "accessibility-advisory").',
+        'List advisory architectural-soundness warnings (`W_*` codes) as data: unreachable room, windowless bedroom, too-narrow door, blocked doorway, furniture through a wall, circuitous path, and more. `profile` selects a ruleset ("residential-basic", "accessibility-advisory", …).',
       inputSchema: {
         source: z.string().describe("ArchLang source."),
         profile: z.string().optional().describe("Advisory ruleset name (default: the built-in ruleset)."),
@@ -233,7 +254,7 @@ export function createServer(): McpServer {
     {
       title: "Validate (parse + resolve + lint)",
       description:
-        "The ship gate: parse + resolve + lint in one pass, no render. `strict:true` makes advisory warnings fail too. Optional `graph` checks the plan's interior-door adjacency against an intended room graph (`{ room: [neighbours] }`); a mismatch fails. Optional `intent` (a brief's expectations per /intent.schema.json) is checked against the plan — a failing GATING assertion (room count / existence / area / total-area / windows) fails validate, while adjacency and reachability are advisory and only score. A malformed intent returns `{ ok:false, intentErrors }` (data, never a throw). Returns { ok, diagnostics, graph?, intent? }.",
+        "Check a plan in one pass without rendering (parse, resolve and lint): the gate a plan passes before it ships. `strict:true` makes advisory warnings fail too. Optional `graph` checks the plan's interior-door adjacency against an intended room graph (`{ room: [neighbours] }`); a mismatch fails. Optional `intent` (a brief's expectations, shaped as the `archlang://intent-schema` resource describes) is checked against the plan: a missed gating assertion (room count, existence, area, total area, windows) fails, while adjacency and reachability are advisory and only score. A malformed intent returns `{ ok:false, intentErrors }` as data, never an exception. Returns { ok, diagnostics, graph?, intent? }.",
       inputSchema: {
         source: z.string().describe("ArchLang source."),
         strict: z.boolean().optional().describe("Advisory warnings fail too."),
@@ -244,7 +265,7 @@ export function createServer(): McpServer {
         intent: z
           .record(z.string(), z.any())
           .optional()
-          .describe("A brief's intent JSON (per /intent.schema.json); gating assertions fail validate."),
+          .describe("A brief's intent JSON (shape: the archlang://intent-schema resource); gating assertions fail."),
       },
     },
     async ({ source, strict, graph, intent }) => {
@@ -302,12 +323,12 @@ export function createServer(): McpServer {
     {
       title: "Score a plan against a brief (intent meter)",
       description:
-        "The continuous intent-satisfaction METER: check a brief's intent JSON (per /intent.schema.json) against a plan and report how much it satisfies. Returns { ok, satisfied, total, score, subscores, violations } where `score` is satisfied/total in [0,1] (an empty intent scores 1). It MEASURES, it never gates — so you can watch a plan approach the brief across edits. A malformed intent returns `{ ok:false, intentErrors }` (data, never a throw).",
+        "Measure how much of a brief's intent JSON a plan satisfies, without gating. Returns { ok, satisfied, total, score, subscores, violations }, where `score` is satisfied/total in [0,1] (an empty intent scores 1); call it across edits to watch a plan approach the brief. The intent's shape is the `archlang://intent-schema` resource. A malformed intent returns `{ ok:false, intentErrors }` as data, never an exception.",
       inputSchema: {
         source: z.string().describe("ArchLang source."),
         brief: z
           .record(z.string(), z.any())
-          .describe("A brief's intent JSON (per /intent.schema.json) to measure against."),
+          .describe("A brief's intent JSON (shape: the archlang://intent-schema resource) to measure against."),
       },
     },
     async ({ source, brief }) => {
@@ -331,7 +352,7 @@ export function createServer(): McpServer {
     {
       title: "Repair furniture placement",
       description:
-        "The explicit source-to-source corrector (ADR 0006): push furniture out of walls / doorways / swing arcs, separate overlaps, relocate wrong-room fixtures, snap floating pieces to walls. Returns corrected `.arch` source + a change log. It NEVER adds doors or windows — that is a design choice; use `suggest` for topology.",
+        "Correct furniture placement and return the corrected `.arch` source with a change log. It pushes furniture out of walls, doorways and door swings, separates overlapping pieces, moves fixtures that sit in the wrong room, and snaps floating pieces to walls. A piece it may not rewrite is listed in `unresolved` with the reason. It never adds doors or windows (that is a design choice); use `suggest` for those.",
       inputSchema: { source: z.string().describe("ArchLang source to correct.") },
     },
     async ({ source }) => {
@@ -345,7 +366,7 @@ export function createServer(): McpServer {
     {
       title: "Apply machine-applicable diagnostic fixes",
       description:
-        "Apply the machine-applicable fixes a compile attaches to its diagnostics — the SYNTACTIC corrector (off-wall openings → the attachment form, out-of-range positions clamped, …), distinct from `repair`'s geometric solver. Bounded fixpoint (≤4 passes; a pass that raises the error count is rolled back). `unsafe:true` also applies `maybe-incorrect` fixes. Returns { ok, passes, applied, skipped, source }.",
+        "Apply the machine-applicable fixes attached to a plan's compile diagnostics and return the edited source. It corrects source-level faults (an opening off its wall becomes the attachment form, an out-of-range position is clamped, …); furniture geometry is `repair`'s job. It runs at most 4 passes and rolls back a pass that raises the error count. `unsafe:true` also applies `maybe-incorrect` fixes. Returns { ok, passes, applied, skipped, source }.",
       inputSchema: {
         source: z.string().describe("ArchLang source to fix."),
         unsafe: z
@@ -392,7 +413,7 @@ export function createServer(): McpServer {
     {
       title: "Finish the drawing",
       description:
-        "The explicit completion transform (ADR 0024, ADR 0025), in two stages. `furnish`: put furniture, by room use, in each rectangular room that holds none (single-storey plans; a furnished room is never touched; placement is `against wall` / `in <room> anchor`, never absolute). `sheet`: add the sheet statements the plan lacks — `paper`, `scale`, `dims auto`, `title`, `schedule rooms`, `legend` — choosing the finest standard scale on the smallest sheet that holds the drawing. It fills only what is missing and deletes nothing; `only` runs one stage; `reissue:true` may REPLACE `paper`/`scale` (only those) when the drawing does not fit them. Run it once `lint` is clean. Returns { ok, changed, changes, unresolved, source }; a plan that does not compile comes back untouched with `ok:false`, and a room or a sheet that would raise a new diagnostic is left as it was with the reason in `unresolved`.",
+        "Complete a plan for export by adding what it lacks; run it once `lint` is clean. Two stages. `furnish` puts furniture, by room use, in each rectangular room that holds none (single-storey plans; a furnished room is never touched; placement is `against wall` / `in <room> anchor`, never absolute). `sheet` adds the sheet statements the plan lacks (`paper`, `scale`, `dims auto`, `title`, `schedule rooms`, `legend`), choosing the finest standard scale on the smallest sheet that holds the drawing. It fills only what is missing and deletes nothing; `only` runs one stage; `reissue:true` may replace `paper`/`scale` (only those) when the drawing does not fit them. Returns { ok, changed, changes, unresolved, source }; a plan that does not compile comes back untouched with `ok:false`, and a room or a sheet that would raise a new diagnostic is left as it was, with the reason in `unresolved`.",
       inputSchema: {
         source: z.string().describe("ArchLang source to finish."),
         only: z
@@ -417,7 +438,7 @@ export function createServer(): McpServer {
     {
       title: "Suggest topology fixes (advisory)",
       description:
-        "Advisory topology suggestions as DATA — never applied (ADR 0005). For a room with no path back, a building with no entrance, a bath reachable only through a bedroom, or a windowless bedroom, returns ready-to-paste `door`/`window` statements (attachment form, furniture-aware) plus a rationale, for the agent to choose among and insert.",
+        "Suggest the doors and windows a plan's room graph needs, as data; nothing is applied. For a room with no path back, a building with no entrance, a bath reachable only through a bedroom, or a windowless bedroom, it returns ready-to-paste `door`/`window` statements (attachment form, placed clear of furniture) with a rationale, for you to choose among and insert.",
       inputSchema: { source: z.string().describe("ArchLang source.") },
     },
     async ({ source }) => json({ ok: true, suggestions: suggestTopology(source) }),
@@ -428,7 +449,7 @@ export function createServer(): McpServer {
     {
       title: "Completions at a source offset",
       description:
-        "Completion items in scope at a source BYTE offset (the LSP `completion()` core): keywords, element names, ids, enum values — for structured or assisted authoring.",
+        "List the completion items in scope at a source byte offset: keywords, element names, ids and enum values, the same items an editor's language server offers. For structured or assisted authoring.",
       inputSchema: {
         source: z.string().describe("ArchLang source."),
         at: z.number().int().nonnegative().describe("Source byte offset to complete at."),
@@ -443,7 +464,7 @@ export function createServer(): McpServer {
       "spec",
       "archlang://spec",
       "ArchLang language spec",
-      "The whole language in one page (spec.llm.md).",
+      "The whole ArchLang language on one page. Read it before writing any `.arch`.",
       "text/markdown",
       readResource("spec.llm.md", "spec.llm.md"),
     ],
@@ -451,7 +472,7 @@ export function createServer(): McpServer {
       "context",
       "archlang://context",
       "ArchLang full agent context",
-      "Spec + workflow skill + CLI reference + error catalog (llms-full.txt) — drop into a system prompt.",
+      "The spec, the authoring workflow, the CLI reference and the error catalog in one document, for a system prompt.",
       "text/markdown",
       readResource("llms-full.txt", "llms-full.txt"),
     ],
@@ -459,7 +480,7 @@ export function createServer(): McpServer {
       "schema",
       "archlang://schema",
       "Plan JSON schema",
-      "JSON Schema (2020-12) for the Plan-JSON compile input.",
+      "JSON Schema (2020-12) for the Plan-JSON object `compile` accepts as `plan_json`.",
       "application/schema+json",
       readResource("plan.schema.json", "schemas/plan.schema.json"),
     ],
@@ -467,7 +488,7 @@ export function createServer(): McpServer {
       "grammar",
       "archlang://grammar",
       "ArchLang GBNF grammar",
-      "GBNF constrained-decoding grammar for guaranteed-parseable generation.",
+      "GBNF grammar for constrained decoding, so a model generates source that parses.",
       "text/plain",
       readResource("archlang.gbnf", "grammars/archlang.gbnf"),
     ],
