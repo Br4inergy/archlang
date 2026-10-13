@@ -16,14 +16,16 @@ Write a floor plan as text. Get a precise, dimensioned drawing back.
 <br>
 
 ## Send this to your agent
-
-Paste this into any coding agent ([skills.sh/ChanMeng666/archlang](https://skills.sh/ChanMeng666/archlang)):
-
+Paste this into any coding agent. The skills are listed on skills.sh: https://skills.sh/ChanMeng666/archlang
 ```text
-Install the ArchLang skills with `npx skills add ChanMeng666/archlang`, then write my floor plan as a `.arch` file. Render it with `npx -y @chanmeng666/archlang compile plan.arch -o plan.svg --json`, check it with `npx -y @chanmeng666/archlang lint plan.arch --json`, and run `npx -y @chanmeng666/archlang finish plan.arch --dry-run --json` before exporting.
+1. Run: npx -y skills add ChanMeng666/archlang --yes
+2. Run: npx -y @chanmeng666/archlang spec   (read it before writing anything)
+3. Write my floor plan as plan.arch from this brief: <describe rooms, areas, adjacencies>
+4. Run: npx -y @chanmeng666/archlang compile plan.arch -o plan.svg --json
+   then describe plan.arch --json, validate plan.arch --strict --json (same prefix); fix, recompile
+5. Run: npx -y @chanmeng666/archlang finish plan.arch, then compile again to export.
 ```
-
-Or run it yourself: `npx -y @chanmeng666/archlang compile plan.arch`. For MCP clients: `claude mcp add archlang -- npx -y @chanmeng666/archlang-mcp`.
+For MCP clients: `claude mcp add archlang -- npx -y @chanmeng666/archlang-mcp`.
 
 <a href="https://playground.archlang.uk"><img src="./.github/readme/card.svg" width="100%" alt="ArchLang compiles plain-text source into floor plans. The card shows source being typed and the drawing compiling beside it: five example plans, one constant changed, and a lint finding raised and cleared."></a>
 
