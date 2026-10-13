@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
+import { isDeepStrictEqual } from "node:util";
 import { describe, expect, it } from "vitest";
-import { planToJson } from "../src/index.js";
+import { type Diagnostic, describe as describePlan, lint, planToJson } from "../src/index.js";
 import { type Args, makeNodeWorld, sourceFromJson } from "../src/cli/io.js";
 import { renderArtifact } from "../src/cli/serialize.js";
 import { CANNOT_ROUND_TRIP } from "./plan-json-gaps.js";
@@ -9,8 +10,10 @@ import { CANNOT_ROUND_TRIP } from "./plan-json-gaps.js";
 /**
  * `archlang compile -f json` writes the Plan JSON that `archlang compile --from-json` reads.
  *
- * The law: for every shipped example, the SVG compiled back from the JSON is byte-identical
- * to the SVG compiled from the source, unless the example is a listed gap. The corpus loop
+ * The law: for every shipped example, the plan compiled back from the JSON is the plan the
+ * source compiles to, page by page — byte-identical SVG, equal describe() facts and equal
+ * lint() codes — unless the example is a listed gap. SVG alone is not enough: a plan whose
+ * accessibility metadata was dropped draws the same default SVG. The corpus loop
  * drives the CLI's own render seam (`renderArtifact`, the function `cmdCompile` calls) and
  * its own `--from-json` converter (`sourceFromJson`) in process, because a process per file
  * would cost a minute; the stdin pipe itself is spawned once below, on `studio.arch`.
@@ -39,32 +42,64 @@ const EXPECTED_GAPS = Object.keys(CANNOT_ROUND_TRIP)
   .filter((n) => !(n in CLI_CLOSES))
   .sort();
 
-/** One storey's outcome: the same SVG, a different one, or JSON the way back refuses. */
-type Outcome = { level?: number } & ({ kind: "same" | "differs" } | { kind: "refused"; codes: string[] });
+/**
+ * The describe() keys a page's facts are compared without.
+ *
+ * `ok`/`diagnostics` are the run, not the plan; `levels`/`vertical`/`level`/`name` are the
+ * multi-storey wrapper around a storey's facts. `freedom` is excluded BY DESIGN: it reports
+ * which positions are hand-authored and which derived, and Plan JSON writes every position as
+ * an absolute one, so `attached`/`strip`/relational placement comes back flattened. Measured:
+ * it differs on 5 of the 8 files that round-trip (attached, garden-loft, laneway-house,
+ * one-room, relational); comparing it would make the law unpassable, and the positions
+ * themselves are still held by the SVG bytes and every other fact.
+ */
+const NOT_COMPARED = new Set(["ok", "diagnostics", "levels", "vertical", "level", "name", "freedom"]);
+const facts = (s: object): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(s).filter(([k]) => !NOT_COMPARED.has(k)));
+const lintCodes = (ds: Diagnostic[]): string[] => ds.map((d) => d.code ?? "").sort();
 
-/** Run one example through `-f json`, then `--from-json`, page by page, against direct SVG. */
+/**
+ * One storey's outcome: the same plan back (SVG bytes, describe() facts and lint() codes all
+ * equal), a different one (naming what differs), or JSON the way back refuses.
+ */
+type Outcome = { level?: number } & (
+  | { kind: "same" }
+  | { kind: "differs"; what: string[] }
+  | { kind: "refused"; codes: string[] }
+);
+
+/** Run one example through `-f json`, then `--from-json`, page by page, against the direct plan. */
 async function roundTrip(name: string): Promise<Outcome[]> {
   const src = readFileSync(`examples/${name}`, "utf8");
+  const world = makeNodeWorld("examples");
   const direct = await renderArtifact(src, "svg", ARGS, "examples", "all");
+  const directFacts = describePlan(src, { world });
+  const directLint = lint(src, { world });
   const json = await renderArtifact(src, "json", ARGS, "examples", "all");
   expect(json.error, `${name}: -f json failed`).toBeUndefined();
   const pages = json.pages ?? [{ level: undefined, bytes: json.bytes! }];
   const out: Outcome[] = [];
   for (const p of pages) {
     const want = p.level === undefined ? direct.bytes : direct.pages!.find((q) => q.level === p.level)!.bytes;
+    const wantFacts = p.level === undefined ? directFacts : directFacts.levels!.find((l) => l.level === p.level)!;
+    const wantLint = p.level === undefined ? directLint : directLint.filter((d) => d.level === p.level);
     const conv = sourceFromJson(p.bytes as string);
     if ("error" in conv) {
       out.push({ level: p.level, kind: "refused", codes: [...new Set(conv.error.map((d) => d.code ?? ""))] });
       continue;
     }
     const back = await renderArtifact(conv.source, "svg", ARGS, process.cwd(), "first");
-    out.push({ level: p.level, kind: back.bytes === want ? "same" : "differs" });
+    const what: string[] = [];
+    if (back.bytes !== want) what.push("svg");
+    if (!isDeepStrictEqual(facts(describePlan(conv.source)), facts(wantFacts))) what.push("describe");
+    if (!isDeepStrictEqual(lintCodes(lint(conv.source)), lintCodes(wantLint))) what.push("lint");
+    out.push(what.length === 0 ? { level: p.level, kind: "same" } : { level: p.level, kind: "differs", what });
   }
   return out;
 }
 
 describe("compile -f json → compile --from-json (the whole corpus)", () => {
-  it("every example round-trips to identical SVG, except exactly the listed gaps", async () => {
+  it("every example round-trips to the same SVG, describe() and lint(), except exactly the listed gaps", async () => {
     const gaps: string[] = [];
     for (const name of EXAMPLES) {
       const outcomes = await roundTrip(name);
@@ -84,9 +119,13 @@ describe("compile -f json → compile --from-json (the whole corpus)", () => {
   it("names only gaps the library suite lists, and keeps a non-vacuous covered set", () => {
     for (const n of Object.keys(CLI_CLOSES)) expect(Object.keys(CANNOT_ROUND_TRIP)).toContain(n);
     const covered = EXAMPLES.filter((n) => !EXPECTED_GAPS.includes(n));
-    expect(covered.length).toBeGreaterThanOrEqual(9);
+    expect(covered.length).toBeGreaterThanOrEqual(8);
     for (const must of ["studio.arch", "one-room.arch", "garden-loft.arch", "imports.arch"])
       expect(covered).toContain(must);
+  });
+
+  it("accessible.arch is a gap only through describe(): the default SVG cannot see it", async () => {
+    expect(await roundTrip("accessible.arch")).toEqual([{ level: undefined, kind: "differs", what: ["describe"] }]);
   });
 });
 
@@ -134,5 +173,16 @@ describe("the real binary: stdin pipe and refusals", () => {
     const r = run(["compile", "examples/studio.arch", "-f", "json", "--view", "iso", "-o", "-"]);
     expect(r.status).toBe(3);
     expect(r.stderr).toContain("-f json");
+  }, 60_000);
+
+  it("so are the drawing-only flags, named in one message (exit 3), for compile and batch", () => {
+    const flags = ["--accessible", "--overlay", "circulation", "--width", "800", "--scale", "2"];
+    const c = run(["compile", "examples/studio.arch", "-f", "json", ...flags, "-o", "-"]);
+    expect(c.status).toBe(3);
+    expect(c.stdout).toBe("");
+    expect(c.stderr).toContain("--accessible, --overlay, --width, --scale cannot be combined with -f json");
+    const b = run(["batch", "examples/studio.arch", "-f", "json", "--width", "800"]);
+    expect(b.status).toBe(3);
+    expect(b.stderr).toContain("--width cannot be combined with -f json");
   }, 60_000);
 });

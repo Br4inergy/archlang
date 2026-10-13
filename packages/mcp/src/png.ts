@@ -13,6 +13,13 @@
 /** The optional renderer the core's PNG backend imports lazily. */
 export const PNG_RENDERER = "@resvg/resvg-js";
 
+/** The range `compile`'s `width` input is clamped to, in pixels. */
+export const PNG_MIN_WIDTH = 256;
+export const PNG_MAX_WIDTH = 4096;
+
+/** Clamp a requested png width into [{@link PNG_MIN_WIDTH}, {@link PNG_MAX_WIDTH}]. */
+export const clampPngWidth = (w: number): number => Math.min(PNG_MAX_WIDTH, Math.max(PNG_MIN_WIDTH, Math.round(w)));
+
 /** Where the server was installed from npm and the renderer is missing. */
 export const PNG_NEEDS_RENDERER = `png needs the optional renderer: npm i ${PNG_RENDERER} beside this server, or use format "svg".`;
 
@@ -39,4 +46,4 @@ export const pngUnavailable = (inBundle: boolean = IN_MCPB_BUNDLE): string =>
 export const compilePngSentence = (inBundle: boolean = IN_MCPB_BUNDLE): string =>
   inBundle
     ? PNG_NOT_IN_BUNDLE
-    : `format "png" returns the drawing (the lowest storey, or \`level\`) as image content, then the usual result as text; it needs the optional renderer ${PNG_RENDERER}, and without it the call returns ok:false with an error saying how to install it.`;
+    : `format "png" returns the usual result as text, then the drawing (the lowest storey, or \`level\`) as image content, as wide as \`width\` says; it needs the optional renderer ${PNG_RENDERER}, and without it the call returns ok:false with an error saying how to install it.`;

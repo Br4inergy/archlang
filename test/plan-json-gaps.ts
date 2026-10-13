@@ -32,11 +32,11 @@ export const CANNOT_ROUND_TRIP: Record<string, { because: string; proof: RegExp 
   "courtyard-house.arch": { because: "`roof`; and the sheet layer + `zone`", proof: /^\s*roof\b/m },
   // --- storeys and composition -----------------------------------------------------
   "two-storey.arch": {
-    because: "`level` — the projection is single-storey; also `roof`/`void`/`stair`",
+    because: "`level` — each storey projects alone and draws differently from its sheet; also `roof`/`void`/`stair`",
     proof: /^\s*level\b/m,
   },
   "townhouse.arch": {
-    because: "`level` — the projection is single-storey; also `roof`/`stair`/`paper`",
+    because: "`level` — each storey projects alone and draws differently from its sheet; also `roof`/`stair`/`paper`",
     proof: /^\s*level\b/m,
   },
   "garden-house.arch": {
@@ -65,6 +65,13 @@ export const CANNOT_ROUND_TRIP: Record<string, { because: string; proof: RegExp 
   // That is fixed: the projection now carries the placement CLAUSE, and this file
   // round-trips byte-identical once its `roof overhang` line is removed — which is the
   // ordinary by-design loss the rest of this list describes, and all that is left here.
-  // The derived-position half is pinned below, under "derived furniture positions".
+  // The derived-position half is pinned in `plan-json.test.ts`, under "derived furniture positions".
   "two-bed.arch": { because: "`roof` is deliberately absent from the projection", proof: /^\s*roof\b/m },
+  // --- accessibility metadata: `accTitle`/`accDescr` have no JSON field -------------
+  // The plain SVG round-trips, so an SVG-only check counted this file as covered while its
+  // whole point was lost. The CLI suite compares describe() as well, which sees both go.
+  "accessible.arch": {
+    because: "accessibility metadata — `accTitle`/`accDescr` are not carried",
+    proof: /^\s*acc(Title|Descr)\b/m,
+  },
 };

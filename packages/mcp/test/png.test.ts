@@ -9,6 +9,7 @@
  * The same mocked core also stands in for one OLDER than this shim, whose `planToJson` has no
  * per-storey `pages`: `format:"json"` on a multi-storey plan must say so, not repeat the ground floor.
  */
+import { ERROR_CATALOG } from "@chanmeng666/archlang";
 import { describe, expect, it, vi } from "vitest";
 import { assertBundleSaysNoPng, MCPB_EXTERNAL } from "../scripts/build-mcpb.js";
 import {
@@ -53,14 +54,13 @@ describe("compile json against a core older than the shim", () => {
 describe("compile png without the renderer", () => {
   it("returns the error as data, in the shared sentence, never an exception", async () => {
     const out = await call(await connect(), "compile", { source: TWO_ROOMS, format: "png" });
-    expect(out).toEqual({
-      ok: false,
-      format: "png",
-      error: PNG_NEEDS_RENDERER,
-      code: "E_PNG_DEPENDENCY",
-      diagnostics: [],
-    });
+    expect(out).toMatchObject({ ok: false, format: "png", error: PNG_NEEDS_RENDERER, code: "E_PNG_DEPENDENCY" });
     expect(out.error).toContain(`npm i ${PNG_RENDERER}`);
+    // As the CLI reports it: the catalogued code inside `diagnostics`, carrying the catalogue's fix.
+    const diags = out.diagnostics as Array<{ code?: string; severity?: string; message?: string; fix?: string }>;
+    expect(diags).toHaveLength(1);
+    expect(diags[0]).toMatchObject({ code: "E_PNG_DEPENDENCY", severity: "error", message: PNG_NEEDS_RENDERER });
+    expect(diags[0]!.fix).toBe(ERROR_CATALOG.E_PNG_DEPENDENCY!.fix);
   });
 
   it("the npm build's description says what png returns and what it needs", async () => {

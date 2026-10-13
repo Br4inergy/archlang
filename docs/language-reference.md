@@ -2619,6 +2619,7 @@ are pure serializers of the same `scene`:
 | SVG | `compile().svg` | `archlang compile p.arch` | none (default) |
 | DXF | `toDxf(scene)` | `archlang compile p.arch -f dxf` | none (zero-dep) |
 | TXT | `renderAscii(scene)` | `archlang compile p.arch -f txt` | none (zero-dep ASCII plan) |
+| JSON | `planToJson(source)` | `archlang compile p.arch -f json` | none (the Plan JSON `--from-json` reads; the plan's model, not a drawing of the scene) |
 | PDF | `toPdf(scene)` | `archlang compile p.arch -f pdf` | optional `pdfkit` (vector, text selectable) |
 | PNG | `renderPng(scene)` | `archlang compile p.arch -f png` | optional `@resvg/resvg-js` (deterministic raster) |
 

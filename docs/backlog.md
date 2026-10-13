@@ -258,7 +258,8 @@ word for it outside a `place`.
 
 **The CLI round-trip and its gap list.** `archlang compile -f json` writes the Plan JSON that
 `compile --from-json` reads back, and `test/cli-plan-json-roundtrip.test.ts` holds every example
-to byte-identical SVG through that pipe except exactly these 21 (the list is `CANNOT_ROUND_TRIP`
+to byte-identical SVG, equal `describe()` facts (bar `freedom`, which flattens to absolute by
+design) and equal `lint()` codes through that pipe, except exactly these 22 (the list is `CANNOT_ROUND_TRIP`
 in `test/plan-json-gaps.ts`, minus `imports.arch`, which the CLI's file World flattens):
 
 - refused with `E_JSON_MIRROR` (a reflecting `place`): `clinic`, `museum-wings`, `terrace-row`, and
@@ -269,7 +270,9 @@ in `test/plan-json-gaps.ts`, minus `imports.arch`, which the CLI's file World fl
   `museum-wing`, `transit-hall`;
 - the style layer (`theme`, `style`): `themed`, `gallery-l`, `materials`;
 - curves (`arc`, `room circle`): `aquarium`, `hexagon-pavilion`, `library`;
-- `roof`: `tiny-house`, `bungalow`, `courtyard-house`, `two-bed`.
+- `roof`: `tiny-house`, `bungalow`, `courtyard-house`, `two-bed`;
+- accessibility metadata (`accTitle`, `accDescr`): `accessible` — the default SVG survives, so
+  only the `describe()` comparison sees it.
 
 The neighbouring rule, from [ADR 0016](adr/0016-component-instances-and-frames.md) and now stated in
 `AGENTS.md`: when a fact crosses a frame, ask **can this be re-expressed in plan coordinates?** A

@@ -394,7 +394,7 @@ export { toDxf } from "./export/dxf.js";
 export { toPdf } from "./export/pdf.js";
 // PNG raster backend. Rasterizes the Scene's SVG with the OPTIONAL,
 // lazy-loaded `@resvg/resvg-js`; deterministic via a bundled font. Node-only.
-export { renderPng, renderPngFromSvg } from "./backends/png.js";
+export { renderPng, renderPngFromSvg, PNG_PREVIEW_WIDTH, isOptionalDepError } from "./backends/png.js";
 export type { PngOptions } from "./backends/png.js";
 // Error-card backend (opt-in). `compile(src, { onError: "svg" })` and the CLI's
 // `--error-svg` flag route a broken plan's diagnostics through this instead of

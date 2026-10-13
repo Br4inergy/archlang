@@ -10,7 +10,11 @@
  *
  * Read as a contract: these assertions are what an MCP host is entitled to see.
  */
-import { PLAN_JSON_SCHEMA, planToJson } from "@chanmeng666/archlang";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { PLAN_JSON_SCHEMA, PNG_PREVIEW_WIDTH, planToJson } from "@chanmeng666/archlang";
+import { PNG_MAX_WIDTH, PNG_MIN_WIDTH } from "../src/png.js";
 import { decodePlanHash, PLAYGROUND_ORIGIN, planLinks } from "@chanmeng666/archlang/link";
 import { describe, expect, it } from "vitest";
 import pkg from "../package.json" with { type: "json" };
@@ -38,6 +42,17 @@ const HAS_RESVG = await import("@resvg/resvg-js").then(
   () => true,
   () => false,
 );
+
+/** A shipped plan that renders thousands of pixels wide at native size. */
+const STUDIO = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../../../examples/studio.arch"), "utf8");
+
+type PngContent = { content: Array<{ type: string; data?: string; mimeType?: string; text?: string }> };
+const pngCall = async (client: Awaited<ReturnType<typeof connect>>, args: Record<string, unknown>) =>
+  (await client.callTool({ name: "compile", arguments: args })) as PngContent;
+
+/** The pixel width a png declares in its IHDR chunk (bytes 16–19, big-endian). */
+const ihdrWidth = (res: PngContent): number =>
+  Buffer.from(res.content.find((c) => c.type === "image")!.data!, "base64").readUInt32BE(16);
 
 // ---------------------------------------------------------------------------
 // lint
@@ -482,29 +497,42 @@ describe("compile tool", () => {
     expect(two.output).toEqual(want?.[1]?.json);
   });
 
-  it.runIf(HAS_RESVG)('format:"png" returns MCP image content, then the usual result as text', async () => {
-    const res = (await (
-      await connect()
-    ).callTool({
-      name: "compile",
-      arguments: { source: TWO_ROOMS, format: "png" },
-    })) as { content: Array<{ type: string; data?: string; mimeType?: string; text?: string }> };
-    const image = res.content[0]!;
-    expect(image.type).toBe("image");
+  it.runIf(HAS_RESVG)('format:"png" returns the usual result as text first, then MCP image content', async () => {
+    const res = await pngCall(await connect(), { source: TWO_ROOMS, format: "png" });
+    expect(res.content.map((c) => c.type)).toEqual(["text", "image"]);
+    const image = res.content[1]!;
     expect(image.mimeType).toBe("image/png");
     const bytes = Buffer.from(image.data!, "base64");
     expect([...bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    const meta = payload(res);
-    expect(meta).toMatchObject({ ok: true, format: "png", bytes: bytes.length });
+    // A client that reads `content[0].text` (as the bundle prover does) gets the JSON result.
+    expect(JSON.parse(res.content[0]!.text!)).toMatchObject({ ok: true, format: "png", bytes: bytes.length });
   });
   it.runIf(HAS_RESVG)('format:"png" draws one storey: the lowest, or `level`, and names the set', async () => {
     const client = await connect();
-    const low = await client.callTool({ name: "compile", arguments: { source: TWO_STOREY, format: "png" } });
-    const two = await client.callTool({ name: "compile", arguments: { source: TWO_STOREY, format: "png", level: 2 } });
+    const low = await pngCall(client, { source: TWO_STOREY, format: "png" });
+    const two = await pngCall(client, { source: TWO_STOREY, format: "png", level: 2 });
     expect(payload(low).levels).toEqual([1, 2]);
     expect(payload(two)).toMatchObject({ ok: true, level: 2, levels: [1, 2] });
-    const data = (r: unknown) => (r as { content: Array<{ data?: string }> }).content[0]!.data;
-    expect(data(low)).not.toBe(data(two));
+    expect(low.content[1]!.data).not.toBe(two.content[1]!.data);
+  });
+  it.runIf(HAS_RESVG)("studio renders at the preview width, not its native thousands of pixels", async () => {
+    // examples/studio.arch renders 9648 px wide natively: over a vision model's per-side
+    // limit and, at ~4.5 MB of base64, over typical host result caps.
+    const res = await pngCall(await connect(), { source: STUDIO, format: "png" });
+    const w = ihdrWidth(res);
+    expect(w).toBeGreaterThan(0);
+    expect(w).toBeLessThanOrEqual(PNG_PREVIEW_WIDTH);
+    expect(payload(res).width).toBe(PNG_PREVIEW_WIDTH);
+  });
+  it.runIf(HAS_RESVG)("`width` sets the png width, clamped to the allowed range", async () => {
+    const client = await connect();
+    const small = await pngCall(client, { source: STUDIO, format: "png", width: 10 });
+    expect(payload(small).width).toBe(PNG_MIN_WIDTH);
+    expect(ihdrWidth(small)).toBeLessThanOrEqual(PNG_MIN_WIDTH);
+    const big = await pngCall(client, { source: STUDIO, format: "png", width: 100_000 });
+    expect(payload(big).width).toBe(PNG_MAX_WIDTH);
+    expect(ihdrWidth(big)).toBeLessThanOrEqual(PNG_MAX_WIDTH);
+    expect(ihdrWidth(big)).toBeGreaterThan(ihdrWidth(small));
   });
   it.runIf(!HAS_RESVG)("[renderer absent] png is refused as data: the CI install must have it", async () => {
     expect(process.env.CI, "@resvg/resvg-js is missing under CI").toBeFalsy();

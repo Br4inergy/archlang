@@ -10,6 +10,7 @@
  * (`test/cli-manifest.test.ts`) keeps in sync with the CLI's command dispatch.
  */
 
+import { PNG_PREVIEW_WIDTH } from "./backends/png-defaults.js";
 import { CONTEXT_BUNDLE_KB } from "./context-size.js";
 import { KEYWORDS } from "./grammar/tokens.js";
 
@@ -499,7 +500,7 @@ const COMMANDS: ManifestCommand[] = [
       },
       {
         ...SCALE_FLAG,
-        description: "raster scale (default 1; without -w/-s the page auto-targets ~1600px wide for legibility)",
+        description: `raster scale (default 1; without -w/-s the page auto-targets ~${PNG_PREVIEW_WIDTH}px wide for legibility)`,
       },
       WIDTH_FLAG,
       { flag: "--ascii", description: "print a zero-dependency ASCII text plan to stdout instead of a PNG" },

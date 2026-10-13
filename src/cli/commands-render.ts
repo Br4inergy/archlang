@@ -7,7 +7,14 @@
 import { statSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath, dirname, basename } from "node:path";
 import { cpus } from "node:os";
-import { describe, diagnosticToJson, ERROR_CATALOG, extractArchBlocks, rewriteMarkdown } from "../index.js";
+import {
+  describe,
+  diagnosticToJson,
+  ERROR_CATALOG,
+  extractArchBlocks,
+  PNG_PREVIEW_WIDTH,
+  rewriteMarkdown,
+} from "../index.js";
 import type { Diagnostic } from "../index.js";
 import {
   type Args,
@@ -26,6 +33,7 @@ import {
   makeNodeWorld,
   parseFormat,
   readInput,
+  refuseJsonDrawingFlags,
   resolveView,
   sourceFromJson,
   stdoutJsonConflict,
@@ -94,6 +102,8 @@ export async function cmdCompile(args: Args): Promise<number> {
 
   const format = parseFormat(args);
   if (!format) return usageError(`unknown format "${args.format}" (use ${FORMAT_LIST})`);
+  const jsonRefusal = refuseJsonDrawingFlags(args, format, "compile");
+  if (jsonRefusal !== undefined) return jsonRefusal;
   // Checked before any read: two writers for one stdout is a usage error, not a silent
   // redirect to `out.svg` (see `stdoutJsonConflict`).
   if (args.json && args.o === "-") return stdoutJsonConflict("compile");
@@ -498,10 +508,10 @@ export async function cmdPreview(args: Args): Promise<number> {
   const rv = resolveView(args, format, "preview");
   if ("code" in rv) return rv.code;
   // Target a sensible on-screen size by default: the native render is high-res
-  // (thousands of px), so render the page at ~1600px wide unless the caller set
+  // (thousands of px), so render the page at PNG_PREVIEW_WIDTH px wide unless the caller set
   // an explicit width/scale. That keeps the PNG legible *and* small enough for an
   // agent's vision to ingest without heavy downscaling.
-  if (args.width === undefined && (args.scale === undefined || !(args.scale > 0))) args.width = 1600;
+  if (args.width === undefined && (args.scale === undefined || !(args.scale > 0))) args.width = PNG_PREVIEW_WIDTH;
   if (args.scale === undefined || !(args.scale > 0)) args.scale = 1;
 
   let source: string;
@@ -616,6 +626,8 @@ export async function cmdBatch(args: Args): Promise<number> {
   if (inputs.length === 0) return usageError("batch needs at least one input file");
   const format = parseFormat(args);
   if (!format) return usageError(`unknown format "${args.format}" (use ${FORMAT_LIST})`);
+  const jsonRefusal = refuseJsonDrawingFlags(args, format, "batch");
+  if (jsonRefusal !== undefined) return jsonRefusal;
   // `batch -o` is an output DIRECTORY and `batch` writes one file per input, so there is
   // no single stream `-` could mean — with or without `--json`. It used to be dropped on
   // the floor (outputs landing next to each input, unannounced); say so instead.

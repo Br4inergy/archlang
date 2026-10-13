@@ -456,6 +456,28 @@ export function resolveView(args: Args, format: Format, command: string): { view
   return { view: name };
 }
 
+/**
+ * `-f json` with a flag that only changes a DRAWING: an exit-3 usage error, for the reason
+ * {@link resolveView} gives — a flag that quietly does nothing is how a user comes to believe
+ * the output carries something it does not. Plan JSON is the plan's model, so a page width, a
+ * raster scale, accessibility markup or a diagnostic overlay has nothing in it to change.
+ * Returns the exit code to stop with, or `undefined` to go on.
+ */
+export function refuseJsonDrawingFlags(args: Args, format: Format, command: string): number | undefined {
+  if (format !== "json") return undefined;
+  const given = [
+    args.accessible ? "--accessible" : undefined,
+    args.overlay !== undefined ? "--overlay" : undefined,
+    args.width !== undefined ? "--width" : undefined,
+    args.scale !== undefined ? "--scale" : undefined,
+  ].filter((f): f is string => f !== undefined);
+  if (given.length === 0) return undefined;
+  return usageErrorFor(
+    command,
+    `${given.join(", ")} cannot be combined with -f json — ${given.length === 1 ? "it changes" : "they change"} a drawing, and Plan JSON is the plan's model, not a drawing of it (drop ${given.length === 1 ? "it" : "them"})`,
+  );
+}
+
 /** Normalize the `--charset` flag to the text backend's union (unknown → unicode). */
 export const asciiCharset = (args: Args): "unicode" | "ascii" => (args.charset === "ascii" ? "ascii" : "unicode");
 
