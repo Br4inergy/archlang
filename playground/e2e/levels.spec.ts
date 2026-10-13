@@ -1,4 +1,6 @@
 import { expect, type Download, type Page, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { lint } from "../../src/index.js";
 import { waitForPlan, watchForProblems } from "./fixtures.js";
 
 /**
@@ -154,8 +156,10 @@ test.describe("storey switcher", () => {
    * from partial data, which is the exact failure this workstream exists to prevent.
    *
    * `examples/hillside-villa.arch` is the fixture the repo already ships for it: two
-   * storeys, eight lint warnings (two deliberate, six upper-floor walk pinches), ALL of
-   * them on level 2.
+   * storeys, all of its lint warnings on level 2. The counts are DERIVED from the
+   * compiler's own lint() (filtered the way playground/src/main.ts feeds renderLint:
+   * a row with no level shows everywhere), never retyped, so a lint-rule change
+   * cannot strand this spec on a stale number.
    */
   test("a quiet storey never claims the BUILDING is sound", async ({ page }) => {
     await page.goto("/");
@@ -163,19 +167,28 @@ test.describe("storey switcher", () => {
     await pickExample(page, "Hillside Villa");
     await expect(levelButtons(page)).toHaveCount(2);
 
+    const villa = lint(readFileSync(new URL("../../examples/hillside-villa.arch", import.meta.url), "utf8"));
+    const onLevel = (n: number) => villa.filter((d) => d.level === undefined || d.level === n).length;
+    const hiddenFromLevel1 = villa.length - onLevel(1);
+    // The fixture's premise: level 1 is quiet and level 2 owns every warning.
+    expect(onLevel(1)).toBe(0);
+    expect(hiddenFromLevel1).toBeGreaterThan(1);
+
     const out = page.locator("#lintOutput");
     await page.locator("#tab-lint").click();
 
-    // Level 1 raises nothing of its own — and eight warnings are out of sight.
-    await expect(out.locator(".lint-narrowed")).toContainText("Showing level 1 — 8 more warnings on the other storeys");
+    // Level 1 raises nothing of its own — and the other storey's warnings are out of sight.
+    await expect(out.locator(".lint-narrowed")).toContainText(
+      `Showing level 1 — ${hiddenFromLevel1} more warnings on the other storeys`,
+    );
     await expect(out.locator(".empty")).toContainText("Nothing to report on this storey");
     await expect(out.locator(".lintrow")).toHaveCount(0);
     // The claim that must NOT be made from a partial set.
     await expect(out.locator(".ok")).toHaveCount(0);
 
-    // Level 2 owns all eight, so nothing is hidden and every row is shown.
+    // Level 2 owns them all, so nothing is hidden and every row is shown.
     await levelButtons(page).nth(1).click();
-    await expect(out.locator(".lintrow")).toHaveCount(8);
+    await expect(out.locator(".lintrow")).toHaveCount(onLevel(2));
     await expect(out.locator(".lint-narrowed")).toHaveText("Showing level 2.");
   });
 
