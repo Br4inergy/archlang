@@ -7,8 +7,8 @@
   no `main`, and "a future feature that wants a request handler must justify the cap it buys"),
   [ADR 0012](0012-mcp-shim-discoverability.md) (the MCP server is the discoverability channel; the
   CLI stays primary), [ADR 0022](0022-exact-decisions-and-bounded-input.md) (budgets are counts).
-- **Scope:** a new workspace, `packages/mcp-worker`, a new job in `deploy.yml`, one catalogued
-  code (`E_INPUT_TOO_LARGE`) the core can build but never raises itself. No language change; no
+- **Scope:** a new workspace, `packages/mcp-worker`, a new job in `deploy.yml`, two catalogued
+  codes (`E_INPUT_TOO_LARGE`, `E_RATE_LIMITED`) the core can build but never raises itself. No language change; no
   change to `compile()`, `describe()` or `lint()`; the two site Workers are untouched.
 
 ## Context
@@ -40,7 +40,8 @@ keep no `main`.**
   - the five `archlang://` resources, bundled at build time (a Worker has no filesystem), and the
     MCP App viewer `ui://archlang/viewer`;
   - `GET /svg/<payload>` — the playground's `#z=` payload (`deflate-raw` + base64url), compiled,
-    answered as `image/svg+xml`, so `archlang link` and an image URL share one encoding.
+    answered as `image/svg+xml`, so `archlang link` and an image URL share one encoding; and
+    `GET /v/<render version>/svg/<payload>`, the same drawing pinned to one compiler (below).
 - **How it is deployed:** `deploy.yml` job `deploy-mcp`, separate from the site matrix so the site
   job is byte-identical. It runs on a push to `main` only when something the Worker bundles changed
   (its package, the MCP tool set, the core, the served resources), or on a manual run, and
@@ -88,6 +89,28 @@ path whose output is not proven against the first, plus fonts to bundle, at rast
 past anything in the measurement below. `compile` with `format: "png"` answers `ok:false` with
 `E_PNG_DEPENDENCY` and a sentence naming `svg` and `/svg/` instead; it never throws.
 
+### Image URLs: the plan is in the URL, the compiler is not
+
+A `#z=` payload fixes the plan, not the drawing: a core release can move every example's SVG (the
+symbol redraw did). So `/svg/<payload>` is **not** immutable. It is served
+`Cache-Control: public, max-age=300, stale-while-revalidate=86400` with a strong `ETag` derived
+from the render version and the payload (an `If-None-Match` hit is a 304), and its
+`Content-Location` names the pinned copy, `/v/<render version>/svg/<payload>`, which is the **only**
+path served `public, max-age=31536000, immutable`.
+
+- The **render version** is the core's version plus a hash of the built core library
+  (`1.42.1-3fa9c2d1`), computed by the build, because `deploy-mcp` also redeploys on a core change
+  merged without a version bump.
+- The **edge-cache key** is the pinned path for both routes, so a deploy with a new core starts
+  from an empty key space and can never serve a drawing the previous core made. (Before this, the
+  key was the path alone: after a release the colo cache would have kept the old drawing for a year
+  and the post-deploy smoke, which compares the bytes with `compile()`, would have failed.)
+- A pinned URL from an **older** render version answers 302 to the unpinned URL (cacheable for five
+  minutes): the old bytes are no longer drawn here, and presenting new bytes under an old pin would
+  break the one promise the pin makes.
+- `link` still mints the unpinned playground URLs; a human-facing image link should be the
+  unpinned `/svg/` URL, which follows the compiler.
+
 ### Budgets stay counts; the host adds a byte cap
 
 `compile()`'s budgets are counts (steps, drawn elements) and every input it is given returns a
@@ -95,19 +118,50 @@ diagnostic (ADR 0022). That does not change. What a Worker adds is a **CPU ceili
 and running out of it is a platform error (HTTP 5xx), not a diagnostic. So the host refuses large
 input **before compiling**, by bytes, never by time:
 
-- a `source` (or serialized `plan_json`) over **64 KiB** → `E_INPUT_TOO_LARGE` as a normal tool
-  result (`isError`, the usual `{ ok:false, diagnostics }` envelope with the catalogued fix);
+- **any tool argument** over **64 KiB** — a `source`, a serialized `plan_json`, an `intent`, a
+  `brief`, a `graph`, a `profile` — → `E_INPUT_TOO_LARGE` as a normal tool result (`isError`, the
+  usual `{ ok:false, diagnostics }` envelope with the catalogued fix); a notification carrying one
+  (no id, nothing to answer) gets 202 and no body;
 - a request body over 256 KiB → HTTP 413 carrying the same diagnostic;
 - a `/svg/` payload that inflates past 64 KiB → 413, and decompression stops at the cap, so a small
   payload that inflates enormously costs at most the cap.
 
 `E_INPUT_TOO_LARGE` is a catalogue row and a pure core helper, `inputTooLarge()`, that a host
-calls; `compile()` never calls it. **The 64 KiB figure is interim**: the largest example is about
+calls (every refusal above goes through it); `compile()` never calls it. **The 64 KiB figure is interim**: the largest example is about
 18 KB, so no corpus plan is refused, and it is set against the Paid plan's ceiling below, not the
 free plan's.
 
 A request that passes the cap and still exhausts the CPU limit fails with the platform's 5xx. That
 is not dressed up as a diagnostic: it is the host failing, not the plan.
+
+### The spend bound
+
+A paid, unauthenticated compile endpoint needs a ceiling on what one caller can cost, so two
+bounds sit in `wrangler.jsonc`, both counts:
+
+- **`limits.cpu_ms: 5000`** — CPU per request. The slowest call measured below (`finish` on a 60 KB
+  synthetic plan, about 2.1 s of wall-clock time on a desktop) fits with room; a request past it
+  fails with the platform's error instead of billing on. Not enforced in `wrangler dev`.
+- **Per-address rate limits** (the Workers rate-limiting binding, keyed on `CF-Connecting-IP`,
+  which is never stored or logged): **60 `POST /mcp` a minute** and **300 `/svg/` cache misses a
+  minute** (a hit compiles nothing and is not counted). Over it, the request is refused before any
+  work with HTTP 429, `Retry-After`, and a new catalogued `E_RATE_LIMITED` diagnostic (core helper
+  `rateLimited()`), a code of its own because "too many requests" is neither a plan fault nor a
+  size: the fix is to wait or compile locally. Cloudflare applies these limits per location.
+
+**Worst-case daily cost**, on Paid, beyond the monthly inclusions (10 M requests, 30 M CPU-ms), for
+`N` distinct addresses each held at its limits all day:
+
+```text
+cost/day ≤ N × 1440 × [ (R_mcp·C_mcp + R_svg·C_svg) × $0.02/10⁶  +  (R_mcp + R_svg) × $0.30/10⁶ ]
+R_mcp = 60/min, R_svg = 300/min, C = CPU-ms per request
+```
+
+At the CPU cap (`C = 5000` for both) that is about **$52 per address per day** ($8.64 `/mcp` +
+$43.20 `/svg/` + $0.16 requests). At the measured ceilings (`C_mcp ≈ 2100` for `finish`,
+`C_svg ≈ 700` for a 60 KB compile) it is about **$10 per address per day**. The per-address
+limits do not bound `N`: many addresses scale the bill linearly, which is why a billing
+notification is an owner step and the rate numbers are deliberately low for an interim launch.
 
 ## The cap this buys, measured
 
@@ -119,7 +173,11 @@ not this Worker's, so any other scripted Worker in the same Cloudflare account d
 
 Measured with `packages/mcp-worker/scripts/measure-cpu.mjs` against `wrangler dev --local`
 (wrangler 4.108.0, workerd 1.20260706) on the development machine, `MEASURE_CPU=1` making the
-Worker report `performance.now()` around its own handler (1 ms resolution). Every top-level
+Worker report `performance.now()` around its own handler (1 ms resolution). **These are wall-clock
+handler times on a loaded shared desktop, and an upper bound on billed CPU time**: they include
+each request's construction of a fresh `McpServer` with all its tool schemas (that alone is most
+of `tools/list`'s 4 ms) and anything else the machine was doing. The dashboard's CPU-time
+percentiles on Cloudflare are the deciding numbers. Every top-level
 `examples/*.arch` (30 plans) × 5 repetitions per tool, plus synthetic grids of rooms at 8, 16, 32
 and 60 KB:
 
@@ -140,9 +198,9 @@ and 60 KB:
 | link | 8 | 46 | 141 | 664 |
 | GET /svg/ (cache miss) | 13 | 69 | 193 | 623 |
 
-These are wall-clock handler times on a shared desktop, not Cloudflare's billed CPU time, so read
-them as a ranking and an order of magnitude. The order of magnitude is unambiguous: **the corpus
-p95 of every tool that compiles is past 10 ms, several by 20× or more.** No byte cap rescues the free
+Read them as a ranking and an order of magnitude. `compile`'s own p95 (34 ms) would not settle
+the question alone; the analysis tools do: **`validate`, `lint` and `finish` have corpus p95s of
+170–622 ms**, past 10 ms by far more than any discount for wall-clock overhead. No byte cap rescues the free
 plan, because the plans that exceed it are ordinary examples, not large inputs.
 
 **Therefore: start on Workers Paid**, unless the owner's workers.dev measurement (below) shows the
@@ -163,17 +221,22 @@ what the interim 64 KiB cap is chosen against.
 
 The Cache API's effect on `*.workers.dev` is not verified here (Cloudflare documents cache
 behaviour for custom domains), so a workers.dev run may see every `/svg/` request as a miss. That
-only makes the measurement an upper bound.
+only makes the measurement an upper bound. The one `CF-Cache-Status: HIT` observed so far came
+from `wrangler dev`'s local cache simulation, not from Cloudflare; the unit tests exercise the
+version-keyed cache with an in-memory stand-in.
 
 ## Privacy and telemetry
 
-- No sign-in, no cookie, no session, nothing stored.
+- No sign-in, no cookie, no session. The server stores only rendered SVGs, in Cloudflare's edge
+  cache (one per `/svg/` drawing, keyed by render version); never a source or a request body. A
+  rendered drawing does carry the plan's labels.
 - Nothing logs a body or a source: the Worker logs nothing, `observability` (Workers Logs) is off,
   and source maps are not uploaded. The `internal error` path deliberately drops the error message,
   which could quote a source.
 - Each MCP message writes **one** Analytics Engine data point: `blobs: [method, tool]`,
-  `indexes: [method]`. A method or tool name that is not name-shaped is recorded as `(other)`, so a
-  client cannot smuggle a source into the dataset through either field. The binding is optional;
+  `indexes: [method]`. Both come from fixed lists — the MCP methods a client sends, and the tools
+  this server registers (a test holds that list to `tools/list`) — and anything else is recorded as
+  `(other)`, so no client-chosen string reaches the dataset. The binding is optional;
   local dev runs without it.
 - **A `/svg/` URL sends the plan to the server.** A playground link carries the plan after `#`,
   which a browser never sends; an `/svg/` URL carries it in the path, which reaches Cloudflare's
@@ -194,7 +257,11 @@ only makes the measurement an upper bound.
 ## Owner steps (not agent work)
 
 - **Plan:** decide Free or Paid from the workers.dev measurement; this ADR's local numbers say
-  Paid.
+  Paid. `limits.cpu_ms` is documented for the Standard usage model; whether a Free-plan deploy
+  accepts it is not verified here — if `wrangler deploy` rejects it on Free, remove it for the
+  measurement window and restore it with the upgrade.
+- **Billing notification:** set a Cloudflare billing alert before announcing the URL; the
+  per-address limits do not bound the number of addresses (see "The spend bound").
 - **Domain:** attach `mcp.archlang.uk` to `archlang-mcp` (a `routes` entry with
   `custom_domain: true`, or the dashboard) — DNS and certificate changes are owner-only.
 - **Analytics:** query the `archlang_mcp` dataset (SQL API: `SELECT blob1 AS method, blob2 AS tool,
