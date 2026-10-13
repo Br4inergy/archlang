@@ -13,7 +13,8 @@ import { link } from "../src/import.js";
 import { resolveAll } from "../src/ir.js";
 import type { ResolvedPlan, RFurniture } from "../src/ir.js";
 import { BUILTIN_REGISTRY } from "../src/registry.js";
-import { segmentsOfWall } from "../src/geometry.js";
+import type { ElementDef } from "../src/registry.js";
+import { rectCorners, segmentsOfWall } from "../src/geometry.js";
 import { fmt2 } from "../src/num-format.js";
 import type { World } from "../src/world.js";
 
@@ -480,23 +481,100 @@ suite("wall-thickness call-outs stay off doorways and fixtures", () => {
   it("leaves a call-out that collides with nothing exactly where walls alone put it", () => {
     // The stability tier: an opening ELSEWHERE on the wall changes which run is widest once
     // openings block, but the wall-clear station is already clear, so it must not move.
-    const base = [
-      'plan "Calm" {',
+    const without = scene([...CALM, "}"].join("\n"));
+    const withDoor = scene([...CALM, "  door id=d on spine at 7200 width 800", "}"].join("\n"));
+    // The door (6800..7600) shortens the widest wall-clear run (2050..7900), so the widest run
+    // clear of everything has a different midpoint: without the stability tier this moves.
+    expect(calm100(without).x).toBeLessThan(6800);
+    expect(calm100(withDoor)).toEqual(calm100(without));
+  });
+
+  it("…and the same for a piece of furniture elsewhere on the number's side", () => {
+    // The number is written into room `a` (y < 3000), in the band y ≈ 2650..2950 off the
+    // spine's face. A wardrobe against the spine at x 6700..7300 stands in that band, so it
+    // blocks a run once furniture counts; the clear call-out at x 4975 must still stay put.
+    const without = scene([...CALM, "}"].join("\n"));
+    const withPiece = scene([...CALM, "  furniture wardrobe at (6700,2400) size 600x550", "}"].join("\n"));
+    expect(calm100(without).y).toBeLessThan(2950);
+    expect(calm100(withPiece)).toEqual(calm100(without));
+  });
+
+  it("reads the footprint from the compile's own registry, and ignores a non-finite one", () => {
+    // A plugin may REPLACE the built-in `furniture` kind (`createRegistry`); the call-out
+    // must then avoid the footprint the plugin's `bounds()` reports, not the built-in one.
+    const builtin = BUILTIN_REGISTRY.byKind.get("furniture")!;
+    const src = [...CALM, "  furniture wardrobe at (500,500) size 600x600", "}"].join("\n");
+    const at = (plugins: ElementDef[]) => {
+      const out = compile(src, { noCache: true, plugins });
+      expect(out.errors).toEqual([]);
+      expect(out.svg).not.toContain("NaN");
+      return calm100(out.scene as Scene);
+    };
+    const plain = at([]);
+    // The built-in footprint (500..1100, 500..1100) is far from the spine: the station is the
+    // wall-clear one, x 4975.
+    expect(plain.x).toBe(4975);
+    // A replacement whose footprint stands across that station, in the number's band.
+    const moved = at([{ ...builtin, bounds: () => rectCorners(4700, 2400, 600, 550) }]);
+    expect(Math.abs(moved.x - 4975)).toBeGreaterThan(300 + moved.size);
+    // A footprint with a non-finite vertex blocks nothing and never reaches the interval sort
+    // as NaN. Here the spine stops short of the east wall (x 7000), so its last free run ends
+    // at the segment's end, not at a wall band; and a real wardrobe stands on the wall-clear
+    // station, so the station leaves tier 1 for the widest run clear of everything — that last
+    // run, from the wardrobe to x 7000, the one a NaN cursor would lose (it draws at x 1025
+    // instead when the guard is removed). The far piece at (500,500) reports an
+    // extra vertex at y 2800, inside the number's band, whose x is NaN. The range check would
+    // drop such a piece before the drawing, so it goes non-finite only when the station asks
+    // (read off the call stack) — the guard itself is what is under test.
+    const blocked = [
+      'plan "Open end" {',
       "  units mm",
       "  dims auto walls",
       "  wall id=shell exterior thickness 200 { (0,0) (8000,0) (8000,6000) (0,6000) close }",
-      "  wall id=spine partition thickness 100 { (0,3000) (8000,3000) }",
+      "  wall id=spine partition thickness 100 { (0,3000) (7000,3000) }",
       "  wall id=tee partition thickness 100 { (2000,3000) (2000,6000) }",
       '  room id=a at (0,0) size 8000x3000 label "A" uses living',
       '  room id=b at (0,3000) size 2000x3000 label "B" uses bedroom',
       '  room id=c at (2000,3000) size 6000x3000 label "C" uses bedroom',
+      "  furniture wardrobe at (500,500) size 600x600",
+      "  furniture wardrobe at (4100,2400) size 600x550",
+      "}",
     ];
-    const without = scene([...base, "}"].join("\n"));
-    const withDoor = scene([...base, "  door id=d on spine at 7200 width 800", "}"].join("\n"));
-    const at = (sc: Scene) => dimTexts(sc).find((t) => t.value === "100")!;
-    // The door (6800..7600) shortens the widest wall-clear run (2050..7900), so the widest run
-    // clear of everything has a different midpoint: without the stability tier this moves.
-    expect(at(without).x).toBeLessThan(6800);
-    expect(at(withDoor)).toEqual(at(without));
+    const run = (plugins: ElementDef[]) => {
+      const out = compile(blocked.join("\n"), { noCache: true, plugins });
+      expect(out.errors).toEqual([]);
+      expect(out.svg).not.toContain("NaN");
+      return calm100(out.scene as Scene);
+    };
+    const tier2 = run([]);
+    expect(tier2.x).toBeGreaterThan(4700 + tier2.size); // the last run, past the wardrobe
+    let asked = 0;
+    const nan = run([
+      {
+        ...builtin,
+        bounds: (el) => {
+          const far = (el as RFurniture).at.x === 500;
+          if (!far || !new Error().stack?.includes("thicknessStation")) return builtin.bounds(el);
+          asked++;
+          return [{ x: Number.NaN, y: 2800 }, ...builtin.bounds(el)];
+        },
+      },
+    ]);
+    expect(asked).toBeGreaterThan(0);
+    expect(nan).toEqual(tier2);
   });
 });
+
+/** A spine wall with a tee: the "100" call-out's wall-clear station is x 4975 on the spine. */
+const CALM = [
+  'plan "Calm" {',
+  "  units mm",
+  "  dims auto walls",
+  "  wall id=shell exterior thickness 200 { (0,0) (8000,0) (8000,6000) (0,6000) close }",
+  "  wall id=spine partition thickness 100 { (0,3000) (8000,3000) }",
+  "  wall id=tee partition thickness 100 { (2000,3000) (2000,6000) }",
+  '  room id=a at (0,0) size 8000x3000 label "A" uses living',
+  '  room id=b at (0,3000) size 2000x3000 label "B" uses bedroom',
+  '  room id=c at (2000,3000) size 6000x3000 label "C" uses bedroom',
+];
+const calm100 = (sc: Scene) => dimTexts(sc).find((t) => t.value === "100")!;

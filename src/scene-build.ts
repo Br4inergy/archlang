@@ -89,20 +89,22 @@ export function themeBaseLookup(name: string | undefined, runtime: Runtime): Par
  * Each is a plain {@link RDim} with no `text`, so the dim element formats the
  * measured length itself — the same value a hand-written `dim` would show.
  */
-function synthDims(ir: ResolvedPlan, sizes: RenderSizes): RDim[] {
+function synthDims(ir: ResolvedPlan, sizes: RenderSizes, registry: Registry = BUILTIN_RUNTIME.registry): RDim[] {
   const dims: RDim[] = [];
   if (ir.autoDims !== "walls") {
     synthGbChains(ir, sizes, dims);
     synthCurveDims(ir, dims);
   }
-  if (ir.autoDims === "walls" || ir.autoDims === "all") synthWallDims(ir, sizes, dims);
+  if (ir.autoDims === "walls" || ir.autoDims === "all") synthWallDims(ir, sizes, dims, registry);
   return dims;
 }
 
 /**
  * How many dimensions `dims auto` will draw on this storey, for the drawing budget
  * (`src/draw-budget.ts`): the same {@link synthDims} the drawing calls. The pens only move
- * a chain outward or flip a number's side, never add or remove a dimension, so any pens do.
+ * a chain outward or flip a number's side, never add or remove a dimension, so any pens do;
+ * likewise the registry (furniture footprints) only moves a call-out's station, so the
+ * built-in one does.
  */
 export function autoDimCount(ir: ResolvedPlan): number {
   return ir.autoDims ? synthDims(ir, renderSizes(ir.sheet, 1000, 1000, 1)).length : 0;
@@ -493,6 +495,7 @@ function thicknessStation(
   pad: number,
   side: Vec,
   openings: readonly FacadeOpening[],
+  registry: Registry,
 ): Point {
   const horiz = rep.a.y === rep.b.y;
   const lo = horiz ? Math.min(rep.a.x, rep.b.x) : Math.min(rep.a.y, rep.b.y);
@@ -539,7 +542,10 @@ function thicknessStation(
   const tip = c + out * reach;
   const bandLo = Math.min(face, tip);
   const bandHi = Math.max(face, tip);
-  const furniture = BUILTIN_RUNTIME.registry.byKind.get("furniture");
+  // The footprint is whatever this compile's registry says furniture covers, so a plugin that
+  // replaces the kind is honoured; a footprint with a non-finite vertex (a plugin piece
+  // resolved without a position or size) is not a footprint and blocks nothing.
+  const furniture = registry.byKind.get("furniture");
   for (const el of ir.elements) {
     if (el.kind !== "furniture" || !furniture) continue;
     let aLo = Number.POSITIVE_INFINITY;
@@ -554,6 +560,7 @@ function thicknessStation(
       xLo = Math.min(xLo, across);
       xHi = Math.max(xHi, across);
     }
+    if (![aLo, aHi, xLo, xHi].every(Number.isFinite)) continue;
     if (xHi <= bandLo || xLo >= bandHi) continue;
     block(aLo - pad, aHi + pad);
   }
@@ -605,7 +612,7 @@ function widestFreeRun(lo: number, hi: number, blocked: readonly { lo: number; h
  *  {@link thicknessSideFlipped} picks WHICH SIDE (the one with floor under it, not the
  *  annotation band outside the building). Presentation only — never expands bounds
  *  meaningfully (faces sit ½-thickness off a centerline already inside the plan). */
-function synthWallDims(ir: ResolvedPlan, sizes: RenderSizes, dims: RDim[]): void {
+function synthWallDims(ir: ResolvedPlan, sizes: RenderSizes, dims: RDim[], registry: Registry): void {
   const repByThickness = new Map<number, { a: Point; b: Point; n: Vec; t: number; len: number }>();
   for (const w of ir.walls) {
     for (const s of segmentsOfWall(w)) {
@@ -640,7 +647,7 @@ function synthWallDims(ir: ResolvedPlan, sizes: RenderSizes, dims: RDim[]): void
     // text and nothing else. It is decided first because the station avoids what stands on
     // that side.
     const onPlusSide = thicknessSideFlipped(rep.a, rep.b, rep.n, rep.t, rooms);
-    const at = thicknessStation(rep, ir, reach, sizes.dimFont, onPlusSide ? rep.n : mul(rep.n, -1), openings);
+    const at = thicknessStation(rep, ir, reach, sizes.dimFont, onPlusSide ? rep.n : mul(rep.n, -1), openings, registry);
     const half = mul(rep.n, rep.t / 2);
     dims.push({
       ...mkDim(add(at, half), add(at, mul(half, -1)), 0, text),
@@ -891,7 +898,8 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
     const dimDef = registry.byKind.get("dim");
     if (dimDef) {
       const dimCtx = ctxFor("dim");
-      for (const dm of synthDims(ir, sizes)) for (const pushed of dimDef.render(dm, dimCtx)) nodes.push(pushed);
+      for (const dm of synthDims(ir, sizes, runtime.registry))
+        for (const pushed of dimDef.render(dm, dimCtx)) nodes.push(pushed);
     }
   }
 
