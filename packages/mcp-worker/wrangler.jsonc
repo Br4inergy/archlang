@@ -1,0 +1,41 @@
+// The hosted ArchLang MCP server — the ONE Worker in this repository with a `main` script
+// (docs/adr/0026-hosted-mcp-worker.md). The two site Workers (docs-site/, playground/) stay
+// static assets with no script; nothing here touches them.
+//
+// No `routes` and no `account_id` on purpose: the owner attaches `mcp.archlang.uk` by hand once
+// the workers.dev measurement is in, and CI supplies the account through CLOUDFLARE_ACCOUNT_ID.
+{
+  "name": "archlang-mcp",
+  // Bundled by scripts/build.mjs (the core, the MCP SDK, the viewer and the five resources in
+  // one module), so wrangler uploads it as-is.
+  "main": "dist/worker.js",
+  "no_bundle": true,
+  // dist/viewer.html is a build by-product kept for inspection; the Worker already inlines it.
+  "find_additional_modules": false,
+  // The newest date the pinned wrangler (4.108.0, workerd 1.20260706) runs locally, so
+  // `wrangler dev` and the deployed Worker execute under the same flags.
+  "compatibility_date": "2026-07-06",
+  // `link` mints share URLs with the same zlib encoder `archlang link` uses (node:zlib).
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  // One data point per MCP call: the method and the tool name, nothing else (src/app.ts).
+  "analytics_engine_datasets": [{ "binding": "ANALYTICS", "dataset": "archlang_mcp" }],
+  // The spend bound (ADR 0026). CPU per request: the slowest measured call (finish on a 60 KB
+  // synthetic plan, ~2.1 s wall-clock on a desktop) fits with room. Approximate: Cloudflare
+  // terminates (Error 1102) only on consistent overrun. Not enforced locally. `limits` needs the
+  // Standard usage model, i.e. Workers PAID: the account must be on Paid BEFORE this reaches main,
+  // or deploy-mcp should fail.
+  "limits": { "cpu_ms": 5000 },
+  // Per-address abuse guard, keyed on CF-Connecting-IP (never stored or logged), set HIGH because
+  // connector platforms share egress addresses across their users; held to src/limits.ts by test.
+  // RATE_SVG meters only /svg/ cache misses (a hit compiles nothing).
+  "ratelimits": [
+    { "name": "RATE_MCP", "namespace_id": "2601", "simple": { "limit": 600, "period": 60 } },
+    { "name": "RATE_SVG", "namespace_id": "2602", "simple": { "limit": 3000, "period": 60 } }
+  ],
+  // No Workers Logs and no source maps: a /svg/ URL path IS a plan, so request logging would
+  // record plans. The Worker itself logs nothing.
+  "observability": { "enabled": false },
+  "upload_source_maps": false
+}

@@ -288,6 +288,11 @@ const PAGE_META = [
     "ADR 25 — furnish is an explicit transform",
     "archlang finish furnishes the rooms a plan left empty, by room use, as an explicit source transform: fill-only, relative placement, never worse, never inside compile.",
   ],
+  [
+    "/adr/0026-hosted-mcp-worker",
+    "ADR 26 — a scripted Worker hosts the MCP server",
+    "Why ArchLang's MCP server also runs as one scripted Cloudflare Worker: stateless HTTP, an SVG image URL, a byte cap before compiling, and the measured CPU cost.",
+  ],
 ] as const;
 
 type PageMeta = { readonly title: string; readonly description: string };

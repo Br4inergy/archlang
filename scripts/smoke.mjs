@@ -4,6 +4,7 @@
  *
  *   node scripts/smoke.mjs --site docs       --base https://archlang.uk
  *   node scripts/smoke.mjs --site playground --base https://playground.archlang.uk
+ *   node scripts/smoke.mjs --site mcp        --base https://archlang-mcp.<account>.workers.dev
  *
  * Why more than `curl -o /dev/null`: a deploy can serve a 200 on `/` while the
  * things machines actually consume are gone — the raw `/<page>.md` copies, `/llms-full.txt`,
@@ -166,11 +167,15 @@ const json =
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchOk(url) {
+async function fetchOk(url, init = {}) {
   let last = "no attempt made";
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
-      const res = await fetch(url, { redirect: "follow", headers: { "user-agent": "archlang-smoke/1" } });
+      const res = await fetch(url, {
+        redirect: "follow",
+        ...init,
+        headers: { "user-agent": "archlang-smoke/1", ...(init.headers ?? {}) },
+      });
       if (res.status === 200) return { res, body: await res.text() };
       last = `HTTP ${res.status}`;
     } catch (e) {
@@ -383,7 +388,94 @@ function playgroundChecks() {
   ];
 }
 
-const SITES = { docs: docsChecks, playground: playgroundChecks };
+// ---------------------------------------------------------------------------
+// The hosted MCP Worker (packages/mcp-worker). Its contract is the protocol and one image URL:
+// `initialize` must carry the server's instructions, `tools/list` the tool set, and an /svg/ URL
+// minted by the SHARED encoder (the one `archlang link` uses) must answer exactly the bytes
+// `compile()` produces for that plan — so this site reads the built core (`npm run build` first).
+// ---------------------------------------------------------------------------
+
+/** A JSON-RPC POST to /mcp, with the Accept header Streamable HTTP requires. */
+function mcpCall(name, method, params, ...assertions) {
+  return {
+    name,
+    run: async (base) => {
+      const { res, body } = await fetchOk(`${base}/mcp`, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      });
+      const ctx = { base, path: "/mcp", notes: [] };
+      for (const assert of assertions) await assert(body, res, ctx);
+      return ctx.notes;
+    },
+  };
+}
+
+/** The JSON-RPC `result`, or a throw carrying the `error`. */
+const rpcResult = (body) => {
+  const msg = JSON.parse(body);
+  if (msg.error) throw new Error(`JSON-RPC error ${msg.error.code}: ${msg.error.message}`);
+  return msg.result;
+};
+
+async function mcpChecks() {
+  const { encodePlanHash } = await import("../src/cli/share-codec.mjs");
+  const { compile } = await import("../dist/index.js");
+  const studio = readFileSync(join(ROOT, "examples", "studio.arch"), "utf8");
+  const svgPath = `/svg/${encodePlanHash(studio)}`;
+  return [
+    mcpCall(
+      "/mcp initialize",
+      "initialize",
+      { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "archlang-smoke", version: "1" } },
+      contentType("application/json"),
+      (body, _res, ctx) => {
+        const r = rpcResult(body);
+        if (r.serverInfo?.name !== "archlang") throw new Error(`serverInfo is ${JSON.stringify(r.serverInfo)}`);
+        if (typeof r.instructions !== "string" || !r.instructions.includes("archlang://spec")) {
+          throw new Error("initialize carries no ArchLang instructions");
+        }
+        ctx.notes.push(`server ${r.serverInfo.version}, protocol ${r.protocolVersion}`);
+      },
+    ),
+    mcpCall("/mcp tools/list", "tools/list", {}, (body, _res, ctx) => {
+      const names = (rpcResult(body).tools ?? []).map((t) => t.name);
+      for (const need of ["compile", "describe", "lint", "validate", "link", "read_me"]) {
+        if (!names.includes(need)) throw new Error(`tools/list lacks ${need} (has ${names.join(", ")})`);
+      }
+      ctx.notes.push(`${names.length} tools`);
+    }),
+    {
+      // Named, not the path: the path is a whole plan.
+      ...route(
+        svgPath,
+        contentType("image/svg+xml"),
+        // Unpinned: the compiler is not in the URL, so it must stay revalidatable, never immutable.
+        header("cache-control", "max-age=300"),
+        header("etag", '"'),
+        isSvg(),
+        async (body, res, ctx) => {
+          const want = compile(studio, { noCache: true }).svg;
+          if (body !== want)
+            throw new Error(`body (${body.length} chars) is not compile()'s SVG (${want.length} chars)`);
+          // The pinned copy it names is the immutable one, with the same bytes.
+          const pinned = res.headers.get("content-location");
+          if (!pinned?.startsWith("/v/"))
+            throw new Error(`content-location is ${JSON.stringify(pinned)}, expected /v/…`);
+          const { res: pres, body: pbody } = await fetchOk(new URL(pinned, ctx.base).href);
+          if (!(pres.headers.get("cache-control") ?? "").includes("immutable"))
+            throw new Error(`the pinned copy is not immutable: ${pres.headers.get("cache-control")}`);
+          if (pbody !== want) throw new Error("the pinned copy's bytes are not compile()'s SVG");
+          ctx.notes.push(`studio.arch, ${body.length} chars = compile(); pinned ${pinned.split("/")[2]} immutable`);
+        },
+      ),
+      name: "/svg/<studio.arch payload>",
+    },
+  ];
+}
+
+const SITES = { docs: docsChecks, playground: playgroundChecks, mcp: mcpChecks };
 
 // ---------------------------------------------------------------------------
 // CLI.
@@ -410,11 +502,11 @@ function parseArgs(argv) {
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.error) {
-    process.stderr.write(`${opts.error}\nusage: node scripts/smoke.mjs --site docs|playground --base <url>\n`);
+    process.stderr.write(`${opts.error}\nusage: node scripts/smoke.mjs --site docs|playground|mcp --base <url>\n`);
     process.exit(2);
   }
 
-  const checks = SITES[opts.site]();
+  const checks = await SITES[opts.site]();
   process.stdout.write(`smoke: ${opts.site} @ ${opts.base} — ${checks.length} checks\n`);
 
   const failures = [];

@@ -120,6 +120,11 @@ source (.arch)
   progression into a `for` loop (`arch reroll`, `reroll()`, the LSP's `refactorActions`)
 - `plan-json.ts` Plan JSON · `diagnostic-json.ts` · `repair.ts` (geometric corrector) vs
   `fix-apply.ts` (`arch fix`; skips a fix carrying `file`) · `manifest.ts` the CLI contract
+- `input-limit.ts` `inputTooLarge()` / `rateLimited()`: a HOST's refusals (`E_INPUT_TOO_LARGE`,
+  `E_RATE_LIMITED`), which `compile()` never calls · `cli/share-codec.mjs` (Node) and `cli/share-codec.web.mjs`
+  (`DecompressionStream`) the two `#z=` decoders, held together by `test/share-codec-web.test.ts`
+- `packages/mcp/src/tools.ts` the MCP tool set, transport-agnostic; `server.ts` (stdio, npm) and
+  `packages/mcp-worker` (the hosted Worker, ADR 0026) both register it
 - `finish.ts` the completion transform (`arch finish`): runs the stages in `FINISH_STAGE_ORDER`
   until a round changes nothing, and holds the `sheet` stage (`docs/adr/0024-finish-as-explicit-transform.md`):
   span inserts through `fix-apply.ts`'s `Data`, the fit decided by `sheet.ts` `fitsOnSheet` on

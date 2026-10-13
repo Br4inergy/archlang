@@ -90,7 +90,15 @@ describe("one Node encoder", () => {
   });
 
   it("nothing else in the source tree deflates a plan", () => {
-    const roots = ["src", "scripts", "packages/mcp/src", "playground/src", "playground/scripts", "docs-site"];
+    const roots = [
+      "src",
+      "scripts",
+      "packages/mcp/src",
+      "packages/mcp-worker/src",
+      "playground/src",
+      "playground/scripts",
+      "docs-site",
+    ];
     const skip = new Set(["node_modules", "dist", ".vitepress"]);
     const hits: string[] = [];
     const walk = (dir: string): void => {

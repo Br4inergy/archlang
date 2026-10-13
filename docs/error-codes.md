@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**101 errors** · **52 warnings**
+**103 errors** · **52 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -44,6 +44,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_IMPORT_NOT_FOUND`](#e_import_not_found) | error | Import path could not be resolved. |
 | [`E_IMPORT_PARSE`](#e_import_parse) | error | Imported module has a parse error. |
 | [`E_INDEX`](#e_index) | error | Array index out of range. |
+| [`E_INPUT_TOO_LARGE`](#e_input_too_large) | error | The source is larger than this host accepts. |
 | [`E_INSTANCE_NO_TRANSFORM`](#e_instance_no_transform) | error | A plugin element inside a `place`d component has no `transform()`. |
 | [`E_INTENT_NOT_ADJACENT`](#e_intent_not_adjacent) | error | Two rooms the brief wants adjacent share no interior door. |
 | [`E_INTENT_NO_DOOR`](#e_intent_no_door) | error | The plan has no modeled entrance, so `reachable` cannot hold. |
@@ -76,6 +77,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_PLACE_REF`](#e_place_ref) | error | Furniture placed in an unknown or non-absolute room. |
 | [`E_PNG_DEPENDENCY`](#e_png_dependency) | error | PNG/PDF export needs an optional dependency that is not installed. |
 | [`E_RANGE_LIMIT`](#e_range_limit) | error | Range too large. |
+| [`E_RATE_LIMITED`](#e_rate_limited) | error | This address sent more requests than the host answers per minute. |
 | [`E_RECURSION`](#e_recursion) | error | Component recursion too deep. |
 | [`E_REDEF`](#e_redef) | error | Name already defined in this scope. |
 | [`E_ROOF_AMBIGUOUS`](#e_roof_ambiguous) | error | `roof overhang` cannot tell which wall ring to follow. |
@@ -588,6 +590,18 @@ let a = [1, 2]
 let x = a[5]   # error
 ```
 
+## E_INPUT_TOO_LARGE
+
+*error* — The source is larger than this host accepts.
+
+**Cause.** A host with a per-request CPU ceiling (the hosted MCP server) refuses a source above its byte cap before compiling it. `compile()` itself has no size cap: its budgets are counts, and every input it is given returns a diagnostic.
+
+**Fix.** Compile it locally, where there is no cap: `npx -y @chanmeng666/archlang compile plan.arch`, or the stdio MCP server `npx -y @chanmeng666/archlang-mcp`. Or send a smaller plan.
+
+```arch static
+tools/call compile { source: <more bytes than the host's cap> }   # error on the hosted MCP server, before any compile work
+```
+
 ## E_INSTANCE_NO_TRANSFORM
 
 *error* — A plugin element inside a `place`d component has no `transform()`.
@@ -983,6 +997,18 @@ arch preview plan.arch --install   # fetches @resvg/resvg-js, then renders the P
 
 ```arch static
 for i in 0..1000000 { … }   # error: range too large
+```
+
+## E_RATE_LIMITED
+
+*error* — This address sent more requests than the host answers per minute.
+
+**Cause.** The hosted MCP server pays for every request it computes, so it answers each address at most a fixed number of times a minute and refuses the rest before compiling anything. It is a property of the host, not of the plan: the same source compiles locally with no limit.
+
+**Fix.** Wait a minute and retry, or compile locally, where there is no limit: `npx -y @chanmeng666/archlang compile plan.arch`, or the stdio MCP server `npx -y @chanmeng666/archlang-mcp`.
+
+```arch static
+tools/call compile { … }   # one call past the per-minute limit from one address: error on the hosted MCP server
 ```
 
 ## E_RECURSION
