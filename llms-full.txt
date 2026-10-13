@@ -764,7 +764,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 ## 4. Diagnostic catalog
 
 Every diagnostic carries a stable code and a `fix`. Look one up with `archlang explain <CODE>`.
-**102 errors** (abort rendering) · **52 warnings** (advisory; `validate --strict` fails on them too).
+**103 errors** (abort rendering) · **52 warnings** (advisory; `validate --strict` fails on them too).
 
 ### Errors
 
@@ -836,6 +836,7 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `archlang e
 - `E_PLACE_REF` — Furniture placed in an unknown or non-absolute room. **Fix:** Reference an existing room given absolute `at (x,y)` coordinates.
 - `E_PNG_DEPENDENCY` — PNG/PDF export needs an optional dependency that is not installed. **Fix:** Install the optional dependency (`npm install @resvg/resvg-js`), or re-run with `--install` to fetch it automatically, or render to SVG/DXF (zero-dependency).
 - `E_RANGE_LIMIT` — Range too large. **Fix:** Use a smaller range, or restructure to avoid materializing it.
+- `E_RATE_LIMITED` — This address sent more requests than the host answers per minute. **Fix:** Wait a minute and retry, or compile locally, where there is no limit: `npx -y @chanmeng666/archlang compile plan.arch`, or the stdio MCP server `npx -y @chanmeng666/archlang-mcp`.
 - `E_RECURSION` — Component recursion too deep. **Fix:** Add a base case so the recursion terminates.
 - `E_REDEF` — Name already defined in this scope. **Fix:** Rename one binding, or use `NAME = …` to reassign instead of redeclaring.
 - `E_ROOF_AMBIGUOUS` — `roof overhang` cannot tell which wall ring to follow. **Fix:** Name the ring (`roof overhang 600 wall <id>`), or state the outline yourself with `roof polygon (x,y) (x,y) (x,y) …`.

@@ -63,14 +63,14 @@ const PLUGIN =
 const RENDER =
   "raised by the PDF/PNG backends at render time (a glyph no embedded font covers), never by compile()/lint(); pinned in test/export-font-cjk.test.ts";
 const HOSTED =
-  "raised by a HOST before compile() runs (the hosted MCP Worker's byte cap, `inputTooLarge()`), never by compile()/lint(), which have no size cap; pinned in test/input-limit.test.ts";
+  "raised by a HOST before compile() runs (the hosted MCP Worker's byte cap and rate limit, `inputTooLarge()`/`rateLimited()`), never by compile()/lint(), which have neither; pinned in test/input-limit.test.ts";
 const FRAGMENT =
   "a one-line fragment: the code needs a building around it (a wall to be off, rooms to be unreachable between, a sheet to overflow), and the whole-plan spatial rules are owned by test/lint.test.ts";
 
 /**
  * Every code whose example does not reproduce it, with why.
  *
- * 49 of 154, so **105 catalog examples are now executed and held to their own code**. That
+ * 50 of 155, so **105 catalog examples are now executed and held to their own code**. That
  * ratio is the honest state of a field documented as illustrative, not a to-do list: adding a
  * building to each fragment would make the catalog's snippets longer than the prose they
  * illustrate, which is the opposite of what `arch explain` is for.
@@ -101,6 +101,7 @@ const NOT_REPRODUCED: ReadonlyMap<string, string> = new Map([
 
   ["E_PNG_DEPENDENCY", DEP],
   ["E_INPUT_TOO_LARGE", HOSTED],
+  ["E_RATE_LIMITED", HOSTED],
   ["W_CJK_FONT_MISSING", RENDER],
   ["W_GLYPH_UNSUPPORTED", RENDER],
 
@@ -198,9 +199,9 @@ suite("error catalog — every example that can raise its code does", () => {
     // untested: test/export-font-cjk.test.ts raises both through toPdf/renderPng. Likewise
     // E_INSTANCE_NO_TRANSFORM (a plugin) and E_JSON_MIRROR (a JSON payload), the two codes
     // that took the cap from 46 to 48: no `.arch` snippet can reach either, and they are
-    // raised in test/transform-seam.test.ts and test/plan-json.test.ts. E_INPUT_TOO_LARGE took it
-    // to 49: a host raises it BEFORE compile() runs, so no source compiled here can; it is raised
-    // in test/input-limit.test.ts and by the hosted MCP Worker's own tests.
-    expect(NOT_REPRODUCED.size).toBeLessThanOrEqual(49);
+    // raised in test/transform-seam.test.ts and test/plan-json.test.ts. E_INPUT_TOO_LARGE and
+    // E_RATE_LIMITED took it to 50: a host raises them BEFORE compile() runs, so no source compiled
+    // here can; they are raised in test/input-limit.test.ts and by the hosted MCP Worker's tests.
+    expect(NOT_REPRODUCED.size).toBeLessThanOrEqual(50);
   });
 });

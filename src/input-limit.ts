@@ -1,14 +1,16 @@
 /**
- * A host's input-size refusal, as a catalogued diagnostic.
+ * A host's refusals, as catalogued diagnostics.
  *
- * `compile()` has no size cap of its own: it is bounded by counts (the step and drawing budgets),
- * never by bytes or time, and every input returns. A HOST can still have a ceiling the core does
- * not — the hosted MCP Worker (`packages/mcp-worker`) runs under a per-request CPU limit — and
- * refuses a source above its cap before any compile work starts. This is the one shape that
- * refusal takes, so a caller reads it like every other diagnostic: `E_INPUT_TOO_LARGE`, whose
- * catalog entry says what to do. `compile()`, `describe()` and `lint()` never call it.
+ * `compile()` has no size cap and no rate of its own: it is bounded by counts (the step and
+ * drawing budgets), never by bytes or time, and every input returns. A HOST can still have
+ * ceilings the core does not — the hosted MCP Worker (`packages/mcp-worker`) runs under a
+ * per-request CPU limit and pays for every request — and refuses an input above its byte cap, or
+ * a caller over its request rate, before any compile work starts. These are the shapes those
+ * refusals take, so a caller reads them like every other diagnostic: `E_INPUT_TOO_LARGE` and
+ * `E_RATE_LIMITED`, whose catalog entries say what to do. `compile()`, `describe()` and `lint()`
+ * never call them.
  *
- * Pure: it measures the string it is given and allocates nothing proportional to it.
+ * Pure: they measure what they are given and allocate nothing proportional to it.
  */
 
 import type { Diagnostic } from "./diagnostics.js";
@@ -33,16 +35,36 @@ export function utf8ByteLength(s: string): number {
 }
 
 /**
- * `E_INPUT_TOO_LARGE` when `source` is longer than `capBytes` of UTF-8, else `undefined`.
- * Whole-input, so it carries no span. `what` names the input in the message ("source",
- * "plan_json"), because a host may cap more than one argument.
+ * `E_INPUT_TOO_LARGE` when `input` is longer than `capBytes` of UTF-8, else `undefined`.
+ * `input` is the text itself, or its size in bytes when the host stopped reading it at the cap
+ * (`exact: false`: the message then says "more than"). Whole-input, so it carries no span.
+ * `what` names the input in the message ("source", "plan_json", "request body").
  */
-export function inputTooLarge(source: string, capBytes: number, what = "source"): Diagnostic | undefined {
-  const bytes = utf8ByteLength(source);
+export function inputTooLarge(
+  input: string | number,
+  capBytes: number,
+  what = "source",
+  exact = true,
+): Diagnostic | undefined {
+  const bytes = typeof input === "number" ? input : utf8ByteLength(input);
   if (bytes <= capBytes) return undefined;
+  const size = exact ? plainDigits(bytes) : `more than ${plainDigits(capBytes)}`;
   return {
     severity: "error",
     code: "E_INPUT_TOO_LARGE",
-    message: `${what} is ${plainDigits(bytes)} bytes; this host compiles at most ${plainDigits(capBytes)}`,
+    message: `${what} is ${size} bytes; this host accepts at most ${plainDigits(capBytes)}`,
+  };
+}
+
+/**
+ * `E_RATE_LIMITED`: this caller sent more than `limit` requests of one kind (`scope`, e.g.
+ * "/mcp") within `periodSeconds`. Whole-request, so it carries no span; the catalogued fix says
+ * to wait or run locally.
+ */
+export function rateLimited(scope: string, limit: number, periodSeconds: number): Diagnostic {
+  return {
+    severity: "error",
+    code: "E_RATE_LIMITED",
+    message: `too many ${scope} requests from this address: this host answers at most ${plainDigits(limit)} every ${plainDigits(periodSeconds)} s`,
   };
 }

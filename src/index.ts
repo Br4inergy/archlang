@@ -35,8 +35,8 @@ export { formatDiagnostic, offsetToLineCol } from "./diagnostics.js";
 // consumers (playground, LSP embedders, SDK users).
 export { diagnosticToJson } from "./diagnostic-json.js";
 export type { DiagnosticJson, FixSuggestionJson } from "./diagnostic-json.js";
-// A host's byte-cap refusal (`E_INPUT_TOO_LARGE`), checked BEFORE compiling; compile() never calls it.
-export { inputTooLarge, utf8ByteLength } from "./input-limit.js";
+// A host's refusals (`E_INPUT_TOO_LARGE`, `E_RATE_LIMITED`), checked BEFORE compiling; compile() never calls them.
+export { inputTooLarge, rateLimited, utf8ByteLength } from "./input-limit.js";
 // Machine-applicable fixes: the `Diagnostic.fixes` model + a deterministic,
 // pure piece-table applier (ported from rustfix). `applyFixes` filters by
 // `Applicability`, applies each `FixSuggestion` atomically, and reports what it
