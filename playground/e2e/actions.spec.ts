@@ -94,13 +94,36 @@ test.describe("header actions", () => {
     const dialog = page.locator(".embed-dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog.locator(".embed-code")).toHaveValue(/embed\.html#(z|src)=/);
-    await expect(dialog.locator(".embed-link")).toHaveValue(/editable=1$/);
+    await expect(dialog.locator(".embed-live")).toHaveValue(/editable=1$/);
 
     await dialog.locator(".embed-copy[data-snippet='iframe']").click();
     const copied = await page.evaluate(() => navigator.clipboard.readText());
     expect(copied).toContain("<iframe");
     expect(copied).toContain("embed.html#");
     await expect(dialog).toHaveCount(0); // copying closes it
+  });
+
+  test("Embed's Markdown snippet is a link to the share URL, never an image of embed.html", async ({ page }) => {
+    await page.goto("/");
+    await waitForPlan(page);
+    await setEditorSource(page, SIMPLE_PLAN);
+    const status = await watchStatus(page);
+    await page.locator("#embed").click();
+
+    const dialog = page.locator(".embed-dialog");
+    await expect(dialog.getByLabel(/Markdown link/)).toHaveValue(/^\[[^\]]+\]\(http[^)]*#(z|src)=[^)]+\)$/);
+    await dialog.getByRole("button", { name: "Copy Markdown link" }).click();
+    await status.expectFlash("Markdown link copied");
+
+    const md = await page.evaluate(() => navigator.clipboard.readText());
+    // An `embed.html` URL is an HTML page: as `![](…)` it renders as a broken image.
+    expect(md).not.toContain("![");
+    expect(md).not.toContain("embed.html");
+    // The link target is the very URL Copy link would copy (same origin, same hash).
+    const target = md.slice(md.indexOf("](") + 2, -1);
+    await page.locator("#copyLink").click();
+    await status.expectFlash("Link copied");
+    expect(target).toBe(await page.evaluate(() => navigator.clipboard.readText()));
   });
 });
 

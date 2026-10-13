@@ -5,6 +5,7 @@
  */
 import { compile, describe, diagnosticToJson, format, renderAscii, repair, toDxf, type Scene } from "archlang";
 import { escapeHtml } from "./escape.js";
+import { embedSnippets } from "./embed-snippets.js";
 import { buildLlmPrompt } from "./llm-prompt.js";
 import { encodeSrc, updateHash } from "./share.js";
 import { mountSnapshots } from "./snapshots.js";
@@ -142,23 +143,24 @@ export function mountActions(ctx: ActionsCtx): void {
     });
   }
 
-  /** Present a copyable iframe (and Markdown) snippet that embeds the current plan
-   *  via the chrome-less embed page, using the shared `#z=` share codec. */
+  /** Present a copyable iframe snippet that embeds the current plan via the
+   *  chrome-less embed page, and a Markdown LINK to the playground share URL
+   *  (`embed.html` is a page, not an image), using the shared `#z=` share codec. */
   async function showEmbed() {
     const hash = await encodeSrc(getSource());
-    const origin = location.origin + location.pathname.replace(/[^/]*$/, "");
-    const embedUrl = `${origin}embed.html${hash}`;
-    const iframe = `<iframe src="${embedUrl}" width="720" height="480" style="border:1px solid #e3e0d8;border-radius:10px" title="ArchLang floor plan" loading="lazy"></iframe>`;
-    const md = `[![ArchLang floor plan](${origin}embed.html${hash})](${embedUrl})`;
+    const base = location.origin + location.pathname.replace(/[^/]*$/, "");
+    const { embedUrl, iframe, markdown: md } = embedSnippets(base, hash);
     const dialog = document.createElement("div");
     dialog.className = "embed-dialog";
     dialog.innerHTML =
       `<div class="embed-box">` +
       `<div class="embed-head"><strong>Embed this plan</strong><button class="embed-close" type="button" aria-label="Close">×</button></div>` +
-      `<label>iframe (HTML)</label><textarea class="embed-code" readonly rows="3">${escapeHtml(iframe)}</textarea>` +
-      `<label>Live editable link</label><input class="embed-link" readonly value="${escapeHtml(embedUrl)}&editable=1" />` +
+      `<label for="embedCode">iframe (HTML)</label><textarea id="embedCode" class="embed-code" readonly rows="3">${escapeHtml(iframe)}</textarea>` +
+      `<label for="embedMd">Markdown link (Markdown cannot embed a live plan; download an SVG for an image)</label>` +
+      `<input id="embedMd" class="embed-link embed-md" readonly value="${escapeHtml(md)}" />` +
+      `<label for="embedLink">Live editable link</label><input id="embedLink" class="embed-link embed-live" readonly value="${escapeHtml(embedUrl)}&editable=1" />` +
       `<div class="embed-actions"><button class="embed-copy" data-snippet="iframe" type="button">Copy iframe</button>` +
-      `<button class="embed-copy" data-snippet="md" type="button">Copy Markdown</button>` +
+      `<button class="embed-copy" data-snippet="md" type="button">Copy Markdown link</button>` +
       `<a class="embed-open" href="${embedUrl}&editable=1" target="_blank" rel="noopener">Open embed ↗</a></div>` +
       `</div>`;
     document.body.appendChild(dialog);
@@ -171,7 +173,7 @@ export function mountActions(ctx: ActionsCtx): void {
       btn.addEventListener("click", async () => {
         try {
           await navigator.clipboard.writeText(btn.dataset.snippet === "md" ? md : iframe);
-          flash(btn.dataset.snippet === "md" ? "Markdown copied" : "Embed snippet copied");
+          flash(btn.dataset.snippet === "md" ? "Markdown link copied" : "Embed snippet copied");
           close();
         } catch {
           flash("Copy failed");
