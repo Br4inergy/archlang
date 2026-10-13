@@ -45,7 +45,8 @@ const view = { scale: 1, x: 0, y: 0 };
 const apply = () => {
   canvas.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
 };
-const clamp = (v: number) => Math.min(40, Math.max(0.05, v));
+// Drawings are in millimetres (a 10 m plan is 10,000 units), so the floor is far below 1.
+const clamp = (v: number) => Math.min(40, Math.max(0.0005, v));
 
 function zoomAt(px: number, py: number, factor: number): void {
   const next = clamp(view.scale * factor);
@@ -118,6 +119,17 @@ function svgElement(text: string): SVGSVGElement | undefined {
   for (const s of Array.from(root.querySelectorAll("script, foreignObject"))) s.remove();
   for (const el of Array.from(root.querySelectorAll("*")).concat(root)) {
     for (const a of Array.from(el.attributes)) if (/^on/i.test(a.name)) el.removeAttribute(a.name);
+  }
+  // The compiler sizes its drawings by `viewBox` alone; give the element that size in user units
+  // so fit() scales a known box (an unsized <svg> lays out at the browser's 300×150 default).
+  const vb = root
+    .getAttribute("viewBox")
+    ?.trim()
+    .split(/[\s,]+/)
+    .map(Number);
+  if (vb && vb.length === 4 && vb.every(Number.isFinite)) {
+    if (!root.hasAttribute("width")) root.setAttribute("width", String(vb[2]));
+    if (!root.hasAttribute("height")) root.setAttribute("height", String(vb[3]));
   }
   return document.importNode(root, true) as unknown as SVGSVGElement;
 }
