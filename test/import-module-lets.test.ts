@@ -323,6 +323,7 @@ suite("a module `let` that fails reports as it does in the module", () => {
  * Two rows ADDED, not re-measured: `test/fixtures/star30.arch` and `test/fixtures/chain30.arch`,
  * new fixtures pinning `W_PATH_TOO_NARROW`'s re-measure count; first measured with the same
  * digest body on the tree that adds them (the same rows as `./while-byte-identity-baseline.ts`).
+ * `test/fixtures/off-path-bypass.arch` likewise (the doorway-band bypass repro).
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "7d17249d81b43f1ff5b17c6b1219750bbdd695599f31e66fb298be9facc7c169"],
@@ -371,6 +372,7 @@ const BASELINE: [string, string][] = [
   ["test/fixtures/diff-b.arch", "aed751c9f9579dd29c93d4c0363c1f17428fc68f6e6003f59281824eacd7ff06"],
   ["test/fixtures/diff-circ-a.arch", "84d413c8733e5dae6fe6adf57a9ecea3ced920501be76a4175f225ea2e8a9974"],
   ["test/fixtures/diff-circ-b.arch", "c22679ed9da2f1386e64c665245bb8a4555ffb5e7f38010e5d4252c858a8f2f9"],
+  ["test/fixtures/off-path-bypass.arch", "db9817836d83fc29efad66097ca383032c0c918d8ca4fabb23e2feed79f088a3"], // new fixture, see header
   ["test/fixtures/schedule-sheet.arch", "3f66597531afcf2d8be6c4a297121aa309f08887fc369ca5f322fa12b95433e5"],
   ["test/fixtures/star30.arch", "e5cf06a13db022de20a0a085d113e38405b4ea1dd81325890fd9c8a68db6e539"], // new fixture, see header
   ["test/fixtures/zones-levels.arch", "2ee9feeb3f6ca7c09e51eee71ffb78272b3b09be7ccdccbf87a38a4ee1234cae"],

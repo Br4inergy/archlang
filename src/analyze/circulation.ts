@@ -313,6 +313,10 @@ export interface NavGrid {
    *  is reached and where a key route starts — are its floor WITHOUT these (`roomCells`,
    *  `buildNav`). Absent on a hand-built grid, where nothing was carved. */
   opened?: Uint8Array;
+  /** Per opened cell, the ids of the connectors whose carve opened it (a cell two doorways
+   *  share lists both). Bookkeeping only — nothing measured reads it; `roomBottlenecks`
+   *  reports it so a caller can tell which doorways a walk passed. */
+  openedBy?: Map<number, string[]>;
 }
 
 /**
@@ -917,7 +921,8 @@ function perRoomMax(roomCells: readonly (readonly number[])[], vals: Float64Arra
  * Deterministic: the best value per cell is unique, so the heap's tie order does not
  * affect the result. When `pinch` is supplied it is filled with, per cell, the index
  * of the limiting (narrowest) cell on that cell's widest route — used to place the
- * overlay's bottleneck marker.
+ * overlay's bottleneck marker. When `pred` is supplied it is filled with each reached
+ * cell's predecessor on one widest route (−1 at a source), so a caller can walk it back.
  *
  * @internal Exported for `test/path-algebra.test.ts` (values equal the `MAX_MIN` engine).
  */
@@ -926,6 +931,7 @@ export function widestBottleneck(
   sources: readonly number[],
   seed: number | readonly number[],
   pinch?: Int32Array,
+  pred?: Int32Array,
 ): Float64Array {
   const n = g.nx * g.ny;
   const best = new Float64Array(n).fill(-Infinity);
@@ -982,6 +988,7 @@ export function widestBottleneck(
     if (v > best[s]!) {
       best[s] = v;
       if (pinch) pinch[s] = s;
+      if (pred) pred[s] = -1;
       push(v, s);
     }
   });
@@ -999,6 +1006,7 @@ export function widestBottleneck(
         best[nb] = cand;
         // The limiting cell is nb when it is the new narrowest, else u's limiter.
         if (pinch) pinch[nb] = g.clearMm[nb]! < best[u]! ? nb : pinch[u]!;
+        if (pred) pred[nb] = u;
         push(cand, nb);
       }
     }
@@ -1251,7 +1259,14 @@ function arcMeetsBox(arc: Arc, s: Box): boolean {
 function buildGrid(
   rooms: RRoom[],
   walls: RWall[],
-  connectors: Array<{ at: Point; between: [string, string]; clear: number; bandMm: number; hostAlongX?: boolean }>,
+  connectors: Array<{
+    id?: string;
+    at: Point;
+    between: [string, string];
+    clear: number;
+    bandMm: number;
+    hostAlongX?: boolean;
+  }>,
   furniture: RFurniture[],
   verticals: RVertical[],
   voids: RVoid[],
@@ -1358,6 +1373,7 @@ function buildGrid(
   // Stitch: carve a threshold through the wall band at each internal connector,
   // recording the connector's clear width at the (grid-degenerate) carved cells.
   const clearAt = new Map<number, number>();
+  const openedBy = new Map<number, string[]>();
   // Walkable before any threshold is carved: a carve stamps its connector's width on the
   // cells it OPENS and nowhere else — never on a room cell, the far seed included, whose
   // clearance is the room's own (a furniture pinch must stay a pinch; see the stamp below).
@@ -1398,7 +1414,14 @@ function buildGrid(
     const apply = (path: number[]): void => {
       for (const k of path) {
         g.free[k] = 1;
-        if (!wasFree[k]) clearAt.set(k, Math.min(clearAt.get(k) ?? Infinity, c.clear));
+        if (!wasFree[k]) {
+          clearAt.set(k, Math.min(clearAt.get(k) ?? Infinity, c.clear));
+          if (c.id !== undefined) {
+            const by = openedBy.get(k);
+            if (!by) openedBy.set(k, [c.id]);
+            else if (!by.includes(c.id)) by.push(c.id);
+          }
+        }
       }
     };
     // Carve EVERY walkable part of the connector's width, the centre included. Stopping
@@ -1458,6 +1481,7 @@ function buildGrid(
   const opened = new Uint8Array(nx * ny);
   for (let k = 0; k < free.length; k++) if (free[k] && !wasFree[k]) opened[k] = 1;
   g.opened = opened;
+  g.openedBy = openedBy;
 
   return g;
 }
@@ -1642,6 +1666,7 @@ function buildNav(
       clear: e.estimatedClearWidth,
       bandMm: bandOf(e.hostWallId),
       hostAlongX: alongXById.get(e.doorId),
+      id: e.doorId,
     }))
     .filter((c) => c.at !== undefined);
 
@@ -2025,6 +2050,15 @@ function routeBetween(
  * the reading. A room with no reading here has no `rooms[]` fact there either, or a reading
  * of 0. `test/circulation-room-bottlenecks.test.ts` pins it equal to `computeCirculation` on
  * every corpus room, so the two cannot drift apart.
+ *
+ * With `avoiding`, it also reads each requested room AVOIDING a set of connectors: the widest
+ * route into it that crosses no cell those connectors' carves opened and starts from none of
+ * those entrances (a cell any of them opened, or seeds, is left out whole). That is a lower
+ * bound on the room's reading in the variant where those connectors are NOT widened, because
+ * every cell left is free there with the same clearance (clearance is the furniture distance;
+ * the stamps on the other connectors are the same). The walk the main search took is tried
+ * first and costs nothing when it already avoids them; otherwise one more search runs on this
+ * grid, shared by rooms avoiding the same set — never another grid build.
  */
 export function roomBottlenecks(
   rooms: RRoom[],
@@ -2037,6 +2071,7 @@ export function roomBottlenecks(
   verticals: RVertical[] = [],
   voids: RVoid[] = [],
   arrivals: readonly ArrivingRun[] = [],
+  avoiding?: { request: ReadonlyMap<string, ReadonlySet<string>>; result: Map<string, number> },
 ): Map<string, number> {
   const out = new Map<string, number>();
   const landed: ShaftArrival[] = [];
@@ -2087,10 +2122,58 @@ export function roomBottlenecks(
           { exterior: false, extraSources: shafts.map((a) => a.roomId) },
         ),
       );
-  const roomWidest = perRoomMax(nav.roomCells, widestBottleneck(nav.g, nav.sources, nav.sourceClear));
+  const pred = avoiding ? new Int32Array(nav.g.nx * nav.g.ny).fill(-1) : undefined;
+  const widest = widestBottleneck(nav.g, nav.sources, nav.sourceClear, undefined, pred);
+  const roomWidest = perRoomMax(nav.roomCells, widest);
+  const indexOf = new Map<string, number>();
   rooms.forEach((r, ri) => {
-    if (doorReachable.has(r.id)) out.set(r.id, Math.round(roomWidest[ri]!));
+    if (!doorReachable.has(r.id)) return;
+    out.set(r.id, Math.round(roomWidest[ri]!));
+    indexOf.set(r.id, ri);
   });
+  if (!avoiding || !pred) return out;
+  const g = nav.g;
+  const touches = (k: number, ex: ReadonlySet<string>): boolean =>
+    (g.openedBy?.get(k) ?? []).some((id) => ex.has(id)) ||
+    nav.sources.some((src, i) => src === k && ex.has(nav.sourceIds[i]!));
+  const searched = new Map<string, Float64Array>();
+  for (const [roomId, ex] of avoiding.request) {
+    const ri = indexOf.get(roomId);
+    if (ri === undefined) continue;
+    const cells = nav.roomCells[ri]!;
+    // 1. The walk the reading took, back from the room's best cell: if it avoids them, it stands.
+    let at = -1;
+    for (const k of cells) if (at < 0 || widest[k]! > widest[at]!) at = k;
+    let clean = at >= 0;
+    for (let k = at; clean && k >= 0; k = pred[k]!) if (touches(k, ex)) clean = false;
+    if (clean) {
+      avoiding.result.set(roomId, out.get(roomId)!);
+      continue;
+    }
+    // 2. Otherwise a search on this grid with those doorways and entrances left out.
+    const key = [...ex].sort().join("\u0000");
+    let w = searched.get(key);
+    if (!w) {
+      const free = g.free.slice();
+      for (const [k, ids] of g.openedBy ?? []) if (ids.some((id) => ex.has(id))) free[k] = 0;
+      const srcs: number[] = [];
+      const seeds: number[] = [];
+      nav.sources.forEach((src, i) => {
+        if (ex.has(nav.sourceIds[i]!)) free[src] = 0;
+      });
+      nav.sources.forEach((src, i) => {
+        if (free[src]) {
+          srcs.push(src);
+          seeds.push(nav.sourceClear[i]!);
+        }
+      });
+      w = widestBottleneck({ ...g, free }, srcs, seeds);
+      searched.set(key, w);
+    }
+    let best = Number.NEGATIVE_INFINITY;
+    for (const k of cells) best = Math.max(best, w[k]!);
+    avoiding.result.set(roomId, Math.round(Math.max(0, best)));
+  }
   return out;
 }
 

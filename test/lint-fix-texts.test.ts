@@ -544,6 +544,21 @@ describe("W_PATH_TOO_NARROW — names only doors whose widening clears the room,
     }
   });
 
+  for (const p of PROFILES) {
+    it(`${p ?? "default"} · off-path bypass: a walk through ANOTHER doorway's band never proves this room's door`, () => {
+      // test/fixtures/off-path-bypass.arch: the far room's walk can pass the cabinet by
+      // stepping into d_d's doorway band, so widening d_d widens it although d_d is on no
+      // door-graph path to the far room. Whatever the warning names, widening exactly that
+      // must clear the far room; naming d_r alone where only d_d's band lifted it is the bug.
+      const src = readFileSync(resolvePath("test/fixtures/off-path-bypass.arch"), "utf8");
+      const far = of(src, "W_PATH_TOO_NARROW", p).find((d) => d.message.includes('"Far room"'));
+      expect(far).toBeDefined();
+      if (!/ — the bottlenecks? (is|are) /.test(far!.message)) return; // naming nothing is honest
+      const fixed = widenAll(src, far!.hints!)!;
+      expect(of(fixed, "W_PATH_TOO_NARROW", p).filter((d) => d.message.includes('"Far room"'))).toEqual([]);
+    });
+  }
+
   it("round 2 M2b: a narrow shaft is not blamed on the door behind it", () => {
     // A storey reached only by a 600 mm stair; the box room's own door is 660 (600 clear).
     // Widening the door cannot lift the walk past the stair, so the door is not named.

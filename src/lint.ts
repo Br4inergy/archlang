@@ -191,7 +191,7 @@ function buildingContexts(levels: readonly ResolvedLevel[], tolMm: number): Map<
   const runs = arrivalRuns(inputs, grounded, roomReach);
   const out = new Map<number, BuildingContext>();
   // One re-measure budget for the whole building, not one per storey.
-  const attributionMeasures = { left: MAX_ATTRIBUTION_MEASURES };
+  const attributionMeasures = { left: MAX_ATTRIBUTION_MEASURES, storeys: levels.length };
   for (const l of levels) {
     out.set(l.level, {
       multiStorey: true,
