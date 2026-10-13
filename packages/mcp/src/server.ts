@@ -42,12 +42,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import * as coreNamespace from "@chanmeng666/archlang";
 import {
-  clampPngWidth,
   compilePngSentence,
+  fitPngWidth,
   IN_MCPB_BUNDLE,
   PNG_MAX_WIDTH,
   PNG_MIN_WIDTH,
   pngUnavailable,
+  svgPageBox,
 } from "./png.js";
 
 /**
@@ -56,6 +57,16 @@ import {
  * fails the whole module at load, and the server keeps every other tool working on an older core
  * (see {@link loadPlanLinks}). Each is `undefined` on such a core, and its one caller says so.
  */
+/**
+ * What a call that needs one of those exports says on a core without it. No version number: the
+ * shim's own range floor admits the older core until the release that bumps it, so naming it
+ * would point at a version that does not help.
+ */
+export const PNG_NEEDS_NEWER_CORE =
+  "png needs an @chanmeng666/archlang that exports PNG_PREVIEW_WIDTH and isOptionalDepError; the installed core predates them: upgrade it";
+export const JSON_PAGES_NEED_NEWER_CORE =
+  "per-storey Plan JSON needs an @chanmeng666/archlang whose planToJson returns `pages`; the installed core projects only the lowest storey: upgrade it";
+
 const newerCore = coreNamespace as Partial<Pick<typeof coreNamespace, "PNG_PREVIEW_WIDTH" | "isOptionalDepError">>;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -179,40 +190,46 @@ function resolveSource(input: {
  * first png call; when it is absent (always, in the `.mcpb` bundle) the call returns the
  * error as data, like every other tool, never an exception.
  */
+/**
+ * The `E_PNG_DEPENDENCY` diagnostic a png refusal carries, as JSON. The code is the catalogued
+ * one, as the CLI reports it, but its `fix` is replaced: the catalogue's says "npm install, or
+ * re-run with `--install`", and `--install` is a CLI flag no MCP call has, while in the `.mcpb`
+ * bundle no install can help at all. So the fix is this build's own sentence, the same one the
+ * response's `error` gives.
+ */
+export function pngDependencyDiagnostic(source: string, inBundle: boolean = IN_MCPB_BUNDLE) {
+  const sentence = pngUnavailable(inBundle);
+  const dep: Diagnostic = { severity: "error", code: "E_PNG_DEPENDENCY", message: sentence };
+  return { ...diagnosticToJson(source, dep), fix: sentence };
+}
+
 async function pngResult(
   source: string,
   pageScene: Scene,
+  pageSvg: string,
   meta: Record<string, unknown>,
   diagnostics: ReturnType<typeof diagnosticToJson>[],
   requestedWidth: number | undefined,
 ) {
-  // The catalogued code rides INSIDE `diagnostics`, as the CLI reports it, so it carries the
-  // catalogue's `fix`; `code` repeats it at the top level for a caller that reads only that.
-  const unavailable = () => {
-    const error = pngUnavailable();
-    const dep: Diagnostic = { severity: "error", code: "E_PNG_DEPENDENCY", message: error };
-    return json({
+  // The catalogued code rides INSIDE `diagnostics`, as the CLI reports it; `code` repeats it at
+  // the top level for a caller that reads only that.
+  const unavailable = () =>
+    json({
       ok: false,
       format: "png",
-      error,
+      error: pngUnavailable(),
       code: "E_PNG_DEPENDENCY",
       ...meta,
-      diagnostics: [...diagnostics, ...toJson(source, [dep])],
+      diagnostics: [...diagnostics, pngDependencyDiagnostic(source)],
     });
-  };
   if (IN_MCPB_BUNDLE) return unavailable();
   const { PNG_PREVIEW_WIDTH, isOptionalDepError } = newerCore;
   if (PNG_PREVIEW_WIDTH === undefined || isOptionalDepError === undefined)
-    return json({
-      ok: false,
-      format: "png",
-      error: `png needs @chanmeng666/archlang >= ${CORE_MIN || "the shim's release"}; the installed core predates it`,
-      ...meta,
-      diagnostics,
-    });
+    return json({ ok: false, format: "png", error: PNG_NEEDS_NEWER_CORE, ...meta, diagnostics });
   // A model's vision input and a host's tool-result cap both bound an image; the native render
-  // is thousands of pixels wide, so png renders at the preview width unless `width` says otherwise.
-  const width = clampPngWidth(requestedWidth ?? PNG_PREVIEW_WIDTH);
+  // is thousands of pixels wide, so png renders at the preview width unless `width` says
+  // otherwise, and a tall page renders narrower so its height is bounded too.
+  const width = fitPngWidth(requestedWidth ?? PNG_PREVIEW_WIDTH, svgPageBox(pageSvg));
   const warnings: Diagnostic[] = [];
   let bytes: Uint8Array;
   try {
@@ -221,12 +238,15 @@ async function pngResult(
     if (isOptionalDepError(e)) return unavailable();
     return json({ ok: false, format: "png", error: (e as Error).message ?? String(e), ...meta, diagnostics });
   }
+  // The size the image actually has, read from its IHDR chunk rather than restated.
+  const png = Buffer.from(bytes);
   const text = JSON.stringify(
     {
       ok: true,
       format: "png",
       ...meta,
-      width,
+      width: png.readUInt32BE(16),
+      height: png.readUInt32BE(20),
       bytes: bytes.length,
       diagnostics: [...diagnostics, ...toJson(source, warnings)],
     },
@@ -238,7 +258,7 @@ async function pngResult(
   return {
     content: [
       { type: "text" as const, text },
-      { type: "image" as const, data: Buffer.from(bytes).toString("base64"), mimeType: "image/png" },
+      { type: "image" as const, data: png.toString("base64"), mimeType: "image/png" },
     ],
   };
 }
@@ -303,7 +323,7 @@ export function createServer(): McpServer {
           .int()
           .optional()
           .describe(
-            `png only: the image width in pixels, clamped to ${PNG_MIN_WIDTH}-${PNG_MAX_WIDTH}; default ${newerCore.PNG_PREVIEW_WIDTH ?? "the core's preview width"}.`,
+            `png only (any other format refuses it): the image width in pixels, clamped to ${PNG_MIN_WIDTH}-${PNG_MAX_WIDTH}, and narrower for a tall plan so neither side exceeds ${PNG_MAX_WIDTH}; default ${newerCore.PNG_PREVIEW_WIDTH ?? "the core's preview width"}.`,
           ),
       },
     },
@@ -311,6 +331,14 @@ export function createServer(): McpServer {
       const r = resolveSource(a);
       if ("diagnostics" in r) return json({ ok: false, diagnostics: r.diagnostics });
       const format = a.format ?? "svg";
+      // `width` sizes an image; on any other format it would do nothing, so it is refused, not ignored.
+      if (a.width !== undefined && format !== "png")
+        return json({
+          ok: false,
+          format,
+          error: `width applies only to format "png"; drop it for format "${format}"`,
+          diagnostics: [],
+        });
       const { svg, diagnostics, scene, pages } = compile(r.source, {
         noCache: true,
         ...(a.accessible ? { accessible: true } : {}),
@@ -330,7 +358,7 @@ export function createServer(): McpServer {
         return json({
           ok: false,
           format,
-          error: `per-storey Plan JSON needs @chanmeng666/archlang >= ${CORE_MIN || "the shim's release"}; the installed core projects only the lowest storey`,
+          error: JSON_PAGES_NEED_NEWER_CORE,
           diagnostics: diags,
         });
       const schema = projection ? { schema: PLAN_JSON_SCHEMA.$id } : {};
@@ -348,7 +376,8 @@ export function createServer(): McpServer {
         const want = pages?.find((p) => p.level === a.level);
         if (!want)
           return json({ ok: false, format, error: `no level ${a.level} in this plan`, levels, diagnostics: diags });
-        if (format === "png") return pngResult(r.source, want.scene, { level: want.level, levels }, diags, a.width);
+        if (format === "png")
+          return pngResult(r.source, want.scene, want.svg, { level: want.level, levels }, diags, a.width);
         return json({
           ok: true,
           format,
@@ -361,7 +390,7 @@ export function createServer(): McpServer {
       }
       // One image per call: a multi-storey plan draws its lowest storey and names the rest.
       if (format === "png")
-        return pngResult(r.source, scene, pages ? { levels: pages.map((p) => p.level) } : {}, diags, a.width);
+        return pngResult(r.source, scene, svg, pages ? { levels: pages.map((p) => p.level) } : {}, diags, a.width);
       return json({
         ok: true,
         format,

@@ -13,12 +13,41 @@
 /** The optional renderer the core's PNG backend imports lazily. */
 export const PNG_RENDERER = "@resvg/resvg-js";
 
-/** The range `compile`'s `width` input is clamped to, in pixels. */
+/**
+ * The range `compile`'s `width` input is clamped to, in pixels. {@link PNG_MAX_WIDTH} also
+ * bounds the image's LONG side: a tall plan renders narrower, so its height stays within it.
+ */
 export const PNG_MIN_WIDTH = 256;
 export const PNG_MAX_WIDTH = 4096;
 
 /** Clamp a requested png width into [{@link PNG_MIN_WIDTH}, {@link PNG_MAX_WIDTH}]. */
 export const clampPngWidth = (w: number): number => Math.min(PNG_MAX_WIDTH, Math.max(PNG_MIN_WIDTH, Math.round(w)));
+
+/**
+ * The page box of a rendered SVG, from its root `viewBox` — the box the renderer scales to the
+ * requested width, so its aspect IS the png's. `undefined` when there is none to read.
+ */
+export function svgPageBox(svg: string): { w: number; h: number } | undefined {
+  const m = /<svg\b[^>]*?\sviewBox="([^"]+)"/.exec(svg);
+  const [, , w, h, ...rest] = (m?.[1] ?? "")
+    .trim()
+    .split(/[\s,]+/)
+    .map(Number);
+  if (rest.length > 0 || w === undefined || h === undefined || !(w > 0) || !(h > 0)) return undefined;
+  return { w, h };
+}
+
+/**
+ * The width to render a page at: the request clamped into range, then narrowed if the page is
+ * taller than wide so that its HEIGHT stays within {@link PNG_MAX_WIDTH} too. The renderer takes
+ * only a width, so the long-side bound is applied by deriving the width from the page's aspect.
+ * A page so tall that the bound pushes the width under {@link PNG_MIN_WIDTH} keeps the bound.
+ */
+export function fitPngWidth(requested: number, page: { w: number; h: number } | undefined): number {
+  const width = clampPngWidth(requested);
+  if (!page || page.h <= page.w) return width;
+  return Math.max(1, Math.min(width, Math.floor((PNG_MAX_WIDTH * page.w) / page.h)));
+}
 
 /** Where the server was installed from npm and the renderer is missing. */
 export const PNG_NEEDS_RENDERER = `png needs the optional renderer: npm i ${PNG_RENDERER} beside this server, or use format "svg".`;

@@ -274,6 +274,12 @@ in `test/plan-json-gaps.ts`, minus `imports.arch`, which the CLI's file World fl
 - accessibility metadata (`accTitle`, `accDescr`): `accessible` — the default SVG survives, so
   only the `describe()` comparison sees it.
 
+**Open: carry `accTitle`/`accDescr` in Plan JSON — `todo`.** Unlike the gaps above this one is not
+a whole layer the projection leaves out by design: it is two optional plan-level strings, which
+`astToJson` already emits and `planToJson` drops. Add both to `PlanJson` and the schema (emitted
+only when declared, so every other payload stays byte-identical), re-emit them in `emitArch`; the CLI round-trip
+test's exact gap list then goes red until `accessible.arch` is taken off it.
+
 The neighbouring rule, from [ADR 0016](adr/0016-component-instances-and-frames.md) and now stated in
 `AGENTS.md`: when a fact crosses a frame, ask **can this be re-expressed in plan coordinates?** A
 placement clause cannot (plan space has no word for a local corner) so it is dropped; a symbol's

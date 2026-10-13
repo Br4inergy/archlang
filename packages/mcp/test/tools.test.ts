@@ -50,9 +50,14 @@ type PngContent = { content: Array<{ type: string; data?: string; mimeType?: str
 const pngCall = async (client: Awaited<ReturnType<typeof connect>>, args: Record<string, unknown>) =>
   (await client.callTool({ name: "compile", arguments: args })) as PngContent;
 
-/** The pixel width a png declares in its IHDR chunk (bytes 16–19, big-endian). */
-const ihdrWidth = (res: PngContent): number =>
-  Buffer.from(res.content.find((c) => c.type === "image")!.data!, "base64").readUInt32BE(16);
+/** The pixel size a png declares in its IHDR chunk (width at bytes 16–19, height 20–23, big-endian). */
+const ihdr = (res: PngContent): { width: number; height: number } => {
+  const png = Buffer.from(res.content.find((c) => c.type === "image")!.data!, "base64");
+  return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
+};
+
+/** A plan eight times taller than wide, with no sheet. */
+const TALL = 'plan "Tall" {\n  room at (0,0) size 1000x8000 label "Gallery"\n}\n';
 
 // ---------------------------------------------------------------------------
 // lint
@@ -515,24 +520,48 @@ describe("compile tool", () => {
     expect(payload(two)).toMatchObject({ ok: true, level: 2, levels: [1, 2] });
     expect(low.content[1]!.data).not.toBe(two.content[1]!.data);
   });
-  it.runIf(HAS_RESVG)("studio renders at the preview width, not its native thousands of pixels", async () => {
+  it.runIf(HAS_RESVG)("studio renders at exactly the preview width, not its native thousands of pixels", async () => {
     // examples/studio.arch renders 9648 px wide natively: over a vision model's per-side
     // limit and, at ~4.5 MB of base64, over typical host result caps.
     const res = await pngCall(await connect(), { source: STUDIO, format: "png" });
-    const w = ihdrWidth(res);
-    expect(w).toBeGreaterThan(0);
-    expect(w).toBeLessThanOrEqual(PNG_PREVIEW_WIDTH);
-    expect(payload(res).width).toBe(PNG_PREVIEW_WIDTH);
+    expect(ihdr(res).width).toBe(PNG_PREVIEW_WIDTH);
+    // The reported size is the image's own.
+    expect({ width: payload(res).width, height: payload(res).height }).toEqual(ihdr(res));
   });
-  it.runIf(HAS_RESVG)("`width` sets the png width, clamped to the allowed range", async () => {
+  it.runIf(HAS_RESVG)("`width` sets the png width exactly, clamped to the allowed range", async () => {
     const client = await connect();
     const small = await pngCall(client, { source: STUDIO, format: "png", width: 10 });
+    expect(ihdr(small).width).toBe(PNG_MIN_WIDTH);
     expect(payload(small).width).toBe(PNG_MIN_WIDTH);
-    expect(ihdrWidth(small)).toBeLessThanOrEqual(PNG_MIN_WIDTH);
+    const mid = await pngCall(client, { source: STUDIO, format: "png", width: 1000 });
+    expect(ihdr(mid).width).toBe(1000);
+    // Studio is a little taller than wide, so at the top of the range its HEIGHT is the side the
+    // bound holds: at it to the pixel, with the width narrowed to match.
     const big = await pngCall(client, { source: STUDIO, format: "png", width: 100_000 });
-    expect(payload(big).width).toBe(PNG_MAX_WIDTH);
-    expect(ihdrWidth(big)).toBeLessThanOrEqual(PNG_MAX_WIDTH);
-    expect(ihdrWidth(big)).toBeGreaterThan(ihdrWidth(small));
+    const { width, height } = ihdr(big);
+    expect(height).toBeGreaterThan(width);
+    expect(height).toBeLessThanOrEqual(PNG_MAX_WIDTH);
+    expect(height).toBeGreaterThanOrEqual(PNG_MAX_WIDTH - 1);
+    expect({ width: payload(big).width, height: payload(big).height }).toEqual({ width, height });
+  });
+  it.runIf(HAS_RESVG)("a tall plan is bounded on its LONG side, at the default and at the maximum", async () => {
+    const client = await connect();
+    for (const args of [{}, { width: PNG_MAX_WIDTH }]) {
+      const { width, height } = ihdr(await pngCall(client, { source: TALL, format: "png", ...args }));
+      const at = JSON.stringify(args);
+      expect(height, at).toBeGreaterThan(2 * width);
+      expect(height, at).toBeLessThanOrEqual(PNG_MAX_WIDTH);
+      expect(height, at).toBeGreaterThanOrEqual(PNG_MAX_WIDTH - 1);
+    }
+  });
+  it("`width` with any format but png is refused as data, not ignored", async () => {
+    const client = await connect();
+    for (const format of ["svg", "txt", "json"]) {
+      const out = await call(client, "compile", { source: TWO_ROOMS, format, width: 800 });
+      expect(out, format).toMatchObject({ ok: false, format });
+      expect(out.error as string).toContain('width applies only to format "png"');
+      expect(out.output).toBeUndefined();
+    }
   });
   it.runIf(!HAS_RESVG)("[renderer absent] png is refused as data: the CI install must have it", async () => {
     expect(process.env.CI, "@resvg/resvg-js is missing under CI").toBeFalsy();
