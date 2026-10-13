@@ -9,10 +9,11 @@
  *    rectangle, a rectangle of four different walls, an open side, an L with an inside corner,
  *    a part-walled edge, a 3-4-5 triangle (an oblique ring, inset to a similar triangle) and a
  *    circle walled all round or half round.
- * 3. A property over every room of the corpus (examples, fixtures, recovery plans, eval goldens
- *    and fidelity plans, the docs gallery): net ≤ area, net > 0 wherever area > 0, and on every
- *    rectilinear room the slab sweep and the inset-ring construction agree — two procedures that
- *    share nothing past the stretches they read.
+ * 3. A property over every room of the corpus (examples, fixtures, recovery plans, eval goldens,
+ *    fidelity plans and faults; the docs gallery is left out, `agent-gallery.test.ts` owns it):
+ *    net ≤ area, net > 0 wherever area > 0, and on every rectilinear room the slab sweep and the
+ *    inset-ring construction agree — two procedures that share nothing past the stretches they
+ *    read.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve as resolvePath } from "node:path";
@@ -194,7 +195,6 @@ const CORPUS_DIRS = [
   "eval/goldens",
   "eval/fidelity-plans",
   "eval/faults",
-  "docs/gallery",
 ];
 
 function archFiles(dir: string): string[] {
@@ -274,7 +274,7 @@ suite("net area — a property of every room in the corpus", () => {
       checked++;
       if (Math.abs(slab - inset) > 1e-6) bad.push(`${where}: slab ${slab} vs ring ${inset}`);
     }
-    expect(checked).toBeGreaterThan(500);
+    expect(checked).toBeGreaterThan(450);
     expect(bad).toEqual([]);
   });
 
