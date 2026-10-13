@@ -418,7 +418,7 @@
 <text x="400" y="52740" font-size="380" fill="#333333" text-anchor="middle" dominant-baseline="central">05</text>
 <text x="1094" y="52740" font-size="380" fill="#333333" text-anchor="start" dominant-baseline="central">Concourse</text>
 <text x="9206" y="52740" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">479.80</text>
-<text x="12006" y="52740" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">467.45</text>
+<text x="12006" y="52740" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">467.17</text>
 <line x1="-150" y1="52400" x2="12150" y2="52400" stroke="#333333" stroke-width="26"/>
 <text x="400" y="53420" font-size="380" fill="#333333" text-anchor="middle" dominant-baseline="central">06</text>
 <text x="1094" y="53420" font-size="380" fill="#333333" text-anchor="start" dominant-baseline="central">Entrance Foyer</text>
@@ -433,12 +433,12 @@
 <text x="400" y="54780" font-size="380" fill="#333333" text-anchor="middle" dominant-baseline="central">08</text>
 <text x="1094" y="54780" font-size="380" fill="#333333" text-anchor="start" dominant-baseline="central">Cafe</text>
 <text x="9206" y="54780" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">167.97</text>
-<text x="12006" y="54780" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">163.70</text>
+<text x="12006" y="54780" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">162.56</text>
 <line x1="-150" y1="54440" x2="12150" y2="54440" stroke="#333333" stroke-width="26"/>
 <line x1="-150" y1="55120" x2="12150" y2="55120" stroke="#333333" stroke-width="36"/>
 <text x="-6" y="55460" font-size="380" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">TOTAL</text>
 <text x="9206" y="55460" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">2028.83</text>
-<text x="12006" y="55460" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">1975.04</text>
+<text x="12006" y="55460" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">1973.62</text>
 </g>
 <g><polygon points="59250,-2700 58800,-1260 59250,-1575 59700,-1260" fill="#333333" transform="rotate(0 59250 -1800)"/><text x="59250" y="-3116" font-size="520" fill="#333333" text-anchor="middle" dominant-baseline="central">N</text></g>
 <g><rect x="-150" y="46400" width="2500" height="280" fill="#333333"/><rect x="2350" y="46400" width="2500" height="280" fill="none" stroke="#333333" stroke-width="36"/><text x="-150" y="47080" font-size="400" fill="#333333" text-anchor="start" dominant-baseline="central">0</text><text x="4850" y="47080" font-size="400" fill="#333333" text-anchor="middle" dominant-baseline="central">5 m</text></g>

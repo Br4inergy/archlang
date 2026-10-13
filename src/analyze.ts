@@ -157,12 +157,12 @@ export function roomAreaMm2(r: {
 }
 
 /**
- * A room's NET internal area in mm²: its own shape inset by half the thickness of each wall
- * whose centreline runs along its edge (`describe().rooms[].net_area_m2`, the room
- * schedule's NET AREA column). Beside {@link roomAreaMm2}, never instead of it: the rule
- * lives in `analyze/net-area.ts`, and takes the storey's wall segments.
+ * A room's NET internal area in mm²: its own shape less every part of it a wall's band
+ * covers (`describe().rooms[].net_area_m2`, the room schedule's NET AREA column), or
+ * `undefined` when it is omitted. Beside {@link roomAreaMm2}, never instead of it: the rule
+ * lives in `analyze/net-area.ts`, and takes the storey's bands from `netAreaBands`.
  */
-export { roomNetAreaMm2 } from "./analyze/net-area.js";
+export { netAreaBands, roomNetAreaMm2 } from "./analyze/net-area.js";
 
 /** Is the point inside the room's floor (closed bounds — the boundary counts)? */
 export function pointInRoomBox(p: Point, b: RoomBox): boolean {

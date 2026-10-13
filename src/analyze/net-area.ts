@@ -1,58 +1,64 @@
 /**
- * **Net internal area** — a room's floor inside the faces of the walls that bound it
+ * **Net internal area** — the part of a room's floor that no wall stands on
  * (`describe().rooms[].net_area_m2`; the rule and why: `docs/adr/0027-net-internal-area.md`).
  *
  * A room is drawn on wall CENTRELINES, so its own area (`area_m2`, {@link
  * import("../analyze.js").roomAreaMm2}) runs to the middle of every wall round it. The net
- * area insets the room's own shape by half the thickness of each wall whose centreline runs
- * along its edge. It is read from the shape and the wall centrelines alone: no bounding box,
- * no centroid, no wall joinery.
+ * area is that same shape LESS every part of it a wall's solid covers:
  *
- * The rule, exactly:
+ *     net = area(room) − area(room ∩ ⋃ wall bands)
  *
- * - **A straight edge** (a rectangle's side, a `room polygon`'s edge) is inset, along each
- *   stretch of it, by half the thickness of the thickest STRAIGHT wall segment whose
- *   centreline lies on that stretch of the edge's line (within {@link ON_CENTRELINE_TOL_MM}).
- *   Each wall uses its own thickness, so a shell and a partition inset by different amounts
- *   and a wall shared by two rooms gives each of them half of itself. A stretch no wall runs
- *   along (an open side, a missing partition, the chord of a bay) is inset by zero. Where the
- *   depth changes along one edge the inset steps square at the change.
- * - **Corners.** At a convex corner the two inset lines meet. At an inside (reflex) corner the
- *   band of each wall runs on to the other wall's band, so the corner square both walls
- *   occupy is not floor. That is the inset polygon of the room shape, stated as a region.
- * - **A curved wall never insets a straight edge**: an arc meets a straight edge at most at its
- *   two chord ends or at one tangent point, so it is not the edge's wall. Where a curved wall's
- *   band crosses a straight room edge (a bay whose room stops at the chord) the sliver is not
- *   subtracted.
- * - **A circular room** (`room circle`) is inset, over each angular interval, by half the
- *   thickness of the thickest CONCENTRIC arc wall on its circle there (centre and radius both
- *   within the tolerance): `Σ ½·Δθ·(r − d)²`, which is `π(r − d)²` in closed form when one
- *   thickness walls the whole circle. Straight walls never inset a circle.
+ * A wall's band is the solid the drawing draws for it before any opening is cut: its two
+ * faces at ± half its thickness, square caps at a free end, mitred (or, past the stroke's
+ * mitre limit, bevelled) joints, and true concentric arcs on a curved run —
+ * `wallBand()` in `src/geometry/band.ts`, the one band builder the wall joinery uses. A wall
+ * on the room's edge therefore takes half of itself out of the room (the inset), a wall
+ * that runs through or curves into the room takes all of what stands on the floor, and a
+ * wall that stands clear takes nothing. Doors and windows do not cut the band: the
+ * threshold inside a wall's thickness is not floor.
  *
- * Two exact procedures implement the one rule. A RECTILINEAR ring (every rectangle) is swept
- * in vertical slabs: the floor in each slab is the room's own intervals less the bands', so
- * every thin room, short stretch and inside corner is exact with no special case. An OBLIQUE
- * ring builds the inset ring (each stretch's line moved in by its depth, neighbours meeting at
- * their lines' intersection, a square step where the depth changes along an edge) and takes
- * its shoelace area. The result is held to `[0, area]`; for an oblique room so thin that its
- * inset lines cross, that clamp is the stated limit of the rule (no shipped plan comes near).
+ * ## How the area is computed — exactly, or not at all
  *
- * Pure, synchronous, deterministic. A circle walled by more than one thickness, or only partly,
- * reads its interval ends through `Math.atan2` (`arcAngleOffset`), which is not exactly rounded
- * across engines; a circle walled all round by one thickness never uses an angle.
+ * By Green's theorem on the boundary of `room ∩ ⋃ bands`. Every edge of the room and of
+ * every band near it (straight lines and true arcs) is split at every crossing with every
+ * other, closed form (`src/geometry/intersect.ts`). A piece lies on the boundary of the
+ * covered region exactly when one side of it is in the room and in a band and the other is
+ * not; each such piece contributes `½∮(x dy − y dx)` in closed form (a line by its
+ * endpoints, an arc by its endpoints, centre and sweep). A piece shared by two edges (a
+ * band face on the room's edge, two bands face to face) is counted once. No tessellation,
+ * no sampling and no bounding box enters the figure.
+ *
+ * The answer is OMITTED (`undefined`) rather than approximated when it cannot be trusted:
+ * when the room's box meets more than {@link MAX_NET_CURVES} band and room edges (the
+ * work is quadratic in them), or when the boundary integral comes out outside
+ * `[−ε, area + ε]` or not finite — a sign that a configuration defeated the split. A
+ * caller then omits the field and every total that would include it.
+ *
+ * Pure, synchronous, deterministic. Arc pieces read their angles through `Math.atan2`
+ * and `Math.cos`/`Math.sin`, which are not exactly rounded across engines, so a room
+ * crossed by a curved band may differ in the last ulps between platforms (far below the
+ * 0.01 m² the figure is printed to).
  */
 
 import type { Point } from "../ast.js";
-import type { WallSegment } from "../geometry.js";
-import { arcAngleOffset, fullCircleArc } from "../geometry/arc.js";
-import { polygonArea, polygonSignedArea2 } from "../geometry/polygon.js";
+import type { Arc } from "../geometry/arc.js";
+import { type BandWall, type EdgeLoop, PointInterner, loopBBox, loopsContain, wallBand } from "../geometry/band.js";
+import type { GridBox } from "../geometry/grid-index.js";
+import { circleCircle, lineCircleParams, lineLineParams, meetLines } from "../geometry/intersect.js";
+import { pointInPolygon, polygonArea } from "../geometry/polygon.js";
 
 /**
- * How far (mm) a wall's centreline may sit off a room edge's line and still be that edge's
- * wall. Rooms are authored on wall centrelines, so this only absorbs float noise in the
- * projection of an oblique edge: one micron, far below any wall thickness or grid.
+ * The most room-and-band edges one room's measurement may read. Past it the pair loop
+ * (every edge against every edge) is not run and the room's net area is omitted; no
+ * shipped plan comes within a tenth of it.
  */
-export const ON_CENTRELINE_TOL_MM = 0.001;
+export const MAX_NET_CURVES = 2000;
+
+/** One wall's band, with its box, ready to be measured against many rooms. */
+export interface NetAreaBand {
+  loops: EdgeLoop[];
+  box: GridBox;
+}
 
 /** The room facts the net area reads: the same shape fields `roomAreaMm2` reads. */
 export interface NetAreaRoom {
@@ -62,316 +68,392 @@ export interface NetAreaRoom {
   circle?: { c: Point; r: number };
 }
 
-/** One stretch of an edge: `[lo, hi]` mm along it from its first vertex, inset by `d` mm. */
-export interface EdgeStretch {
-  lo: number;
-  hi: number;
-  d: number;
-}
-
-/**
- * The room's net internal area in mm² (see the module header for the rule). `segs` are the
- * storey's wall segments (`segmentsOfWall` over every wall); hoist them when measuring many
- * rooms. Never more than the room's own area, never negative.
- */
-export function roomNetAreaMm2(r: NetAreaRoom, segs: readonly WallSegment[]): number {
-  if (r.circle) return circleNetArea(r.circle.c, r.circle.r, segs);
-  // The same gross figure `roomAreaMm2` reports, so `net <= area` holds to the last bit.
-  const gross = r.poly ? polygonArea(r.poly) : r.size.w * r.size.h;
-  if (!(gross > 0)) return 0;
-  const ring = distinctRing(r.poly ?? rectRing(r.at, r.size));
-  if (ring.length < 3) return 0;
-  const stretches = ringStretches(ring, segs);
-  const net = isRectilinear(ring) ? rectilinearNetArea(ring, stretches) : insetRingArea(ring, stretches);
-  return Math.min(gross, Math.max(0, net));
-}
-
-/** A rectangle's floor as a ring: its four corners clockwise from top-left. */
-function rectRing(at: Point, size: { w: number; h: number }): Point[] {
-  return [
-    { x: at.x, y: at.y },
-    { x: at.x + size.w, y: at.y },
-    { x: at.x + size.w, y: at.y + size.h },
-    { x: at.x, y: at.y + size.h },
-  ];
-}
-
-/** The ring without repeated consecutive vertices (a zero-length edge has no wall). */
-function distinctRing(ring: readonly Point[]): Point[] {
-  const out: Point[] = [];
-  for (const p of ring) {
-    const last = out[out.length - 1];
-    if (!last || last.x !== p.x || last.y !== p.y) out.push(p);
+/** The bands of every wall of a storey, built once and shared by every room measured. */
+export function netAreaBands(walls: readonly BandWall[]): NetAreaBand[] {
+  const intern = new PointInterner();
+  const out: NetAreaBand[] = [];
+  for (const w of walls) {
+    const loops = wallBand(w, intern);
+    if (loops.length === 0) continue;
+    const boxes = loops.map(loopBBox);
+    out.push({
+      loops,
+      box: {
+        minX: Math.min(...boxes.map((b) => b.minX)),
+        minY: Math.min(...boxes.map((b) => b.minY)),
+        maxX: Math.max(...boxes.map((b) => b.maxX)),
+        maxY: Math.max(...boxes.map((b) => b.maxY)),
+      },
+    });
   }
-  while (out.length > 1 && out[0]!.x === out[out.length - 1]!.x && out[0]!.y === out[out.length - 1]!.y) out.pop();
   return out;
 }
 
-const isRectilinear = (ring: readonly Point[]): boolean =>
-  ring.every((a, i) => {
-    const b = ring[(i + 1) % ring.length]!;
-    return a.x === b.x || a.y === b.y;
+/**
+ * What measuring every room's net area costs, as a COUNT and without building a band: for
+ * each room, its edges times the wall segments whose box (grown by half the wall's thickness,
+ * and by the radius for an arc) meets the room's box. `compile()` charges it to the drawing
+ * budget before a `schedule rooms` table is measured (`src/draw-budget.ts`); the pair loop
+ * per room is in addition held under {@link MAX_NET_CURVES}.
+ */
+export function netAreaWorkUnits(
+  rooms: readonly NetAreaRoom[],
+  walls: readonly {
+    thickness: number;
+    points: readonly Point[];
+    arcs?: ReadonlyArray<Arc | undefined>;
+    closed: boolean;
+  }[],
+): number {
+  const segBoxes: GridBox[] = [];
+  for (const w of walls) {
+    const h = w.thickness / 2;
+    const n = w.points.length;
+    const segs = w.closed && n > 2 ? n : n - 1;
+    for (let k = 0; k < segs; k++) {
+      const a = w.points[k]!;
+      const b = w.points[(k + 1) % n]!;
+      const arc = w.arcs?.[k];
+      const g = arc ? arc.r + h : h;
+      const c = arc ? arc.center : null;
+      segBoxes.push(
+        c
+          ? { minX: c.x - g, minY: c.y - g, maxX: c.x + g, maxY: c.y + g }
+          : {
+              minX: Math.min(a.x, b.x) - g,
+              minY: Math.min(a.y, b.y) - g,
+              maxX: Math.max(a.x, b.x) + g,
+              maxY: Math.max(a.y, b.y) + g,
+            },
+      );
+    }
+  }
+  let units = 0;
+  for (const r of rooms) {
+    const box: GridBox = r.circle
+      ? {
+          minX: r.circle.c.x - r.circle.r,
+          minY: r.circle.c.y - r.circle.r,
+          maxX: r.circle.c.x + r.circle.r,
+          maxY: r.circle.c.y + r.circle.r,
+        }
+      : r.poly
+        ? lineBox(
+            { x: Math.min(...r.poly.map((p) => p.x)), y: Math.min(...r.poly.map((p) => p.y)) },
+            { x: Math.max(...r.poly.map((p) => p.x)), y: Math.max(...r.poly.map((p) => p.y)) },
+          )
+        : { minX: r.at.x, minY: r.at.y, maxX: r.at.x + r.size.w, maxY: r.at.y + r.size.h };
+    const edges = r.circle ? 1 : r.poly ? r.poly.length : 4;
+    let near = 0;
+    for (const b of segBoxes) if (boxesMeet(b, box, 0)) near++;
+    units += edges * near;
+  }
+  return units;
+}
+
+/** The measurement behind {@link roomNetAreaMm2}, unclamped, for callers that must see it. */
+export type NetAreaDetail =
+  | { ok: true; gross: number; covered: number; curves: number }
+  | { ok: false; gross: number; reason: "too-many-edges" | "inconsistent"; curves: number };
+
+/**
+ * The room's net internal area in mm² (see the module header), or `undefined` when it is
+ * omitted. Never more than the room's own area and never negative when present.
+ */
+export function roomNetAreaMm2(r: NetAreaRoom, bands: readonly NetAreaBand[]): number | undefined {
+  const d = netAreaDetail(r, bands);
+  if (!d.ok) return undefined;
+  // `covered` is checked to lie in [−ε, gross + ε] (see `netAreaDetail`); the clamp only
+  // removes that ε of float noise so `net <= area` holds to the last bit.
+  return Math.min(d.gross, Math.max(0, d.gross - d.covered));
+}
+
+/* ---------------------------------------------------------------------------
+ * Curves: a straight edge or a true arc, each walked from parameter 0 to 1
+ * ------------------------------------------------------------------------- */
+
+type Curve = { t: "line"; a: Point; b: Point; box: GridBox } | { t: "arc"; arc: Arc; box: GridBox };
+
+const TAU = Math.PI * 2;
+
+/** Where along the arc `p` sits, `0` at `a`, `1` at `b`, wrapped into `[0, 2π)/|sweep|`. */
+function arcT(arc: Arc, p: Point): number {
+  const th = Math.atan2(p.y - arc.center.y, p.x - arc.center.x);
+  let off = (arc.sweep >= 0 ? th - arc.start : arc.start - th) % TAU;
+  if (off < 0) off += TAU;
+  return off / Math.abs(arc.sweep);
+}
+
+function curvePoint(c: Curve, t: number): Point {
+  if (c.t === "line") {
+    if (t === 0) return c.a;
+    if (t === 1) return c.b;
+    return { x: c.a.x + (c.b.x - c.a.x) * t, y: c.a.y + (c.b.y - c.a.y) * t };
+  }
+  const arc = c.arc;
+  if (t === 0) return arc.a;
+  if (t === 1) return arc.b;
+  const th = arc.start + arc.sweep * t;
+  return { x: arc.center.x + arc.r * Math.cos(th), y: arc.center.y + arc.r * Math.sin(th) };
+}
+
+/** Unit direction of travel at parameter `t`. */
+function curveTangent(c: Curve, t: number): Point {
+  if (c.t === "line") {
+    const dx = c.b.x - c.a.x;
+    const dy = c.b.y - c.a.y;
+    const l = Math.hypot(dx, dy);
+    return { x: dx / l, y: dy / l };
+  }
+  const th = c.arc.start + c.arc.sweep * t;
+  const s = Math.sign(c.arc.sweep);
+  return { x: -Math.sin(th) * s, y: Math.cos(th) * s };
+}
+
+/**
+ * `½∫(x dy − y dx)` along `c` from `p0` (parameter `t0`) to `p1` (`t1`), about the origin
+ * `o`. Closed form: a line by its two ends, an arc by its ends, centre and swept angle. The
+ * ends are the crossing POINTS themselves (exact on a rectilinear plan), never re-derived.
+ */
+function curveIntegral(c: Curve, t0: number, t1: number, p0: Point, p1: Point, o: Point): number {
+  if (c.t === "line") return ((p0.x - o.x) * (p1.y - o.y) - (p1.x - o.x) * (p0.y - o.y)) / 2;
+  const { center, r, sweep } = c.arc;
+  const cx = center.x - o.x;
+  const cy = center.y - o.y;
+  return (cx * (p1.y - p0.y) - cy * (p1.x - p0.x) + r * r * sweep * (t1 - t0)) / 2;
+}
+
+function lineBox(a: Point, b: Point): GridBox {
+  return { minX: Math.min(a.x, b.x), minY: Math.min(a.y, b.y), maxX: Math.max(a.x, b.x), maxY: Math.max(a.y, b.y) };
+}
+
+const boxesMeet = (a: GridBox, b: GridBox, pad: number): boolean =>
+  a.minX <= b.maxX + pad && b.minX <= a.maxX + pad && a.minY <= b.maxY + pad && b.minY <= a.maxY + pad;
+
+function curvesOfLoop(loop: EdgeLoop): Curve[] {
+  return loop.map(
+    (e): Curve => (e.t === "line" ? { t: "line", a: e.a, b: e.b, box: lineBox(e.a, e.b) } : arcCurve(e.arc)),
+  );
+}
+
+function arcCurve(arc: Arc): Curve {
+  // The arc's own extremes bound it; its loop's box is a safe superset when it has one.
+  const { center, r } = arc;
+  return { t: "arc", arc, box: { minX: center.x - r, minY: center.y - r, maxX: center.x + r, maxY: center.y + r } };
+}
+
+/* ---------------------------------------------------------------------------
+ * Splitting: the parameters at which each curve is crossed by another
+ * ------------------------------------------------------------------------- */
+
+/** Positional tolerance for "on the curve" (mm): far below a fmt2 hundredth, far above float noise. */
+const ON_MM = 1e-6;
+/** Parameter tolerance at a curve's own ends. */
+const T_EPS = 1e-12;
+
+/** A crossing on one curve: its parameter and the point itself. */
+interface Split {
+  t: number;
+  p: Point;
+}
+
+function addT(list: Split[], t: number, p: Point): void {
+  if (t > T_EPS && t < 1 - T_EPS) list.push({ t, p });
+}
+
+/** The parameter of `p` on curve `c`, or null when `p` is not on it (within {@link ON_MM}). */
+function paramOn(c: Curve, p: Point): number | null {
+  if (c.t === "line") {
+    const dx = c.b.x - c.a.x;
+    const dy = c.b.y - c.a.y;
+    const l2 = dx * dx + dy * dy;
+    if (l2 === 0) return null;
+    const s = ((p.x - c.a.x) * dx + (p.y - c.a.y) * dy) / l2;
+    const l = Math.sqrt(l2);
+    if (s < -ON_MM / l || s > 1 + ON_MM / l) return null;
+    const perpDist = Math.abs((p.x - c.a.x) * dy - (p.y - c.a.y) * dx) / l;
+    return perpDist <= ON_MM ? Math.min(1, Math.max(0, s)) : null;
+  }
+  const arc = c.arc;
+  if (Math.abs(Math.hypot(p.x - arc.center.x, p.y - arc.center.y) - arc.r) > ON_MM) return null;
+  const t = arcT(arc, p);
+  const slack = ON_MM / (arc.r * Math.abs(arc.sweep));
+  if (t <= 1 + slack) return Math.min(1, t);
+  if (t >= TAU / Math.abs(arc.sweep) - slack) return 0; // just before the start, wrapped
+  return null;
+}
+
+/** Record every crossing of curves `i` and `j` on both curves' split lists. */
+function cross(ci: Curve, cj: Curve, ti: Split[], tj: Split[]): void {
+  if (ci.t === "line" && cj.t === "line") {
+    const d = { x: ci.b.x - ci.a.x, y: ci.b.y - ci.a.y };
+    const e = { x: cj.b.x - cj.a.x, y: cj.b.y - cj.a.y };
+    const m = lineLineParams(ci.a, d, cj.a, e);
+    if (m) {
+      if (m.s >= -T_EPS && m.s <= 1 + T_EPS && m.u >= -T_EPS && m.u <= 1 + T_EPS) {
+        // `meetLines` is exact for a vertical × horizontal pair, so a rectilinear plan's
+        // crossings are the integers they are and its area sums exactly.
+        const p = meetLines(ci.a, d, cj.a, e) ?? curvePoint(ci, m.s);
+        addT(ti, m.s, p);
+        addT(tj, m.u, p);
+      }
+      return;
+    }
+    // Parallel: collinear pieces split each other at their ends.
+    overlapEnds(ci, cj, ti, tj);
+    return;
+  }
+  if (ci.t === "arc" && cj.t === "arc") {
+    const a = ci.arc;
+    const b = cj.arc;
+    if (Math.hypot(a.center.x - b.center.x, a.center.y - b.center.y) <= ON_MM && Math.abs(a.r - b.r) <= ON_MM) {
+      overlapEnds(ci, cj, ti, tj);
+      return;
+    }
+    for (const p of circleCircle(a.center, a.r, b.center, b.r)) {
+      const s = paramOn(ci, p);
+      const u = paramOn(cj, p);
+      if (s !== null && u !== null) {
+        addT(ti, s, p);
+        addT(tj, u, p);
+      }
+    }
+    return;
+  }
+  const [ln, ar, tl, ta] = ci.t === "line" ? [ci, cj, ti, tj] : [cj, ci, tj, ti];
+  if (ln.t !== "line" || ar.t !== "arc") return;
+  const d = { x: ln.b.x - ln.a.x, y: ln.b.y - ln.a.y };
+  for (const s of lineCircleParams(ln.a, d, ar.arc.center, ar.arc.r)) {
+    if (s < -T_EPS || s > 1 + T_EPS) continue;
+    const p = { x: ln.a.x + d.x * s, y: ln.a.y + d.y * s };
+    const u = paramOn(ar, p);
+    if (u === null) continue;
+    addT(tl, s, p);
+    addT(ta, u, p);
+  }
+}
+
+/** Two curves on one line or one circle: each is split where the other ends. */
+function overlapEnds(ci: Curve, cj: Curve, ti: Split[], tj: Split[]): void {
+  for (const p of ends(cj)) {
+    const s = paramOn(ci, p);
+    if (s !== null) addT(ti, s, p);
+  }
+  for (const p of ends(ci)) {
+    const s = paramOn(cj, p);
+    if (s !== null) addT(tj, s, p);
+  }
+}
+
+const ends = (c: Curve): Point[] => (c.t === "line" ? [c.a, c.b] : [c.arc.a, c.arc.b]);
+
+/* ---------------------------------------------------------------------------
+ * The measurement
+ * ------------------------------------------------------------------------- */
+
+/** How far off a piece's midpoint each side is probed (mm). */
+const PROBE_MM = 1e-4;
+
+/**
+ * Measure `room ∩ ⋃ bands` for one room. `covered` is the boundary integral, unclamped;
+ * `ok: false` names why the figure is omitted.
+ */
+export function netAreaDetail(r: NetAreaRoom, bands: readonly NetAreaBand[]): NetAreaDetail {
+  // The room as a region: its own boundary curves and its own inside test.
+  let roomCurves: Curve[];
+  let inRoom: (p: Point) => boolean;
+  let roomBox: GridBox;
+  let gross: number;
+  if (r.circle) {
+    const { c, r: rad } = r.circle;
+    gross = Math.PI * rad * rad;
+    const east = { x: c.x + rad, y: c.y };
+    roomCurves = [arcCurve({ center: c, r: rad, a: east, b: east, sweep: TAU, start: 0 })];
+    inRoom = (p) => Math.hypot(p.x - c.x, p.y - c.y) < rad;
+    roomBox = { minX: c.x - rad, minY: c.y - rad, maxX: c.x + rad, maxY: c.y + rad };
+  } else {
+    const ring: Point[] = r.poly
+      ? [...r.poly]
+      : [
+          { x: r.at.x, y: r.at.y },
+          { x: r.at.x + r.size.w, y: r.at.y },
+          { x: r.at.x + r.size.w, y: r.at.y + r.size.h },
+          { x: r.at.x, y: r.at.y + r.size.h },
+        ];
+    gross = r.poly ? polygonArea(r.poly) : r.size.w * r.size.h;
+    roomCurves = ring
+      .map((a, i) => ({ a, b: ring[(i + 1) % ring.length]! }))
+      .filter(({ a, b }) => a.x !== b.x || a.y !== b.y)
+      .map(({ a, b }): Curve => ({ t: "line", a, b, box: lineBox(a, b) }));
+    inRoom = (p) => pointInPolygon(p.x, p.y, ring, 0);
+    roomBox = lineBox(
+      { x: Math.min(...ring.map((p) => p.x)), y: Math.min(...ring.map((p) => p.y)) },
+      { x: Math.max(...ring.map((p) => p.x)), y: Math.max(...ring.map((p) => p.y)) },
+    );
+  }
+  if (!(gross > 0)) return { ok: true, gross: Math.max(0, gross), covered: 0, curves: 0 };
+
+  const near = bands.filter((b) => boxesMeet(b.box, roomBox, 0));
+  if (near.length === 0) return { ok: true, gross, covered: 0, curves: 0 };
+  const inBands = (p: Point): boolean =>
+    near.some(
+      (b) =>
+        p.x >= b.box.minX && p.x <= b.box.maxX && p.y >= b.box.minY && p.y <= b.box.maxY && loopsContain(b.loops, p),
+    );
+  const inS = (p: Point): boolean => inRoom(p) && inBands(p);
+
+  const curves: Curve[] = [...roomCurves, ...near.flatMap((b) => b.loops.flatMap(curvesOfLoop))];
+  if (curves.length > MAX_NET_CURVES) return { ok: false, gross, reason: "too-many-edges", curves: curves.length };
+
+  // Split every curve at every crossing with every other.
+  const splits: Split[][] = curves.map(() => []);
+  for (let i = 0; i < curves.length; i++) {
+    for (let j = i + 1; j < curves.length; j++) {
+      if (!boxesMeet(curves[i]!.box, curves[j]!.box, ON_MM)) continue;
+      cross(curves[i]!, curves[j]!, splits[i]!, splits[j]!);
+    }
+  }
+
+  // Walk each piece; keep it once if it bounds the covered region, signed by its side.
+  const origin = { x: roomBox.minX, y: roomBox.minY };
+  const seen = new PointInterner();
+  const counted = new Set<string>();
+  let covered = 0;
+  curves.forEach((c, i) => {
+    const ts: Split[] = [
+      { t: 0, p: curvePoint(c, 0) },
+      ...splits[i]!.sort((p, q) => p.t - q.t),
+      { t: 1, p: curvePoint(c, 1) },
+    ];
+    for (let k = 0; k + 1 < ts.length; k++) {
+      const { t: t0, p: p0 } = ts[k]!;
+      const { t: t1, p: p1 } = ts[k + 1]!;
+      if (!(t1 > t0)) continue;
+      const tm = (t0 + t1) / 2;
+      const m = curvePoint(c, tm);
+      const dir = curveTangent(c, tm);
+      const n = { x: -dir.y, y: dir.x };
+      const plus = inS({ x: m.x + n.x * PROBE_MM, y: m.y + n.y * PROBE_MM });
+      const minus = inS({ x: m.x - n.x * PROBE_MM, y: m.y - n.y * PROBE_MM });
+      if (plus === minus) continue;
+      // One copy of a piece two curves share: keyed by its interned ends and middle.
+      const ids = [seen.get(p0), seen.get(p1)].map(keyOf).sort();
+      const key = `${c.t}|${ids[0]}|${ids[1]}|${keyOf(seen.get(m))}`;
+      if (counted.has(key)) continue;
+      counted.add(key);
+      const v = curveIntegral(c, t0, t1, p0, p1, origin);
+      covered += plus ? v : -v;
+    }
   });
 
-/** Every edge's stretches, edge `i` running from `ring[i]` to `ring[i + 1]`. */
-export function ringStretches(ring: readonly Point[], segs: readonly WallSegment[]): EdgeStretch[][] {
-  return ring.map((a, i) => edgeStretches(a, ring[(i + 1) % ring.length]!, segs));
+  const eps = 1e-9 * gross + 1e-3;
+  if (!Number.isFinite(covered) || covered < -eps || covered > gross + eps) {
+    return { ok: false, gross, reason: "inconsistent", curves: curves.length };
+  }
+  return { ok: true, gross, covered, curves: curves.length };
 }
 
-/**
- * The edge `a → b` cut into stretches of constant inset depth: half the thickness of the
- * thickest straight wall segment lying on that stretch of the edge's line, else 0. Adjacent
- * stretches of equal depth are merged, so an edge one wall covers is one stretch.
- */
-function edgeStretches(a: Point, b: Point, segs: readonly WallSegment[]): EdgeStretch[] {
-  const len = Math.hypot(b.x - a.x, b.y - a.y);
-  const ux = (b.x - a.x) / len;
-  const uy = (b.y - a.y) / len;
-  const spans: EdgeStretch[] = [];
-  for (const s of segs) {
-    if (s.arc) continue;
-    // Both ends on the edge's line: the segment is collinear with the edge.
-    const pa = (s.a.x - a.x) * uy - (s.a.y - a.y) * ux;
-    const pb = (s.b.x - a.x) * uy - (s.b.y - a.y) * ux;
-    if (Math.abs(pa) > ON_CENTRELINE_TOL_MM || Math.abs(pb) > ON_CENTRELINE_TOL_MM) continue;
-    const t1 = (s.a.x - a.x) * ux + (s.a.y - a.y) * uy;
-    const t2 = (s.b.x - a.x) * ux + (s.b.y - a.y) * uy;
-    const lo = Math.max(0, Math.min(t1, t2));
-    const hi = Math.min(len, Math.max(t1, t2));
-    if (hi - lo > ON_CENTRELINE_TOL_MM) spans.push({ lo, hi, d: s.thickness / 2 });
-  }
-  if (spans.length === 0) return [{ lo: 0, hi: len, d: 0 }];
-  const cuts = snapCuts(
-    spans.flatMap((s) => [s.lo, s.hi]),
-    len,
-    ON_CENTRELINE_TOL_MM,
-  );
-  const out: EdgeStretch[] = [];
-  for (let i = 0; i + 1 < cuts.length; i++) {
-    const lo = cuts[i]!;
-    const hi = cuts[i + 1]!;
-    const mid = (lo + hi) / 2;
-    let d = 0;
-    for (const s of spans) if (s.lo < mid && mid < s.hi && s.d > d) d = s.d;
-    const last = out[out.length - 1];
-    if (last && last.d === d) last.hi = hi;
-    else out.push({ lo, hi, d });
-  }
-  return out;
-}
-
-/**
- * The cut points of `[0, end]`: `0`, `end` and every interior point, sorted, with any point
- * within `tol` of the one before it dropped (and the last such run ending exactly on `end`).
- * So a wall that ends a float's width short of a corner still reaches it, rather than leaving
- * a sub-micron stretch with no wall that would turn the corner in the inset ring.
- */
-function snapCuts(points: readonly number[], end: number, tol: number): number[] {
-  const out = [0];
-  for (const c of [...points].sort((p, q) => p - q)) {
-    if (c - out[out.length - 1]! > tol && end - c > tol) out.push(c);
-  }
-  out.push(end);
-  return out;
-}
-
-/** +1 when the ring's interior is on the LEFT of travel (in the plan's own axes), else −1. */
-const orientation = (ring: readonly Point[]): number => (polygonSignedArea2(ring) > 0 ? 1 : -1);
-
-/**
- * The exact net area of a RECTILINEAR ring: the room's floor less a band per walled stretch
- * (the stretch moved inward by its depth), each band run on, at an inside corner, by the
- * depth of the neighbouring edge's stretch there. Swept in vertical slabs between every x the
- * ring or a band has; in each slab the floor is the ring's own intervals minus the bands'.
- */
-export function rectilinearNetArea(ring: readonly Point[], stretches: readonly EdgeStretch[][]): number {
-  const n = ring.length;
-  const sigma = orientation(ring);
-  const dir = (i: number): { ux: number; uy: number } => {
-    const a = ring[i]!;
-    const b = ring[(i + 1) % n]!;
-    return { ux: Math.sign(b.x - a.x), uy: Math.sign(b.y - a.y) };
-  };
-  /** Is ring vertex `i` (between edge `i − 1` and edge `i`) an inside corner? */
-  const reflex = (i: number): boolean => {
-    const p = dir((i + n - 1) % n);
-    const q = dir(i);
-    return sigma * (p.ux * q.uy - p.uy * q.ux) < 0;
-  };
-  const bands: { x0: number; x1: number; y0: number; y1: number }[] = [];
-  for (let i = 0; i < n; i++) {
-    const a = ring[i]!;
-    const { ux, uy } = dir(i);
-    const nx = -uy * sigma;
-    const ny = ux * sigma;
-    const edge = stretches[i]!;
-    const len = edge[edge.length - 1]!.hi;
-    for (const s of edge) {
-      if (s.d <= 0) continue;
-      const before = s.lo === 0 && reflex(i) ? lastDepth(stretches[(i + n - 1) % n]!) : 0;
-      const after = s.hi === len && reflex((i + 1) % n) ? stretches[(i + 1) % n]![0]!.d : 0;
-      const p0 = { x: a.x + ux * (s.lo - before), y: a.y + uy * (s.lo - before) };
-      const p1 = { x: a.x + ux * (s.hi + after), y: a.y + uy * (s.hi + after) };
-      const xs = [p0.x, p1.x, p0.x + nx * s.d, p1.x + nx * s.d];
-      const ys = [p0.y, p1.y, p0.y + ny * s.d, p1.y + ny * s.d];
-      bands.push({ x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) });
-    }
-  }
-  const xs = [...new Set([...ring.map((p) => p.x), ...bands.flatMap((b) => [b.x0, b.x1])])].sort((p, q) => p - q);
-  let area = 0;
-  for (let k = 0; k + 1 < xs.length; k++) {
-    const x0 = xs[k]!;
-    const x1 = xs[k + 1]!;
-    const mx = (x0 + x1) / 2;
-    // The ring's floor in this slab: the horizontal edges crossing it, paired in order.
-    const ys: number[] = [];
-    for (let i = 0; i < n; i++) {
-      const a = ring[i]!;
-      const b = ring[(i + 1) % n]!;
-      if (a.y === b.y && Math.min(a.x, b.x) < mx && mx < Math.max(a.x, b.x)) ys.push(a.y);
-    }
-    if (ys.length < 2) continue;
-    ys.sort((p, q) => p - q);
-    const cover = mergeIntervals(
-      bands.filter((b) => b.x0 < mx && mx < b.x1).map((b): [number, number] => [b.y0, b.y1]),
-    );
-    let floor = 0;
-    for (let j = 0; j + 1 < ys.length; j += 2) floor += ys[j + 1]! - ys[j]! - coveredWithin(cover, ys[j]!, ys[j + 1]!);
-    area += (x1 - x0) * floor;
-  }
-  return area;
-}
-
-const lastDepth = (edge: readonly EdgeStretch[]): number => edge[edge.length - 1]!.d;
-
-/** Sort and merge closed intervals into disjoint ones. */
-function mergeIntervals(iv: [number, number][]): [number, number][] {
-  iv.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
-  const out: [number, number][] = [];
-  for (const [lo, hi] of iv) {
-    const last = out[out.length - 1];
-    if (last && lo <= last[1]) last[1] = Math.max(last[1], hi);
-    else out.push([lo, hi]);
-  }
-  return out;
-}
-
-/** Length of `[lo, hi]` covered by the disjoint, sorted intervals `cover`. */
-function coveredWithin(cover: readonly [number, number][], lo: number, hi: number): number {
-  let c = 0;
-  for (const [a, b] of cover) {
-    const s = Math.max(a, lo);
-    const e = Math.min(b, hi);
-    if (e > s) c += e - s;
-  }
-  return c;
-}
-
-/**
- * The shoelace area of the INSET RING: every stretch's line moved inward by its depth,
- * consecutive lines meeting at their intersection, and a square step (two vertices) where the
- * depth changes between two collinear stretches. Signed so a ring the insets turned inside out
- * reads negative; the caller clamps. Works for any simple ring; used for oblique ones.
- */
-export function insetRingArea(ring: readonly Point[], stretches: readonly EdgeStretch[][]): number {
-  const n = ring.length;
-  const sigma = orientation(ring);
-  interface Item {
-    ex: number;
-    ey: number;
-    ux: number;
-    uy: number;
-    nx: number;
-    ny: number;
-    p0: Point;
-    p1: Point;
-    d: number;
-  }
-  const items: Item[] = [];
-  for (let i = 0; i < n; i++) {
-    const a = ring[i]!;
-    const b = ring[(i + 1) % n]!;
-    const ex = b.x - a.x;
-    const ey = b.y - a.y;
-    const len = Math.hypot(ex, ey);
-    const ux = ex / len;
-    const uy = ey / len;
-    const edge = stretches[i]!;
-    for (const s of edge) {
-      const p0 = s.lo === 0 ? a : { x: a.x + ux * s.lo, y: a.y + uy * s.lo };
-      const p1 = s.hi === edge[edge.length - 1]!.hi ? b : { x: a.x + ux * s.hi, y: a.y + uy * s.hi };
-      items.push({ ex, ey, ux, uy, nx: -uy * sigma, ny: ux * sigma, p0, p1, d: s.d });
-    }
-  }
-  const out: Point[] = [];
-  for (let k = 0; k < items.length; k++) {
-    const cur = items[k]!;
-    const nxt = items[(k + 1) % items.length]!;
-    const p = { x: cur.p1.x + cur.nx * cur.d, y: cur.p1.y + cur.ny * cur.d };
-    const q = { x: nxt.p0.x + nxt.nx * nxt.d, y: nxt.p0.y + nxt.ny * nxt.d };
-    const cross = cur.ex * nxt.ey - cur.ey * nxt.ex;
-    const scale = Math.hypot(cur.ex, cur.ey) * Math.hypot(nxt.ex, nxt.ey);
-    if (Math.abs(cross) <= 1e-12 * scale) {
-      // Parallel: the same edge, or a straight-through vertex. Equal depths continue the line.
-      if (cur.d === nxt.d && cur.ex * nxt.ex + cur.ey * nxt.ey > 0) continue;
-      out.push(p, q);
-      continue;
-    }
-    const den = cur.ux * nxt.uy - cur.uy * nxt.ux;
-    const t = ((q.x - p.x) * nxt.uy - (q.y - p.y) * nxt.ux) / den;
-    out.push({ x: p.x + cur.ux * t, y: p.y + cur.uy * t });
-  }
-  return out.length < 3 ? 0 : (sigma * polygonSignedArea2(out)) / 2;
-}
-
-/**
- * A circular room's net area: over each angular interval, the circle inset by half the
- * thickness of the thickest concentric arc wall there. `π(r − d)²` in closed form when one
- * thickness walls the whole circle; `πr²` (the gross area) when none does.
- */
-function circleNetArea(c: Point, r: number, segs: readonly WallSegment[]): number {
-  const ref = fullCircleArc(c, r);
-  const full = ref.sweep;
-  const spans: EdgeStretch[] = [];
-  for (const s of segs) {
-    const arc = s.arc;
-    if (!arc) continue;
-    if (Math.hypot(arc.center.x - c.x, arc.center.y - c.y) > ON_CENTRELINE_TOL_MM) continue;
-    if (Math.abs(arc.r - r) > ON_CENTRELINE_TOL_MM) continue;
-    // Walk the arc clockwise from east, as `largestPerimeterGapCircle` does.
-    const cw = arc.sweep >= 0;
-    const lo = arcAngleOffset(ref, cw ? arc.a : arc.b);
-    const hi = arcAngleOffset(ref, cw ? arc.b : arc.a);
-    const d = s.thickness / 2;
-    if (hi > lo) spans.push({ lo, hi, d });
-    else if (hi < lo) {
-      spans.push({ lo, hi: full, d });
-      if (hi > 0) spans.push({ lo: 0, hi, d });
-    }
-  }
-  if (spans.length === 0) return Math.PI * r * r;
-  const cuts = snapCuts(
-    spans.flatMap((s) => [s.lo, s.hi]),
-    full,
-    ON_CENTRELINE_TOL_MM / r,
-  );
-  let area = 0;
-  let uniform: number | null = null;
-  let mixed = false;
-  for (let i = 0; i + 1 < cuts.length; i++) {
-    const lo = cuts[i]!;
-    const hi = cuts[i + 1]!;
-    const mid = (lo + hi) / 2;
-    let d = 0;
-    for (const s of spans) if (s.lo < mid && mid < s.hi && s.d > d) d = s.d;
-    if (uniform === null) uniform = d;
-    else if (uniform !== d) mixed = true;
-    const k = Math.max(0, r - d);
-    area += 0.5 * (hi - lo) * k * k;
-  }
-  if (!mixed && uniform !== null) {
-    const k = Math.max(0, r - uniform);
-    return Math.PI * k * k;
-  }
-  return area;
+/** A stable key for an interned point (the interner returns one object per position). */
+function keyOf(p: Point): string {
+  return `${p.x},${p.y}`;
 }

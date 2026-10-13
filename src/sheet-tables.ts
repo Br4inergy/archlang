@@ -31,7 +31,8 @@
  */
 
 import type { Point } from "./ast.js";
-import { type Bounds, segmentsOfWall, type WallLike } from "./geometry.js";
+import type { Bounds } from "./geometry.js";
+import type { BandWall } from "./geometry/band.js";
 import type { HatchSpec } from "./hatches.js";
 import { groundSwatchFrame, hatchesUsed, patternId } from "./hatches.js";
 import type { ROutdoor, RFurniture, RRoom } from "./ir.js";
@@ -41,7 +42,7 @@ import type { RenderSizes, SceneNode } from "./scene.js";
 import type { Theme } from "./theme.js";
 import { FIXTURE_CATEGORIES, fixtureGlyph, hasFixtureGlyph } from "./elements/fixtures-glyphs.js";
 import { fmt2 } from "./num-format.js";
-import { roomAreaMm2, roomNetAreaMm2 } from "./analyze.js";
+import { netAreaBands, roomAreaMm2, roomNetAreaMm2 } from "./analyze.js";
 import { openingCount, type OpeningRow } from "./opening-schedule.js";
 import { textWidth } from "./text-metrics.js";
 
@@ -65,8 +66,11 @@ export interface ScheduleRow {
   name: string;
   /** Floor area in m², rounded to 2dp — byte-identical to `describe().rooms[].area_m2`. */
   area_m2: number;
-  /** Net internal area in m², rounded to 2dp — byte-identical to `describe().rooms[].net_area_m2`. */
-  net_area_m2: number;
+  /**
+   * Net internal area in m², rounded to 2dp — byte-identical to `describe().rooms[].net_area_m2`,
+   * and absent exactly when that is (the drawn cell then reads `-`).
+   */
+  net_area_m2?: number;
   /**
    * Dotted path of the **innermost** `zone` the room was declared in, when the
    * plan declares zones. Absent for an unzoned room and for every plan that declares no
@@ -92,8 +96,8 @@ export interface ScheduleGroup {
   count: number;
   /** Sum of this group's rounded areas, rounded the same way {@link RoomSchedule.total_m2} is. */
   subtotal_m2: number;
-  /** Sum of this group's rounded NET areas, rounded the same way. */
-  net_subtotal_m2: number;
+  /** Sum of this group's rounded NET areas, rounded the same way; absent when any row's is. */
+  net_subtotal_m2?: number;
 }
 
 /** The whole ROOM SCHEDULE as data: its rows plus the total that closes it. */
@@ -105,8 +109,11 @@ export interface RoomSchedule {
    * never disagree by a rounding step.
    */
   total_m2: number;
-  /** Sum of the rows' rounded NET areas, re-rounded — `describe().totals.net_floor_area_m2`. */
-  net_total_m2: number;
+  /**
+   * Sum of the rows' rounded NET areas, re-rounded — `describe().totals.net_floor_area_m2`.
+   * Absent when any row's net area is, never a sum over a subset.
+   */
+  net_total_m2?: number;
   /**
    * Zone groups, when the plan declares zones AND at least one room sits in one. Empty
    * otherwise — which is what keeps an unzoned plan's table (and its bytes) unchanged.
@@ -116,9 +123,9 @@ export interface RoomSchedule {
 
 /**
  * Derive the room schedule from the resolved rooms. Pure tallying: area is the room's own
- * area in m² and the net area its shape inset to the faces of `walls` (the storey's walls),
- * the same two expressions `describe()` uses, so the table and the semantic summary are one
- * set of numbers.
+ * area in m² and the net area that shape less what the bands of `walls` (the storey's walls)
+ * cover, the same two expressions `describe()` uses, so the table and the semantic summary
+ * are one set of numbers.
  *
  * **Without zones** the rows are the rooms in **source order** — unchanged, byte for byte.
  *
@@ -131,26 +138,30 @@ export interface RoomSchedule {
 export function roomSchedule(
   rooms: readonly RRoom[],
   zones?: readonly ZoneRef[],
-  // Optional only because this is public API that predates net area: every caller in this
-  // repository passes the storey's walls. Without them no edge has a wall, so nothing is
-  // inset and each row's `net_area_m2` equals its `area_m2` — the rule, not a guess.
-  walls: readonly WallLike[] = [],
+  // Optional because this is public API that predates net area. Without the walls nothing
+  // is known about what stands on the floor, so no row carries `net_area_m2` and there is
+  // no net total — omitted, never assumed equal to `area_m2`. Every caller in this
+  // repository passes the storey's walls.
+  walls?: readonly BandWall[],
 ): RoomSchedule {
   const grouped = groupRoomsByZone(rooms, zones);
   const ordered = grouped ? grouped.flatMap((g) => g.rooms) : rooms;
   const width = Math.max(2, String(ordered.length).length);
-  const segs = walls.flatMap((w) => segmentsOfWall(w));
-  const rows: ScheduleRow[] = ordered.map((r, i) => ({
-    no: String(i + 1).padStart(width, "0"),
-    id: r.id,
-    name: r.label ?? r.id,
-    area_m2: r2(roomAreaMm2(r) / 1_000_000),
-    net_area_m2: r2(roomNetAreaMm2(r, segs) / 1_000_000),
-    ...(r._zone !== undefined ? { zone: r._zone } : {}),
-  }));
+  const bands = walls ? netAreaBands(walls) : null;
+  const rows: ScheduleRow[] = ordered.map((r, i) => {
+    const net = bands ? roomNetAreaMm2(r, bands) : undefined;
+    return {
+      no: String(i + 1).padStart(width, "0"),
+      id: r.id,
+      name: r.label ?? r.id,
+      area_m2: r2(roomAreaMm2(r) / 1_000_000),
+      ...(net !== undefined ? { net_area_m2: r2(net / 1_000_000) } : {}),
+      ...(r._zone !== undefined ? { zone: r._zone } : {}),
+    };
+  });
   const total_m2 = r2(rows.reduce((s, r) => s + r.area_m2, 0));
-  const net_total_m2 = r2(rows.reduce((s, r) => s + r.net_area_m2, 0));
-  if (!grouped) return { rows, total_m2, net_total_m2, groups: [] };
+  const net = netSum(rows);
+  if (!grouped) return { rows, total_m2, ...net.total, groups: [] };
 
   const groups: ScheduleGroup[] = [];
   let at = 0;
@@ -161,11 +172,18 @@ export function roomSchedule(
       name: g.name,
       count: slice.length,
       subtotal_m2: r2(slice.reduce((s, r) => s + r.area_m2, 0)),
-      net_subtotal_m2: r2(slice.reduce((s, r) => s + r.net_area_m2, 0)),
+      ...(netSum(slice).sum !== undefined ? { net_subtotal_m2: netSum(slice).sum } : {}),
     });
     at += g.rooms.length;
   }
-  return { rows, total_m2, net_total_m2, groups };
+  return { rows, total_m2, ...net.total, groups };
+}
+
+/** The rounded sum of the rows' net areas, or none when any row's is omitted. */
+function netSum(rows: readonly ScheduleRow[]): { sum?: number; total: { net_total_m2?: number } } {
+  if (!rows.every((r) => r.net_area_m2 !== undefined)) return { total: {} };
+  const sum = r2(rows.reduce((s, r) => s + (r.net_area_m2 ?? 0), 0));
+  return { sum, total: { net_total_m2: sum } };
 }
 
 /** The zone facts the schedule needs — structurally `RZone` from the IR, restated here so
@@ -316,7 +334,7 @@ export interface ScheduleTableBox extends TableBox {
   cols: TableColumn[];
   rows: ScheduleRow[];
   total_m2: number;
-  net_total_m2: number;
+  net_total_m2?: number;
   /** Zone groups, in row order; empty for an unzoned plan (which draws the flat table). */
   groups: ScheduleGroup[];
 }
@@ -606,7 +624,7 @@ export function planTableRows(input: {
   legend?: boolean | undefined;
   rooms: readonly RRoom[];
   zones?: readonly ZoneRef[] | undefined;
-  walls: readonly (WallLike & { material: string; hatchScale: number; hatchAngle: number })[];
+  walls: readonly (BandWall & { material: string; hatchScale: number; hatchAngle: number })[];
   furniture: readonly RFurniture[];
   /**
    * The ground surfaces, whose materials add legend rows exactly as a wall's do.
@@ -683,7 +701,7 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
       cols,
       rows: sched.rows,
       total_m2: sched.total_m2,
-      net_total_m2: sched.net_total_m2,
+      ...(sched.net_total_m2 !== undefined ? { net_total_m2: sched.net_total_m2 } : {}),
       groups: sched.groups,
     };
     x += w + refDim * TABLE_GAP;
@@ -860,9 +878,11 @@ const BOLD = 600;
  * An area cell: always two decimal places, so the column reads as a column
  * (`12.00`, not `12`). Deterministic — the input is the row's already-`r2`-rounded
  * number, so fixing it to the same 2dp cannot drift (the idiom the in-plan area label
- * uses at 1dp). {@link fmt2} stays the formatter for every *geometric* number here.
+ * uses at 1dp). {@link fmt2} stays the formatter for every *geometric* number here. An
+ * omitted net area (see `analyze/net-area.ts`) draws `-`, the table's ASCII "no value"
+ * (the DOOR & WINDOW SCHEDULE's HAND column uses the same mark).
  */
-const areaCell = (m2: number): string => m2.toFixed(2);
+const areaCell = (m2: number | undefined): string => (m2 === undefined ? "-" : m2.toFixed(2));
 
 /**
  * Left edge of the schedule's column `i`: `x0` plus the widths up to and including `i`, less

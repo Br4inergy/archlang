@@ -38,6 +38,7 @@ import {
   rectOf,
   pointInRoomBox,
   roomAreaMm2,
+  netAreaBands,
   roomNetAreaMm2,
   roomBox,
   roomsAdjacent,
@@ -53,7 +54,7 @@ import {
   type BBox,
   type RoomBox,
 } from "./analyze.js";
-import { outerFaceBounds, segmentsOfWall } from "./geometry.js";
+import { outerFaceBounds } from "./geometry.js";
 import type { PaperOrientation, PaperSize } from "./sheet.js";
 import { computeCirculation, type CirculationModel } from "./analyze/circulation.js";
 import { symmetryFacts, type SymmetryFacts } from "./analyze/symmetry.js";
@@ -151,14 +152,15 @@ export interface RoomSummary {
    */
   area_m2: number;
   /**
-   * NET internal area in square metres, rounded to 2 decimals: the room's shape inset by
-   * half the thickness of each wall whose centreline runs along its edge (each wall its own
-   * thickness; an edge with no wall is not inset), so it stops at the walls' inner faces.
-   * Always `<= area_m2`; equal to it for a room with no wall on its edge. A circle is inset
-   * only by concentric arc walls. The rule: `docs/adr/0027-net-internal-area.md`.
-   * Appended beside {@link area_m2}, which is unchanged.
+   * NET internal area in square metres, rounded to 2 decimals: the room's shape less every
+   * part of it a wall's solid covers (each wall's band as drawn, before openings: its
+   * faces, caps, mitres and arcs). A wall on the edge takes half of itself out of the room;
+   * a wall standing on the floor takes what it stands on. Always `<= area_m2`; equal to it
+   * when no wall touches the room. Computed exactly in closed form, or OMITTED (absent)
+   * when it cannot be — and then {@link totals}`.net_floor_area_m2` is absent too. The rule:
+   * `docs/adr/0027-net-internal-area.md`. Appended beside {@link area_m2}, which is unchanged.
    */
-  net_area_m2: number;
+  net_area_m2?: number;
   bbox: BBox;
   /**
    * The room's FLOOR as a closed ring: a rectangle's four corners clockwise from
@@ -723,9 +725,10 @@ export interface SceneSummary {
     /**
      * Sum of the rooms' {@link RoomSummary.net_area_m2}, rounded to 2 decimals — summed from
      * the same rounded per-room figures, the way `floor_area_m2` is, so the total and the
-     * list never disagree by a rounding step.
+     * list never disagree by a rounding step. ABSENT when any room's net area is omitted:
+     * never a sum over a subset of the rooms.
      */
-    net_floor_area_m2: number;
+    net_floor_area_m2?: number;
     /**
      * Total `outdoor` area in m², 2 dp — present ONLY when the storey declares a
      * ground surface, so every existing `totals` object is byte-identical.
@@ -1098,6 +1101,10 @@ function adjacencyAllPairs(
   });
 }
 
+/** A room's `net_area_m2` key: the rounded figure, or no key at all when it is omitted. */
+const netField = (mm2: number | undefined): { net_area_m2?: number } =>
+  mm2 === undefined ? {} : { net_area_m2: r2(mm2 / 1_000_000) };
+
 /** Build the summary from a fully resolved plan. */
 function summarize(
   ir: ResolvedPlan,
@@ -1119,8 +1126,8 @@ function summarize(
   const roomRects = new Map<string, RoomBox>(roomEls.map((r) => [r.id, roomBox(r)]));
 
   const adjacency = roomAdjacency(roomEls, roomRects, tol);
-  // The storey's wall segments, once: every room's net area reads them.
-  const wallSegs = ir.walls.flatMap((w) => segmentsOfWall(w));
+  // The storey's wall bands, once: every room's net area reads them.
+  const bands = netAreaBands(ir.walls);
 
   const rooms: RoomSummary[] = roomEls.map((r, i) => {
     const rect = roomRects.get(r.id)!;
@@ -1132,7 +1139,7 @@ function summarize(
       uses: [...uses],
       room_type: roomTypeForUses(uses),
       area_m2: r2(roomAreaMm2(r) / 1_000_000),
-      net_area_m2: r2(roomNetAreaMm2(r, wallSegs) / 1_000_000),
+      ...netField(roomNetAreaMm2(r, bands)),
       // `bbox` stays a plain {x,y,w,h} — never the RoomBox, whose `poly` would leak a
       // fifth key into the JSON. A polygon room's true floor is `floor_polygon`.
       bbox: { x: rect.x, y: rect.y, w: rect.w, h: rect.h },
@@ -1311,7 +1318,10 @@ function summarize(
     doors: doors.length,
     windows: windows.length,
     floor_area_m2: floorArea,
-    net_floor_area_m2: r2(rooms.reduce((s, r) => s + r.net_area_m2, 0)),
+    // Never a sum over a subset: one omitted room omits the total.
+    ...(rooms.every((r) => r.net_area_m2 !== undefined)
+      ? { net_floor_area_m2: r2(rooms.reduce((s, r) => s + (r.net_area_m2 ?? 0), 0)) }
+      : {}),
     // Summed from the same already-rounded per-surface numbers the rows report, the way
     // `floor_area_m2` is summed from the rooms — so the total and the list can never
     // disagree by a rounding step. Spread, so a plan with no ground has no key at all.

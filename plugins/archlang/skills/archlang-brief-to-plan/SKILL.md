@@ -30,8 +30,8 @@ This skill is a workflow, not a language reference. The language is whatever `ar
    then apply them with `archlang fix plan.arch`. Fix the rest by hand and compile again.
 5. **Check the plan against your list.** `archlang describe plan.arch --select rooms,doors,windows,totals --json`.
    Compare room count, labels, each area, what each door connects and which rooms have windows
-   with the list from step 2. Edit and repeat from step 4 until they match. Room areas are
-   measured on wall centrelines, so they exceed the floor area inside the walls.
+   with the list from step 2. Edit and repeat from step 4 until they match. `area_m2` is measured on
+   wall centrelines; `net_area_m2` is the floor no wall stands on.
 6. **Check soundness.** `archlang lint plan.arch --json`. Fix each warning, or keep it on purpose and
    say why. If a room cannot be reached or a bedroom has no window, `archlang suggest plan.arch --json`
    returns door and window statements you can paste.
@@ -46,8 +46,8 @@ This skill is a workflow, not a language reference. The language is whatever `ar
 
 - The file you wrote and the drawing you rendered.
 - Every requirement of the brief the plan does not meet, or "none".
-- Which area you quote: `net_area_m2` is the floor inside the walls, `area_m2` the larger
-  centreline figure.
+- Which area you quote: `net_area_m2` is the floor no wall stands on, `area_m2` the larger
+  centreline figure. If a room has no `net_area_m2`, say its net area could not be computed.
 - Every lint warning still present, with the reason it stays.
 
 ## When something goes wrong

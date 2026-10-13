@@ -4341,12 +4341,12 @@ exports[`golden SVG snapshots > renders hillside-villa.arch as one page per leve
 <text x="-5512.5" y="15317.5" font-size="95" fill="#333333" text-anchor="middle" dominant-baseline="central">07</text>
 <text x="-5339" y="15317.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central">Living</text>
 <text x="-3311" y="15317.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">28.80</text>
-<text x="-2611" y="15317.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">26.58</text>
+<text x="-2611" y="15317.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">26.54</text>
 <line x1="-5650" y1="15402.5" x2="-2575" y2="15402.5" stroke="#333333" stroke-width="6.5"/>
 <text x="-5512.5" y="15487.5" font-size="95" fill="#333333" text-anchor="middle" dominant-baseline="central">08</text>
 <text x="-5339" y="15487.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central">Dining</text>
 <text x="-3311" y="15487.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">19.20</text>
-<text x="-2611" y="15487.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">17.45</text>
+<text x="-2611" y="15487.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">17.44</text>
 <line x1="-5650" y1="15572.5" x2="-2575" y2="15572.5" stroke="#333333" stroke-width="6.5"/>
 <text x="-5512.5" y="15657.5" font-size="95" fill="#333333" text-anchor="middle" dominant-baseline="central">09</text>
 <text x="-5339" y="15657.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central">Kitchen</text>
@@ -4368,11 +4368,11 @@ exports[`golden SVG snapshots > renders hillside-villa.arch as one page per leve
 <line x1="-5650" y1="16082.5" x2="-2575" y2="16082.5" stroke="#333333" stroke-width="6.5"/>
 <text x="-5614" y="16167.5" font-size="95" fill="#888888" text-anchor="start" dominant-baseline="central" font-weight="600">SUBTOTAL</text>
 <text x="-3311" y="16167.5" font-size="95" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">127.68</text>
-<text x="-2611" y="16167.5" font-size="95" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">115.59</text>
+<text x="-2611" y="16167.5" font-size="95" fill="#888888" text-anchor="end" dominant-baseline="central" font-weight="600">115.54</text>
 <line x1="-5650" y1="16252.5" x2="-2575" y2="16252.5" stroke="#333333" stroke-width="9"/>
 <text x="-5614" y="16337.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">TOTAL</text>
 <text x="-3311" y="16337.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">196.54</text>
-<text x="-2611" y="16337.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">177.03</text>
+<text x="-2611" y="16337.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">176.98</text>
 <polygon points="-2425,13362.5 -1075,13362.5 -1075,17952.5 -2425,17952.5" fill="none" stroke="#333333" stroke-width="9"/>
 <text x="-2398" y="13447.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">LEGEND</text>
 <line x1="-2425" y1="13532.5" x2="-1075" y2="13532.5" stroke="#333333" stroke-width="9"/>
@@ -7721,7 +7721,7 @@ exports[`golden SVG snapshots > renders materials.arch deterministically 1`] = `
 <text x="-12.5" y="10907.5" font-size="95" fill="#333333" text-anchor="middle" dominant-baseline="central">01</text>
 <text x="161" y="10907.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central">Workshop</text>
 <text x="2189" y="10907.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">96.00</text>
-<text x="2889" y="10907.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">91.18</text>
+<text x="2889" y="10907.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">91.17</text>
 <text x="-12.5" y="11077.5" font-size="95" fill="#333333" text-anchor="middle" dominant-baseline="central">02</text>
 <text x="161" y="11077.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central">Office</text>
 <text x="2189" y="11077.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">12.00</text>
@@ -7740,7 +7740,7 @@ exports[`golden SVG snapshots > renders materials.arch deterministically 1`] = `
 <line x1="-150" y1="11502.5" x2="2925" y2="11502.5" stroke="#333333" stroke-width="9"/>
 <text x="-114" y="11587.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">TOTAL</text>
 <text x="2189" y="11587.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">128.00</text>
-<text x="2889" y="11587.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">119.68</text>
+<text x="2889" y="11587.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">119.67</text>
 <polygon points="3075,10482.5 4425,10482.5 4425,13032.5 3075,13032.5" fill="none" stroke="#333333" stroke-width="9"/>
 <text x="3102" y="10567.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">LEGEND</text>
 <line x1="3075" y1="10652.5" x2="4425" y2="10652.5" stroke="#333333" stroke-width="9"/>

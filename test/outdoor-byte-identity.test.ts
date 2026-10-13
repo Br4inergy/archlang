@@ -198,11 +198,15 @@ import { type CompilerApi, semanticDigestWith } from "./byte-identity-digest.js"
 // they reproduce as well. The account is in ./byte-identity-baseline.ts ("EVERY row
 // re-measured, once"). Those schedule rows were re-measured once more, alone, when the
 // AREA column took the label `AREA (CENTRELINE, m²)`; SEMANTIC_BASELINE did not move.
+// Re-measured once more when net area became the room less every wall band on it (ADR
+// 0027): `aquarium`'s two rows, because the curved shell's band covers 0.28 + 1.14 m² of
+// the concourse and cafe; its SUMMARY row moves with describe(). Field by field in
+// ./byte-identity-baseline.ts ("Six plans re-measured again").
 const BASELINE: [string, string][] = [
   ["laneway-house", "fe584e22b63295a27537b93db681c7fb5ab1968caa27761cb97191e331d964d2"],
   ["studio", "fe06b9554615b4722732d13e7976991b7469d03387e8846ad83f54f83f3cbde7"],
   ["gallery-l", "7ab8ddd688e0a9fabb909fbfd910879a5e247ae4ae846412350951cd49dea6f0"],
-  ["aquarium", "ffc9ad57c049a31cca62c75b970559ad3aeb64ca95bba1d6207d799537149a7c"],
+  ["aquarium", "4dcfa86da1e9b655ae0f1962a2226df79486705c7b08de021280ed82c8183318"],
 ];
 
 /** The SUMMARY half of the same law — see the header. Re-measured once, for `aquarium`, because its rooms were wrong. */
@@ -210,7 +214,7 @@ const SEMANTIC_BASELINE: [string, string][] = [
   ["laneway-house", "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0"],
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
-  ["aquarium", "6f903304483fcf9b9062f3f7f1d20bfaec7a6ff72f76fc6dffbf1d8856517aa0"],
+  ["aquarium", "0c0ff87fb446fe2dea2db1cc0560f6e840066c0a4a9afa192cee4387badde556"],
 ];
 
 /** The compiler surface the summary-half pins are taken over. */

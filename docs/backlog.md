@@ -2337,10 +2337,10 @@ and `archlang --version` prints the version. **Size:** S.
 `totals.net_floor_area_m2` beside the centreline `area_m2`
 (`docs/adr/0027-net-internal-area.md`). The `describe` tool's description in
 `packages/mcp/src/tools.ts` still lists rooms by "area" alone, so an agent reading the tool list
-is not told which figure is the floor inside the walls.
+is not told which figure is the floor no wall stands on, or that it can be absent.
 
 **Hypothesis.** One clause in the description: `area_m2` on wall centrelines, `net_area_m2`
-inside the walls. Any `packages/mcp` change, prose included, publishes only with a version bump
+the floor no wall stands on (absent when it cannot be computed exactly). Any `packages/mcp` change, prose included, publishes only with a version bump
 in `packages/mcp/package.json` and both `server.json` `version` fields.
 
 **Gate:** the tool description names both fields; the MCP lockstep and tool-text tests pass; the
@@ -2353,7 +2353,9 @@ version is bumped in all three places. **Size:** S.
 (`totals.net_floor_area_m2`) is not shown, and the room tooltip (`playground/src/interact.ts`)
 prints `area_m2` alone.
 
-**Hypothesis.** Show the net figure as the floor area and label the centreline one, or show both.
+**Hypothesis.** Show the net figure as the floor area and label the centreline one, or show both;
+when the plan has no `net_floor_area_m2` (a room's net area was omitted), say so rather than
+show a sum.
 The strip is a reader-facing surface, so the wording follows `docs/adr/0027-net-internal-area.md`.
 
 **Gate:** the strip and tooltip name which figure they show; `playground/test` and

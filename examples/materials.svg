@@ -430,7 +430,7 @@
 <text x="-12.5" y="10907.5" font-size="95" fill="#333333" text-anchor="middle" dominant-baseline="central">01</text>
 <text x="161" y="10907.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central">Workshop</text>
 <text x="2189" y="10907.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">96.00</text>
-<text x="2889" y="10907.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">91.18</text>
+<text x="2889" y="10907.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">91.17</text>
 <text x="-12.5" y="11077.5" font-size="95" fill="#333333" text-anchor="middle" dominant-baseline="central">02</text>
 <text x="161" y="11077.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central">Office</text>
 <text x="2189" y="11077.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central">12.00</text>
@@ -449,7 +449,7 @@
 <line x1="-150" y1="11502.5" x2="2925" y2="11502.5" stroke="#333333" stroke-width="9"/>
 <text x="-114" y="11587.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">TOTAL</text>
 <text x="2189" y="11587.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">128.00</text>
-<text x="2889" y="11587.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">119.68</text>
+<text x="2889" y="11587.5" font-size="95" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">119.67</text>
 <polygon points="3075,10482.5 4425,10482.5 4425,13032.5 3075,13032.5" fill="none" stroke="#333333" stroke-width="9"/>
 <text x="3102" y="10567.5" font-size="95" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">LEGEND</text>
 <line x1="3075" y1="10652.5" x2="4425" y2="10652.5" stroke="#333333" stroke-width="9"/>
