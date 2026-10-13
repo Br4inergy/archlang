@@ -316,7 +316,9 @@ suite("a module `let` that fails reports as it does in the module", () => {
  * `two-bed-min-area.{faithful,laundered}` (the `W_ROOM_NO_FIXTURE` statement is now placed
  * clear of doors, swings and furniture, so its anchor moved); and the six back-to-room goldens
  * (`W_FIXTURE_BACK_TO_ROOM`'s size hint no longer adds "or, placed `in <room> anchor`" to a
- * piece placed `at`, and asks no `rotate` of an anchored one).
+ * piece placed `at`, and asks no `rotate` of an anchored one). `hillside-villa` re-measured a
+ * third time when every named door became re-measured before it is quoted: the same three
+ * doors, hint wording only; the previous `lint()` put back reproduces the previous row.
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "7d17249d81b43f1ff5b17c6b1219750bbdd695599f31e66fb298be9facc7c169"],
@@ -336,7 +338,7 @@ const BASELINE: [string, string][] = [
   // Re-measured for the facade-probe fix (level 2's `dims auto` chains only), and again because
   // the EXAMPLE changed (backlog D.2, its piano turned and moved): the same row, with the same
   // digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/hillside-villa.arch", "87978f872c755e7c09820701c5f6ef9543a59f38ae615639ac4ef5c5f7a227cb"],
+  ["examples/hillside-villa.arch", "278a243c510a54deaf9f2ddcd55eef4da3fcdc3e963530e22858fcc6275f78ad"],
   ["examples/imports.arch", "dbbdb95881775e34e5abecc72a52bc72160af81a5883ddced18bbf3d7f1a7f2c"],
   ["examples/laneway-house.arch", "2315eb23382b52aa784930c332c00083b7d9931c4620a46b8b710c75e4c1195e"],
   ["examples/library.arch", "5c4913bdc5e2960d6cac2203cdb775ed56179c232550efe893a1dfab492d3215"],

@@ -11,7 +11,7 @@
  *
  * Gating mirrors judge v2: room count / existence / area / total-area / windows gate
  * (a real deliverable miss); adjacency and reachability score as subscores but never
- * gate — one-shot topology is what the LOOP tools (`arch fix`/`suggest`/`validate
+ * gate — one-shot topology is what the LOOP tools (`archlang fix`/`suggest`/`validate
  * --graph`) address, not one-shot generation. Whether a diagnostic feedback loop beats
  * equal-budget resampling is an open question; nothing here decides it.
  *

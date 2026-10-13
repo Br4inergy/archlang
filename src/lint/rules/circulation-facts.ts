@@ -19,7 +19,7 @@
  */
 
 import { type CirculationModel, computeCirculation } from "../../analyze/circulation.js";
-import { type AccessEdge, EXTERIOR_NODE } from "../../analyze.js";
+import { type AccessEdge, buildDoorAccessGraph, EXTERIOR_NODE } from "../../analyze.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import type { LintContext, LintRule } from "../context.js";
 import { mm, shortfall } from "../measure.js";
@@ -53,9 +53,9 @@ function circulationOf(ctx: LintContext): CirculationModel | null {
  * The closed remedy set for `W_PATH_TOO_NARROW`, sized against the ruleset minimum.
  *
  * None of these is a machine-applicable fix: widening a door rewrites a width the author
- * chose. When doors set the limit ({@link bottleneckDoors}) the hints name each one and the
- * `width` that clears the minimum; otherwise the bottleneck is a nav-grid CELL the model
- * cannot attribute to one element. `arch repair` is deliberately not named; it clears wall
+ * chose. When doors set the limit the hints name each one and the `width` that, applied to
+ * every named door, was re-measured to clear the minimum ({@link attributeBottleneck});
+ * otherwise the bottleneck is a nav-grid CELL the model cannot attribute to one element. `arch repair` is deliberately not named; it clears wall
  * intrusions, swings, doorway landings and overlaps, not a route pinch, and pointing at a
  * tool that would report "nothing to do" is worse than silence.
  */
@@ -69,8 +69,13 @@ const narrowHints = (min: number, doors: readonly AccessEdge[] | null, ctx: Lint
     : [
         ...doors.map(
           (e) =>
-            `Widen ${e.kind} "${e.doorId}" to \`width ${mm(clearingWidth(e, ctx))}\` (now ${mm(e.nominalWidth)}), which leaves the ${mm(min)} mm minimum clear${e.kind === "door" ? " after the leaf allowance" : ""}.`,
+            `Widen ${e.kind} "${e.doorId}" to \`width ${mm(clearingWidth(e, ctx))}\` (now ${mm(e.nominalWidth)})${doors.length > 1 ? "" : `, which lets the walk clear the ${mm(min)} mm minimum`}.`,
         ),
+        ...(doors.length > 1
+          ? [
+              `With ${doors.length === 2 ? "both" : `all ${doors.length}`} widened the walk clears the ${mm(min)} mm minimum.`,
+            ]
+          : []),
         "Or add a second way in (another door or a leafless `opening`) so the pinch is avoidable.",
       ];
 
@@ -87,27 +92,20 @@ function clearingWidth(e: AccessEdge, ctx: LintContext): number {
 }
 
 /**
- * The doors and openings a room's walk squeezes through at its bottleneck width, or `null`
- * when the doors do not explain the reading and naming one would send the author to widen
- * the wrong thing.
+ * A CANDIDATE set of doors and openings a room's walk squeezes through at its bottleneck
+ * width, or `null`. Never quoted on its own: {@link attributeBottleneck} re-measures it first.
  *
- * Built on the DOOR graph: rooms joined by their connectors, each weighted by its clear
- * width, walked from the same sources the circulation model walks from (the exterior through
- * the front doors; on a storey reached by a shaft, the arrival rooms at their own measured
- * width). A widest-path tree over that graph (the widest way to each room, fewer doors on a
- * tie, then source order) gives each room a door-only capacity and ONE canonical path to it.
- * A room is attributed only when the doors explain every reading on that path:
- *   - the room's measured bottleneck equals its door capacity (otherwise furniture inside it
- *     sets the reading), and
- *   - every room the path passes through either measures its own door capacity or reads
- *     wider than the room's bottleneck (otherwise furniture in a room on the way could be
- *     the pinch).
- * The named connectors are the ones on that path exactly as narrow as the bottleneck, so
- * doors in series (hall → corridor → bath through two 700 mm doors) name BOTH, and widening
- * every named connector lifts that path past the reading. A pinch on the path that is not a
- * connector (a shaft's own width) names nothing. This reads room-level measurements, not
- * the exact route: a room whose best floor is reached wider than the doorway a path uses
- * reads wide here.
+ * Built on the DOOR graph: rooms joined by their connectors, each weighted by its clear width,
+ * walked from exactly the sources the circulation model walks from (the exterior through the
+ * front doors; ONLY on a storey with no front door, the rooms its shafts arrive in, at their
+ * own measured width: `computeCirculation`'s `viaShaft`). A widest-path search gives each
+ * room a door-only capacity and one path to it; ties keep the first label settled, so the path
+ * is deterministic but not guaranteed to have the fewest doors (ranking by width then door
+ * count is not isotone, `src/algebra/semiring.ts`). The candidate is the connectors on that
+ * path exactly as narrow as the reading, so doors in series name both, provided:
+ *   - the room's reading equals its door capacity (otherwise furniture inside it sets it), and
+ *   - every room the path passes through either reads its own door capacity or reads wider
+ *     than this room (otherwise furniture in a room on the way could be the pinch).
  */
 function bottleneckDoors(
   ctx: LintContext,
@@ -126,7 +124,8 @@ function bottleneckDoors(
     cap.set(EXTERIOR_NODE, Number.POSITIVE_INFINITY);
     hops.set(EXTERIOR_NODE, 0);
   }
-  for (const id of ctx.building.arrivalRooms) {
+  // Arrival rooms are a source only where the circulation model makes them one.
+  for (const id of ctx.access().hasEntrance ? [] : ctx.building.arrivalRooms) {
     const w = widthOf.get(id);
     if (w !== undefined && !cap.has(id)) {
       cap.set(id, w);
@@ -198,6 +197,72 @@ function endConnectorsAt(ctx: LintContext, roomId: string, width: number): Acces
   return mine.filter((e) => Math.round(e.estimatedClearWidth) === width);
 }
 
+/**
+ * The doors to name for a room's pinch, VERIFIED: each candidate set is applied — every door in
+ * it widened to the width its hint quotes ({@link clearingWidth}), the access graph and the
+ * circulation model rebuilt exactly as this rule builds them — and quoted only if the room's
+ * walk then clears the minimum. Candidates, in order: the widest door path's narrow doors
+ * ({@link bottleneckDoors}); those plus the room's own doors of the same width (two tied ways
+ * in, where the path picked the one a furniture pinch spoils); the room's own tied doors alone.
+ * None clears → `null`, and the warning names no door. Each distinct set is measured once per
+ * `lint()` run (the measure is the nav grid again, so it is paid only for rooms that warn).
+ */
+function attributeBottleneck(
+  ctx: LintContext,
+  widthOf: ReadonlyMap<string, number>,
+): (roomId: string) => AccessEdge[] | null {
+  const tree = bottleneckDoors(ctx, widthOf);
+  const min = ctx.rules.minPathClearWidthMm;
+  const measured = new Map<string, CirculationModel | null>();
+  const clears = (set: readonly AccessEdge[], roomId: string): boolean => {
+    const key = set
+      .map((e) => e.doorId)
+      .sort()
+      .join("\u0000");
+    if (!measured.has(key)) {
+      const wider = new Map(set.map((e) => [e.doorId, clearingWidth(e, ctx)]));
+      const doors = ctx.doors.map((d) => (wider.has(d.id) ? { ...d, width: wider.get(d.id)! } : d));
+      const openings = ctx.openings.map((o) => (wider.has(o.id) ? { ...o, width: wider.get(o.id)! } : o));
+      const access = buildDoorAccessGraph(ctx.rooms, doors, ctx.rules.tolMm, undefined, openings);
+      measured.set(
+        key,
+        computeCirculation(
+          ctx.rooms,
+          ctx.ir.walls,
+          doors,
+          openings,
+          ctx.furniture,
+          access,
+          ctx.rules.tolMm,
+          undefined,
+          ctx.verticals,
+          ctx.voids,
+          ctx.building.arrivalShafts,
+        ),
+      );
+    }
+    const after = measured.get(key)?.rooms.find((rc) => rc.roomId === roomId);
+    return after !== undefined && after.bottleneckClearWidthMm >= min;
+  };
+  return (roomId: string): AccessEdge[] | null => {
+    const w = widthOf.get(roomId);
+    if (w === undefined) return null;
+    const path = tree(roomId) ?? [];
+    const own = ctx
+      .access()
+      .edges.filter((e) => !e.ambiguous && e.between.includes(roomId) && Math.round(e.estimatedClearWidth) === w);
+    const both = [...path, ...own.filter((e) => !path.includes(e))];
+    const seen = new Set<string>();
+    for (const set of [path, both, own]) {
+      const key = set.map((e) => e.doorId).join(",");
+      if (set.length === 0 || seen.has(key)) continue;
+      seen.add(key);
+      if (clears(set, roomId)) return set;
+    }
+    return null;
+  };
+}
+
 /** The message clause naming the connectors a walk squeezes through, or nothing. */
 function namedClause(doors: readonly AccessEdge[] | null, width: number): string {
   if (doors === null) return "";
@@ -231,7 +296,7 @@ export const pathTooNarrow: LintRule = {
     // emits exactly the diagnostics, in exactly the order, it emitted before.
     const factOf = new Map(circ.rooms.map((rc) => [rc.roomId, rc]));
     const blocked = new Map((circ.blocked ?? []).map((b) => [b.roomId, b.widestWayInMm]));
-    const doorsOf = bottleneckDoors(ctx, new Map(circ.rooms.map((rc) => [rc.roomId, rc.bottleneckClearWidthMm])));
+    const doorsOf = attributeBottleneck(ctx, new Map(circ.rooms.map((rc) => [rc.roomId, rc.bottleneckClearWidthMm])));
     for (const r of rooms) {
       const wayIn = blocked.get(r.id);
       if (wayIn !== undefined) {

@@ -26,6 +26,7 @@
 import {
   ANCHOR_BACK_EDGES,
   backCandidateEdges,
+  backingWallForRoomEdge,
   FIXTURE_WALL_TOL_MM,
   frontClearanceRect,
   innerFaceOfRoomEdge,
@@ -39,7 +40,7 @@ import { frontClearanceMm, requiresWall } from "../fixtures-catalog.js";
 import { doorSwing, sectorIntersectsRect } from "../geometry.js";
 import { pointInPolygon } from "../geometry/polygon.js";
 import { type BBox, doorLandingRect, rectsOverlap, wallIntrusionDepth } from "../geometry/rect.js";
-import type { RRoom } from "../ir.js";
+import type { RFurniture, RRoom } from "../ir.js";
 import { fmt2 } from "../num-format.js";
 import type { LintContext } from "./context.js";
 
@@ -54,29 +55,55 @@ const EDGE_ANCHORS: Readonly<Record<RectEdge, readonly FurnitureAnchor[]>> = {
   right: ["right", "top-right", "bottom-right"],
 };
 
-/** Is `fr` (a fixture of `category` backed onto `edge`) clear of everything the lint measures? */
-function isClear(ctx: LintContext, room: RRoom, category: string, fr: BBox, rotate: number): boolean {
-  const box = ctx.roomRects.get(room.id);
-  if (!box || !rectInRoomBox(fr, box)) return false;
+/**
+ * Is a piece of `category` with footprint `fr` and quarter-turn `rotate` clear of everything
+ * the placement lint rules measure — the terms `W_FURNITURE_WALL_COLLISION`,
+ * `W_FURNITURE_OVERLAP`, `W_SWING_OBSTRUCTED`, `W_DOORWAY_BLOCKED` and `W_FURN_CLEARANCE` (both
+ * ways) test? `self` is the piece being moved, left out of its own overlap test. Room
+ * containment and wall backing are the caller's, because only the caller knows which room
+ * and which edge it means. Shared by this module's paste and the wall-collision `offset` hint,
+ * so neither quotes a position that trades its warning for another.
+ */
+export function placementClear(
+  ctx: LintContext,
+  fr: BBox,
+  category: string,
+  rotate: number,
+  self?: RFurniture,
+): boolean {
   if (ctx.wallSegs.some((s) => wallIntrusionDepth(fr, s, ctx.wallOpenings) > SLACK_MM)) return false;
-  if (ctx.furniture.some((f) => rectsOverlap(fr, rectOf(f)))) return false;
+  const others = ctx.furniture.filter((f) => f !== self);
+  if (others.some((f) => rectsOverlap(fr, rectOf(f)))) return false;
   for (const d of ctx.doors) {
     const s = doorSwing(d);
     if (s && sectorIntersectsRect(s, fr, ctx.rules.swingClearanceMm)) return false;
     const landing = doorLandingRect(d, ctx.rules.doorwayLandingMm);
     if (landing && rectsOverlap(landing, fr)) return false;
   }
+  // Its own use-space must be free of free-standing furniture, and a free-standing piece must
+  // not stand in another fixture's.
   const clearance = frontClearanceMm(category);
   if (clearance > 0) {
     const front = frontClearanceRect({ at: { x: fr.x, y: fr.y }, size: { w: fr.w, h: fr.h }, rotate }, clearance);
-    if (ctx.furniture.some((f) => !requiresWall(f.category) && rectsOverlap(front, rectOf(f)))) return false;
+    if (others.some((f) => !requiresWall(f.category) && rectsOverlap(front, rectOf(f)))) return false;
+  }
+  if (!requiresWall(category)) {
+    for (const f of others) {
+      const c = frontClearanceMm(f.category);
+      if (c > 0 && rectsOverlap(frontClearanceRect(f, c), fr)) return false;
+    }
   }
   return true;
 }
 
+/** Why no statement could be quoted, for the hint to say so truthfully. */
+export type PasteFailure = "no-wall" | "no-room" | "grid";
+
 /**
- * The statement that places one `category` fixture clear in `room`, or `null` when no
- * candidate passes. `along`/`depth` are the catalogued footprint.
+ * The statement that places one `category` fixture clear in `room`, or why there is none.
+ * `along`/`depth` are the catalogued footprint, and the statement quotes them as they are; the
+ * geometry is checked at the size the resolver will actually draw (snapped to the plan grid),
+ * and a grid so coarse that it snaps the footprint away quotes nothing.
  */
 export function pasteFixture(
   ctx: LintContext,
@@ -84,19 +111,32 @@ export function pasteFixture(
   category: string,
   along: number,
   depth: number,
-): string | null {
+): { stmt: string } | { failure: PasteFailure } {
   const g = ctx.ir.grid;
   const snap = (v: number) => (g > 0 ? Math.round(v / g) * g : v);
   const A = snap(along);
   const D = snap(depth);
+  if (A <= 0 || D <= 0) return { failure: "grid" };
   const sizeOn = (edge: RectEdge) => (edge === "top" || edge === "bottom" ? { w: A, h: D } : { w: D, h: A });
+  const printed = (edge: RectEdge) =>
+    edge === "top" || edge === "bottom" ? `${fmt2(along)}x${fmt2(depth)}` : `${fmt2(depth)}x${fmt2(along)}`;
   const face = (rect: BBox, edge: RectEdge) =>
     innerFaceOfRoomEdge(rect, edge, ctx.ir.walls, FIXTURE_WALL_TOL_MM, ctx.wallSegs);
+  const box = ctx.roomRects.get(room.id);
+  // On the room's floor, its back on a wall (what `W_FIXTURE_FLOATING`/`_BACK_TO_ROOM` read),
+  // and clear of everything else.
+  const fits = (fr: BBox, edge: RectEdge) =>
+    box !== undefined &&
+    rectInRoomBox(fr, box) &&
+    backingWallForRoomEdge(fr, edge, ctx.ir.walls, ctx.rules.fixtureWallTolMm, ctx.wallSegs) !== null &&
+    placementClear(ctx, fr, category, rotateForBackEdge(edge));
+  let walled = false;
 
   if (!room.poly && room._rel === undefined) {
     const rect = { x: room.at.x, y: room.at.y, w: room.size.w, h: room.size.h };
     for (const edge of ["top", "bottom", "left", "right"] as const) {
       if (face(rect, edge) === null) continue;
+      walled = true;
       const { w, h } = sizeOn(edge);
       for (const a of EDGE_ANCHORS[edge]) {
         // The derived rotation needs exactly this edge among the anchored, walled edges the
@@ -117,11 +157,11 @@ export function pasteFixture(
             : a === "bottom-left" || a === "bottom" || a === "bottom-right"
               ? (f("bottom") ?? rect.y + rect.h) - h
               : rect.y + rect.h / 2 - h / 2;
-        if (isClear(ctx, room, category, { x, y, w, h }, rotateForBackEdge(edge)))
-          return `furniture ${category} in ${room.id} anchor ${a} flush size ${fmt2(w)}x${fmt2(h)}`;
+        if (fits({ x, y, w, h }, edge))
+          return { stmt: `furniture ${category} in ${room.id} anchor ${a} flush size ${printed(edge)}` };
       }
     }
-    return null;
+    return { failure: walled ? "no-room" : "no-wall" };
   }
 
   // A ring the room's own: a polygon's vertices, or a relational room's resolved rectangle.
@@ -131,6 +171,10 @@ export function pasteFixture(
     { x: room.at.x + room.size.w, y: room.at.y + room.size.h },
     { x: room.at.x, y: room.at.y + room.size.h },
   ];
+  // `at` is snapped by the resolver; try the face rounded to the nearest module and then
+  // rounded into the room, and let the checks pick.
+  const onGrid = (v: number, mode: "near" | "up" | "down") =>
+    g > 0 ? (mode === "near" ? Math.round(v / g) : mode === "up" ? Math.ceil(v / g) : Math.floor(v / g)) * g : v;
   for (let i = 0; i < ring.length; i++) {
     const p = ring[i]!;
     const q = ring[(i + 1) % ring.length]!;
@@ -155,20 +199,23 @@ export function pasteFixture(
       : { x: inward > 0 ? line : line - 1, y: lo, w: 1, h: hi - lo };
     const fc = face(strip, edge);
     if (fc === null) continue;
+    walled = true;
     const { w, h } = sizeOn(edge);
     const span = horizontal ? w : h;
     if (hi - lo < span) continue;
+    const back = inward > 0 ? fc : fc - (horizontal ? h : w);
     for (const c of [mid, lo + (hi - lo) / 4, hi - (hi - lo) / 4]) {
-      const start = snap(c - span / 2);
-      // The face coordinate rounded INTO the room, so snapping never pushes it into the wall.
-      const inner = (v: number, up: boolean) => (g > 0 ? (up ? Math.ceil(v / g) * g : Math.floor(v / g) * g) : v);
-      const fr = horizontal
-        ? { x: start, y: inward > 0 ? inner(fc, true) : inner(fc - h, false), w, h }
-        : { x: inward > 0 ? inner(fc, true) : inner(fc - w, false), y: start, w, h };
-      const rot = rotateForBackEdge(edge);
-      if (isClear(ctx, room, category, fr, rot))
-        return `furniture ${category} at (${fmt2(fr.x)},${fmt2(fr.y)}) size ${fmt2(w)}x${fmt2(h)}${rot === 0 ? "" : ` rotate ${rot}`} in ${room.id}`;
+      const start = onGrid(c - span / 2, "near");
+      for (const mode of ["near", inward > 0 ? "up" : "down"] as const) {
+        const b = onGrid(back, mode);
+        const fr = horizontal ? { x: start, y: b, w, h } : { x: b, y: start, w, h };
+        const rot = rotateForBackEdge(edge);
+        if (fits(fr, edge))
+          return {
+            stmt: `furniture ${category} at (${fmt2(fr.x)},${fmt2(fr.y)}) size ${printed(edge)}${rot === 0 ? "" : ` rotate ${rot}`} in ${room.id}`,
+          };
+      }
     }
   }
-  return null;
+  return { failure: walled ? "no-room" : "no-wall" };
 }

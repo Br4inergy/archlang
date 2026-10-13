@@ -151,7 +151,8 @@
  *   - `examples/hillside-villa.arch` — `W_PATH_TOO_NARROW` names the en-suite doors and gives
  *     the clearing `width`; the Master Suite → Ensuite route through `d_enm` is withdrawn as
  *     the same bottleneck. Re-measured a second time when the named door became the one on the
- *     widest door path (doors in series); the previous `lint()` put back reproduces the
+ *     widest door path (doors in series), and a third time when the attribution became
+ *     re-measured (hint wording only); each time the previous `lint()` put back reproduces the
  *     previous row. Field by field in `./byte-identity-baseline.ts`, "names the door, once".
  *   - `test/fixtures/diff-a.arch`, `test/fixtures/diff-b.arch` — `W_ROOM_NO_FIXTURE`'s hint
  *     stops pointing at an unshipped `lib/fixtures.arch` import and gives a pasteable
@@ -171,7 +172,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/garden-house.arch", "78af129f024f23540fc2ea037bd3ba8f5eb8875098303ee5899ce5a8fe4715d8"], // re-measured, see header
   ["examples/garden-loft.arch", "1fbeaf41b1f1b981f274a1501ed870bb6b3ebc2ec377bd15e588e78cbd07ab7b"],
   ["examples/hexagon-pavilion.arch", "293447ab543aa86945af475e440ff85cddb8070f3330d6887e94f5e344d4c216"],
-  ["examples/hillside-villa.arch", "87978f872c755e7c09820701c5f6ef9543a59f38ae615639ac4ef5c5f7a227cb"], // re-measured, see header
+  ["examples/hillside-villa.arch", "278a243c510a54deaf9f2ddcd55eef4da3fcdc3e963530e22858fcc6275f78ad"], // re-measured, see header
   ["examples/imports.arch", "dbbdb95881775e34e5abecc72a52bc72160af81a5883ddced18bbf3d7f1a7f2c"],
   ["examples/laneway-house.arch", "2315eb23382b52aa784930c332c00083b7d9931c4620a46b8b710c75e4c1195e"],
   ["examples/library.arch", "5c4913bdc5e2960d6cac2203cdb775ed56179c232550efe893a1dfab492d3215"],

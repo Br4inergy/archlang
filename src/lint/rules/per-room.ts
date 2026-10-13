@@ -64,10 +64,16 @@ function noFixtureHint(ctx: LintContext, r: RRoom, isWet: boolean): string {
     ? ["wc", "a `basin`, `shower` or `bathtub`"]
     : ["kitchen_sink", "a `counter`, `stove` or `fridge`"];
   const fp = defaultFootprint(cat)!;
-  const stmt = pasteFixture(ctx, r, cat, fp.along, fp.depth);
-  return stmt !== null
-    ? `Place a built-in fixture in it (nothing to import) — e.g. \`${stmt}\`, or ${others}.`
-    : `Place a built-in fixture in it (nothing to import) — a \`${cat}\` (${fmt2(fp.along)} along a wall, ${fmt2(fp.depth)} deep), or ${others}; no wall of it has a run clear of its doors and furniture for one, so make room first.`;
+  const paste = pasteFixture(ctx, r, cat, fp.along, fp.depth);
+  if ("stmt" in paste)
+    return `Place a built-in fixture in it (nothing to import) — e.g. \`${paste.stmt}\`, or ${others}.`;
+  const why =
+    paste.failure === "grid"
+      ? `the plan's \`grid ${fmt2(ctx.ir.grid)}\` snaps that footprint away, so use a finer grid`
+      : paste.failure === "no-wall"
+        ? "it has no straight wall running square to the page for one to back onto, so give it one or place the fixture with `at (x,y)` and `rotate`"
+        : "no wall of it has a run clear of its doors and furniture for one, so make room first";
+  return `Place a built-in fixture in it (nothing to import) — a \`${cat}\` (${fmt2(fp.along)} along a wall, ${fmt2(fp.depth)} deep), or ${others}; ${why}.`;
 }
 
 export const perRoomRules: LintRule = {

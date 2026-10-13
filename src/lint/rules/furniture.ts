@@ -19,7 +19,8 @@ import {
 } from "../../analyze.js";
 import { actOnQuarterTurn, type D4, inverse } from "../../algebra/d4.js";
 import type { Diagnostic } from "../../diagnostics.js";
-import { type BBox, rectsOverlap, wallIntrusionDepth } from "../../geometry/rect.js";
+import { type BBox, doorLandingRect, rectsOverlap, wallIntrusionDepth } from "../../geometry/rect.js";
+import { doorSwing } from "../../geometry.js";
 import type { WallSegment } from "../../geometry.js";
 import type { RFurniture } from "../../ir.js";
 import { pointInPolygon } from "../../geometry/polygon.js";
@@ -34,6 +35,7 @@ import {
   requiresWall,
 } from "../../fixtures-catalog.js";
 import type { LintContext, LintRule } from "../context.js";
+import { placementClear } from "../fixture-paste.js";
 import { frontGapMm, mm, shortfall } from "../measure.js";
 
 /**
@@ -346,16 +348,17 @@ function axisLine(s: WallSegment): string {
  * falls back to the generic sentence.
  *
  * A suggested `offset` is never a guess. The candidates are the positions that put the piece
- * just clear of each wall standing square across its strip (either side), plus the two ends
- * of the segment; each is moved to and re-measured exactly as this rule measures: inside the
- * segment's run, no segment intruded past the slack, and (when the piece is declared `in` a
- * room) its footprint still on that room's floor ({@link rectInRoomBox}, the room's own
- * shape), which is also what keeps its `side` inferable. The nearest that passes wins (the
- * lower on a tie); when none does, the hint says so instead of quoting a number that would
- * trade this warning for another one.
+ * just clear of each wall standing square across its strip, each other piece of furniture,
+ * each doorway landing and the box round each door's swing (either side), plus the two ends of
+ * the segment. Each is moved to and re-measured: inside the segment's run; when the piece is
+ * declared `in` a room, its footprint still on that room's floor ({@link rectInRoomBox}, the
+ * room's own shape, which also keeps its `side` inferable); and {@link placementClear}, the
+ * terms of the wall-collision, overlap, swing, doorway and clearance rules. The nearest that
+ * passes wins (the lower on a tie); when none does, the hint says so instead of quoting a
+ * number that would trade this warning for another one.
  */
 function collisionHint(f: RFurniture, fr: BBox, hit: WallSegment, ctx: LintContext): string {
-  const { wallSegs, wallOpenings, roomRects } = ctx;
+  const { wallSegs, roomRects } = ctx;
   const generic = `Move or resize it so it clears wall "${hit.wallId}" — against its face, not through it — or place it with \`against wall <id>\` (whose \`offset\` is the distance along the wall to the piece's CENTRE) or \`in <room> anchor <edge> flush\`.`;
   const ag = f._authored;
   if (ag?.mode !== "against") return generic;
@@ -398,12 +401,32 @@ function collisionHint(f: RFurniture, fr: BBox, hit: WallSegment, ctx: LintConte
     raw.push(Math.floor(p - s.thickness / 2 - half), Math.ceil(p + s.thickness / 2 + half));
   }
   const room = f.room !== undefined ? roomRects.get(f.room) : undefined;
+  // Other obstacles in the strip: the piece just clear of each, either side. Their rects are
+  // the other furniture, each door's doorway landing, and the box round each door's swing.
+  const obstacles: BBox[] = ctx.furniture.filter((o) => o !== f).map((o) => rectOf(o));
+  for (const door of ctx.doors) {
+    const landing = doorLandingRect(door, ctx.rules.doorwayLandingMm);
+    if (landing) obstacles.push(landing);
+    const sw = doorSwing(door);
+    if (sw) {
+      const r = sw.radius + ctx.rules.swingClearanceMm;
+      obstacles.push({ x: sw.hinge.x - r, y: sw.hinge.y - r, w: 2 * r, h: 2 * r });
+    }
+  }
+  for (const o of obstacles) {
+    const oc = [
+      { x: o.x, y: o.y },
+      { x: o.x + o.w, y: o.y + o.h },
+    ];
+    if (Math.max(...oc.map(across)) <= nlo || Math.min(...oc.map(across)) >= nhi) continue;
+    raw.push(Math.floor(Math.min(...oc.map(along)) - half), Math.ceil(Math.max(...oc.map(along)) + half));
+  }
   const clear = (o: number): boolean => {
     if (o - half < 0 || o + half > len) return false;
     const shift = o - centre;
     const moved = { x: fr.x + d.x * shift, y: fr.y + d.y * shift, w: fr.w, h: fr.h };
-    if (wallSegs.some((s) => wallIntrusionDepth(moved, s, wallOpenings) > WALL_COLLISION_SLACK_MM)) return false;
-    return room === undefined || rectInRoomBox(moved, room);
+    if (room !== undefined && !rectInRoomBox(moved, room)) return false;
+    return placementClear(ctx, moved, f.category, f.rotate ?? 0, f);
   };
   const valid = [...new Set(raw)].filter(clear).sort((a, b) => Math.abs(a - centre) - Math.abs(b - centre) || a - b);
   if (valid.length > 0) return `${run}. \`offset ${mm(valid[0]!)}\` clears it.`;
