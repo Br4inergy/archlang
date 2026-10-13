@@ -10,21 +10,33 @@ no re-implementation): each tool wraps one pure, exported function. The core sta
 
 ## When to prefer the CLI
 
-ArchLang's primary agent interface is the agent-native **`arch` CLI**, not this
+ArchLang's primary agent interface is the agent-native **`archlang` CLI**, not this
 server. A CLI costs **nothing in an agent's context window until it is called**,
 whereas an MCP tool schema sits in the window permanently. If your agent already has
 a shell, prefer:
 
 ```bash
-npx @chanmeng666/archlang context     # the whole language + workflow + CLI + errors, one call
-npx @chanmeng666/archlang compile plan.arch -o out.svg --json
+npx -y @chanmeng666/archlang context     # the whole language + workflow + CLI + errors, one call
+npx -y @chanmeng666/archlang compile plan.arch -o out.svg --json
 ```
+
+After `npm i -g @chanmeng666/archlang` the same calls are `archlang context` and
+`archlang compile …`. The package also installs an `arch` alias, but on Linux, macOS and
+Git Bash coreutils ships its own `arch`, so a bare `arch` there runs the wrong program.
 
 This MCP server exists so MCP-native hosts can **discover** ArchLang through the
 registry and drive it without a shell. It is listed on the official MCP registry as
 **`io.github.ChanMeng666/archlang-mcp`**. It is the discoverability channel, not a
 replacement. See [ADR 0012](https://github.com/chanmeng666/archlang/blob/main/docs/adr/0012-mcp-shim-discoverability.md)
 (which amends [ADR 0009](https://github.com/chanmeng666/archlang/blob/main/docs/adr/0009-ai-first-context-and-distribution.md)'s distribution-over-protocol stance).
+
+## Server instructions
+
+At `initialize` the server sends a short `instructions` string, which hosts that support it
+add to the model's context: read the `archlang://spec` resource first, then write `.arch` →
+`compile` (and `fix`) → `describe` → `validate` with `strict:true` → `finish` before export.
+It is `SKILL.md`'s loop, condensed, and a test holds the commands it names to the CLI manifest
+and to that loop's order.
 
 ## Tools
 
@@ -54,7 +66,7 @@ several plans on one HTML page from sharing `arch-title`/`arch-desc` cannot be r
 
 A host that needs a keyboard- and screen-reader-operable drawing — `data-arch-primary`,
 `role="button"`, `aria-label` on each element — has to call the **library**. The CLI cannot
-produce it either: `annotate` has no flag, so `arch compile --accessible` stops at the
+produce it either: `annotate` has no flag, so `archlang compile --accessible` stops at the
 `<title>`/`<desc>` pair too.
 
 ```ts
