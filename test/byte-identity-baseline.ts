@@ -976,7 +976,9 @@ export const BASELINE: [string, string][] = [
   ["aquarium", "4ed4aecd6b289a2538e3f1cd55ac6f2d52f4dfb637d5898f1f879f767c713b98"],
   ["attached", "f1b122904c1242d9ef7088c5eed12c765dc63f4dbc2af2a75ab8f23f398feac2"],
   ["bungalow", "d76e52dd1b75a347c84afba5350175032513776572f268839ee550883b564ae9"],
+  ["classroom-block", "f9de369126b1173a24f74bfd42db8c9f8e2bf9d13f0ea6c854226acc44fca44c"], // first measurement, added with the example
   ["clinic", "5d1f3ac0f05d759faa0cb55fcc1059e4e140fef7004974606eda28d2957d9174"],
+  ["corner-cafe", "a094f2a7fe11eec6f963dc7556cc555f869774bf1d3466d14c1739bc503a63aa"], // first measurement, added with the example
   ["courtyard-house", "3d43b0dddae961c405f3bf81dc584ad1b4a0c9b6eaca2661cf54a50aa00eb340"],
   ["furnished-flat", "8812151f95e82fafcb3d21a23dede24e71944d9962e1b33c046727869f04d947"],
   ["gallery-l", "ef97490e9b951d76396df52427ba6673b0cce29489dfdf4232dc4d0876fe691d"],
@@ -995,6 +997,7 @@ export const BASELINE: [string, string][] = [
   ["parametric", "0300b6e01a4a0f10827b84dfaa21c9a89a4bfa15c008ce01ab6900118b6bc60a"],
   ["relational", "32c6a6e02ff16dcbdb146aa87e5e8176e38cbb5d00f972a2cd8849619c13db93"],
   ["sheet-notes", "f4ab64ec80be43d25a5949c971b07b00696f8fc2ab3927af72442ab70e8f551f"], // re-measured, see header
+  ["small-office", "4903d1e0f8935d5e83046f2bba1b930f4d8e5ca580b375e5b9add73006c960d8"], // first measurement, added with the example
   ["studio", "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f"],
   ["terrace-row", "392d8940246551ac543bf2d661dd2b8f9c0160070b44062e57b666cad747ac82"], // re-measured, see header
   ["themed", "419afa87c1e188f69426e652cd3dfb295a543bd0ee19de5f282a5380e78f2891"],
@@ -1021,7 +1024,9 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["aquarium", "0c0ff87fb446fe2dea2db1cc0560f6e840066c0a4a9afa192cee4387badde556"],
   ["attached", "0edb3482583f971f1c5daa64c7e8f8c638dc3ad70943893bfb5076ec71a425ac"],
   ["bungalow", "f35202195cf872e00bf31d62fffa7c783d04cfac55e7339154a048c496e8fc3a"],
+  ["classroom-block", "1034d2531917be9e66857821dc0449fe2bf6ee8f04aa19cea43dc12fb7fd3dbe"], // first measurement, added with the example
   ["clinic", "6abf1b490c46e473a3330d3acf61e35a0b9524f33ebaa0d7881dafebcf014261"],
+  ["corner-cafe", "68a795a2c60762c6e3cf772c784418b3f7255e16185d34cfdbf3fad23d1109ab"], // first measurement, added with the example
   ["courtyard-house", "9594aa8e0be5cf3d24cc74fc6c2100b8b18293308ce39c3de002e9fd61edecac"],
   ["furnished-flat", "dab3b998a75ba65679021c8ae9282cb785d8daf69e6c0d64c39aea0c35a36fa5"],
   ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
@@ -1040,6 +1045,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["parametric", "d84db7c3f3d204692228fbec364808644f6f5c9bbb5b6a4d2a44347ad388dad3"],
   ["relational", "52f6dce0ca7398b5763db5ac499680cdce39aa19f69eedf43eab80a191479552"],
   ["sheet-notes", "8a72d4737654ecebe5fa7cce4590d84c70d3c73556115298e2a1c2eadde7d0f9"], // added with the example, see header
+  ["small-office", "60b502bcb0638aadb5a6e17722cdae45eae604683cb513ab92f2788496ce2472"], // first measurement, added with the example
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["terrace-row", "6fdf87a871af31b1395ab07db68c8d03dd9d2aba1df62488ef9e466d175a5a23"],
   ["themed", "31e41ad123c02836badf682f82e0adc7c224f482574b74d2ee82d9a0e9654843"],
