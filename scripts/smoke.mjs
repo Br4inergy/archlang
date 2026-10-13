@@ -388,6 +388,8 @@ function playgroundChecks() {
     // perfectly healthy 200.
     route("/examples/thumbs/one-room.svg", contentType("image/svg+xml"), isSvg()),
     route("/sitemap.xml", contains("<urlset"), contains("/examples/one-room.html")),
+    // Written by gen-static.mjs: a pointer at the docs site's llms.txt / llms-full.txt.
+    route("/llms.txt", nonEmpty(), contains("https://archlang.uk/llms-full.txt")),
     // The header, not the meta tag: it is what a crawler that never parses the markup
     // acts on, and it comes from public/_headers, which nothing else here executes.
     route(

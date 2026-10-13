@@ -106,7 +106,7 @@ export function isChatHost(s: string | undefined): s is ChatHost {
  * figure under common request-line limits. The plan already travels compressed (the
  * share link's `#z=` IS the deflate-raw + base64url payload), so the one lever left is
  * the prompt's own words, kept short enough that every bundled example — the largest
- * being Hillside Villa, the plan a first visit loads — fits with 80 characters to
+ * being Hillside Villa — fits with 80 characters to
  * spare for another zlib build (`playground/test/llm-prompt.test.ts` holds that).
  */
 export const MAX_CHAT_URL = 8000;

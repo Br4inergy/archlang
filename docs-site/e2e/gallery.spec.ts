@@ -16,6 +16,9 @@ const ENTRIES = JSON.parse(readRepoFile("docs/gallery/gallery.json")) as Array<{
 
 test.describe("the agent gallery", () => {
   test("shows every stored plan with its brief, its model and a drawing that loads", async ({ page, request }) => {
+    // Every drawing is fetched one after another (never fanned out): under a full e2e:docs run
+    // the machine is busy enough that a 30 s budget was lost to queueing, not to a bug.
+    test.setTimeout(120_000);
     await page.goto("/gallery");
     const plans = page.locator(".agent-plan");
     await expect(plans).toHaveCount(ENTRIES.length);
