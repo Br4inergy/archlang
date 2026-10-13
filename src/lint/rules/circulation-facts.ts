@@ -18,7 +18,7 @@
  * memoised on the (per-run) LintContext identity.
  */
 
-import { type CirculationModel, computeCirculation } from "../../analyze/circulation.js";
+import { type CirculationModel, computeCirculation, roomBottlenecks } from "../../analyze/circulation.js";
 import { type AccessEdge, buildDoorAccessGraph, EXTERIOR_NODE } from "../../analyze.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import type { LintContext, LintRule } from "../context.js";
@@ -54,7 +54,7 @@ function circulationOf(ctx: LintContext): CirculationModel | null {
  *
  * None of these is a machine-applicable fix: widening a door rewrites a width the author
  * chose. When doors set the limit the hints name each one and the `width` that, applied to
- * every named door, was re-measured to clear the minimum ({@link attributeBottleneck});
+ * every named door, was re-measured to clear the minimum ({@link attributeBottlenecks});
  * otherwise the bottleneck is a nav-grid CELL the model cannot attribute to one element. `arch repair` is deliberately not named; it clears wall
  * intrusions, swings, doorway landings and overlaps, not a route pinch, and pointing at a
  * tool that would report "nothing to do" is worse than silence.
@@ -71,11 +71,8 @@ const narrowHints = (min: number, doors: readonly AccessEdge[] | null, ctx: Lint
           (e) =>
             `Widen ${e.kind} "${e.doorId}" to \`width ${mm(clearingWidth(e, ctx))}\` (now ${mm(e.nominalWidth)})${doors.length > 1 ? "" : `, which lets the walk clear the ${mm(min)} mm minimum`}.`,
         ),
-        ...(doors.length > 1
-          ? [
-              `With ${doors.length === 2 ? "both" : `all ${doors.length}`} widened the walk clears the ${mm(min)} mm minimum.`,
-            ]
-          : []),
+        // A set is what was measured; that it needs every member is not claimed.
+        ...(doors.length > 1 ? [`With these widened together the walk clears the ${mm(min)} mm minimum.`] : []),
         "Or add a second way in (another door or a leafless `opening`) so the pinch is avoidable.",
       ];
 
@@ -92,8 +89,8 @@ function clearingWidth(e: AccessEdge, ctx: LintContext): number {
 }
 
 /**
- * A CANDIDATE set of doors and openings a room's walk squeezes through at its bottleneck
- * width, or `null`. Never quoted on its own: {@link attributeBottleneck} re-measures it first.
+ * The door PATH a room's walk is attributed to (entrance first), or `null`. Never quoted on its
+ * own: {@link attributeBottlenecks} takes candidate sets from it and verifies them first.
  *
  * Built on the DOOR graph: rooms joined by their connectors, each weighted by its clear width,
  * walked from exactly the sources the circulation model walks from (the exterior through the
@@ -101,8 +98,7 @@ function clearingWidth(e: AccessEdge, ctx: LintContext): number {
  * own measured width: `computeCirculation`'s `viaShaft`). A widest-path search gives each
  * room a door-only capacity and one path to it; ties keep the first label settled, so the path
  * is deterministic but not guaranteed to have the fewest doors (ranking by width then door
- * count is not isotone, `src/algebra/semiring.ts`). The candidate is the connectors on that
- * path exactly as narrow as the reading, so doors in series name both, provided:
+ * count is not isotone, `src/algebra/semiring.ts`). The path is returned only when:
  *   - the room's reading equals its door capacity (otherwise furniture inside it sets it), and
  *   - every room the path passes through either reads its own door capacity or reads wider
  *     than this room (otherwise furniture in a room on the way could be the pinch).
@@ -110,8 +106,8 @@ function clearingWidth(e: AccessEdge, ctx: LintContext): number {
 function bottleneckDoors(
   ctx: LintContext,
   widthOf: ReadonlyMap<string, number>,
+  edges: readonly AccessEdge[],
 ): (roomId: string) => AccessEdge[] | null {
-  const edges = ctx.access().edges.filter((e) => !e.ambiguous && e.between[0] !== "" && e.between[1] !== "");
   const order = new Map<string, number>([
     [EXTERIOR_NODE, -1],
     ...ctx.rooms.map((r, i) => [r.id, i] as [string, number]),
@@ -166,10 +162,10 @@ function bottleneckDoors(
     const w = widthOf.get(roomId);
     const c = cap.get(roomId);
     if (w === undefined || c === undefined || Math.round(c) !== w) return null;
-    const named: AccessEdge[] = [];
+    const path: AccessEdge[] = [];
     for (let n = roomId; via.has(n); n = prev.get(n)!) {
       const e = via.get(n)!;
-      if (Math.round(e.estimatedClearWidth) === w) named.push(e);
+      path.push(e);
       const up = prev.get(n)!;
       if (up !== EXTERIOR_NODE) {
         const wu = widthOf.get(up);
@@ -178,7 +174,7 @@ function bottleneckDoors(
         if (wu === undefined || (wu <= w && wu !== Math.round(cap.get(up)!))) return null;
       }
     }
-    return named.length > 0 ? named.reverse() : null;
+    return path.reverse();
   };
 }
 
@@ -198,78 +194,356 @@ function endConnectorsAt(ctx: LintContext, roomId: string, width: number): Acces
 }
 
 /**
- * The doors to name for a room's pinch, VERIFIED: each candidate set is applied — every door in
- * it widened to the width its hint quotes ({@link clearingWidth}), the access graph and the
- * circulation model rebuilt exactly as this rule builds them — and quoted only if the room's
- * walk then clears the minimum. Candidates, in order: the widest door path's narrow doors
- * ({@link bottleneckDoors}); those plus the room's own doors of the same width (two tied ways
- * in, where the path picked the one a furniture pinch spoils); the room's own tied doors alone.
- * None clears → `null`, and the warning names no door. Each distinct set is measured once per
- * `lint()` run (the measure is the nav grid again, so it is paid only for rooms that warn).
+ * How many re-measures (room readings on a plan variant, {@link roomBottlenecks}) one `lint()`
+ * run may build to verify door attributions — union and exact alike, all storeys together
+ * (`BuildingContext.attributionMeasures`); a count, never a time. A room still unverified when it is spent gets the unattributed hints. Small on purpose:
+ * the playground lints on every keystroke, and on a tree-shaped door graph the first union
+ * settles every room by itself.
  */
-function attributeBottleneck(
+export const MAX_ATTRIBUTION_MEASURES = 2;
+
+/** One candidate set's identity: its connector ids, sorted. The ONE key this module uses. */
+const setKey = (set: readonly AccessEdge[]): string =>
+  set
+    .map((e) => e.doorId)
+    .sort()
+    .join("\u0000");
+
+/**
+ * Which connectors can matter to which room: a door can change a room's walk only if it lies on
+ * some simple path from a source to that room, i.e. its biconnected block lies on the
+ * block-cut-tree path from the sources to the room. A door into a dead-end branch (a bedroom
+ * off the corridor, the rest of a chain past this room) cannot. Returns `relevant(e, roomId)`;
+ * a room the sources do not reach treats every door as relevant (the conservative answer).
+ */
+function relevance(ctx: LintContext, edges: readonly AccessEdge[]): (e: AccessEdge, roomId: string) => boolean {
+  const ROOT = "\u0000root";
+  const index = new Map<string, number>([[ROOT, 0]]);
+  const idOf = (n: string): number => {
+    let i = index.get(n);
+    if (i === undefined) index.set(n, (i = index.size));
+    return i;
+  };
+  const ends: [number, number][] = [];
+  const edgeIndex = new Map<AccessEdge, number>();
+  for (const e of edges) {
+    edgeIndex.set(e, ends.length);
+    ends.push([idOf(e.between[0]), idOf(e.between[1])]);
+  }
+  // The super-root joins every source the circulation model walks from.
+  const sources = ctx.access().hasEntrance ? [EXTERIOR_NODE] : ctx.building.arrivalRooms;
+  for (const s of sources) ends.push([0, idOf(s)]);
+  const n = index.size;
+  const adj: [number, number][][] = Array.from({ length: n }, () => []);
+  ends.forEach(([a, b], k) => {
+    if (a === b) return;
+    adj[a]!.push([b, k]);
+    adj[b]!.push([a, k]);
+  });
+  // Biconnected blocks by edge, iteratively (no recursion depth to blow on a long chain).
+  const disc = new Array<number>(n).fill(-1);
+  const low = new Array<number>(n).fill(0);
+  const blockOf = new Array<number>(ends.length).fill(-1);
+  const stack: number[] = [];
+  let blocks = 0;
+  let timer = 0;
+  disc[0] = low[0] = timer++;
+  const frames: { v: number; pe: number; i: number }[] = [{ v: 0, pe: -1, i: 0 }];
+  while (frames.length > 0) {
+    const f = frames[frames.length - 1]!;
+    if (f.i < adj[f.v]!.length) {
+      const [w, k] = adj[f.v]![f.i++]!;
+      if (k === f.pe) continue;
+      if (disc[w] === -1) {
+        stack.push(k);
+        disc[w] = low[w] = timer++;
+        frames.push({ v: w, pe: k, i: 0 });
+      } else if (disc[w]! < disc[f.v]!) {
+        stack.push(k);
+        low[f.v] = Math.min(low[f.v]!, disc[w]!);
+      }
+      continue;
+    }
+    frames.pop();
+    const p = frames[frames.length - 1];
+    if (!p) break;
+    low[p.v] = Math.min(low[p.v]!, low[f.v]!);
+    if (low[f.v]! >= disc[p.v]!) {
+      for (;;) {
+        const k = stack.pop()!;
+        blockOf[k] = blocks;
+        if (k === f.pe) break;
+      }
+      blocks++;
+    }
+  }
+  // The block-cut tree as a vertex↔block bipartite tree; parents from the root.
+  const blockVerts: Set<number>[] = Array.from({ length: blocks }, () => new Set<number>());
+  ends.forEach(([a, b], k) => {
+    const blk = blockOf[k]!;
+    if (blk < 0) return;
+    blockVerts[blk]!.add(a);
+    blockVerts[blk]!.add(b);
+  });
+  const vertBlocks: number[][] = Array.from({ length: n }, () => []);
+  blockVerts.forEach((vs, blk) => {
+    for (const v of vs) vertBlocks[v]!.push(blk);
+  });
+  const parentOfVert = new Array<number>(n).fill(-2); // a block id, or -1 at the root
+  const parentOfBlock = new Array<number>(blocks).fill(-2); // a vertex id
+  parentOfVert[0] = -1;
+  const queue: [boolean, number][] = [[true, 0]];
+  for (let q = 0; q < queue.length; q++) {
+    const [isVert, x] = queue[q]!;
+    if (isVert) {
+      for (const blk of vertBlocks[x]!)
+        if (parentOfBlock[blk] === -2) {
+          parentOfBlock[blk] = x;
+          queue.push([false, blk]);
+        }
+    } else {
+      for (const v of blockVerts[x]!)
+        if (parentOfVert[v] === -2) {
+          parentOfVert[v] = x;
+          queue.push([true, v]);
+        }
+    }
+  }
+  const onPath = new Map<string, Set<number> | null>();
+  const pathBlocks = (roomId: string): Set<number> | null => {
+    if (onPath.has(roomId)) return onPath.get(roomId)!;
+    const v0 = index.get(roomId);
+    let out: Set<number> | null = null;
+    if (v0 !== undefined && parentOfVert[v0] !== -2) {
+      out = new Set<number>();
+      for (let v = v0; v !== 0; ) {
+        const blk = parentOfVert[v]!;
+        out.add(blk);
+        v = parentOfBlock[blk]!;
+      }
+    }
+    onPath.set(roomId, out);
+    return out;
+  };
+  return (e, roomId) => {
+    const blocksOnPath = pathBlocks(roomId);
+    const k = edgeIndex.get(e);
+    if (blocksOnPath === null || k === undefined) return true;
+    const blk = blockOf[k]!;
+    return blk >= 0 && blocksOnPath.has(blk);
+  };
+}
+
+/**
+ * The doors to name for each warned room's pinch, VERIFIED before any is quoted: a set is
+ * named only if, with every door in it widened to the width its hint quotes
+ * ({@link clearingWidth}), the room's walk clears the minimum on a rebuilt circulation model.
+ *
+ * Candidates per room, in order: the widest door path's connectors as narrow as the reading
+ * ({@link bottleneckDoors}); those plus the room's own doors of that width (two tied ways in);
+ * the room's own tied doors alone; and every connector on the path under the minimum, each at
+ * its own clearing width (a front door at 840 mm before a 740 mm bedroom door, under the
+ * accessibility profile, needs both).
+ *
+ * The cost is bounded by COUNTS. Widening is monotone (a wider door can only widen a walk), so:
+ *   1. the door graph first: a room whose door-only capacity with every candidate widened stays
+ *      under the minimum cannot clear, and costs no grid at all (and again per tier below);
+ *   2. then tier by tier — every remaining room's first candidate set, then its second, … —
+ *      ONE union model per tier with every door of that tier widened ({@link roomBottlenecks},
+ *      the readings alone): a room that does not clear there does not clear with its own
+ *      subset either, and moves on to its next tier;
+ *   3. a room that does clear there is settled by that model alone when every widened door
+ *      outside its set is off every simple path to it ({@link relevance}: its block is not on
+ *      the room's block-cut-tree path), because those doors cannot reach its walk;
+ *   4. otherwise an exact model, shared by every such room whose set is off the others' paths
+ *      (each is then its own set's model, by the argument in 3).
+ * Every model in 2 and 4 counts against {@link MAX_ATTRIBUTION_MEASURES} per run; past it the
+ * remaining rooms get the unattributed hints.
+ * Step 3 reads the door graph: a widened doorway's raster could in principle open a cell a walk
+ * slips through beside an obstacle, which the graph does not see; the corpus test that applies
+ * every named width and re-measures is the check on that.
+ */
+function attributeBottlenecks(
   ctx: LintContext,
   widthOf: ReadonlyMap<string, number>,
-): (roomId: string) => AccessEdge[] | null {
-  const tree = bottleneckDoors(ctx, widthOf);
+  warnedRooms: readonly string[],
+): Map<string, AccessEdge[]> {
   const min = ctx.rules.minPathClearWidthMm;
-  const measured = new Map<string, CirculationModel | null>();
-  const clears = (set: readonly AccessEdge[], roomId: string): boolean => {
-    const key = set
-      .map((e) => e.doorId)
-      .sort()
-      .join("\u0000");
-    if (!measured.has(key)) {
-      const wider = new Map(set.map((e) => [e.doorId, clearingWidth(e, ctx)]));
-      const doors = ctx.doors.map((d) => (wider.has(d.id) ? { ...d, width: wider.get(d.id)! } : d));
-      const openings = ctx.openings.map((o) => (wider.has(o.id) ? { ...o, width: wider.get(o.id)! } : o));
-      const access = buildDoorAccessGraph(ctx.rooms, doors, ctx.rules.tolMm, undefined, openings);
-      measured.set(
-        key,
-        computeCirculation(
-          ctx.rooms,
-          ctx.ir.walls,
-          doors,
-          openings,
-          ctx.furniture,
-          access,
-          ctx.rules.tolMm,
-          undefined,
-          ctx.verticals,
-          ctx.voids,
-          ctx.building.arrivalShafts,
-        ),
-      );
-    }
-    const after = measured.get(key)?.rooms.find((rc) => rc.roomId === roomId);
-    return after !== undefined && after.bottleneckClearWidthMm >= min;
-  };
-  return (roomId: string): AccessEdge[] | null => {
+  const edges = ctx.access().edges.filter((e) => !e.ambiguous && e.between[0] !== "" && e.between[1] !== "");
+  const tree = bottleneckDoors(ctx, widthOf, edges);
+  const candidates = new Map<string, AccessEdge[][]>();
+  for (const roomId of warnedRooms) {
     const w = widthOf.get(roomId);
-    if (w === undefined) return null;
-    const path = tree(roomId) ?? [];
-    const own = ctx
-      .access()
-      .edges.filter((e) => !e.ambiguous && e.between.includes(roomId) && Math.round(e.estimatedClearWidth) === w);
-    const both = [...path, ...own.filter((e) => !path.includes(e))];
+    if (w === undefined) continue;
+    const path = tree(roomId);
+    const atW = (path ?? []).filter((e) => Math.round(e.estimatedClearWidth) === w);
+    const under = (path ?? []).filter((e) => e.estimatedClearWidth < min);
+    const own = edges.filter((e) => e.between.includes(roomId) && Math.round(e.estimatedClearWidth) === w);
+    const both = [...atW, ...own.filter((e) => !atW.includes(e))];
     const seen = new Set<string>();
-    for (const set of [path, both, own]) {
-      const key = set.map((e) => e.doorId).join(",");
+    const sets: AccessEdge[][] = [];
+    for (const set of [atW, both, own, under]) {
+      const key = setKey(set);
       if (set.length === 0 || seen.has(key)) continue;
       seen.add(key);
-      if (clears(set, roomId)) return set;
+      sets.push(set);
     }
-    return null;
+    if (sets.length > 0) candidates.set(roomId, sets);
+  }
+  const named = new Map<string, AccessEdge[]>();
+  if (candidates.size === 0) return named;
+
+  const widen = (set: Iterable<AccessEdge>) => new Map([...set].map((e) => [e.doorId, clearingWidth(e, ctx)]));
+  // 1. The door graph: drop rooms whose door-only capacity cannot reach the minimum.
+  const all = new Set([...candidates.values()].flat(2));
+  const capAll = doorCapacity(ctx, edges, widen(all));
+  for (const roomId of [...candidates.keys()]) if ((capAll.get(roomId) ?? 0) < min) candidates.delete(roomId);
+  if (candidates.size === 0) return named;
+
+  const measure = (wider: ReadonlyMap<string, number>): ReadonlyMap<string, number> => {
+    const doors = ctx.doors.map((d) => (wider.has(d.id) ? { ...d, width: wider.get(d.id)! } : d));
+    const openings = ctx.openings.map((o) => (wider.has(o.id) ? { ...o, width: wider.get(o.id)! } : o));
+    const access = buildDoorAccessGraph(ctx.rooms, doors, ctx.rules.tolMm, undefined, openings);
+    return roomBottlenecks(
+      ctx.rooms,
+      ctx.ir.walls,
+      doors,
+      openings,
+      ctx.furniture,
+      access,
+      ctx.rules.tolMm,
+      ctx.verticals,
+      ctx.voids,
+      ctx.building.arrivalShafts,
+    );
   };
+  const clearsIn = (readings: ReadonlyMap<string, number> | undefined, roomId: string): boolean =>
+    (readings?.get(roomId) ?? 0) >= min;
+  // 2–4. Tier by tier (every remaining room's first candidate, then its second, …): ONE union
+  // model per tier, with every door of that tier's sets widened, all within the count budget.
+  const relevant = relevance(ctx, edges);
+  // Shared by every storey of the run when there are several; this storey's own otherwise.
+  const budget = ctx.building.attributionMeasures ?? { left: MAX_ATTRIBUTION_MEASURES };
+  const tiers = Math.max(...[...candidates.values()].map((sets) => sets.length));
+  for (let k = 0; k < tiers && budget.left > 0; k++) {
+    const sets = new Map<string, AccessEdge[]>();
+    for (const [roomId, list] of candidates) if (!named.has(roomId) && list[k]) sets.set(roomId, list[k]!);
+    // The door graph again, per room for this tier: a set whose best way through it stays
+    // under the minimum is dropped here (it would only widen the tier for the other rooms).
+    for (const [roomId, set] of [...sets]) if (throughSet(ctx, edges, set, roomId) < min) sets.delete(roomId);
+    const tier = new Set([...sets.values()].flat());
+    if (sets.size === 0) continue;
+    budget.left--;
+    const tierModel = measure(widen(tier));
+    // 3. The tier model is a room's own set's model whenever the tier's other doors are off
+    // every simple path to it.
+    const quiet = (doors: Iterable<AccessEdge>, set: readonly AccessEdge[], roomId: string) =>
+      [...doors].every((e) => set.includes(e) || !relevant(e, roomId));
+    const unproven: string[] = [];
+    for (const roomId of warnedRooms) {
+      const set = sets.get(roomId);
+      if (!set || !clearsIn(tierModel, roomId)) continue;
+      if (quiet(tier, set, roomId)) named.set(roomId, set);
+      else unproven.push(roomId);
+    }
+    // 4. Exact models for the rest, GROUPED: rooms whose sets are mutually off each other's
+    // paths share one model (each is then its own set's model for that room), in source order.
+    while (unproven.length > 0 && budget.left > 0) {
+      const group: string[] = [];
+      const doors = new Set<AccessEdge>();
+      for (const roomId of [...unproven]) {
+        const set = sets.get(roomId)!;
+        const fits = quiet(doors, set, roomId) && group.every((other) => quiet(set, sets.get(other)!, other));
+        if (!fits) continue;
+        group.push(roomId);
+        for (const e of set) doors.add(e);
+        unproven.splice(unproven.indexOf(roomId), 1);
+      }
+      budget.left--;
+      const model = measure(widen(doors));
+      for (const roomId of group) if (clearsIn(model, roomId)) named.set(roomId, sets.get(roomId)!);
+    }
+  }
+  return named;
+}
+
+/** Door-only widest-path capacity of every room, with `wider` connectors at their new widths. */
+function doorCapacity(
+  ctx: LintContext,
+  edges: readonly AccessEdge[],
+  wider: ReadonlyMap<string, number>,
+  from?: string,
+): Map<string, number> {
+  const cap = new Map<string, number>();
+  if (from !== undefined) cap.set(from, Number.POSITIVE_INFINITY);
+  else if (ctx.access().hasEntrance) cap.set(EXTERIOR_NODE, Number.POSITIVE_INFINITY);
+  // An arrival room is a source at an unbounded width here: this is an UPPER bound.
+  else for (const id of ctx.building.arrivalRooms) cap.set(id, Number.POSITIVE_INFINITY);
+  const done = new Set<string>();
+  for (;;) {
+    let u: string | null = null;
+    for (const [k, c] of cap) if (!done.has(k) && (u === null || c > cap.get(u)!)) u = k;
+    if (u === null) break;
+    done.add(u);
+    for (const e of edges) {
+      if (!e.between.includes(u)) continue;
+      const v = e.between[0] === u ? e.between[1] : e.between[0];
+      if (done.has(v)) continue;
+      const nc = Math.min(cap.get(u)!, widenedClear(e, wider));
+      if (nc > (cap.get(v) ?? Number.NEGATIVE_INFINITY)) cap.set(v, nc);
+    }
+  }
+  return cap;
+}
+
+/** A connector's clear width with `wider` applied (the leaf allowance kept for a door). */
+const widenedClear = (e: AccessEdge, wider: ReadonlyMap<string, number>): number =>
+  wider.has(e.doorId) ? wider.get(e.doorId)! - (e.nominalWidth - e.estimatedClearWidth) : e.estimatedClearWidth;
+
+/**
+ * The widest door-only way to `roomId` that USES a widened door of `set` — an upper bound on
+ * what widening `set` can do for the room. Every other way is unchanged by it, and the room's
+ * reading already shows none of those clears, so a set whose best way through it stays under
+ * the minimum cannot clear the room (the door into a bedroom whose own door is fine but whose
+ * bed blocks it). For each door of the set, either way round: the widest way to its near side
+ * and from its far side to the room, each found without that door.
+ */
+function throughSet(
+  ctx: LintContext,
+  edges: readonly AccessEdge[],
+  set: readonly AccessEdge[],
+  roomId: string,
+): number {
+  const wider = new Map(set.map((e) => [e.doorId, clearingWidth(e, ctx)]));
+  let best = Number.NEGATIVE_INFINITY;
+  for (const e of set) {
+    const others = edges.filter((x) => x !== e);
+    const toNear = doorCapacity(ctx, others, wider);
+    for (const [near, far] of [
+      [e.between[0], e.between[1]],
+      [e.between[1], e.between[0]],
+    ] as const) {
+      const reach = toNear.get(near) ?? Number.NEGATIVE_INFINITY;
+      const onward =
+        far === roomId
+          ? Number.POSITIVE_INFINITY
+          : (doorCapacity(ctx, others, wider, far).get(roomId) ?? Number.NEGATIVE_INFINITY);
+      best = Math.max(best, Math.min(reach, widenedClear(e, wider), onward));
+    }
+  }
+  return best;
 }
 
 /** The message clause naming the connectors a walk squeezes through, or nothing. */
 function namedClause(doors: readonly AccessEdge[] | null, width: number): string {
   if (doors === null) return "";
-  const list = doors.map((e) => `${e.kind} "${e.doorId}"`);
-  return list.length === 1
-    ? ` — the bottleneck is ${list[0]}, ${mm(width)} mm clear`
-    : ` — the bottlenecks are ${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}, each ${mm(width)} mm clear: widen all of them`;
+  const same = doors.every((e) => Math.round(e.estimatedClearWidth) === width);
+  const list = doors.map(
+    (e) => `${e.kind} "${e.doorId}"${same ? "" : ` (${mm(Math.round(e.estimatedClearWidth))} mm clear)`}`,
+  );
+  if (list.length === 1) return ` — the bottleneck is ${list[0]}, ${mm(width)} mm clear`;
+  const joined = `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
+  return ` — the bottlenecks are ${joined}${same ? `, each ${mm(width)} mm clear` : ""}: widen them together`;
 }
 
 export const pathTooNarrow: LintRule = {
@@ -296,7 +570,13 @@ export const pathTooNarrow: LintRule = {
     // emits exactly the diagnostics, in exactly the order, it emitted before.
     const factOf = new Map(circ.rooms.map((rc) => [rc.roomId, rc]));
     const blocked = new Map((circ.blocked ?? []).map((b) => [b.roomId, b.widestWayInMm]));
-    const doorsOf = attributeBottleneck(ctx, new Map(circ.rooms.map((rc) => [rc.roomId, rc.bottleneckClearWidthMm])));
+    const named = attributeBottlenecks(
+      ctx,
+      new Map(circ.rooms.map((rc) => [rc.roomId, rc.bottleneckClearWidthMm])),
+      rooms
+        .filter((r) => !blocked.has(r.id) && (factOf.get(r.id)?.bottleneckClearWidthMm ?? min) < min)
+        .map((r) => r.id),
+    );
     for (const r of rooms) {
       const wayIn = blocked.get(r.id);
       if (wayIn !== undefined) {
@@ -321,7 +601,7 @@ export const pathTooNarrow: LintRule = {
       const rc = factOf.get(r.id);
       if (!rc || rc.bottleneckClearWidthMm >= min) continue;
       warned.add(r.id);
-      const doors = doorsOf(r.id);
+      const doors = named.get(r.id) ?? null;
       if (already(doors)) continue;
       for (const e of doors ?? []) reported.add(e.doorId);
       out.push({

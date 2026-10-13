@@ -602,6 +602,21 @@ plan "corner" {
 Close by probing a two-room connector on an EXTERIOR host too (a measured change for any plan
 with a door that close to a partition end).
 
+### C.6 · `W_PATH_TOO_NARROW` names fewer doors than it could, to stay inside its re-measure budget — `todo`
+
+A door is named only after a re-measure shows widening it clears the room, and one `lint()` run
+may spend `MAX_ATTRIBUTION_MEASURES` (2) re-measures, storeys together
+(`src/lint/rules/circulation-facts.ts`). The union-per-tier and door-graph proofs settle every
+tree-shaped plan with one re-measure (`test/lint-attribution-budget.test.ts`), but a door graph
+with cycles can need more. Measured over `examples/`, `test/fixtures/` and `eval/` under
+`accessibility-advisory`: of the walk warnings that named a door before any verification existed,
+10 still name none because the budget ran out first (the hillside villa's Study and Terrace among
+them); 1 is named that was not. Lint time stays within 1.5× of the unverified rule except
+`examples/library.arch` under `accessibility-advisory` (1.45–1.61× across five runs), where the
+single re-measure of a large nav grid is most of the cost. Close by re-measuring a door variant
+without rebuilding the raster (only the widened doorways' cells and stamps change), which would
+make each re-measure cheap enough to raise the budget.
+
 ## Wall-face probe findings
 
 Left open by routing "which side of this wall has floor" through `wallFaceProbes`

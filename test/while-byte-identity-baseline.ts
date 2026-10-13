@@ -159,6 +159,12 @@
  *     statement (`furniture wc in bath anchor top flush size 400x700`). Its message, span and
  *     every other diagnostic are byte-identical.
  * No other example row and no other fixture row moved.
+ *
+ * Two fixtures ADDED, not re-measured: `test/fixtures/star30.arch` (thirty rooms off one
+ * corridor) and `test/fixtures/chain30.arch` (thirty rooms in a row), the run-time and
+ * re-measure-count pins for `W_PATH_TOO_NARROW`'s door attribution
+ * (`test/lint-attribution-budget.test.ts`). Their rows are their first measurement, taken with
+ * this test's own digest body on the tree that adds them.
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "7d17249d81b43f1ff5b17c6b1219750bbdd695599f31e66fb298be9facc7c169"],
@@ -192,12 +198,14 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/two-bed.arch", "595276f8bf7cf2b3531acf5f6f89808b33653e3ec99c4d30e5ca9b81d5f8bd1f"],
   ["examples/two-storey.arch", "40db64f06de76a95b038de66acc9ddd996020a2c84c48e5d6e1670ac8c247adb"],
   ["test/fixtures/axes-grid.arch", "6f1e4a5a6c27df9deeb26885d5d97da5b574d8e644acd0fa6fc588c11f610695"],
+  ["test/fixtures/chain30.arch", "b1e38c910666b9f7f7bf2fb6e8a4b043fe7787419e1e0b41bfad0be774194b09"], // new fixture, see header
   ["test/fixtures/dense-bays.arch", "22f98cc0f66e94a5db73bd40f2ba111da74740976f5255f1f978467760828de3"],
   ["test/fixtures/diff-a.arch", "a7bad45dcc57e01a854d130cf857857ae056546c8f8b37ddd5474f22c2cf1bb1"], // re-measured, see header
   ["test/fixtures/diff-b.arch", "aed751c9f9579dd29c93d4c0363c1f17428fc68f6e6003f59281824eacd7ff06"], // re-measured, see header
   ["test/fixtures/diff-circ-a.arch", "84d413c8733e5dae6fe6adf57a9ecea3ced920501be76a4175f225ea2e8a9974"],
   ["test/fixtures/diff-circ-b.arch", "c22679ed9da2f1386e64c665245bb8a4555ffb5e7f38010e5d4252c858a8f2f9"],
   ["test/fixtures/schedule-sheet.arch", "3f66597531afcf2d8be6c4a297121aa309f08887fc369ca5f322fa12b95433e5"],
+  ["test/fixtures/star30.arch", "e5cf06a13db022de20a0a085d113e38405b4ea1dd81325890fd9c8a68db6e539"], // new fixture, see header
   ["test/fixtures/zones-levels.arch", "2ee9feeb3f6ca7c09e51eee71ffb78272b3b09be7ccdccbf87a38a4ee1234cae"],
   ["test/fixtures/zones-wings.arch", "9375f1e04051120bf1d5734fe7a99a7dd828926d08993da28ec5b3d02a20591c"],
 ];

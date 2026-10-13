@@ -35,16 +35,8 @@ import {
   requiresWall,
 } from "../../fixtures-catalog.js";
 import type { LintContext, LintRule } from "../context.js";
-import { placementClear } from "../fixture-paste.js";
+import { placementClear, WALL_COLLISION_SLACK_MM } from "../fixture-paste.js";
 import { frontGapMm, mm, shortfall } from "../measure.js";
-
-/**
- * Minimum intrusion (mm) into a wall solid that counts as a collision. Above plausible
- * grid-snap noise from `against wall` placement, below any real penetration (a piece
- * straddling even a 100 mm partition intrudes far more), so flush/anchored fixtures
- * stay quiet while a sofa drawn through a wall is caught.
- */
-const WALL_COLLISION_SLACK_MM = 30;
 
 /** Furniture that overlaps another piece — a physical collision (each unordered
  *  pair reported once, in source order, against the second piece's span).

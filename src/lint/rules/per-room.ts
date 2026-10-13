@@ -70,9 +70,11 @@ function noFixtureHint(ctx: LintContext, r: RRoom, isWet: boolean): string {
   const why =
     paste.failure === "grid"
       ? `the plan's \`grid ${fmt2(ctx.ir.grid)}\` snaps that footprint away, so use a finer grid`
-      : paste.failure === "no-wall"
-        ? "it has no straight wall running square to the page for one to back onto, so give it one or place the fixture with `at (x,y)` and `rotate`"
-        : "no wall of it has a run clear of its doors and furniture for one, so make room first";
+      : paste.failure === "grid-offset"
+        ? `the plan's \`grid ${fmt2(ctx.ir.grid)}\` snaps an \`at (x,y)\` placement off the wall face here, so use a finer grid or a rectangular room with \`anchor … flush\``
+        : paste.failure === "no-wall"
+          ? "it has no straight wall running square to the page for one to back onto, so give it one or place the fixture with `at (x,y)` and `rotate`"
+          : "no wall of it has a run clear of its doors and furniture for one, so make room first";
   return `Place a built-in fixture in it (nothing to import) — a \`${cat}\` (${fmt2(fp.along)} along a wall, ${fmt2(fp.depth)} deep), or ${others}; ${why}.`;
 }
 

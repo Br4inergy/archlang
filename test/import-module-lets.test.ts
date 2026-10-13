@@ -319,6 +319,10 @@ suite("a module `let` that fails reports as it does in the module", () => {
  * piece placed `at`, and asks no `rotate` of an anchored one). `hillside-villa` re-measured a
  * third time when every named door became re-measured before it is quoted: the same three
  * doors, hint wording only; the previous `lint()` put back reproduces the previous row.
+ *
+ * Two rows ADDED, not re-measured: `test/fixtures/star30.arch` and `test/fixtures/chain30.arch`,
+ * new fixtures pinning `W_PATH_TOO_NARROW`'s re-measure count; first measured with the same
+ * digest body on the tree that adds them (the same rows as `./while-byte-identity-baseline.ts`).
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "7d17249d81b43f1ff5b17c6b1219750bbdd695599f31e66fb298be9facc7c169"],
@@ -361,12 +365,14 @@ const BASELINE: [string, string][] = [
   ["examples/lib/fixtures.arch", "71bb04c18469e802cf1c04e05e2f2685a76912a18ce2052a9eba2b233b4a974c"],
   ["examples/lib/furniture.arch", "ca0855ab5f5f529305941fb64427d316c1c048fe9a2809d0c5ef00eabedc88ed"],
   ["test/fixtures/axes-grid.arch", "6f1e4a5a6c27df9deeb26885d5d97da5b574d8e644acd0fa6fc588c11f610695"],
+  ["test/fixtures/chain30.arch", "b1e38c910666b9f7f7bf2fb6e8a4b043fe7787419e1e0b41bfad0be774194b09"], // new fixture, see header
   ["test/fixtures/dense-bays.arch", "22f98cc0f66e94a5db73bd40f2ba111da74740976f5255f1f978467760828de3"],
   ["test/fixtures/diff-a.arch", "a7bad45dcc57e01a854d130cf857857ae056546c8f8b37ddd5474f22c2cf1bb1"],
   ["test/fixtures/diff-b.arch", "aed751c9f9579dd29c93d4c0363c1f17428fc68f6e6003f59281824eacd7ff06"],
   ["test/fixtures/diff-circ-a.arch", "84d413c8733e5dae6fe6adf57a9ecea3ced920501be76a4175f225ea2e8a9974"],
   ["test/fixtures/diff-circ-b.arch", "c22679ed9da2f1386e64c665245bb8a4555ffb5e7f38010e5d4252c858a8f2f9"],
   ["test/fixtures/schedule-sheet.arch", "3f66597531afcf2d8be6c4a297121aa309f08887fc369ca5f322fa12b95433e5"],
+  ["test/fixtures/star30.arch", "e5cf06a13db022de20a0a085d113e38405b4ea1dd81325890fd9c8a68db6e539"], // new fixture, see header
   ["test/fixtures/zones-levels.arch", "2ee9feeb3f6ca7c09e51eee71ffb78272b3b09be7ccdccbf87a38a4ee1234cae"],
   ["test/fixtures/zones-wings.arch", "9375f1e04051120bf1d5734fe7a99a7dd828926d08993da28ec5b3d02a20591c"],
   ["test/recovery-corpus/attached.arch", "ce39e349037a98b01516a72737bf9ea14a6f410ec295913efe84708753481761"],

@@ -44,8 +44,13 @@ import type { RFurniture, RRoom } from "../ir.js";
 import { fmt2 } from "../num-format.js";
 import type { LintContext } from "./context.js";
 
-/** The intrusion `W_FURNITURE_WALL_COLLISION` tolerates (its `WALL_COLLISION_SLACK_MM`). */
-const SLACK_MM = 30;
+/**
+ * Minimum intrusion (mm) into a wall solid that counts as a collision. Above plausible
+ * grid-snap noise from `against wall` placement, below any real penetration (a piece
+ * straddling even a 100 mm partition intrudes far more), so flush/anchored fixtures
+ * stay quiet while a sofa drawn through a wall is caught.
+ */
+export const WALL_COLLISION_SLACK_MM = 30;
 
 /** The anchors tried on each edge: the edge's middle, then its two corners. */
 const EDGE_ANCHORS: Readonly<Record<RectEdge, readonly FurnitureAnchor[]>> = {
@@ -71,7 +76,7 @@ export function placementClear(
   rotate: number,
   self?: RFurniture,
 ): boolean {
-  if (ctx.wallSegs.some((s) => wallIntrusionDepth(fr, s, ctx.wallOpenings) > SLACK_MM)) return false;
+  if (ctx.wallSegs.some((s) => wallIntrusionDepth(fr, s, ctx.wallOpenings) > WALL_COLLISION_SLACK_MM)) return false;
   const others = ctx.furniture.filter((f) => f !== self);
   if (others.some((f) => rectsOverlap(fr, rectOf(f)))) return false;
   for (const d of ctx.doors) {
@@ -97,7 +102,12 @@ export function placementClear(
 }
 
 /** Why no statement could be quoted, for the hint to say so truthfully. */
-export type PasteFailure = "no-wall" | "no-room" | "grid";
+/**
+ * Why no statement could be quoted, for the hint to say so truthfully: no straight walled
+ * edge to back onto; no clear run on any; the grid snaps the footprint to nothing; or a run
+ * that IS clear at exact coordinates, which the grid only lets `at` reach off the wall face.
+ */
+export type PasteFailure = "no-wall" | "no-room" | "grid" | "grid-offset";
 
 /**
  * The statement that places one `category` fixture clear in `room`, or why there is none.
@@ -131,6 +141,7 @@ export function pasteFixture(
     backingWallForRoomEdge(fr, edge, ctx.ir.walls, ctx.rules.fixtureWallTolMm, ctx.wallSegs) !== null &&
     placementClear(ctx, fr, category, rotateForBackEdge(edge));
   let walled = false;
+  let offGrid = false;
 
   if (!room.poly && room._rel === undefined) {
     const rect = { x: room.at.x, y: room.at.y, w: room.size.w, h: room.size.h };
@@ -215,7 +226,10 @@ export function pasteFixture(
             stmt: `furniture ${category} at (${fmt2(fr.x)},${fmt2(fr.y)}) size ${printed(edge)}${rot === 0 ? "" : ` rotate ${rot}`} in ${room.id}`,
           };
       }
+      // The same run at exact coordinates: if it fits there, the grid is what refused it.
+      const exact = horizontal ? { x: c - span / 2, y: back, w, h } : { x: back, y: c - span / 2, w, h };
+      if (g > 0 && fits(exact, edge)) offGrid = true;
     }
   }
-  return { failure: walled ? "no-room" : "no-wall" };
+  return { failure: offGrid ? "grid-offset" : walled ? "no-room" : "no-wall" };
 }

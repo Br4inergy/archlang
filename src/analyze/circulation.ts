@@ -2017,6 +2017,84 @@ function routeBetween(
 }
 
 /**
+ * Each door-reachable room's `bottleneckClearWidthMm` and nothing else: the opening steps of
+ * {@link computeCirculation} (the same arrivals, extent frame, nav grid and widest-route
+ * search, written out the same way) without the walks, routes, sealed-room controls or the
+ * blocked-room width ladder, each of which builds more grids. For a caller that re-measures a
+ * plan VARIANT (a lint rule checking that widening a door would clear a room) and reads only
+ * the reading. A room with no reading here has no `rooms[]` fact there either, or a reading
+ * of 0. `test/circulation-room-bottlenecks.test.ts` pins it equal to `computeCirculation` on
+ * every corpus room, so the two cannot drift apart.
+ */
+export function roomBottlenecks(
+  rooms: RRoom[],
+  walls: RWall[],
+  doors: RDoor[],
+  openings: ROpening[],
+  furniture: RFurniture[],
+  access: AccessGraph,
+  tol: number,
+  verticals: RVertical[] = [],
+  voids: RVoid[] = [],
+  arrivals: readonly ArrivingRun[] = [],
+): Map<string, number> {
+  const out = new Map<string, number>();
+  const landed: ShaftArrival[] = [];
+  if (!access.hasEntrance) {
+    for (const { run, edges } of arrivals) {
+      const roomId = roomOfVertical(run, rooms);
+      if (roomId !== null && edges.length > 0) landed.push({ run, edges, roomId });
+    }
+  }
+  if (rooms.length === 0 || (!access.hasEntrance && landed.length === 0)) return out;
+  const origin = extentOrigin(rooms);
+  ({ rooms, walls, doors, openings, furniture, verticals, voids } = toExtentFrame(origin, {
+    rooms,
+    walls,
+    doors,
+    openings,
+    furniture,
+    verticals,
+    voids,
+  }));
+  const shafts: ShaftArrival[] = landed.map((a) => ({
+    run: toExtentFrame(origin, { ...NO_ELEMENTS, verticals: [a.run] }).verticals[0]!,
+    edges: a.edges,
+    roomId: a.roomId,
+  }));
+  const nav = buildNav(
+    rooms,
+    walls,
+    doors,
+    openings,
+    furniture,
+    verticals,
+    voids,
+    access,
+    tol,
+    DEFAULT_BODY_RADIUS_MM,
+    shafts,
+  );
+  if (nav.kind !== "ok") return out;
+  const doorReachable = access.hasEntrance
+    ? new Set(access.rooms.filter((n) => n.reachable).map((n) => n.id))
+    : new Set(
+        reachFrom(
+          accessDigraph(
+            rooms.map((r) => r.id),
+            access.edges,
+          ),
+          { exterior: false, extraSources: shafts.map((a) => a.roomId) },
+        ),
+      );
+  const roomWidest = perRoomMax(nav.roomCells, widestBottleneck(nav.g, nav.sources, nav.sourceClear));
+  rooms.forEach((r, ri) => {
+    if (doorReachable.has(r.id)) out.set(r.id, Math.round(roomWidest[ri]!));
+  });
+  return out;
+}
+
+/**
  * Whole-plan circulation facts. Deterministic; returns null when the plan has no
  * modeled exterior entrance AND no shaft arrives on it (there is nothing to measure a walk
  * from — mirrors how the access graph reports `hasEntrance: false`).

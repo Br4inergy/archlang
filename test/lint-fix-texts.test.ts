@@ -157,7 +157,11 @@ describe("W_ROOM_NO_FIXTURE — the hint's statement compiles, clears it, and ra
         if (stmt === undefined) {
           // Only a room where nothing fits may decline, and it must say why.
           expect(name).toMatch(/grid 600|half-walled/);
-          expect(hint).toMatch(/make room first|grid/);
+          // The reason must be the true one: on grid 600 the grid, not crowded walls.
+          if (src === GRID_600) {
+            expect(hint).toContain("`grid 600` snaps an `at (x,y)` placement off the wall face");
+            expect(hint).not.toContain("make room first");
+          } else expect(hint).toContain("make room first");
           return;
         }
         if (src === POLY || src === L_SHAPE || src === RELATIONAL)
@@ -508,12 +512,17 @@ describe("W_PATH_TOO_NARROW — names only doors whose widening clears the room,
       expect(gained(src, fixed, p)).toEqual([]);
     });
 
-    it(`${p ?? "default"} · a door that cannot clear the walk on its own is not named`, () => {
+    it(`${p ?? "default"} · a door that cannot clear the walk on its own is named only with the one it needs`, () => {
       // Under the accessibility profile the 900 mm front door (840 clear) is a pinch too, so
-      // widening the bath door alone leaves the bath at 840: the warning names no door.
+      // widening the bath door alone leaves the bath at 840. The warning names both, each at
+      // its own clear width, as a set — and widening the set clears it.
       if (!p) return;
       const [d] = of(SRC, "W_PATH_TOO_NARROW", p).filter((x) => x.message.includes('"Bath"'));
-      expect(d!.message).not.toContain("bottleneck");
+      expect(d!.message).toContain(
+        'the bottlenecks are door "d_front" (840 mm clear) and door "d_bath" (640 mm clear): widen them together',
+      );
+      const fixed = widenAll(SRC, d!.hints!)!;
+      expect(of(fixed, "W_PATH_TOO_NARROW", p).filter((x) => x.message.includes('"Bath"'))).toEqual([]);
     });
   }
 

@@ -36,6 +36,12 @@ export interface BuildingContext {
    * circulation rules measure it rather than going silent (`circulation-facts.ts`).
    */
   arrivalShafts: readonly ArrivingRun[];
+  /**
+   * The re-measures `W_PATH_TOO_NARROW`'s door attribution has left for the WHOLE `lint()`
+   * run, shared by every storey's context (one object per run, created with them). Absent on
+   * a single-storey plan, whose one context counts its own. A count, never a time.
+   */
+  attributionMeasures?: { left: number };
 }
 
 const NO_BUILDING: BuildingContext = {
