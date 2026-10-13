@@ -509,6 +509,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["863a9f2c6d83393b414fc6cf634c7757d3148ba19d9c85ff19b9b935f2d64f99", "one-room"],
         ["aa3345f2ba982f844e25108a7908a6f60a8ed295b574248fb895b54bb5599c27", "parametric"],
         ["e0ee4c353a512b03833dc5271ea20a22bd5117e6f8a5b812037c45816dcb4ef5", "relational"],
+        ["d58bfbf0a25a5b70b7bdfdd1a8ef7b0fb8912f88ebb5cf631da3efe8268015e4", "sheet-notes"], // first measurement, added with the example
         ["147ce7e23f6f2a403d2d269cc0e68b678cab850e0d3a641287ef50bced7c76d3", "studio"],
         ["e4ce4942694b6939c8885bd302dbf2fe53f7903025fe86a11e5dfd8cf63f1764", "terrace-row"],
         ["9da982b56530f0ec0c1b313fe8be64e5346f71bc4d098244664f164a02029a09", "themed"],
