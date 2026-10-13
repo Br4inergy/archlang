@@ -98,8 +98,6 @@ function samples(p: ScenePrim): Point[] {
       return seg(p.a, p.b);
     case "polygon":
       return p.pts.flatMap((q, i) => seg(q, p.pts[(i + 1) % p.pts.length]!));
-    case "polyline":
-      return p.pts.slice(1).flatMap((q, i) => seg(p.pts[i]!, q));
     case "circle":
       return Array.from({ length: 64 }, (_, k) => ({
         x: p.center.x + p.r * Math.cos((k * Math.PI) / 32),
