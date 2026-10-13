@@ -20,7 +20,7 @@ scripts and report a pass/fail table.
      (`editors/archlang.tmLanguage.json`, `playground/src/arch-language.js`, `docs/error-codes.md`,
      `docs/cli-reference.md`, `spec.llm.md`, `llms-full.txt`, `grammars/archlang.gbnf`,
      `schemas/plan.schema.json`, `schemas/intent.schema.json`) are outputs — edit the source
-     (`src/grammar/tokens.ts`, `src/error-catalog.ts`, `src/manifest.ts`, `SKILL.md`, `examples/`,
+     (`src/grammar/tokens.ts`, `src/error-catalog.ts`, `src/manifest.ts`, `skills/archlang/SKILL.md`, `examples/`,
      `PLAN_JSON_SCHEMA`, `INTENT_JSON_SCHEMA`) and regenerate.
    - If you touched the CLI, expect `docs/cli-reference.md` to move — it is generated from
      `src/manifest.ts`. **Read that diff**; it is the one artifact a CLI change always rewrites.

@@ -40,7 +40,7 @@ Run every single-source generator and inspect exactly what moved.
    | `docs/error-codes.md` | `src/error-catalog.ts` |
    | `docs/cli-reference.md` | `src/manifest.ts` (every command, its exact flag set, its `examples[]`) |
    | `spec.llm.md` | `src/grammar/tokens.ts` + `examples/` |
-   | `llms-full.txt` | `spec.llm.md` + `SKILL.md` + `src/manifest.ts` + `src/error-catalog.ts` |
+   | `llms-full.txt` | `spec.llm.md` + `skills/archlang/SKILL.md` + `src/manifest.ts` + `src/error-catalog.ts` |
    | `src/context-size.ts` | the byte size of `llms-full.txt` and its sections (so `gen:cli` runs after `gen:llms`) |
    | `grammars/archlang.gbnf` | `src/grammar/tokens.ts` |
    | `schemas/plan.schema.json` | `PLAN_JSON_SCHEMA` |
