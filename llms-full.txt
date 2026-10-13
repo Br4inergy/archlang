@@ -612,8 +612,8 @@ about SVG by hand.
 
 ## Task skills
 
-Four short skills sit in `skills/` beside this file, one job each
-(`npx skills add ChanMeng666/archlang --full-depth` installs them with this one). Each is a
+Four short skills sit beside this one in `skills/`, one job each
+(`npx skills add ChanMeng666/archlang` offers them with this one). Each is a
 checklist of CLI calls and holds no language reference of its own:
 
 - `archlang-brief-to-plan`: write a new plan from a written brief and check it against the brief.
