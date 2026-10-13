@@ -141,19 +141,25 @@ is `limits.cpu_ms` plus the owner's billing notification**; a per-address rate l
 them as an abuse guard only. Both live in `wrangler.jsonc`, both are counts:
 
 - **`limits.cpu_ms: 5000`** — CPU per request. The slowest call measured below (`finish` on a 60 KB
-  synthetic plan, about 2.1 s of wall-clock time on a desktop) fits with room; a request past it
-  fails with the platform's error instead of billing on. Not enforced in `wrangler dev`.
+  synthetic plan, about 2.1 s of wall-clock time on a desktop) fits with room. The bound is
+  **approximate**: Cloudflare lets an isolate run over the configured limit occasionally and
+  terminates (Error 1102) only on consistent overrun ("Each isolate has some built-in flexibility
+  to allow for cases where your Worker infrequently runs over the configured limit"). Not
+  enforced in `wrangler dev`.
   **`limits` needs Workers Paid.** Cloudflare's configuration reference: "Limits are only
   supported for the Standard Usage Model"; its pricing page: "Users on the Workers Paid plan have
-  access to the Standard usage model." So the account must be on Paid before this reaches `main`,
-  or `deploy-mcp` fails (the job then prints this owner step).
+  access to the Standard usage model." So the account must be on Paid before this reaches `main`.
+  On Free, `deploy-mcp` should fail; the exact error Cloudflare returns is not verified here, so
+  the job's last step greps wrangler's combined output for `cpu_ms`, `usage model` or `Standard`
+  and, if found, prints this owner step as the likely cause.
 - **A per-address abuse guard** (the Workers rate-limiting binding, keyed on `CF-Connecting-IP`,
   which is never stored or logged): **600 `POST /mcp` a minute** and **3000 `/svg/` cache misses a
   minute** (a hit compiles nothing and is not counted). Over it, the request is refused before any
   work with HTTP 429, `Retry-After`, and a new catalogued `E_RATE_LIMITED` diagnostic (core helper
   `rateLimited()`), a code of its own because "too many requests" is neither a plan fault nor a
   size: the fix is to wait or compile locally. Cloudflare applies these limits per location, and
-  each refusal writes one `refused` data point so the owner can see whether they fire.
+  each refusal writes one `refused` Analytics Engine data point so the owner can see whether they
+  fire (so a flood of refused requests also amplifies telemetry writes, one per request).
 - **Why the guard is high: connector platforms share egress addresses.** A chat product that
   offers this server as a remote connector calls it from its own cloud egress, not from each
   user's machine, so all of that product's users share one per-address bucket per location, and
@@ -161,15 +167,18 @@ them as an abuse guard only. Both live in `wrangler.jsonc`, both are counts:
   this reason. A low per-address limit would refuse ordinary users the day a listing goes live;
   this repository does not hard-code any platform's address ranges.
 
-**Worst-case daily cost**, on Paid, beyond the monthly inclusions (10 M requests, 30 M CPU-ms), for
-`N` distinct addresses each held at its limits all day:
+**Worst-case daily cost — approximate**, on Paid, beyond the monthly inclusions (10 M requests,
+30 M CPU-ms), for `N` distinct addresses each held at its limits all day. Two simplifications:
+the rate counters are per Cloudflare location and one address normally reaches one location, so
+`N` counts address–location pairs; and `C` is approximate because the CPU limit tolerates
+occasional overrun (above):
 
 ```text
 cost/day ≤ N × 1440 × [ (R_mcp·C_mcp + R_svg·C_svg) × $0.02/10⁶  +  (R_mcp + R_svg) × $0.30/10⁶ ]
 R_mcp = 600/min, R_svg = 3000/min, C = CPU-ms per request
 ```
 
-At the CPU cap (`C = 5000` for both) that is about **$520 per address per day** ($86.40 `/mcp` +
+At the configured CPU limit (`C = 5000` for both) that is about **$520 per address per day** ($86.40 `/mcp` +
 $432 `/svg/` + $1.56 requests). At the measured ceilings (`C_mcp ≈ 2100` for `finish`,
 `C_svg ≈ 700` for a 60 KB compile) it is about **$98 per address per day**. Those are the figures
 of a sustained attack, not of use, and the guard does not bound `N`: many addresses scale the bill
@@ -271,12 +280,17 @@ version-keyed cache with an in-memory stand-in.
 ## Owner steps (not agent work)
 
 - **Workers Paid, BEFORE this branch reaches `main`.** `limits.cpu_ms` needs the Standard usage
-  model, which only Paid has; on a Free account `deploy-mcp` fails, and its last step says so.
+  model, which only Paid has; on a Free account `deploy-mcp` should fail, and its last step then
+  names this as the likely cause.
   Measure on Paid (the measurement plan above).
 - **Billing notification:** set a Cloudflare billing alert before announcing the URL; the
   per-address guard does not bound the number of addresses (see "The spend bound").
 - **Rate-limit namespaces:** confirm no other Worker in the account uses `namespace_id` 2601 or
   2602 (bindings that share one share counters).
+- **The guard, live:** after the first deploy, send about 700 small `POST /mcp` requests in a burst
+  (past the 600-a-minute guard) and expect clean 429s with `E_RATE_LIMITED`, no 503. Under
+  `wrangler dev` a 700-request burst gave 460 × 200 and 240 × 429 and no 503; production is not
+  yet observed.
 - **Connector traffic:** before a connector listing or the open proof below, look at the `refused`
   data points; if connector users share an address and meet the guard, raise it or re-key it.
 - **Domain:** attach `mcp.archlang.uk` to `archlang-mcp` (a `routes` entry with

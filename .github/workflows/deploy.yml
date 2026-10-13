@@ -189,9 +189,10 @@ jobs:
         if: steps.changed.outputs.run == 'true'
         working-directory: packages/mcp-worker
         run: |
-          # Without pipefail a failed deploy would hide behind tee's exit status.
+          # Without pipefail a failed deploy would hide behind tee's exit status. wrangler writes its
+          # errors to STDERR, so 2>&1: the log the failure step reads must hold the error itself.
           set -o pipefail
-          wrangler deploy | tee deploy.log
+          wrangler deploy 2>&1 | tee deploy.log
           url=$(grep -oE 'https://archlang-mcp\.[a-z0-9-]+\.workers\.dev' deploy.log | head -n 1)
           if [ -z "$url" ]; then echo "::error::no workers.dev URL in the wrangler deploy output"; exit 1; fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
@@ -207,8 +208,10 @@ jobs:
         if: failure() && steps.deploy.outcome == 'failure'
         working-directory: packages/mcp-worker
         run: |
-          if grep -qiE 'limits|cpu_ms|usage model' deploy.log 2>/dev/null; then
-            echo "::error::wrangler refused limits.cpu_ms: the account must be on Workers Paid. Owner step: upgrade the Cloudflare account to Workers Paid, then re-run this workflow (ADR 0026, 'Owner steps')."
+          # Narrow on purpose: plain "limits" also matches any Cloudflare error that links the
+          # platform-limits page (script size, subrequests), which upgrading would not fix.
+          if grep -qiE 'cpu_ms|usage model|Standard' deploy.log 2>/dev/null; then
+            echo "::error::wrangler's error mentions the CPU limit or the usage model; the likely cause is that limits.cpu_ms needs Workers Paid. Owner step: upgrade the Cloudflare account to Workers Paid, then re-run this workflow (ADR 0026, 'Owner steps')."
           else
             echo "deploy failed for a reason other than limits.cpu_ms; see the Deploy step's log."
           fi

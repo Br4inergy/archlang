@@ -61,7 +61,8 @@ change when this one was added.
   because connector platforms call from shared egress addresses). The spend bound is
   `limits.cpu_ms` (5 s of CPU per request) plus a billing notification set before announcing it.
 - **It needs Workers Paid before it reaches `main`.** `limits` is supported only on the Standard
-  usage model, which only Paid has; on a Free account `deploy-mcp` fails and says so.
+  usage model, which only Paid has; on a Free account `deploy-mcp` should fail, and its last step
+  names Paid as the likely cause.
 - **It logs nothing and keeps no source.** Workers Logs (`observability`) is off and the code logs
   nothing, because a `/svg/` path is a whole plan. It stores only rendered SVGs in the edge cache,
   keyed by render version. One Analytics Engine data point per MCP message (dataset

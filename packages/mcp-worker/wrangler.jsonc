@@ -22,10 +22,10 @@
   // One data point per MCP call: the method and the tool name, nothing else (src/app.ts).
   "analytics_engine_datasets": [{ "binding": "ANALYTICS", "dataset": "archlang_mcp" }],
   // The spend bound (ADR 0026). CPU per request: the slowest measured call (finish on a 60 KB
-  // synthetic plan, ~2.1 s wall-clock on a desktop) fits with room; past it the request fails with
-  // the platform's error instead of billing on. Not enforced in local dev. `limits` needs the
+  // synthetic plan, ~2.1 s wall-clock on a desktop) fits with room. Approximate: Cloudflare
+  // terminates (Error 1102) only on consistent overrun. Not enforced locally. `limits` needs the
   // Standard usage model, i.e. Workers PAID: the account must be on Paid BEFORE this reaches main,
-  // or deploy-mcp fails.
+  // or deploy-mcp should fail.
   "limits": { "cpu_ms": 5000 },
   // Per-address abuse guard, keyed on CF-Connecting-IP (never stored or logged), set HIGH because
   // connector platforms share egress addresses across their users; held to src/limits.ts by test.

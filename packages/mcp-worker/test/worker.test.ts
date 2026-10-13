@@ -14,10 +14,19 @@ import { compile, ERROR_CATALOG } from "../../../src/index.js";
 import { INSTRUCTIONS, RESOURCE_DEFS } from "../../mcp/src/tools.js";
 import { connect } from "../../mcp/test/helpers.js";
 import { resourcePaths } from "../scripts/resource-paths.mjs";
-import { FRESH, IMMUTABLE, KNOWN_TOOLS, makeWorker } from "../src/app.js";
+import {
+  FRESH,
+  IMMUTABLE,
+  KNOWN_TOOLS,
+  MAX_ARGUMENT_DEPTH,
+  makeWorker,
+  oversizeArgument,
+  tooDeep,
+} from "../src/app.js";
 import {
   BODY_CAP_BYTES,
   MCP_PER_PERIOD,
+  PAYLOAD_CAP_CHARS,
   RATE_PERIOD_SECONDS,
   SOURCE_CAP_BYTES,
   SVG_PER_PERIOD,
@@ -251,6 +260,29 @@ describe("the input cap: a Diagnostic envelope before any compile work, never a 
     expect(await res.text()).toBe("");
   });
 
+  it(`the depth boundary: ${MAX_ARGUMENT_DEPTH} levels pass, ${MAX_ARGUMENT_DEPTH + 1} are refused`, () => {
+    /** `d` nested arrays: `[[…]]` with `d` brackets, depth `d` (the outermost is level 1). */
+    const nested = (d: number): unknown => JSON.parse(`${"[".repeat(d)}${"]".repeat(d)}`);
+    expect(MAX_ARGUMENT_DEPTH).toBe(64);
+    expect(tooDeep(nested(64), 64)).toBe(false);
+    expect(tooDeep(nested(65), 64)).toBe(true);
+    // Objects count the same as arrays, and a scalar is depth 0.
+    expect(tooDeep({ a: { b: nested(62) } }, 64)).toBe(false);
+    expect(tooDeep({ a: { b: nested(63) } }, 64)).toBe(true);
+    expect(tooDeep("x", 64)).toBe(false);
+    const call = (intent: unknown) => ({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: { name: "validate", arguments: { source: TINY, intent } },
+    });
+    expect(oversizeArgument(call(nested(64)))).toBeUndefined();
+    expect(oversizeArgument(call(nested(65)))).toMatchObject({
+      code: "E_INPUT_TOO_LARGE",
+      message: "intent is nested more than 64 levels deep; this host accepts at most 64",
+    });
+  });
+
   it("a deeply nested argument is refused as too large, never a stack overflow (500)", async () => {
     const deep = `${"[".repeat(120000)}${"]".repeat(120000)}`;
     const body = `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"validate","arguments":{"source":${JSON.stringify(TINY)},"intent":${deep}}}}`;
@@ -356,6 +388,22 @@ describe("telemetry: one data point per MCP message, method and tool name from f
       { blobs: ["refused", "too-large argument"], indexes: ["refused"] },
       { blobs: ["refused", "rate-limited /mcp"], indexes: ["refused"] },
     ]);
+  });
+
+  it("each other refusal site writes its own reason: body, /svg/ rate, both /svg/ payload checks", async () => {
+    // The body cap (no deflate needed).
+    points.length = 0;
+    await post({
+      jsonrpc: "2.0",
+      id: 10,
+      method: "tools/call",
+      params: { name: "compile", arguments: { source: "\u0001".repeat(BODY_CAP_BYTES / 5) } },
+    });
+    expect(points).toEqual([{ blobs: ["refused", "too-large body"], indexes: ["refused"] }]);
+    // The /svg/ payload LENGTH check runs before any decode, so it needs no deflate-raw either.
+    points.length = 0;
+    await worker.fetch(new Request(`${ORIGIN}/svg/${"A".repeat(PAYLOAD_CAP_CHARS + 1)}`), env, ctx);
+    expect(points).toEqual([{ blobs: ["refused", "too-large payload"], indexes: ["refused"] }]);
   });
 
   it("runs without the bindings (local dev)", async () => {
@@ -491,6 +539,16 @@ describe.skipIf(!HAS_DEFLATE_RAW)("GET /svg/<payload> and the pinned /v/<render 
     const res = await get(`/v/%E0%A4%A/svg/${P}`);
     expect(res.status).toBe(404);
     expect(((await res.json()) as { ok: boolean }).ok).toBe(false);
+  });
+
+  it("the /svg/ refusals that need a decode write their reasons too: rate, inflate cap", async () => {
+    points.length = 0;
+    await get(`/svg/${P}`, {}, worker, { ...env, RATE_SVG: exhausted });
+    await get(`/svg/${encodePlanHash("#".repeat(SOURCE_CAP_BYTES * 20))}`);
+    expect(points).toEqual([
+      { blobs: ["refused", "rate-limited /svg/"], indexes: ["refused"] },
+      { blobs: ["refused", "too-large payload"], indexes: ["refused"] },
+    ]);
   });
 
   it("garbage is 400", async () => {
