@@ -151,7 +151,7 @@ const PAGE_META = [
   [
     "/errors",
     "Error and warning codes",
-    "Every ArchLang diagnostic code with its meaning and a worked example. Errors abort rendering, warnings do not, and arch explain prints any code from the CLI.",
+    "Every ArchLang diagnostic code with its meaning and a worked example. Errors abort rendering, warnings do not, and archlang explain prints any code from the CLI.",
   ],
   [
     "/spec",
