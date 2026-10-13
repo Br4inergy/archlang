@@ -35,5 +35,7 @@ dataset/out/
 .wrangler/
 .claude/settings.local.json
 .superpowers/
-.agents/
+# tool-local state; the generated project skills (gen:agent-manifests) are tracked
+.agents/*
+!.agents/skills/
 .codex/
