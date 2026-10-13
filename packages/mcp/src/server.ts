@@ -27,15 +27,20 @@ import {
   intentFromJson,
   type IntentCheckResult,
   lint,
+  PLAN_JSON_SCHEMA,
   planFromJson,
+  planToJson,
   renderAscii,
+  renderPng,
   repair,
+  type Scene,
   suggestTopology,
   validateIntent,
 } from "@chanmeng666/archlang";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { compilePngSentence, IN_MCPB_BUNDLE, pngUnavailable } from "./png.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // Repo root when the server runs from src/ (tests); irrelevant but harmless from dist/.
@@ -152,6 +157,49 @@ function resolveSource(input: {
   return { diagnostics: [] };
 }
 
+/**
+ * `compile`'s `format:"png"` result: the drawing as MCP image content, then the usual JSON
+ * result as text. The renderer is the core's lazy optional import, reached only here, on the
+ * first png call; when it is absent (always, in the `.mcpb` bundle) the call returns the
+ * error as data, like every other tool, never an exception.
+ */
+async function pngResult(
+  source: string,
+  pageScene: Scene,
+  meta: Record<string, unknown>,
+  diagnostics: ReturnType<typeof diagnosticToJson>[],
+) {
+  const unavailable = () =>
+    json({ ok: false, format: "png", error: pngUnavailable(), code: "E_PNG_DEPENDENCY", ...meta, diagnostics });
+  if (IN_MCPB_BUNDLE) return unavailable();
+  const warnings: Diagnostic[] = [];
+  let bytes: Uint8Array;
+  try {
+    bytes = await renderPng(pageScene, { onDiagnostic: (d) => warnings.push(d) });
+  } catch (e) {
+    const message = (e as Error).message ?? String(e);
+    if (/resvg|optional dependency/i.test(message)) return unavailable();
+    return json({ ok: false, format: "png", error: message, ...meta, diagnostics });
+  }
+  const text = JSON.stringify(
+    {
+      ok: true,
+      format: "png",
+      ...meta,
+      bytes: bytes.length,
+      diagnostics: [...diagnostics, ...toJson(source, warnings)],
+    },
+    null,
+    2,
+  );
+  return {
+    content: [
+      { type: "image" as const, data: Buffer.from(bytes).toString("base64"), mimeType: "image/png" },
+      { type: "text" as const, text },
+    ],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // server
 // ---------------------------------------------------------------------------
@@ -184,16 +232,22 @@ export function createServer(): McpServer {
   server.registerTool(
     "compile",
     {
-      title: "Compile ArchLang → SVG or ASCII",
+      title: "Compile ArchLang → SVG, ASCII, Plan JSON or PNG",
       description:
-        'Compile ArchLang `.arch` source (or a Plan-JSON object) to an SVG floor plan, or to a plain-text ASCII plan with format:"txt". Returns the output plus diagnostics; a diagnostic usually carries a byte span with line/col and an E_/W_ code, and often a fix, sometimes one the `fix` tool can apply. Errors come back as data, never as exceptions: read `diagnostics` and correct the source. A multi-storey plan (`level <n> { … }`) returns the lowest storey in `output` and every storey in `pages[]` ({ level, name, output }); pass `level` to render just one.',
+        'Compile ArchLang `.arch` source (or a Plan-JSON object) to an SVG floor plan, or with `format` to a plain-text ASCII plan ("txt"), Plan JSON ("json") or an image ("png"). Format "json" returns the plan as an object, with `schema` naming its JSON Schema; passed back as `plan_json` it compiles to the same drawing, unless the plan uses a part of the language Plan JSON does not carry (the sheet, styles, curves, roofs, storeys, `place`). Returns the output plus diagnostics; a diagnostic usually carries a byte span with line/col and an E_/W_ code, and often a fix, sometimes one the `fix` tool can apply. Errors come back as data, never as exceptions: read `diagnostics` and correct the source. A multi-storey plan (`level <n> { … }`) returns the lowest storey in `output` and every storey in `pages[]` ({ level, name, output }); pass `level` to render just one. ' +
+        compilePngSentence(),
       inputSchema: {
         source: z.string().optional().describe('ArchLang source (a `plan "…" { … }`). Provide this OR plan_json.'),
         plan_json: z
           .record(z.string(), z.any())
           .optional()
           .describe("Plan JSON (RPLAN shape) as an alternative to `source`; converted to .arch then compiled."),
-        format: z.enum(["svg", "txt"]).optional().describe("svg (default) or txt (zero-dependency ASCII)."),
+        format: z
+          .enum(["svg", "txt", "json", "png"])
+          .optional()
+          .describe(
+            "svg (default), txt (zero-dependency ASCII), json (Plan JSON, the shape `plan_json` takes) or png (an image; needs the optional renderer).",
+          ),
         accessible: z.boolean().optional().describe("Emit <title>/<desc>/role/aria accessibility metadata (SVG only)."),
         overlay: z.enum(["circulation"]).optional().describe("Draw an opt-in circulation overlay (SVG only)."),
         level: z
@@ -215,8 +269,19 @@ export function createServer(): McpServer {
       });
       const diags = toJson(r.source, diagnostics);
       if (errorCount(diagnostics) > 0 || !scene) return json({ ok: false, format, diagnostics: diags });
-      const render = (pageSvg: string, pageScene: typeof scene) =>
-        format === "txt" ? renderAscii(pageScene) : pageSvg;
+      // `json` is the plan's model, not a drawing of the Scene: the same projection `plan_json`
+      // reads back, one document per storey exactly as the drawing formats have one page each.
+      const projection = format === "json" ? planToJson(r.source) : undefined;
+      if (projection && !projection.json)
+        return json({ ok: false, format, error: "Plan JSON projection failed", diagnostics: diags });
+      const schema = projection ? { schema: PLAN_JSON_SCHEMA.$id } : {};
+      const render = (pageSvg: string, pageScene: typeof scene, level?: number): unknown => {
+        if (projection) {
+          const page = level === undefined ? undefined : projection.pages?.find((p) => p.level === level);
+          return page ? page.json : projection.json;
+        }
+        return format === "txt" ? renderAscii(pageScene) : pageSvg;
+      };
       // A `level` this plan does not declare is refused with the real set — never silently
       // answered with the ground floor, which would look like a successful render of it.
       if (a.level !== undefined) {
@@ -224,18 +289,24 @@ export function createServer(): McpServer {
         const want = pages?.find((p) => p.level === a.level);
         if (!want)
           return json({ ok: false, format, error: `no level ${a.level} in this plan`, levels, diagnostics: diags });
+        if (format === "png") return pngResult(r.source, want.scene, { level: want.level, levels }, diags);
         return json({
           ok: true,
           format,
+          ...schema,
           level: want.level,
-          output: render(want.svg, want.scene),
+          output: render(want.svg, want.scene, want.level),
           levels,
           diagnostics: diags,
         });
       }
+      // One image per call: a multi-storey plan draws its lowest storey and names the rest.
+      if (format === "png")
+        return pngResult(r.source, scene, pages ? { levels: pages.map((p) => p.level) } : {}, diags);
       return json({
         ok: true,
         format,
+        ...schema,
         output: render(svg, scene),
         // Present only for a genuinely multi-storey plan, so a single-storey result is unchanged.
         ...(pages
@@ -243,7 +314,7 @@ export function createServer(): McpServer {
               pages: pages.map((p) => ({
                 level: p.level,
                 ...(p.name !== undefined ? { name: p.name } : {}),
-                output: render(p.svg, p.scene),
+                output: render(p.svg, p.scene, p.level),
               })),
             }
           : {}),

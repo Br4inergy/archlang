@@ -10,6 +10,7 @@
  *
  * Read as a contract: these assertions are what an MCP host is entitled to see.
  */
+import { PLAN_JSON_SCHEMA, planToJson } from "@chanmeng666/archlang";
 import { decodePlanHash, PLAYGROUND_ORIGIN, planLinks } from "@chanmeng666/archlang/link";
 import { describe, expect, it } from "vitest";
 import pkg from "../package.json" with { type: "json" };
@@ -22,10 +23,21 @@ import {
   FURNITURE_IN_WALL,
   NARROW_DOOR,
   NO_DOORS,
+  payload,
   TINY,
   TWO_ROOMS,
   TWO_STOREY,
 } from "./helpers.js";
+
+/**
+ * `compile`'s png cases need the core's optional renderer, installed with it in this repo. When
+ * it is absent the image cases skip VISIBLY, and under CI that is a failure, not a skip; the
+ * absent-renderer shape is pinned unconditionally in `png.test.ts`, with the renderer mocked out.
+ */
+const HAS_RESVG = await import("@resvg/resvg-js").then(
+  () => true,
+  () => false,
+);
 
 // ---------------------------------------------------------------------------
 // lint
@@ -438,6 +450,66 @@ describe("compile tool", () => {
     expect(out.level).toBe(2);
     expect(out.levels).toEqual([1, 2]);
     expect(out.output as string).not.toContain("<svg");
+  });
+
+  it('format:"json" returns the Plan JSON as an object, named by the schema id and version', async () => {
+    const client = await connect();
+    const out = await call(client, "compile", { source: TWO_ROOMS, format: "json" });
+    expect(out.ok).toBe(true);
+    expect(out.format).toBe("json");
+    expect(out.schema).toBe(PLAN_JSON_SCHEMA.$id);
+    const plan = out.output as Record<string, unknown>;
+    expect(typeof plan).toBe("object");
+    expect(plan.version).toBe(PLAN_JSON_SCHEMA.properties.version.const);
+    expect(plan).toEqual(planToJson(TWO_ROOMS).json);
+    // It is the object `plan_json` takes: passed back, it compiles to the same drawing.
+    const back = await call(client, "compile", { plan_json: plan });
+    const direct = await call(client, "compile", { source: TWO_ROOMS });
+    expect(back.ok).toBe(true);
+    expect(back.output).toBe(direct.output);
+  });
+
+  it('format:"json" projects every storey into `pages[]`, and `level` picks one', async () => {
+    const client = await connect();
+    const { pages: want } = planToJson(TWO_STOREY);
+    const all = await call(client, "compile", { source: TWO_STOREY, format: "json" });
+    const pages = all.pages as Array<{ level: number; output: unknown }>;
+    expect(pages.map((p) => p.level)).toEqual([1, 2]);
+    expect(pages.map((p) => p.output)).toEqual(want?.map((p) => p.json));
+    expect(all.output).toEqual(pages[0]!.output);
+    const two = await call(client, "compile", { source: TWO_STOREY, format: "json", level: 2 });
+    expect(two.level).toBe(2);
+    expect(two.output).toEqual(want?.[1]?.json);
+  });
+
+  it.runIf(HAS_RESVG)('format:"png" returns MCP image content, then the usual result as text', async () => {
+    const res = (await (
+      await connect()
+    ).callTool({
+      name: "compile",
+      arguments: { source: TWO_ROOMS, format: "png" },
+    })) as { content: Array<{ type: string; data?: string; mimeType?: string; text?: string }> };
+    const image = res.content[0]!;
+    expect(image.type).toBe("image");
+    expect(image.mimeType).toBe("image/png");
+    const bytes = Buffer.from(image.data!, "base64");
+    expect([...bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const meta = payload(res);
+    expect(meta).toMatchObject({ ok: true, format: "png", bytes: bytes.length });
+  });
+  it.runIf(HAS_RESVG)('format:"png" draws one storey: the lowest, or `level`, and names the set', async () => {
+    const client = await connect();
+    const low = await client.callTool({ name: "compile", arguments: { source: TWO_STOREY, format: "png" } });
+    const two = await client.callTool({ name: "compile", arguments: { source: TWO_STOREY, format: "png", level: 2 } });
+    expect(payload(low).levels).toEqual([1, 2]);
+    expect(payload(two)).toMatchObject({ ok: true, level: 2, levels: [1, 2] });
+    const data = (r: unknown) => (r as { content: Array<{ data?: string }> }).content[0]!.data;
+    expect(data(low)).not.toBe(data(two));
+  });
+  it.runIf(!HAS_RESVG)("[renderer absent] png is refused as data: the CI install must have it", async () => {
+    expect(process.env.CI, "@resvg/resvg-js is missing under CI").toBeFalsy();
+    const out = await call(await connect(), "compile", { source: TWO_ROOMS, format: "png" });
+    expect(out).toMatchObject({ ok: false, format: "png", code: "E_PNG_DEPENDENCY" });
   });
 });
 
