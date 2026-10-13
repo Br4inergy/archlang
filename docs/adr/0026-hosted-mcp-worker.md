@@ -136,32 +136,45 @@ is not dressed up as a diagnostic: it is the host failing, not the plan.
 
 ### The spend bound
 
-A paid, unauthenticated compile endpoint needs a ceiling on what one caller can cost, so two
-bounds sit in `wrangler.jsonc`, both counts:
+A paid, unauthenticated compile endpoint needs a ceiling on what it can cost. **The spend bound
+is `limits.cpu_ms` plus the owner's billing notification**; a per-address rate limit sits beside
+them as an abuse guard only. Both live in `wrangler.jsonc`, both are counts:
 
 - **`limits.cpu_ms: 5000`** — CPU per request. The slowest call measured below (`finish` on a 60 KB
   synthetic plan, about 2.1 s of wall-clock time on a desktop) fits with room; a request past it
   fails with the platform's error instead of billing on. Not enforced in `wrangler dev`.
-- **Per-address rate limits** (the Workers rate-limiting binding, keyed on `CF-Connecting-IP`,
-  which is never stored or logged): **60 `POST /mcp` a minute** and **300 `/svg/` cache misses a
+  **`limits` needs Workers Paid.** Cloudflare's configuration reference: "Limits are only
+  supported for the Standard Usage Model"; its pricing page: "Users on the Workers Paid plan have
+  access to the Standard usage model." So the account must be on Paid before this reaches `main`,
+  or `deploy-mcp` fails (the job then prints this owner step).
+- **A per-address abuse guard** (the Workers rate-limiting binding, keyed on `CF-Connecting-IP`,
+  which is never stored or logged): **600 `POST /mcp` a minute** and **3000 `/svg/` cache misses a
   minute** (a hit compiles nothing and is not counted). Over it, the request is refused before any
   work with HTTP 429, `Retry-After`, and a new catalogued `E_RATE_LIMITED` diagnostic (core helper
   `rateLimited()`), a code of its own because "too many requests" is neither a plan fault nor a
-  size: the fix is to wait or compile locally. Cloudflare applies these limits per location.
+  size: the fix is to wait or compile locally. Cloudflare applies these limits per location, and
+  each refusal writes one `refused` data point so the owner can see whether they fire.
+- **Why the guard is high: connector platforms share egress addresses.** A chat product that
+  offers this server as a remote connector calls it from its own cloud egress, not from each
+  user's machine, so all of that product's users share one per-address bucket per location, and
+  one agent turn is 5–15 calls. Cloudflare's rate-limiting docs warn against IP keys for exactly
+  this reason. A low per-address limit would refuse ordinary users the day a listing goes live;
+  this repository does not hard-code any platform's address ranges.
 
 **Worst-case daily cost**, on Paid, beyond the monthly inclusions (10 M requests, 30 M CPU-ms), for
 `N` distinct addresses each held at its limits all day:
 
 ```text
 cost/day ≤ N × 1440 × [ (R_mcp·C_mcp + R_svg·C_svg) × $0.02/10⁶  +  (R_mcp + R_svg) × $0.30/10⁶ ]
-R_mcp = 60/min, R_svg = 300/min, C = CPU-ms per request
+R_mcp = 600/min, R_svg = 3000/min, C = CPU-ms per request
 ```
 
-At the CPU cap (`C = 5000` for both) that is about **$52 per address per day** ($8.64 `/mcp` +
-$43.20 `/svg/` + $0.16 requests). At the measured ceilings (`C_mcp ≈ 2100` for `finish`,
-`C_svg ≈ 700` for a 60 KB compile) it is about **$10 per address per day**. The per-address
-limits do not bound `N`: many addresses scale the bill linearly, which is why a billing
-notification is an owner step and the rate numbers are deliberately low for an interim launch.
+At the CPU cap (`C = 5000` for both) that is about **$520 per address per day** ($86.40 `/mcp` +
+$432 `/svg/` + $1.56 requests). At the measured ceilings (`C_mcp ≈ 2100` for `finish`,
+`C_svg ≈ 700` for a 60 KB compile) it is about **$98 per address per day**. Those are the figures
+of a sustained attack, not of use, and the guard does not bound `N`: many addresses scale the bill
+linearly. That is why the billing notification is an owner step before the URL is announced, and
+why the guard can be lowered, or keyed differently, once real traffic shows its shape.
 
 ## The cap this buys, measured
 
@@ -203,8 +216,7 @@ the question alone; the analysis tools do: **`validate`, `lint` and `finish` hav
 170–622 ms**, past 10 ms by far more than any discount for wall-clock overhead. No byte cap rescues the free
 plan, because the plans that exceed it are ordinary examples, not large inputs.
 
-**Therefore: start on Workers Paid**, unless the owner's workers.dev measurement (below) shows the
-p95s fitting 10 ms, which this table says it will not. Paid allows 30 s of CPU per request by
+**Therefore: Workers Paid**, which `limits.cpu_ms` requires anyway (above). Paid allows 30 s of CPU per request by
 default (configurable to 5 minutes) and includes 10 million requests and 30 million CPU
 milliseconds a month, for a $5 monthly minimum; the slowest 60 KB
 case measured here (`finish`, about 2.1 s) sits more than 10× inside the default. That headroom is
@@ -212,12 +224,13 @@ what the interim 64 KiB cap is chosen against.
 
 ### The measurement plan, on Cloudflare
 
-1. Deploy to workers.dev (CI `deploy-mcp`, or a manual run of the workflow).
-2. Run `node packages/mcp-worker/scripts/measure-cpu.mjs --base https://archlang-mcp.<subdomain>.workers.dev`
+1. Upgrade the account to Workers Paid (the `limits` setting needs it; see "The spend bound").
+2. Merge, so `deploy-mcp` deploys to workers.dev (or run the workflow by hand).
+3. Run `node packages/mcp-worker/scripts/measure-cpu.mjs --base https://archlang-mcp.<subdomain>.workers.dev`
    (`MEASURE_CPU` is not set in production, so the script falls back to client wall time; the
    number that matters is the dashboard's **CPU time** percentiles for the Worker over the run).
-3. If CPU p95 per tool fits 10 ms, stay on Free; otherwise upgrade to Paid before attaching the
-   custom domain, and set the cap from the measured ms-per-KB of the slowest tool.
+4. Set the byte cap from the measured ms-per-KB of the slowest tool, and `cpu_ms` from the measured
+   p99, before attaching the custom domain.
 
 The Cache API's effect on `*.workers.dev` is not verified here (Cloudflare documents cache
 behaviour for custom domains), so a workers.dev run may see every `/svg/` request as a miss. That
@@ -236,8 +249,9 @@ version-keyed cache with an in-memory stand-in.
 - Each MCP message writes **one** Analytics Engine data point: `blobs: [method, tool]`,
   `indexes: [method]`. Both come from fixed lists — the MCP methods a client sends, and the tools
   this server registers (a test holds that list to `tools/list`) — and anything else is recorded as
-  `(other)`, so no client-chosen string reaches the dataset. The binding is optional;
-  local dev runs without it.
+  `(other)`, so no client-chosen string reaches the dataset. A request refused before any work
+  (rate limit, size cap) writes one point instead: `["refused", <reason>]`, the reason from a fixed
+  list. The binding is optional; local dev runs without it.
 - **A `/svg/` URL sends the plan to the server.** A playground link carries the plan after `#`,
   which a browser never sends; an `/svg/` URL carries it in the path, which reaches Cloudflare's
   edge like any URL. The Worker logs nothing, but the difference is real and `read_me` says so.
@@ -256,16 +270,20 @@ version-keyed cache with an in-memory stand-in.
 
 ## Owner steps (not agent work)
 
-- **Plan:** decide Free or Paid from the workers.dev measurement; this ADR's local numbers say
-  Paid. `limits.cpu_ms` is documented for the Standard usage model; whether a Free-plan deploy
-  accepts it is not verified here — if `wrangler deploy` rejects it on Free, remove it for the
-  measurement window and restore it with the upgrade.
+- **Workers Paid, BEFORE this branch reaches `main`.** `limits.cpu_ms` needs the Standard usage
+  model, which only Paid has; on a Free account `deploy-mcp` fails, and its last step says so.
+  Measure on Paid (the measurement plan above).
 - **Billing notification:** set a Cloudflare billing alert before announcing the URL; the
-  per-address limits do not bound the number of addresses (see "The spend bound").
+  per-address guard does not bound the number of addresses (see "The spend bound").
+- **Rate-limit namespaces:** confirm no other Worker in the account uses `namespace_id` 2601 or
+  2602 (bindings that share one share counters).
+- **Connector traffic:** before a connector listing or the open proof below, look at the `refused`
+  data points; if connector users share an address and meet the guard, raise it or re-key it.
 - **Domain:** attach `mcp.archlang.uk` to `archlang-mcp` (a `routes` entry with
   `custom_domain: true`, or the dashboard) — DNS and certificate changes are owner-only.
 - **Analytics:** query the `archlang_mcp` dataset (SQL API: `SELECT blob1 AS method, blob2 AS tool,
-  count() FROM archlang_mcp GROUP BY method, tool`).
+  count() FROM archlang_mcp GROUP BY method, tool`); refusals are `method = 'refused'`, with the
+  reason in `tool`.
 - **Open proof:** whether claude.ai (or any given host) renders this third-party MCP App from a
   remote connector. Until someone sees it render, no document says it does.
 - **Listings:** the connector directories and app stores that take a remote MCP URL.

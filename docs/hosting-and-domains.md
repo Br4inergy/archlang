@@ -57,8 +57,11 @@ change when this one was added.
   and per-request CPU limit, unlike the sites. ADR 0026 has the per-tool measurement and why it
   points at Workers Paid. A request that runs out of CPU fails with the platform's 5xx; inputs that
   are merely large are refused first, by bytes, with `E_INPUT_TOO_LARGE`, and an address over its
-  rate (60 `/mcp` or 300 `/svg/` misses a minute, the `ratelimits` bindings) with `E_RATE_LIMITED`.
-  `limits.cpu_ms` caps each request at 5 s of CPU. Set a billing notification before announcing it.
+  rate with `E_RATE_LIMITED` (600 `/mcp` or 3000 `/svg/` misses a minute: an abuse guard set high
+  because connector platforms call from shared egress addresses). The spend bound is
+  `limits.cpu_ms` (5 s of CPU per request) plus a billing notification set before announcing it.
+- **It needs Workers Paid before it reaches `main`.** `limits` is supported only on the Standard
+  usage model, which only Paid has; on a Free account `deploy-mcp` fails and says so.
 - **It logs nothing and keeps no source.** Workers Logs (`observability`) is off and the code logs
   nothing, because a `/svg/` path is a whole plan. It stores only rendered SVGs in the edge cache,
   keyed by render version. One Analytics Engine data point per MCP message (dataset
