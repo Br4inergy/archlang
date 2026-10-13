@@ -84,3 +84,48 @@ export function buildLlmPrompt({ source, facts, diagnostics }: LlmPromptInput): 
     "Full language spec: run `npx @chanmeng666/archlang spec` or see https://archlang.uk/spec",
   ].join("\n");
 }
+
+/** The chat hosts the "Open in …" links target, each prefilled through its `q` parameter. */
+export const CHAT_HOSTS = {
+  claude: { name: "Claude", base: "https://claude.ai/new" },
+  chatgpt: { name: "ChatGPT", base: "https://chatgpt.com/" },
+} as const;
+export type ChatHost = keyof typeof CHAT_HOSTS;
+
+/** True when `s` names one of {@link CHAT_HOSTS} (the links carry it as `data-chat-host`). */
+export function isChatHost(s: string | undefined): s is ChatHost {
+  return s !== undefined && Object.hasOwn(CHAT_HOSTS, s);
+}
+
+/**
+ * The longest prefilled chat URL a link will carry. Past it the prompt is copied
+ * to the clipboard instead and the link opens the host empty. A conservative bound
+ * under the request-line limits common front-end proxies enforce, not a figure
+ * either host documents.
+ */
+export const MAX_CHAT_URL = 8000;
+
+/**
+ * The short prompt the "Open in Claude / ChatGPT" links prefill: the plan's share
+ * link plus enough context for a cold model to read it. Unlike the clipboard
+ * prompt above it carries no source text of its own, only the link (whose `#z=`
+ * holds the source).
+ */
+export function buildChatPrompt(shareUrl: string): string {
+  return [
+    `Help me work on this ArchLang floor plan: ${shareUrl}`,
+    "ArchLang is a declarative language that compiles .arch source to SVG floor plans (spec: https://archlang.uk/spec).",
+    "The link opens the plan in the browser playground; its source is the text after #z=, base64url-encoded raw DEFLATE of UTF-8.",
+  ].join("\n");
+}
+
+/**
+ * The URL that opens `host` with `prompt` prefilled. When that URL would pass
+ * `max` characters, `fits` is false and `url` is the bare host: the caller copies
+ * the prompt for the user to paste. Carries no tracking parameter.
+ */
+export function chatHostUrl(host: ChatHost, prompt: string, max = MAX_CHAT_URL): { url: string; fits: boolean } {
+  const { base } = CHAT_HOSTS[host];
+  const url = `${base}?q=${encodeURIComponent(prompt)}`;
+  return url.length <= max ? { url, fits: true } : { url: base, fits: false };
+}

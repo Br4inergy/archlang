@@ -3,7 +3,15 @@
 // `diagnosticToJson`) so `tsc` typechecks this file cleanly without the Vite alias.
 import { describe, expect, it } from "vitest";
 import { compile, describe as describePlan, diagnosticToJson } from "../../src/index.js";
-import { buildLlmPrompt } from "../src/llm-prompt.js";
+import {
+  buildChatPrompt,
+  buildLlmPrompt,
+  CHAT_HOSTS,
+  type ChatHost,
+  chatHostUrl,
+  isChatHost,
+  MAX_CHAT_URL,
+} from "../src/llm-prompt.js";
 
 const STUDIO = `plan "Studio" {
   units mm
@@ -66,5 +74,47 @@ describe("buildLlmPrompt", () => {
 
   it("is deterministic — the same plan yields byte-identical output", () => {
     expect(promptFor(STUDIO)).toBe(promptFor(STUDIO));
+  });
+});
+
+describe("Open in Claude / ChatGPT", () => {
+  const SHARE = "https://playground.archlang.uk/#z=q1YqLUktUrJSUFJSSs7PS8nMS1eyUjA0MjE1MDA0MDE2";
+
+  it("prefills a short prompt that carries the share link and the spec pointer", () => {
+    const prompt = buildChatPrompt(SHARE);
+    expect(prompt).toContain(SHARE);
+    expect(prompt).toContain("https://archlang.uk/spec");
+    expect(prompt.length).toBeLessThan(SHARE.length + 400);
+  });
+
+  it("puts the prompt in the host's q parameter and nothing else", () => {
+    const prompt = buildChatPrompt(SHARE);
+    for (const host of Object.keys(CHAT_HOSTS) as ChatHost[]) {
+      const { url, fits } = chatHostUrl(host, prompt);
+      expect(fits).toBe(true);
+      const u = new URL(url);
+      expect(`${u.origin}${u.pathname}`).toBe(CHAT_HOSTS[host].base);
+      expect([...u.searchParams.keys()]).toEqual(["q"]); // no tracking parameter
+      expect(u.searchParams.get("q")).toBe(prompt);
+    }
+    expect(chatHostUrl("claude", prompt).url.startsWith("https://claude.ai/new?q=")).toBe(true);
+    expect(chatHostUrl("chatgpt", prompt).url.startsWith("https://chatgpt.com/?q=")).toBe(true);
+  });
+
+  it("falls back to the bare host past the length cap, so the caller copies the prompt", () => {
+    const long = buildChatPrompt(`${SHARE}${"A".repeat(MAX_CHAT_URL)}`);
+    expect(chatHostUrl("claude", long)).toEqual({ url: CHAT_HOSTS.claude.base, fits: false });
+    expect(chatHostUrl("chatgpt", long)).toEqual({ url: CHAT_HOSTS.chatgpt.base, fits: false });
+    // The cap is on the whole URL, inclusive.
+    const exact = chatHostUrl("claude", "x");
+    expect(chatHostUrl("claude", "x", exact.url.length)).toEqual(exact);
+    expect(chatHostUrl("claude", "x", exact.url.length - 1).fits).toBe(false);
+  });
+
+  it("recognises only the known hosts", () => {
+    expect(isChatHost("claude")).toBe(true);
+    expect(isChatHost("chatgpt")).toBe(true);
+    expect(isChatHost("toString")).toBe(false);
+    expect(isChatHost(undefined)).toBe(false);
   });
 });

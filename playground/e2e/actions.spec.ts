@@ -52,6 +52,106 @@ test.describe("header actions", () => {
     await status.expectFlash("Already formatted");
   });
 
+  test("Finish adds the sheet statements as one undoable edit and lists them in Lint", async ({ page }) => {
+    await page.goto("/");
+    await waitForPlan(page);
+    await setEditorSource(page, SIMPLE_PLAN);
+    const status = await watchStatus(page);
+
+    // The same transform as `arch finish`: for this plan, paper/scale/dims/schedule/
+    // legend and a title block, nothing left unresolved.
+    await page.getByRole("button", { name: "Finish", exact: true }).click();
+    await status.expectFlash("Finished: 6 additions (Ctrl+Z undoes)");
+    const editor = page.locator(".cm-content");
+    await expect(editor).toContainText("dims auto all");
+    await expect(editor).toContainText('title { project "E2E" }');
+    await expect
+      .poll(() => page.evaluate((k) => localStorage.getItem(k), AUTOSAVE_KEY), { timeout: 10_000 })
+      .toContain("paper A4 landscape");
+
+    // The change log reads like Repair's, in the Lint tab.
+    await page.locator("#tab-lint").click();
+    const panel = page.getByRole("region", { name: "Finish results" });
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText("Finish — 6 additions");
+    await expect(panel.locator("code", { hasText: "scale 1:50" })).toBeVisible();
+    await expect(panel).not.toContainText("unresolved");
+
+    // Idempotent: a finished sheet has nothing left to add.
+    await page.getByRole("button", { name: "Finish", exact: true }).click();
+    await status.expectFlash("Nothing to finish");
+
+    // One Ctrl+Z in the editor reverts the whole Finish, back to the exact source.
+    await editor.click();
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(editor).not.toContainText("dims auto all");
+    await expect
+      .poll(() => page.evaluate((k) => localStorage.getItem(k), AUTOSAVE_KEY), { timeout: 10_000 })
+      .toBe(SIMPLE_PLAN);
+  });
+
+  test("Open in Claude / ChatGPT prefill the chat host with the plan's share link", async ({ page, context }) => {
+    // Never reach the real hosts: the test only reads the URL the link opened.
+    await context.route(/^https:\/\/(claude\.ai|chatgpt\.com)\//, (route) =>
+      route.fulfill({ contentType: "text/plain", body: "stub" }),
+    );
+    await page.goto("/");
+    await waitForPlan(page);
+    await setEditorSource(page, SIMPLE_PLAN);
+
+    await page.getByText("Open in AI").click();
+    // The panel says, next to the links, that they put the plan in the host's URL.
+    await expect(page.locator("#chatNote")).toBeVisible();
+    await expect(page.locator("#chatNote")).toContainText("in its URL");
+    await expect(page.locator("#chatNote")).toContainText("never sends");
+
+    for (const [name, base] of [
+      ["Open in Claude ↗", "https://claude.ai/new"],
+      ["Open in ChatGPT ↗", "https://chatgpt.com/"],
+    ] as const) {
+      const link = page.getByRole("link", { name });
+      await expect(link).toHaveAccessibleDescription(/in its URL/);
+      const [popup] = await Promise.all([context.waitForEvent("page"), link.click()]);
+      await popup.waitForURL((u) => u.href.startsWith(base));
+      const url = new URL(popup.url());
+      expect(`${url.origin}${url.pathname}`).toBe(base);
+      expect([...url.searchParams.keys()]).toEqual(["q"]); // no tracking parameter
+      const q = url.searchParams.get("q") ?? "";
+      // The prompt carries the very URL Copy link would copy.
+      expect(q).toContain(await page.evaluate(() => window.location.href));
+      expect(q).toMatch(/#z=/);
+      await popup.close();
+    }
+  });
+
+  test("a plan too long for a chat URL is copied and the host opens empty", async ({ page, context }) => {
+    await context.route(/^https:\/\/(claude\.ai|chatgpt\.com)\//, (route) =>
+      route.fulfill({ contentType: "text/plain", body: "stub" }),
+    );
+    // A comment of incompressible filler pushes the #z= hash past the URL cap.
+    let seed = 7;
+    const filler = Array.from({ length: 12_000 }, () => {
+      seed = (seed * 48_271) % 2_147_483_647; // MINSTD: exact in a double
+      return "abcdefghijklmnopqrstuvwxyz0123456789"[seed % 36];
+    }).join("");
+    const long = SIMPLE_PLAN.replace("units mm", `units mm\n  # ${filler}`);
+    await page.goto("/");
+    await waitForPlan(page);
+    await setEditorSource(page, long);
+    const status = await watchStatus(page);
+
+    await page.getByText("Open in AI").click();
+    const [popup] = await Promise.all([
+      context.waitForEvent("page"),
+      page.getByRole("link", { name: "Open in ChatGPT ↗" }).click(),
+    ]);
+    await status.expectFlash("Plan too long for a link: prompt copied, paste it into ChatGPT");
+    await popup.waitForURL((u) => u.href.startsWith("https://chatgpt.com/"));
+    expect(popup.url()).toBe("https://chatgpt.com/");
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain(await page.evaluate(() => window.location.href));
+  });
+
   test("Copy link puts a #z= permalink in the URL and on the clipboard", async ({ page }) => {
     await page.goto("/");
     await waitForPlan(page);

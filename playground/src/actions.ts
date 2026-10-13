@@ -1,12 +1,24 @@
 /**
- * The header/panel action buttons: Format, Repair furniture, Embed, Copy link,
- * saved snapshots, the multi-format Download, and the draggable pane divider.
+ * The header/panel action buttons: Format, Finish, Repair furniture, Embed, Copy
+ * link, Copy for LLM, Open in Claude / ChatGPT, saved snapshots, the multi-format
+ * Download, and the draggable pane divider.
  * Each is wired from an explicit context so main.ts stays composition-only.
  */
-import { compile, describe, diagnosticToJson, format, renderAscii, repair, toDxf, type Scene } from "archlang";
+import {
+  compile,
+  describe,
+  diagnosticToJson,
+  finish,
+  format,
+  renderAscii,
+  repair,
+  toDxf,
+  type FinishResult,
+  type Scene,
+} from "archlang";
 import { escapeHtml } from "./escape.js";
 import { embedSnippets } from "./embed-snippets.js";
-import { buildLlmPrompt } from "./llm-prompt.js";
+import { buildChatPrompt, buildLlmPrompt, CHAT_HOSTS, chatHostUrl, isChatHost } from "./llm-prompt.js";
 import { encodeSrc, updateHash } from "./share.js";
 import { mountSnapshots } from "./snapshots.js";
 import { KEYS, readStr, writeStr } from "./storage.js";
@@ -30,6 +42,10 @@ interface ActionsCtx {
   onExportError: (format: string, err: unknown) => void;
   els: {
     formatBtn: HTMLButtonElement | null;
+    finishBtn: HTMLButtonElement | null;
+    finishPanel: HTMLElement | null;
+    /** The "Open in Claude / ChatGPT" links, each naming its host in `data-chat-host`. */
+    chatLinks: HTMLAnchorElement[];
     repairBtn: HTMLElement | null;
     repairPanel: HTMLElement | null;
     embedBtn: HTMLElement | null;
@@ -54,6 +70,18 @@ export function mountActions(ctx: ActionsCtx): void {
     }
     loadSource(out, false);
     flash("Formatted");
+  });
+
+  // Finish — the core's `finish()` (the same transform as `arch finish`) adds what a
+  // finished sheet needs and replaces the source as ONE undo step (Ctrl+Z reverts
+  // it); what it added and what it declined are listed in the Lint tab.
+  els.finishBtn?.addEventListener("click", () => {
+    const src = getSource();
+    const result = finish(src);
+    if (result.changed) loadSource(result.source, false);
+    showFinish(result);
+    const n = result.changes.length;
+    flash(result.changed ? `Finished: ${n} addition${n === 1 ? "" : "s"} (Ctrl+Z undoes)` : "Nothing to finish");
   });
 
   // Repair furniture (ADR 0006) — run the deterministic corrector, show the change
@@ -94,6 +122,38 @@ export function mountActions(ctx: ActionsCtx): void {
     }
   });
 
+  // Open in Claude / ChatGPT — open the chat host with a short prompt carrying the
+  // plan's share link. This DOES put the plan in the host's URL (the panel says so),
+  // unlike Copy link, whose `#z=` fragment never leaves the browser. No tracking
+  // parameter. A prompt too long for a URL is copied and the host opens empty.
+  for (const link of els.chatLinks) {
+    const host = link.dataset.chatHost;
+    if (!isChatHost(host)) continue;
+    // A real href for middle-click / "copy link address", refreshed before each use.
+    const refresh = () => {
+      link.href = chatHostUrl(host, buildChatPrompt(location.href)).url;
+    };
+    link.addEventListener("pointerenter", refresh);
+    link.addEventListener("focus", refresh);
+    link.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await updateHash(getSource()); // the share link must carry the latest edit
+      const prompt = buildChatPrompt(location.href);
+      const { url, fits } = chatHostUrl(host, prompt);
+      link.href = url;
+      if (!fits) {
+        try {
+          await navigator.clipboard.writeText(prompt);
+          flash(`Plan too long for a link: prompt copied, paste it into ${CHAT_HOSTS[host].name}`);
+        } catch {
+          flash("Copy failed");
+          return;
+        }
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+  }
+
   // Saved snapshots (history) — named stashes in localStorage.
   mountSnapshots({ button: els.savedBtn, getSource, setSource: (src) => loadSource(src, true) });
 
@@ -103,6 +163,42 @@ export function mountActions(ctx: ActionsCtx): void {
   els.downloadBtn.addEventListener("click", () => {
     void downloadCurrent(els.formatSelect ? els.formatSelect.value : "svg");
   });
+
+  /** Render what `finish` added and what it declined into the Lint tab, in the
+   *  same change-log form Repair uses. */
+  function showFinish(result: FinishResult) {
+    const panel = els.finishPanel;
+    if (!panel) return;
+    panel.hidden = false;
+    if (!result.changed && result.unresolved.length === 0) {
+      panel.innerHTML = `<p class="repair-none">Nothing to finish — the sheet already has everything finish adds.</p>`;
+      return;
+    }
+    const changeRows = result.changes
+      .map(
+        (c) =>
+          `<li><code>${escapeHtml(c.text)}</code> <span class="repair-cat">${escapeHtml(c.stage)}` +
+          `${c.room ? ` · ${escapeHtml(c.room)}` : ""}${c.kind === "replaced" ? " · replaced" : ""}</span>` +
+          `<span class="repair-reason">${escapeHtml(c.reason)}</span></li>`,
+      )
+      .join("");
+    const unresolvedRows = result.unresolved
+      .map((u) => {
+        const what = u.statement ?? u.room ?? u.stage;
+        const codes = u.codes?.length ? ` (${u.codes.map(escapeHtml).join(", ")})` : "";
+        return `<li class="repair-un"><code>${escapeHtml(what)}</code> ${escapeHtml(u.reason)}${codes}</li>`;
+      })
+      .join("");
+    const n = result.changes.length;
+    panel.innerHTML =
+      `<div class="repair-head"><strong>Finish — ${n} addition${n === 1 ? "" : "s"}` +
+      `${result.unresolved.length ? `, ${result.unresolved.length} unresolved` : ""}</strong></div>` +
+      (result.changed ? `<p class="repair-un-h">Applied to the editor; undo with Ctrl+Z (⌘Z on a Mac).</p>` : "") +
+      (changeRows ? `<ul class="repair-list">${changeRows}</ul>` : "") +
+      (unresolvedRows
+        ? `<p class="repair-un-h">Left for you to resolve (finish never guesses):</p><ul class="repair-list">${unresolvedRows}</ul>`
+        : "");
+  }
 
   /** Run `repair` on the current source and render its change log into the Lint
    *  tab, with an "Apply fixes" action that swaps the corrected source in. */

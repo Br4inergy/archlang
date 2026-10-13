@@ -14,6 +14,7 @@ import {
   type LintOptions,
   type RoomSummary,
 } from "archlang";
+import { isolateHistory } from "@codemirror/commands";
 import type { EditorView } from "@codemirror/view";
 import { createEditor } from "./editor-setup.js";
 import { createPreview } from "./preview.js";
@@ -187,7 +188,12 @@ function loadSource(src: string, refit = true) {
   // A wholesale document replacement is a new plan as far as the storey switcher is
   // concerned — its level numbers may mean nothing here. Back to the lowest storey.
   selectedLevel = null;
-  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: src } });
+  // Its own undo step: one Ctrl+Z reverts exactly this replacement (Format, Repair,
+  // Finish, an applied fix), never merged with the typing just before or after it.
+  view.dispatch({
+    changes: { from: 0, to: view.state.doc.length, insert: src },
+    annotations: isolateHistory.of("full"),
+  });
   render(src, refit);
 }
 
@@ -420,6 +426,9 @@ async function init() {
     onExportError,
     els: {
       formatBtn,
+      finishBtn: document.getElementById("finishSrc") as HTMLButtonElement | null,
+      finishPanel: document.getElementById("finishPanel"),
+      chatLinks: [...document.querySelectorAll<HTMLAnchorElement>("a[data-chat-host]")],
       repairBtn,
       repairPanel,
       embedBtn,

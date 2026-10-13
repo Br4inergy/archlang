@@ -111,6 +111,7 @@
         <div class="tb-controls">
           <select id="examples" aria-label="Load example"></select>
           <button id="formatSrc" title="Reformat the source to canonical style">Format</button>
+          <button id="finishSrc" title="Add what a finished sheet needs (paper, scale, dimensions, title, schedule, legend, furniture); Ctrl+Z undoes it">Finish</button>
           <button id="saved" aria-haspopup="true">Saved ▾</button>
         </div>
       </div>
@@ -152,6 +153,17 @@
           <button id="copyLink">Copy link</button>
           <button id="copyLlm" title="Copy a paste-ready prompt (source + facts + diagnostics) for an AI assistant">Copy for LLM</button>
           <button id="embed" title="Copy an iframe snippet to embed this plan">Embed</button>
+          <!-- Unlike Copy link (the plan rides in the #fragment, which no browser sends to
+               a server), these links put the plan's share link in the chat host's URL.
+               The panel says so next to the links themselves. No tracking parameter. -->
+          <details class="tb-ai">
+            <summary>Open in AI ▾</summary>
+            <div class="tb-ai-panel">
+              <p id="chatNote" class="tb-ai-note">These links send this plan's share link to the chat host in its URL. Copy link keeps the plan after the #, which your browser never sends to any server. A plan too long for a URL is copied instead, for you to paste.</p>
+              <a href="https://claude.ai/new" data-chat-host="claude" target="_blank" rel="noopener noreferrer" aria-describedby="chatNote">Open in Claude ↗</a>
+              <a href="https://chatgpt.com/" data-chat-host="chatgpt" target="_blank" rel="noopener noreferrer" aria-describedby="chatNote">Open in ChatGPT ↗</a>
+            </div>
+          </details>
         </div>
       </div>
       <div class="spacer"></div>
@@ -268,6 +280,7 @@
             <button id="suggest" class="repair-btn" hidden title="Suggest door/window statements that resolve reachability and window faults">Suggest topology ▸</button>
             <p id="lintCaption" class="lint-caption"></p>
           </div>
+          <div id="finishPanel" class="repair-panel" role="region" aria-label="Finish results" hidden></div>
           <div id="repairPanel" class="repair-panel" hidden></div>
           <div id="suggestPanel" class="repair-panel" hidden></div>
           <div id="lintOutput"></div>
