@@ -665,7 +665,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
   - example: `archlang preview plan.arch --ascii --json` — a zero-dependency text plan an agent can read on stdout
 
 **`archlang link`** — print a playground URL that opens the plan, rendered, with nothing to install
-  - input: <file.arch|-> → output: the playground URL; --json gives { playground, embed, bytes } (embed: the plan alone, for an iframe; bytes: the compressed plan). A plan that does not compile still gets a link, with one warning on stderr and exit 0
+  - input: <file.arch|-> → output: the playground URL; --json gives { ok, playground, embed, bytes } (embed: the plan alone, for an iframe; bytes: the compressed plan). A plan that does not compile still gets a link: ok false with an errors count, one warning on stderr, exit 0
   - flags: `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
   - example: `archlang link plan.arch` — a URL to give the user: it opens the plan in the hosted playground
 

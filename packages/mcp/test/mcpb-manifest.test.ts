@@ -47,6 +47,10 @@ describe("MCPB manifest generator", () => {
     const m = buildManifest(pkg, serverJson, live);
     expect(m.tools.map((t) => t.name)).toEqual(live.map((t) => t.name));
     expect(m.tools.length).toBe(11);
+    // The npm description is the bundle's `long_description` and is hand-written, so it is held
+    // to the registry: every registered tool is named in it as a word.
+    for (const t of live)
+      expect(m.long_description, `package.json description omits "${t.name}"`).toMatch(new RegExp(`\\b${t.name}\\b`));
     for (const t of m.tools) {
       expect(t.description.length).toBeGreaterThan(0);
       expect(t.description.length).toBeLessThanOrEqual(201);

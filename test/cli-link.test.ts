@@ -7,8 +7,9 @@
  *     opens the same plan it was minted from;
  *   - there is one Node encoder: `src/cli/share-codec.mjs`. The README generator re-exports it
  *     and nothing else in the repo calls `deflateRawSync`;
- *   - the CLI contract: stdout is the URL (or `{ playground, embed, bytes }` with `--json`), a
- *     plan that does not compile still links with exit 0 and one warning line on stderr;
+ *   - the CLI contract: stdout is the URL (or `{ ok, playground, embed, bytes }` with `--json`),
+ *     a plan that does not compile still links with exit 0, `ok:false` + an `errors` count and one
+ *     warning line on stderr;
  *   - the URLs carry nothing but the plan: no query string, the fragment alone.
  *
  * The browser end of the same claim — the studio link loads `examples/studio.arch` into the
@@ -130,11 +131,11 @@ describe("archlang link", () => {
     expect(r.stderr).toBe("");
   });
 
-  it("--json prints { playground, embed, bytes }", () => {
+  it("--json prints { ok, playground, embed, bytes }", () => {
     const r = run(["link", "examples/studio.arch", "--json"]);
     expect(r.status).toBe(0);
-    expect(JSON.parse(r.stdout)).toEqual({ ...planLinks(STUDIO) });
-    expect(Object.keys(JSON.parse(r.stdout))).toEqual(["playground", "embed", "bytes"]);
+    expect(JSON.parse(r.stdout)).toEqual({ ok: true, ...planLinks(STUDIO) });
+    expect(Object.keys(JSON.parse(r.stdout))).toEqual(["ok", "playground", "embed", "bytes"]);
   });
 
   it("reads stdin with `-`", () => {
@@ -150,7 +151,9 @@ describe("archlang link", () => {
     expect(r.stderr).toMatch(/^warning: stdin does not compile \(1 error, first E_PARSE at 2:3\);[^\n]*\n$/);
     const json = run(["link", "-", "--json"], BROKEN);
     expect(json.status).toBe(0);
-    expect(JSON.parse(json.stdout)).toEqual({ ...planLinks(BROKEN) });
+    // `ok` and `errors` lead, so an agent reading stdout alone sees the plan is broken.
+    expect(JSON.parse(json.stdout)).toEqual({ ok: false, errors: 1, ...planLinks(BROKEN) });
+    expect(Object.keys(JSON.parse(json.stdout))).toEqual(["ok", "errors", "playground", "embed", "bytes"]);
     expect(json.stderr).toMatch(/^warning: /);
   });
 

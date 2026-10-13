@@ -536,10 +536,13 @@ const COMMANDS: ManifestCommand[] = [
     flags: [JSON_FLAG, QUIET_FLAG],
     input: "<file.arch|->",
     output:
-      "the playground URL; --json gives { playground, embed, bytes } (embed: the plan alone, for an iframe; bytes: the compressed plan). A plan that does not compile still gets a link, with one warning on stderr and exit 0",
+      "the playground URL; --json gives { ok, playground, embed, bytes } (embed: the plan alone, for an iframe; bytes: the compressed plan). A plan that does not compile still gets a link: ok false with an errors count, one warning on stderr, exit 0",
     examples: [
       { cmd: "archlang link plan.arch", note: "a URL to give the user: it opens the plan in the hosted playground" },
-      { cmd: "archlang link plan.arch --json", note: "the playground and embed URLs as data" },
+      {
+        cmd: "archlang link plan.arch --json",
+        note: "the playground and embed URLs as data, and whether the plan compiles",
+      },
     ],
   },
   {

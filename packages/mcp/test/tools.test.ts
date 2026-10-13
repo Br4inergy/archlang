@@ -12,6 +12,8 @@
  */
 import { decodePlanHash, PLAYGROUND_ORIGIN, planLinks } from "@chanmeng666/archlang/link";
 import { describe, expect, it } from "vitest";
+import pkg from "../package.json" with { type: "json" };
+import { loadPlanLinks } from "../src/server.js";
 import {
   call,
   CLEAN,
@@ -504,7 +506,8 @@ describe("link tool", () => {
   it("returns the playground and embed URLs, both carrying the plan in the fragment", async () => {
     const client = await connect();
     const out = await call(client, "link", { source: CLEAN });
-    expect(Object.keys(out).sort()).toEqual(["bytes", "embed", "playground"]);
+    expect(Object.keys(out)).toEqual(["ok", "playground", "embed", "bytes"]);
+    expect(out.ok).toBe(true);
     const playground = new URL(out.playground as string);
     const embed = new URL(out.embed as string);
     expect(playground.origin).toBe(PLAYGROUND_ORIGIN);
@@ -522,13 +525,30 @@ describe("link tool", () => {
 
   it("mints the same bytes as `archlang link` (one encoder)", async () => {
     const client = await connect();
-    expect(await call(client, "link", { source: TWO_STOREY })).toEqual({ ...planLinks(TWO_STOREY) });
+    expect(await call(client, "link", { source: TWO_STOREY })).toEqual({ ok: true, ...planLinks(TWO_STOREY) });
   });
 
-  it("still links a plan that does not compile; the page shows its diagnostics", async () => {
+  it("still links a plan that does not compile, and says so: ok:false with the error count", async () => {
     const client = await connect();
     const broken = 'plan "X" {\n  romo at (0,0)\n}\n';
     const out = await call(client, "link", { source: broken });
+    expect(out).toEqual({ ok: false, errors: 1, ...planLinks(broken) });
     expect(decodePlanHash(payloadOf(out.embed))).toBe(broken);
+  });
+
+  it("an installed core without the ./link export is reported as data, not a dead server", async () => {
+    // What Node throws for `import("@chanmeng666/archlang/link")` against core 1.42.1.
+    const missing = Object.assign(new Error("Package subpath './link' is not defined by \"exports\""), {
+      code: "ERR_PACKAGE_PATH_NOT_EXPORTED",
+    });
+    const out = await loadPlanLinks(() => Promise.reject(missing));
+    expect(out).toEqual({
+      ok: false,
+      error: `link needs @chanmeng666/archlang >= ${pkg.dependencies["@chanmeng666/archlang"].replace(/^\^/, "")}; the installed core has no ./link export`,
+    });
+    // Any other failure is a bug, and is not dressed up as a version problem.
+    await expect(loadPlanLinks(() => Promise.reject(new Error("boom")))).rejects.toThrow("boom");
+    // The real import resolves (here: the source tree, through the test alias).
+    expect("planLinks" in (await loadPlanLinks())).toBe(true);
   });
 });

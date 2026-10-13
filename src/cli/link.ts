@@ -11,7 +11,7 @@ import { decodePlanHash, encodePlanHash, PLAYGROUND_ORIGIN } from "./share-codec
 
 export { decodePlanHash, encodePlanHash, PLAYGROUND_ORIGIN };
 
-/** What `archlang link --json` prints and the MCP `link` tool returns. */
+/** The two URLs for a plan and the size of what they carry. */
 export interface PlanLinks {
   /** Opens the plan in the playground editor, rendered, with its diagnostics. */
   playground: string;
@@ -19,6 +19,23 @@ export interface PlanLinks {
   embed: string;
   /** Length of the compressed payload in bytes; the URL carries it base64url-encoded, about 4/3 as long. */
   bytes: number;
+}
+
+/** What `archlang link --json` prints and the MCP `link` tool returns: the links plus the verdict. */
+export interface LinkResult extends PlanLinks {
+  /** The plan compiles with no error. A plan that does not still gets its links. */
+  ok: boolean;
+  /** How many error diagnostics the plan has; present only when `ok` is false. */
+  errors?: number;
+}
+
+/**
+ * The one shape both callers emit. `diagnostics` is the caller's `compile(source)` result, run
+ * with no `World` as the playground runs it, so `ok` says what the person opening the link sees.
+ */
+export function linkResult(source: string, diagnostics: readonly { severity: string }[]): LinkResult {
+  const errors = diagnostics.filter((d) => d.severity === "error").length;
+  return { ok: errors === 0, ...(errors > 0 ? { errors } : {}), ...planLinks(source) };
 }
 
 /** Mint both links for `source`. Pure and deterministic: the same source gives the same URLs. */

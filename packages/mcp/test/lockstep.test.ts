@@ -72,6 +72,27 @@ describe("core dep range ↔ the core's version", () => {
     expect(pkg.dependencies["@chanmeng666/archlang"]).toBe(`^${rootPkg.version}`);
   });
 
+  it("the `./link` subpath the server loads is one the pinned core range guarantees", () => {
+    // `link` imports `@chanmeng666/archlang/link`, which no published core up to 1.42.1 exports.
+    // The root package.json is the core that ships it, so the range's minimum must be at least the
+    // root version (the equality above implies it; this names the reason). THE ROOT VERSION MUST
+    // BE BUMPED to the release that first exports `./link`, and that core published, BEFORE this
+    // shim publishes: `release.yml` publishes whichever package npm lacks, core first.
+    const server = readText(resolve(MCP, "src", "server.ts"));
+    if (!server.includes("@chanmeng666/archlang/link")) return;
+    expect(rootPkg.exports?.["./link"], "the root package no longer exports ./link").toBeTruthy();
+    const min = String(pkg.dependencies["@chanmeng666/archlang"]).replace(/^[\^~]/, "");
+    const parts = (v: string) => v.split(".").map((n) => Number.parseInt(n, 10));
+    const [a, b] = [parts(min), parts(rootPkg.version)];
+    const cmp = a[0]! - b[0]! || a[1]! - b[1]! || a[2]! - b[2]!;
+    expect(cmp, `core range minimum ${min} is below the root version ${rootPkg.version}`).toBeGreaterThanOrEqual(0);
+    // Loaded lazily, never at module load: a host that resolved an older core keeps every other
+    // tool, and `link` answers with the version it needs as data.
+    // Any top-level `import … "…/link"` (named or bare) loads it at startup; `import type` is erased.
+    expect(server).not.toMatch(/^import(?!\s+type\b)[^;]*["']@chanmeng666\/archlang\/link["']/m);
+    expect(server).toMatch(/import\("@chanmeng666\/archlang\/link"\)/);
+  });
+
   it("the MCP SDK stays quarantined here and never leaks into the core", () => {
     expect(pkg.dependencies["@modelcontextprotocol/sdk"]).toBeTruthy();
     const coreDeps = { ...(rootPkg.dependencies ?? {}) };
