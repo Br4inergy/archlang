@@ -418,7 +418,7 @@ function widenIn(src: string, hints: readonly string[]): string | null {
   for (const h of hints) {
     const m = /^Widen (?:door|opening) "([^"]+)" to `width (\d+)`/.exec(h);
     if (!m) continue;
-    const re = new RegExp(`((?:door|opening) id=${m[1]!.replace(/\./g, "\\.")}\\b[^\\n]*?)width \\d+`);
+    const re = new RegExp(`((?:door|opening) id=${m[1]!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b[^\\n]*?)width \\d+`);
     if (!re.test(out)) return null;
     out = out.replace(re, `$1width ${m[2]}`);
   }
