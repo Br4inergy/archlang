@@ -182,7 +182,7 @@ The optional stdio shim in `packages/mcp/` is a **separately versioned** package
    `server.json`'s version fields — they must match), and bump its `@chanmeng666/archlang`
    dependency range to `^<the new core version>`. Do **not** hand-edit a version into
    `src/server.ts`: since 0.2.3 the handshake version is derived from `package.json`
-   (`readShimVersion()`), and a test pins the two together. `packages/mcp/test/lockstep.test.ts`
+   (`SHIM_VERSION`, via `readShimField()`), and a test pins the two together. `packages/mcp/test/lockstep.test.ts`
    checks all of the above, and the dep-range assertion is a **string** equality on purpose — a
    core release turns this package red until someone consciously re-pins, rebuilds the baked
    resources (`npm run mcp:build`, verified by `scripts/check-dist-resources.mjs` in CI) and bumps

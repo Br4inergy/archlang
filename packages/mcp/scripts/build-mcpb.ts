@@ -236,7 +236,8 @@ async function main(): Promise<void> {
     banner: { js: 'import { createRequire as __cr } from "node:module"; const require = __cr(import.meta.url);' },
     logLevel: "warning",
   });
-  // `readShimVersion()` resolves `../package.json` from server/index.js → the bundle root.
+  // `readShimField()` resolves `../package.json` from server/index.js → the bundle root (the version;
+  // no `dependencies`, which the bundle needs none of: the core, `./link` included, is bundled in).
   writeFileSync(
     join(stage, "package.json"),
     `${JSON.stringify({ name: pkg.name, version: pkg.version, type: "module", license: pkg.license }, null, 2)}\n`,

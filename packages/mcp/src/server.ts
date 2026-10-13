@@ -79,7 +79,7 @@ export const SHIM_VERSION = readShimField((pkg) => pkg.version, "0.0.0");
  */
 const CORE_MIN = readShimField((pkg) => pkg.dependencies?.["@chanmeng666/archlang"], "").replace(/^[\^~]/, "");
 
-/** What the `link` tool reports when the installed core predates the `./link` subpath. */
+/** What the `link` tool reports when the installed core cannot provide the `./link` subpath. */
 export interface LinkUnavailable {
   ok: false;
   error: string;
@@ -89,6 +89,10 @@ export interface LinkUnavailable {
  * Load the share-link minter on first use, not at startup. The rest of the server needs only the
  * core's main entry, so a host that resolved an older core without `./link` keeps ten working
  * tools and gets this as data from `link`, instead of a server that dies at load.
+ *
+ * Two failures are data, told apart by Node's error code: `ERR_PACKAGE_PATH_NOT_EXPORTED` is a
+ * core too old to export `./link` (the fix is a newer core), `ERR_MODULE_NOT_FOUND` is a core that
+ * exports it but whose file is missing (the fix is a reinstall). Anything else is a bug and throws.
  */
 export async function loadPlanLinks(
   importer: () => Promise<typeof import("@chanmeng666/archlang/link")> = () => import("@chanmeng666/archlang/link"),
@@ -96,10 +100,19 @@ export async function loadPlanLinks(
   try {
     return await importer();
   } catch (e) {
-    const code = (e as { code?: unknown }).code;
-    if (code !== "ERR_PACKAGE_PATH_NOT_EXPORTED" && code !== "ERR_MODULE_NOT_FOUND") throw e;
-    const need = CORE_MIN ? ` >= ${CORE_MIN}` : " with the ./link export";
-    return { ok: false, error: `link needs @chanmeng666/archlang${need}; the installed core has no ./link export` };
+    const { code, message } = e as { code?: unknown; message?: unknown };
+    if (code === "ERR_PACKAGE_PATH_NOT_EXPORTED") {
+      const need = CORE_MIN ? ` >= ${CORE_MIN}` : " with the ./link export";
+      return { ok: false, error: `link needs @chanmeng666/archlang${need}; the installed core has no ./link export` };
+    }
+    if (code === "ERR_MODULE_NOT_FOUND") {
+      const detail = String(message ?? "").split("\n")[0];
+      return {
+        ok: false,
+        error: `link could not load @chanmeng666/archlang/link; the core install looks incomplete, reinstall it (${detail})`,
+      };
+    }
+    throw e;
   }
 }
 

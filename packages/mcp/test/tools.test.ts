@@ -546,6 +546,19 @@ describe("link tool", () => {
       ok: false,
       error: `link needs @chanmeng666/archlang >= ${pkg.dependencies["@chanmeng666/archlang"].replace(/^\^/, "")}; the installed core has no ./link export`,
     });
+    // A core that exports `./link` but lost the file is a broken install, not an old core.
+    const lost = Object.assign(
+      new Error("Cannot find module '/x/node_modules/@chanmeng666/archlang/dist/cli/link.js'"),
+      {
+        code: "ERR_MODULE_NOT_FOUND",
+      },
+    );
+    const broken = await loadPlanLinks(() => Promise.reject(lost));
+    expect(broken).toEqual({
+      ok: false,
+      error:
+        "link could not load @chanmeng666/archlang/link; the core install looks incomplete, reinstall it (Cannot find module '/x/node_modules/@chanmeng666/archlang/dist/cli/link.js')",
+    });
     // Any other failure is a bug, and is not dressed up as a version problem.
     await expect(loadPlanLinks(() => Promise.reject(new Error("boom")))).rejects.toThrow("boom");
     // The real import resolves (here: the source tree, through the test alias).
