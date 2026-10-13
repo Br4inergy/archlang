@@ -116,6 +116,14 @@ const SECRETS: readonly RegExp[] = [
 const VERSION = /\d+\.\d+\.\d+/;
 
 describe("agent-directory manifests", () => {
+  it("the plugin and MCP schema ids carry the same schema version (Copilot requires the match)", () => {
+    const version = (id: string) => /\/schemas\/([^/]+)\//.exec(id)?.[1];
+    expect(version(PORTABLE_SCHEMA_ID)).toBeDefined();
+    expect(version(MCP_SCHEMA_ID)).toBe(version(PORTABLE_SCHEMA_ID));
+    expect(readJson(MCP_MANIFEST).$schema).toBe(MCP_SCHEMA_ID);
+    expect(readJson(PORTABLE_MANIFEST).$schema).toBe(PORTABLE_SCHEMA_ID);
+  });
+
   it("the portable manifest validates against the vendored Agent Plugins schema", () => {
     const schema = readJson("test/fixtures/schemas/agent-plugin.schema.json") as Schema & { $id: string };
     expect(schema.$id).toBe(PORTABLE_SCHEMA_ID);

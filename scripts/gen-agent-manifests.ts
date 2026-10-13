@@ -64,7 +64,7 @@ export function skillNames(): string[] {
 
 /** These manifests carry the skills only (the MCP server is the Claude plugin's), so they say so. */
 const DESCRIPTION =
-  "ArchLang: write floor plans as code, compiled and checked by a deterministic compiler. Skills to author, edit, review and export .arch plans through the archlang CLI.";
+  "ArchLang: write floor plans as code, compiled and checked by a deterministic compiler. Skills to author, edit, review and export .arch plans through the archlang CLI, and the ArchLang MCP server.";
 
 /** Identity fields shared by every manifest, from the one hand-written plugin manifest. */
 function identity() {

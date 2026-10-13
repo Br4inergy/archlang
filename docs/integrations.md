@@ -17,7 +17,7 @@ covered in [`overview.md`](overview.md) and is not repeated here.
 | Codex and ChatGPT | `plugin.json`, `skills/` | none |
 | GitHub Copilot (CLI) | `plugin.json`, `mcp.json`, `skills/` | `integrations/copilot/*` |
 | Cursor | `.cursor-plugin/plugin.json`, `mcp.json`, `skills/`, `rules/archlang.mdc` | none |
-| Any Agent Plugins client | `plugin.json`, `skills/` | none |
+| Any Agent Plugins client | `plugin.json`, `mcp.json`, `skills/` | none |
 
 ## What the files are
 
