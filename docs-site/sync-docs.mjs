@@ -17,6 +17,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // inline copy), welded by test/share-codec.test.ts. The home page's per-example links are
 // a fourth CONSUMER of that encoder, never a fourth copy of it.
 import { encodePlanHash } from "../scripts/gen-permalink.mjs";
+import { siteMarkdown } from "./site-markdown.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, "..");
@@ -50,7 +51,7 @@ const PAGES = [
 
 /**
  * The HAND-WRITTEN docs-site pages (tracked `docs-site/*.md`), each published as a raw
- * markdown copy at `public/<dest>` (`/<dest>`) by `siteMarkdown()` below — Vue
+ * markdown copy at `public/<dest>` (`/<dest>`) by `siteMarkdown()` (`site-markdown.mjs`) — Vue
  * components and VitePress-only syntax replaced by their text fallback. Same tuple shape
  * as `PAGES` (`["src", "dest"]`, src relative to the repo root) so `scripts/smoke.mjs`
  * reads both. The `_headers` rule for every `.md` route is GENERATED from `PAGES` + this
@@ -121,63 +122,8 @@ function page(src, dest) {
   console.log(`  ${src} → ${dest}  (+ /${dest})`);
 }
 
-/**
- * Plain-markdown rendering of a hand-written page, for `/<route>.md`. Drops the
- * frontmatter and `<script setup>`; turns `<ArchLive :src=…>` into an `arch` fence of
- * the example's source, `<AgentPlan id=…>` into its brief + source, `<img>` into an
- * image link and the home page's `<section>` into text. Markup it cannot map is a
- * build error (a silent drop would publish a page with a hole in it).
- */
-function siteMarkdown(src) {
-  const raw = readFileSync(join(repo, src), "utf8").replace(/\r\n/g, "\n");
-  let text = raw.replace(/^---\n[\s\S]*?\n---\n/, "").replace(/<script setup>[\s\S]*?<\/script>\n?/, "");
-  const alias = {}; // `const hero = EXAMPLES["one-room"]` in the page's own script
-  for (const m of raw.matchAll(/const (\w+) = EXAMPLES\["([^"]+)"\]/g)) alias[m[1]] = m[2];
-  const example = (name) => readFileSync(join(repo, "examples", `${name}.arch`), "utf8").trimEnd();
-  const fence = (body) => "```arch\n" + body + "\n```";
-  text = text.replace(/^<ArchLive :src="([^"]+)"[^>]*\/>$/gm, (_, expr) => {
-    const name = /^EXAMPLES\['([^']+)'\]$/.exec(expr)?.[1] ?? alias[expr];
-    if (!name) throw new Error(`${src}: cannot resolve <ArchLive :src="${expr}">`);
-    return fence(example(name));
-  });
-  const galleryDir = join(repo, "docs", "gallery");
-  text = text.replace(/^<AgentPlan id="([^"]+)" \/>$/gm, (_, id) => {
-    const entry = JSON.parse(readFileSync(join(galleryDir, "gallery.json"), "utf8")).find((e) => e.id === id);
-    if (!entry) throw new Error(`${src}: <AgentPlan id="${id}"> is not in docs/gallery/gallery.json`);
-    const brief = readFileSync(join(galleryDir, `${id}.brief.txt`), "utf8").trim().replace(/^/gm, "> ");
-    const plan = readFileSync(join(galleryDir, `${id}.arch`), "utf8").trimEnd();
-    return `Brief:\n\n${brief}\n\nPlan by ${entry.model}:\n\n${fence(plan)}`;
-  });
-  text = text.replace(/^<img src="([^"]+)" alt="([^"]*)"[^>]*\/>$/gm, "![$2]($1)");
-  text = text.replace(/^<(?:SheetGrid|FactsSection) \/>\n+/gm, "");
-  text = text.replace(
-    /^<section[\s\S]*?^<\/section>\n?/gm,
-    (block) =>
-      block
-        .replace(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g, "[$2]($1)")
-        .replace(/<code[^>]*>([\s\S]*?)<\/code>/g, "`$1`")
-        .replace(/<br \/>/g, "\n")
-        .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/, "## $1\n")
-        .replace(/<[^>]+>/g, "")
-        .replace(/&nbsp;/g, " ")
-        .replace(/&rarr;/g, "->")
-        .split("\n")
-        .map((l) => l.trim())
-        .filter((l, i, a) => l || (a[i - 1] && a[i - 1] !== ""))
-        .join("\n") + "\n",
-  );
-  const left = /^<[A-Za-z][^>]*>/m.exec(text.replace(/```[\s\S]*?```/g, ""));
-  if (left) throw new Error(`${src}: markup left in the raw markdown copy: ${left[0]}`);
-  if (!/^# /m.test(text)) text = "# ArchLang\n\n" + text.replace(/^\n+/, "");
-  return text.replace(/\n{3,}/g, "\n\n");
-}
-
 console.log("syncing canonical docs into the site:");
 for (const [src, dest] of PAGES) page(src, dest);
-for (const [src, dest] of SITE_PAGES) {
-  writeFileSync(join(publicDir, dest), siteMarkdown(src)); // raw markdown at /<route>.md
-  console.log(`  ${src} → public/${dest}  (+ /${dest})`);
-}
 
 for (const [src, dest] of ROOT_COPIES) {
   copyFileSync(join(repo, src), join(publicDir, dest));
@@ -320,8 +266,9 @@ const levelSvgName = (name, level) => `${name}.L${level}.svg`;
 const failures = [];
 let levelSvgCount = 0;
 let compile = null;
+let describe = null;
 try {
-  ({ compile } = await import(pathToFileURL(join(repo, "dist", "index.js")).href));
+  ({ compile, describe } = await import(pathToFileURL(join(repo, "dist", "index.js")).href));
 } catch (e) {
   failures.push(`cannot load the built core from dist/ — run \`npm run build\` at the repo root first (${e.message})`);
 }
@@ -361,6 +308,15 @@ if (failures.length > 0) {
   process.exit(1);
 }
 console.log(`  ${examples.length} example SVGs (+ ${levelSvgCount} per-storey pages) → public/examples/`);
+
+// The hand-written pages' raw markdown at /<route>.md. After the gallery gate above because it
+// needs the built core (the home page's facts band is `describe()`, the agent gallery's sheet
+// names come from `compile().pages`); the transform itself lives in site-markdown.mjs.
+for (const [src, dest] of SITE_PAGES) {
+  const md = siteMarkdown(src, { repo, compile, describe, encodePlanHash, levelSvgName, playground: PLAYGROUND });
+  writeFileSync(join(publicDir, dest), md);
+  console.log(`  ${src} → public/${dest}  (+ /${dest})`);
+}
 
 // ───────────────────────────────────────────────────────────────────────────────
 // AGENT GALLERY (`/gallery`): plans written by AI agents from a one-paragraph brief.

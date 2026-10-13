@@ -270,9 +270,15 @@ The rest of the rules:
   every page load. Vite and VitePress hash everything under `/assets/`, so those URLs can never
   change identity. Every other route keeps the revalidating default, which is what makes a deploy
   visible immediately.
-- **`/*.md` → `text/markdown; charset=utf-8`** (docs only). Cloudflare types `.md` as
-  `text/markdown` with **no charset**; Vercel sent the charset. A `text/*` response without one is
-  latin-1 by default in some clients, which mojibakes every em-dash in the raw markdown copies.
+- **`/<page>.md` → `text/markdown; charset=utf-8`** (docs only), one exact-path rule per raw
+  markdown copy. Cloudflare types `.md` as `text/markdown` with **no charset**; Vercel sent the
+  charset. A `text/*` response without one is latin-1 by default in some clients, which mojibakes
+  every em-dash in the raw markdown copies. The rules are **generated** between the marker lines in
+  `docs-site/public/_headers` by `npm run gen:docs-headers`, from the `PAGES` and `SITE_PAGES`
+  tables in `docs-site/sync-docs.mjs`; a hand edit inside the markers fails `check:drift`. They
+  are deliberately not a `/*.md` glob: a glob also matches a missing page, and its 404 HTML would
+  go out labelled `text/markdown`. `vitepress preview` ignores `_headers`, so only
+  `scripts/smoke.mjs` against the deployed host proves the charset and the unlabelled 404.
 - **`/archlang.gbnf` → `text/plain; charset=utf-8`** (docs only). Cloudflare sends **no
   `Content-Type` at all** for that extension; Vercel sent `application/octet-stream`. Both deliver
   a machine-readable route as an opaque download.

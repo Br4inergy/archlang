@@ -35,7 +35,7 @@ const RETRY_MS = 5000;
 
 /**
  * Pull one of sync-docs.mjs's literal `["src", "dest"],` tuple tables out of the file.
- * The three tables (`PAGES`, `ROOT_COPIES`, `EXCLUDED_EXAMPLES`) are the site's single
+ * The four tables (`PAGES`, `SITE_PAGES`, `ROOT_COPIES`, `EXCLUDED_EXAMPLES`) are the site's single
  * source of truth for what it publishes, and they are declared in that uniform shape
  * precisely so this parser (and test/docs-sync-list.test.ts) can read them instead of
  * retyping the list — a retyped list is exactly how a generator goes stale (AGENTS.md).
@@ -197,6 +197,37 @@ function route(path, ...assertions) {
   };
 }
 
+/**
+ * A `.md` path that does not exist must 404 and must NOT be labelled markdown. The `_headers`
+ * rules are exact paths precisely so a missing page's HTML 404 is never typed `text/markdown`;
+ * this is the post-deploy proof (`vitepress preview` ignores `_headers`, so no local server can
+ * show it). A 404 is the expected answer, so it is fetched once, not through the retry envelope
+ * (a network error alone is retried).
+ */
+function missingMarkdownCheck() {
+  const path = "/__no-such-page__.md";
+  return {
+    name: `${path} (404, not markdown)`,
+    run: async (base) => {
+      let res;
+      for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+        try {
+          res = await fetch(base + path, { redirect: "follow", headers: { "user-agent": "archlang-smoke/1" } });
+          break;
+        } catch (e) {
+          if (attempt === ATTEMPTS) throw new Error(`network error: ${e.message}`);
+          await sleep(RETRY_MS);
+        }
+      }
+      await res.arrayBuffer();
+      const ct = res.headers.get("content-type") ?? "";
+      if (res.status !== 404) throw new Error(`HTTP ${res.status}, expected 404`);
+      if (ct.toLowerCase().includes("markdown")) throw new Error(`the 404 is labelled "${ct}"`);
+      return [`404 ${ct}`];
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Site definitions.
 // ---------------------------------------------------------------------------
@@ -237,7 +268,12 @@ function docsChecks() {
     route("/archlang.gbnf", contains("root ::=")),
     // The raw-markdown copies must serve VERBATIM, not get swallowed by the page router —
     // so assert the media type as well as the bytes (a VitePress 404 would be text/html).
-    ...docsPageRoutes(syncSrc).map((p) => route(p, contentType("text/markdown"), nonEmpty())),
+    // `charset=utf-8` is asserted too: Cloudflare already sends a bare `text/markdown` for any
+    // existing .md, so the type alone passes with or without the generated `_headers` rule.
+    ...docsPageRoutes(syncSrc).map((p) =>
+      route(p, contentType("text/markdown"), contentType("charset=utf-8"), nonEmpty()),
+    ),
+    missingMarkdownCheck(),
     ...docsExampleRoutes(syncSrc).map((p) => route(p, startsWith("<svg"))),
   ];
 }

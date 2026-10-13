@@ -41,6 +41,21 @@ export const PAGE_ROUTES: ReadonlyArray<{ route: string; source: string }> = tup
   source: src,
 }));
 
+/**
+ * `{ route, source }` for the raw-markdown copy of every HAND-WRITTEN page (SITE_PAGES): the
+ * body is a text rendering of the page, not the repo file verbatim, so unlike PAGE_ROUTES it
+ * has no canonical bytes to compare with.
+ */
+export const SITE_PAGE_ROUTES: ReadonlyArray<{ route: string; source: string }> = tupleTable("SITE_PAGES").map(
+  ([src, dest]) => ({ route: `/${dest}`, source: src }),
+);
+
+/** How many rows `table` declares in sync-docs.mjs, counted line by line (a second reading of the table). */
+export function tableRowCount(table: string): number {
+  const block = new RegExp(`const ${table} = \\[([\\s\\S]*?)\\n\\];`).exec(syncSrc);
+  return (block?.[1] ?? "").split("\n").filter((l) => /^\s*\["/.test(l)).length;
+}
+
 /** The repo-root artifacts copied verbatim into `public/`, as site routes. */
 export const ROOT_COPY_ROUTES: readonly string[] = tupleTable("ROOT_COPIES").map(([, dest]) => `/${dest}`);
 

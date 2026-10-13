@@ -24,8 +24,17 @@ describe("docs-site/public/_headers", () => {
     }
   });
 
-  it("has no `.md` glob rule that would also label a missing page", () => {
-    expect(headers).not.toMatch(/^\/\*\.md\s*$/m);
-    expect(headers).not.toMatch(/^\/\*\s*$\n(?:\s+.*\n)*?\s+Content-Type:\s*text\/markdown/m);
+  it("only the generated routes carry a markdown Content-Type (no glob, no placeholder)", () => {
+    // Closed-world: every path whose rule block types the response as markdown, wherever in the
+    // file it sits. A glob or `:placeholder` rule would match a missing page too, and its 404
+    // HTML would go out labelled markdown.
+    const typed: string[] = [];
+    let path: string | null = null;
+    for (const line of headers.split("\n")) {
+      if (/^\s*(#|$)/.test(line)) continue;
+      if (!/^\s/.test(line)) path = line.trim();
+      else if (path && /^\s+Content-Type:.*markdown/i.test(line)) typed.push(path);
+    }
+    expect(typed.sort()).toEqual(routes.map((r) => `/${r}`).sort());
   });
 });

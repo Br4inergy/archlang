@@ -24,6 +24,10 @@
  *    different one on the site. They were untracked in WS-D; this asserts the class stays
  *    empty, deriving the full output list from sync-docs' own source tables rather than
  *    naming those three.
+ *
+ * 3. EVERY HAND-WRITTEN PAGE HAS A `.md` ROUTE. `SITE_PAGES` must list exactly the tracked
+ *    top-level `docs-site/*.md` pages, so a new page cannot ship without its raw copy (and
+ *    its generated `_headers` rule).
  */
 
 import { execFileSync } from "node:child_process";
@@ -63,8 +67,8 @@ function tupleTable(name: string): Array<[string, string]> {
   const block = new RegExp(`const ${name} = \\[([\\s\\S]*?)\\n\\];`).exec(syncSrc);
   expect(
     block,
-    `${SYNC} no longer declares \`const ${name} = [ … ];\` as a literal table. The three tables ` +
-      `(PAGES, ROOT_COPIES, EXCLUDED_EXAMPLES) are the docs site's single source of truth for what ` +
+    `${SYNC} no longer declares \`const ${name} = [ … ];\` as a literal table. The four tables ` +
+      `(PAGES, SITE_PAGES, ROOT_COPIES, EXCLUDED_EXAMPLES) are the docs site's single source of truth for what ` +
       `it publishes, and both this gate and scripts/smoke.mjs parse them. Restore the shape, or ` +
       `update both parsers together.`,
   ).toBeTruthy();
