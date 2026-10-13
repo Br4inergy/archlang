@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**101 errors** · **52 warnings**
+**102 errors** · **52 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -44,6 +44,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_IMPORT_NOT_FOUND`](#e_import_not_found) | error | Import path could not be resolved. |
 | [`E_IMPORT_PARSE`](#e_import_parse) | error | Imported module has a parse error. |
 | [`E_INDEX`](#e_index) | error | Array index out of range. |
+| [`E_INPUT_TOO_LARGE`](#e_input_too_large) | error | The source is larger than this host accepts. |
 | [`E_INSTANCE_NO_TRANSFORM`](#e_instance_no_transform) | error | A plugin element inside a `place`d component has no `transform()`. |
 | [`E_INTENT_NOT_ADJACENT`](#e_intent_not_adjacent) | error | Two rooms the brief wants adjacent share no interior door. |
 | [`E_INTENT_NO_DOOR`](#e_intent_no_door) | error | The plan has no modeled entrance, so `reachable` cannot hold. |
@@ -586,6 +587,18 @@ import "lib/missing.arch": a   # error
 ```arch static
 let a = [1, 2]
 let x = a[5]   # error
+```
+
+## E_INPUT_TOO_LARGE
+
+*error* — The source is larger than this host accepts.
+
+**Cause.** A host with a per-request CPU ceiling (the hosted MCP server) refuses a source above its byte cap before compiling it. `compile()` itself has no size cap: its budgets are counts, and every input it is given returns a diagnostic.
+
+**Fix.** Compile it locally, where there is no cap: `npx -y @chanmeng666/archlang compile plan.arch`, or the stdio MCP server `npx -y @chanmeng666/archlang-mcp`. Or split the plan into `import`ed modules and send a smaller one.
+
+```arch static
+tools/call compile { source: <more bytes than the host's cap> }   # error on the hosted MCP server, before any compile work
 ```
 
 ## E_INSTANCE_NO_TRANSFORM
