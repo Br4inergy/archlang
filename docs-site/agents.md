@@ -173,7 +173,7 @@ Served at this site's root, so a tool can fetch them directly:
 | [`/intent.schema.json`](/intent.schema.json) | the [intent contract](/intent) schema |
 | [`/archlang.gbnf`](/archlang.gbnf) | GBNF grammar for constrained decoding |
 
-Any docs page also serves its raw markdown at `/<route>.md` (e.g. [`/cli.md`](/cli.md)).
+Every top-level docs page also serves its raw markdown at `/<route>.md` (e.g. [`/cli.md`](/cli.md); the home page's copy is `/index.md`). The `/adr/…` pages have no raw copy.
 
 ## Also
 
