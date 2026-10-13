@@ -104,6 +104,7 @@ arch compile  # render a plan to SVG/DXF/TXT/PDF/PNG
 arch batch  # render many .arch files in one call, concurrently
 arch md  # render every ```arch block in a Markdown file and rewrite to image links
 arch preview  # render a PNG you can look at (zero-install where the optional binary is present)
+arch link  # print a playground URL that opens the plan, rendered, with nothing to install
 arch watch  # recompile on save (interactive)
 arch validate  # parse + resolve + lint, no render (is it valid & sound?)
 arch describe  # semantic facts: rooms, areas, adjacency, what doors connect

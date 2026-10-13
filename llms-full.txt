@@ -127,6 +127,7 @@ arch compile  # render a plan to SVG/DXF/TXT/PDF/PNG
 arch batch  # render many .arch files in one call, concurrently
 arch md  # render every ```arch block in a Markdown file and rewrite to image links
 arch preview  # render a PNG you can look at (zero-install where the optional binary is present)
+arch link  # print a playground URL that opens the plan, rendered, with nothing to install
 arch watch  # recompile on save (interactive)
 arch validate  # parse + resolve + lint, no render (is it valid & sound?)
 arch describe  # semantic facts: rooms, areas, adjacency, what doors connect
@@ -662,6 +663,11 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
   - input: <file.arch|-> → output: PNG file (or ASCII text on stdout with --ascii)
   - flags: `--out|-o <out.png|->` output PNG file, or '-' for stdout (default: <name>.png) · `--scale|-s <n>` raster scale (default 1; without -w/-s the page auto-targets ~1600px wide for legibility) · `--width|-w <px>` page width hint in pixels · `--ascii` print a zero-dependency ASCII text plan to stdout instead of a PNG · `--level <n>` preview this storey of a multi-storey plan (default: the lowest level, i.e. page 1) · `--cols <n>` text renderer (-f txt / preview --ascii) grid width in characters (default 80) · `--charset <unicode|ascii>` text renderer glyph set (default unicode) · `--overlay <circulation>` draw an opt-in diagnostic overlay (circulation walks + bottleneck markers); default output is unchanged · `--error-svg` on a broken plan, still emit a self-describing error-card image listing the diagnostics (exit code stays 2) · `--install` auto-install @resvg/resvg-js if missing, then render · `--view <iso|axon>` DEPRECATED (removed in 2.0; ArchLang draws plans) — render an illustrative axonometric of the building instead of the plan (iso = true isometric, axon = the 30/60 plan oblique) — a picture, never a measured drawing: no scale, no title block, no dimensions, and `describe`/`lint` are unaffected · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
   - example: `archlang preview plan.arch --ascii --json` — a zero-dependency text plan an agent can read on stdout
+
+**`archlang link`** — print a playground URL that opens the plan, rendered, with nothing to install
+  - input: <file.arch|-> → output: the playground URL; --json gives { playground, embed, bytes } (embed: the plan alone, for an iframe; bytes: the compressed plan). A plan that does not compile still gets a link, with one warning on stderr and exit 0
+  - flags: `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
+  - example: `archlang link plan.arch` — a URL to give the user: it opens the plan in the hosted playground
 
 **`archlang watch`** — recompile on save (interactive)
   - input: <file.arch> → output: file, rewritten on each save
