@@ -10,6 +10,7 @@
  * (`test/cli-manifest.test.ts`) keeps in sync with the CLI's command dispatch.
  */
 
+import { PNG_PREVIEW_WIDTH } from "./backends/png-defaults.js";
 import { CONTEXT_BUNDLE_KB } from "./context-size.js";
 import { KEYWORDS } from "./grammar/tokens.js";
 
@@ -26,6 +27,8 @@ export const CLI_NAME = "archlang";
  * The export formats the CLI can emit — the single source for `-f` validation
  * (cli.ts `parseFormat`), the capability manifest, and the CLI serializer
  * dispatch. Adding a format = one row here + one serializer line in cli.ts.
+ * `json` is the one row that is not a drawing: it writes the Plan JSON (`planToJson`,
+ * one document per storey) that `compile --from-json` reads back.
  * Deliberately NOT a public registry seam like elements/themes/hatches: formats
  * drag optional native deps and CLI flags with them, which a registry cannot
  * abstract cleanly (see AGENTS.md).
@@ -34,6 +37,7 @@ export const EXPORT_FORMATS = [
   { id: "svg", zeroDep: true },
   { id: "dxf", zeroDep: true },
   { id: "txt", zeroDep: true },
+  { id: "json", zeroDep: true },
   { id: "pdf", zeroDep: false, optionalDep: "pdfkit" },
   { id: "png", zeroDep: false, optionalDep: "@resvg/resvg-js" },
 ] as const;
@@ -149,8 +153,8 @@ const OUT_FLAG: ManifestFlag = {
 const FMT_FLAG: ManifestFlag = {
   flag: "--format",
   alias: "-f",
-  arg: "<svg|dxf|txt|pdf|png>",
-  description: "output format (default svg)",
+  arg: `<${EXPORT_FORMATS.map((f) => f.id).join("|")}>`,
+  description: "output format (default svg); json writes the Plan JSON that --from-json reads",
 };
 const SCALE_FLAG: ManifestFlag = {
   flag: "--scale",
@@ -375,7 +379,7 @@ const COMPILE_ONLY_FLAGS: ManifestFlag[] = [...COMPILE_FLAGS, VIEW_FLAG];
 const COMMANDS: ManifestCommand[] = [
   {
     name: "compile",
-    summary: "render a plan to SVG/DXF/TXT/PDF/PNG",
+    summary: "render a plan to SVG/DXF/TXT/PDF/PNG, or to Plan JSON",
     flags: COMPILE_ONLY_FLAGS,
     input: "<file.arch|-> (Plan JSON with --from-json)",
     output: "file (or stdout with -o -) — with --json and no -o nothing is written",
@@ -390,6 +394,10 @@ const COMMANDS: ManifestCommand[] = [
       },
       { cmd: "archlang compile plan.arch", note: "render SVG next to the input (plan.svg)" },
       { cmd: "archlang compile - -o - < plan.arch", note: "compile source from stdin straight to SVG on stdout" },
+      {
+        cmd: "archlang compile plan.arch -f json -o plan.json",
+        note: "export the Plan JSON; `archlang compile plan.json --from-json` renders it back",
+      },
       {
         cmd: "archlang compile plan.arch -f png -o plan.png --install --json",
         note: "rasterize to PNG, fetching the optional renderer if it is missing",
@@ -492,7 +500,7 @@ const COMMANDS: ManifestCommand[] = [
       },
       {
         ...SCALE_FLAG,
-        description: "raster scale (default 1; without -w/-s the page auto-targets ~1600px wide for legibility)",
+        description: `raster scale (default 1; without -w/-s the page auto-targets ~${PNG_PREVIEW_WIDTH}px wide for legibility)`,
       },
       WIDTH_FLAG,
       { flag: "--ascii", description: "print a zero-dependency ASCII text plan to stdout instead of a PNG" },

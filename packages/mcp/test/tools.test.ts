@@ -10,6 +10,11 @@
  *
  * Read as a contract: these assertions are what an MCP host is entitled to see.
  */
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { PLAN_JSON_SCHEMA, PNG_PREVIEW_WIDTH, planToJson } from "@chanmeng666/archlang";
+import { PNG_MAX_WIDTH, PNG_MIN_WIDTH } from "../src/png.js";
 import { decodePlanHash, PLAYGROUND_ORIGIN, planLinks } from "@chanmeng666/archlang/link";
 import { describe, expect, it } from "vitest";
 import pkg from "../package.json" with { type: "json" };
@@ -22,10 +27,37 @@ import {
   FURNITURE_IN_WALL,
   NARROW_DOOR,
   NO_DOORS,
+  payload,
   TINY,
   TWO_ROOMS,
   TWO_STOREY,
 } from "./helpers.js";
+
+/**
+ * `compile`'s png cases need the core's optional renderer, installed with it in this repo. When
+ * it is absent the image cases skip VISIBLY, and under CI that is a failure, not a skip; the
+ * absent-renderer shape is pinned unconditionally in `png.test.ts`, with the renderer mocked out.
+ */
+const HAS_RESVG = await import("@resvg/resvg-js").then(
+  () => true,
+  () => false,
+);
+
+/** A shipped plan that renders thousands of pixels wide at native size. */
+const STUDIO = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../../../examples/studio.arch"), "utf8");
+
+type PngContent = { content: Array<{ type: string; data?: string; mimeType?: string; text?: string }> };
+const pngCall = async (client: Awaited<ReturnType<typeof connect>>, args: Record<string, unknown>) =>
+  (await client.callTool({ name: "compile", arguments: args })) as PngContent;
+
+/** The pixel size a png declares in its IHDR chunk (width at bytes 16–19, height 20–23, big-endian). */
+const ihdr = (res: PngContent): { width: number; height: number } => {
+  const png = Buffer.from(res.content.find((c) => c.type === "image")!.data!, "base64");
+  return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
+};
+
+/** A plan eight times taller than wide, with no sheet. */
+const TALL = 'plan "Tall" {\n  room at (0,0) size 1000x8000 label "Gallery"\n}\n';
 
 // ---------------------------------------------------------------------------
 // lint
@@ -438,6 +470,103 @@ describe("compile tool", () => {
     expect(out.level).toBe(2);
     expect(out.levels).toEqual([1, 2]);
     expect(out.output as string).not.toContain("<svg");
+  });
+
+  it('format:"json" returns the Plan JSON as an object, named by the schema id and version', async () => {
+    const client = await connect();
+    const out = await call(client, "compile", { source: TWO_ROOMS, format: "json" });
+    expect(out.ok).toBe(true);
+    expect(out.format).toBe("json");
+    expect(out.schema).toBe(PLAN_JSON_SCHEMA.$id);
+    const plan = out.output as Record<string, unknown>;
+    expect(typeof plan).toBe("object");
+    expect(plan.version).toBe(PLAN_JSON_SCHEMA.properties.version.const);
+    expect(plan).toEqual(planToJson(TWO_ROOMS).json);
+    // It is the object `plan_json` takes: passed back, it compiles to the same drawing.
+    const back = await call(client, "compile", { plan_json: plan });
+    const direct = await call(client, "compile", { source: TWO_ROOMS });
+    expect(back.ok).toBe(true);
+    expect(back.output).toBe(direct.output);
+  });
+
+  it('format:"json" projects every storey into `pages[]`, and `level` picks one', async () => {
+    const client = await connect();
+    const { pages: want } = planToJson(TWO_STOREY);
+    const all = await call(client, "compile", { source: TWO_STOREY, format: "json" });
+    const pages = all.pages as Array<{ level: number; output: unknown }>;
+    expect(pages.map((p) => p.level)).toEqual([1, 2]);
+    expect(pages.map((p) => p.output)).toEqual(want?.map((p) => p.json));
+    expect(all.output).toEqual(pages[0]!.output);
+    const two = await call(client, "compile", { source: TWO_STOREY, format: "json", level: 2 });
+    expect(two.level).toBe(2);
+    expect(two.output).toEqual(want?.[1]?.json);
+  });
+
+  it.runIf(HAS_RESVG)('format:"png" returns the usual result as text first, then MCP image content', async () => {
+    const res = await pngCall(await connect(), { source: TWO_ROOMS, format: "png" });
+    expect(res.content.map((c) => c.type)).toEqual(["text", "image"]);
+    const image = res.content[1]!;
+    expect(image.mimeType).toBe("image/png");
+    const bytes = Buffer.from(image.data!, "base64");
+    expect([...bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    // A client that reads `content[0].text` (as the bundle prover does) gets the JSON result.
+    expect(JSON.parse(res.content[0]!.text!)).toMatchObject({ ok: true, format: "png", bytes: bytes.length });
+  });
+  it.runIf(HAS_RESVG)('format:"png" draws one storey: the lowest, or `level`, and names the set', async () => {
+    const client = await connect();
+    const low = await pngCall(client, { source: TWO_STOREY, format: "png" });
+    const two = await pngCall(client, { source: TWO_STOREY, format: "png", level: 2 });
+    expect(payload(low).levels).toEqual([1, 2]);
+    expect(payload(two)).toMatchObject({ ok: true, level: 2, levels: [1, 2] });
+    expect(low.content[1]!.data).not.toBe(two.content[1]!.data);
+  });
+  it.runIf(HAS_RESVG)("studio renders at exactly the preview width, not its native thousands of pixels", async () => {
+    // examples/studio.arch renders 9648 px wide natively: over a vision model's per-side
+    // limit and, at ~4.5 MB of base64, over typical host result caps.
+    const res = await pngCall(await connect(), { source: STUDIO, format: "png" });
+    expect(ihdr(res).width).toBe(PNG_PREVIEW_WIDTH);
+    // The reported size is the image's own.
+    expect({ width: payload(res).width, height: payload(res).height }).toEqual(ihdr(res));
+  });
+  it.runIf(HAS_RESVG)("`width` sets the png width exactly, clamped to the allowed range", async () => {
+    const client = await connect();
+    const small = await pngCall(client, { source: STUDIO, format: "png", width: 10 });
+    expect(ihdr(small).width).toBe(PNG_MIN_WIDTH);
+    expect(payload(small).width).toBe(PNG_MIN_WIDTH);
+    const mid = await pngCall(client, { source: STUDIO, format: "png", width: 1000 });
+    expect(ihdr(mid).width).toBe(1000);
+    // Studio is a little taller than wide, so at the top of the range its HEIGHT is the side the
+    // bound holds: at it to the pixel, with the width narrowed to match.
+    const big = await pngCall(client, { source: STUDIO, format: "png", width: 100_000 });
+    const { width, height } = ihdr(big);
+    expect(height).toBeGreaterThan(width);
+    expect(height).toBeLessThanOrEqual(PNG_MAX_WIDTH);
+    expect(height).toBeGreaterThanOrEqual(PNG_MAX_WIDTH - 1);
+    expect({ width: payload(big).width, height: payload(big).height }).toEqual({ width, height });
+  });
+  it.runIf(HAS_RESVG)("a tall plan is bounded on its LONG side, at the default and at the maximum", async () => {
+    const client = await connect();
+    for (const args of [{}, { width: PNG_MAX_WIDTH }]) {
+      const { width, height } = ihdr(await pngCall(client, { source: TALL, format: "png", ...args }));
+      const at = JSON.stringify(args);
+      expect(height, at).toBeGreaterThan(2 * width);
+      expect(height, at).toBeLessThanOrEqual(PNG_MAX_WIDTH);
+      expect(height, at).toBeGreaterThanOrEqual(PNG_MAX_WIDTH - 1);
+    }
+  });
+  it("`width` with any format but png is refused as data, not ignored", async () => {
+    const client = await connect();
+    for (const format of ["svg", "txt", "json"]) {
+      const out = await call(client, "compile", { source: TWO_ROOMS, format, width: 800 });
+      expect(out, format).toMatchObject({ ok: false, format });
+      expect(out.error as string).toContain('width applies only to format "png"');
+      expect(out.output).toBeUndefined();
+    }
+  });
+  it.runIf(!HAS_RESVG)("[renderer absent] png is refused as data: the CI install must have it", async () => {
+    expect(process.env.CI, "@resvg/resvg-js is missing under CI").toBeFalsy();
+    const out = await call(await connect(), "compile", { source: TWO_ROOMS, format: "png" });
+    expect(out).toMatchObject({ ok: false, format: "png", code: "E_PNG_DEPENDENCY" });
   });
 });
 

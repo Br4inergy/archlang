@@ -383,13 +383,15 @@ export function parseFormat(args: Args): Format | null {
 /**
  * Resolve `--view <iso|axon>`, or say precisely why it cannot be honoured.
  *
- * Four refusals, every one an exit-3 usage error rather than a silent fallback to the
+ * Five refusals, every one an exit-3 usage error rather than a silent fallback to the
  * plan — a flag that quietly does nothing is how a user comes to believe they are looking
  * at a drawing they are not:
  *
  *  - an unrecognised value, with a did-you-mean, exactly as an unknown verb is treated;
  *  - `-f txt`, because the ASCII backend reads a plan (it identifies a room as a polygon
  *    on the `floor` pass) and would print a meaningless grid from a projection;
+ *  - `-f json`, because Plan JSON is the plan's model rather than a drawing, so a view has
+ *    nothing to change in it and would hand back the plan as though it were the view;
  *  - `--level`, because the view is ONE drawing of the whole building and has no per-storey
  *    page to narrow to. This one has to be refused *here* and not left to the render path:
  *    a view returns no `pages`, so the generic handler saw an empty level list and told the
@@ -425,6 +427,14 @@ export function resolveView(args: Args, format: Format, command: string): { view
       ),
     };
   }
+  if (format === "json") {
+    return {
+      code: usageErrorFor(
+        command,
+        "--view cannot be combined with -f json — Plan JSON is the plan's model, not a drawing of it (drop --view)",
+      ),
+    };
+  }
   if (args.level !== undefined) {
     return {
       code: usageErrorFor(
@@ -444,6 +454,28 @@ export function resolveView(args: Args, format: Format, command: string): { view
   if (!args.quiet)
     process.stderr.write("note: --view is deprecated — illustrative only; removed in 2.0 (ArchLang draws plans)\n");
   return { view: name };
+}
+
+/**
+ * `-f json` with a flag that only changes a DRAWING: an exit-3 usage error, for the reason
+ * {@link resolveView} gives — a flag that quietly does nothing is how a user comes to believe
+ * the output carries something it does not. Plan JSON is the plan's model, so a page width, a
+ * raster scale, accessibility markup or a diagnostic overlay has nothing in it to change.
+ * Returns the exit code to stop with, or `undefined` to go on.
+ */
+export function refuseJsonDrawingFlags(args: Args, format: Format, command: string): number | undefined {
+  if (format !== "json") return undefined;
+  const given = [
+    args.accessible ? "--accessible" : undefined,
+    args.overlay !== undefined ? "--overlay" : undefined,
+    args.width !== undefined ? "--width" : undefined,
+    args.scale !== undefined ? "--scale" : undefined,
+  ].filter((f): f is string => f !== undefined);
+  if (given.length === 0) return undefined;
+  return usageErrorFor(
+    command,
+    `${given.join(", ")} cannot be combined with -f json — ${given.length === 1 ? "it changes" : "they change"} a drawing, and Plan JSON is the plan's model, not a drawing of it (drop ${given.length === 1 ? "it" : "them"})`,
+  );
 }
 
 /** Normalize the `--charset` flag to the text backend's union (unknown → unicode). */

@@ -2145,7 +2145,7 @@ archlang describe house.arch --level 2 --json        # read one storey (a displa
 archlang preview house.arch --level 2 -o upper.png   # look at one storey
 ```
 
-Every format works per level (`-f svg|dxf|txt|pdf|png` each write `<stem>.L<level>.<ext>`);
+Every format works per level (`-f svg|dxf|txt|json|pdf|png` each write `<stem>.L<level>.<ext>`);
 a multi-page PDF is deliberately not built — one file per storey is one drawing per sheet.
 `md` and `batch` render the lowest storey. Diagnostics aggregate across storeys and each
 carries a `level`, so `lint`/`validate` gate on the whole building while still saying which
@@ -2622,6 +2622,7 @@ are pure serializers of the same `scene`:
 | SVG | `compile().svg` | `archlang compile p.arch` | none (default) |
 | DXF | `toDxf(scene)` | `archlang compile p.arch -f dxf` | none (zero-dep) |
 | TXT | `renderAscii(scene)` | `archlang compile p.arch -f txt` | none (zero-dep ASCII plan) |
+| JSON | `planToJson(source)` | `archlang compile p.arch -f json` | none (the Plan JSON `--from-json` reads; the plan's model, not a drawing of the scene) |
 | PDF | `toPdf(scene)` | `archlang compile p.arch -f pdf` | optional `pdfkit` (vector, text selectable) |
 | PNG | `renderPng(scene)` | `archlang compile p.arch -f png` | optional `@resvg/resvg-js` (deterministic raster) |
 

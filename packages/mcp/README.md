@@ -45,7 +45,7 @@ structured JSON. `compile` also accepts `plan_json` (the Plan-JSON / RPLAN shape
 
 | Tool | What it does |
 |------|--------------|
-| `compile` | Render source (or `plan_json`) to SVG, or to zero-dep ASCII (`format:"txt"`). `accessible`, `overlay:"circulation"` opt-ins. Returns output + diagnostics. A multi-storey plan returns every storey in `pages[]`; `level` renders one. |
+| `compile` | Render source (or `plan_json`) to SVG, or to zero-dep ASCII (`format:"txt"`), Plan JSON as an object (`format:"json"`, the shape `plan_json` takes) or a PNG image (`format:"png"`, at `archlang preview`'s width unless `width` overrides it, within a clamped range; needs the optional `@resvg/resvg-js`, which the `.mcpb` bundle leaves out). `accessible`, `overlay:"circulation"` opt-ins. Returns output + diagnostics. A multi-storey plan returns every storey in `pages[]`; `level` renders one. |
 | `describe` | Semantic facts (rooms, areas, adjacency, doors, circulation, zones, storeys, the exact `floor_polygon`/`floor_circle` shape, and a `freedom` report of which positions are hand-authored vs resolver-derived) — verify intent without an image. |
 | `lint` | Advisory `W_*` soundness warnings (may include the fix-carrying `W_ALIAS_MATCH` for a room use inferred from an indirect label alias); `profile` selects a ruleset. |
 | `validate` | Parse + resolve + lint, the ship gate. `strict` fails on warnings; `graph` checks interior-door adjacency against an intended room graph; `intent` gates on a brief's contract (per `archlang://intent-schema`). |

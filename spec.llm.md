@@ -100,7 +100,7 @@ reads source from a file or stdin (`-`). Exit codes: `0` ok · `1` internal / IO
 In a shell, every `arch` in this spec means `archlang` (or `npx -y @chanmeng666/archlang`): coreutils owns `arch` on Linux, macOS and Git Bash.
 
 ```text
-arch compile  # render a plan to SVG/DXF/TXT/PDF/PNG
+arch compile  # render a plan to SVG/DXF/TXT/PDF/PNG, or to Plan JSON
 arch batch  # render many .arch files in one call, concurrently
 arch md  # render every ```arch block in a Markdown file and rewrite to image links
 arch preview  # render a PNG you can look at (zero-install where the optional binary is present)

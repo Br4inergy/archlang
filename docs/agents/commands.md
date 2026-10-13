@@ -61,6 +61,6 @@ workflows are manual and owner-only — never dispatch `eval-l2.yml`.
 
 Every command takes `--json` (result on stdout, messages on stderr) and `-` for stdin. Exit codes:
 `0` ok · `2` user-source error · `1` IO/internal · `3` bad usage. `arch manifest` prints the whole
-CLI as data; `arch <cmd> --help` is rendered from `src/manifest.ts`. `-f svg|dxf|txt|pdf|png`
+CLI as data; `arch <cmd> --help` is rendered from `src/manifest.ts`. `-f svg|dxf|txt|json|pdf|png`
 (`pdf`/`png` need the optional deps). `annotate` has no CLI flag, so the element controls that
 `accessible` + `annotate` produce are library-only.

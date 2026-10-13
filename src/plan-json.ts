@@ -670,15 +670,36 @@ function titleToJson(t: { project?: string; drawnBy?: string; date?: string }): 
   };
 }
 
+/** One storey of a multi-storey plan, projected on its own (see {@link planToJson}). */
+export interface PlanJsonPage {
+  level: number;
+  name?: string;
+  json: PlanJson;
+}
+
 /**
  * Parse + resolve `source` and project it to {@link PlanJson} with output-only
  * enrichments. On a fatal user-source error, `json` is absent and `diagnostics`
  * carries the problems.
+ *
+ * Plan JSON is single-storey, so `json` is the LOWEST storey of a multi-storey plan (the
+ * page `compile().svg` draws). `pages` carries every storey, each projected alone in
+ * ascending level order, exactly as `compile().pages` carries one drawing per storey; it is
+ * absent for a single-storey plan, so that result is unchanged.
  */
-export function planToJson(source: string, opts: AnalyzeOptions = {}): { json?: PlanJson; diagnostics: Diagnostic[] } {
-  const { ir, diagnostics } = resolvePlan(source, opts);
+export function planToJson(
+  source: string,
+  opts: AnalyzeOptions = {},
+): { json?: PlanJson; pages?: PlanJsonPage[]; diagnostics: Diagnostic[] } {
+  const { ir, diagnostics, levels } = resolvePlan(source, opts);
   if (!ir) return { diagnostics };
-  return { json: resolvedToJson(ir), diagnostics };
+  if (levels.length === 0) return { json: resolvedToJson(ir), diagnostics };
+  const pages = levels.map((l) => ({
+    level: l.level,
+    ...(l.name !== undefined ? { name: l.name } : {}),
+    json: resolvedToJson(l.ir),
+  }));
+  return { json: resolvedToJson(ir), pages, diagnostics };
 }
 
 // ---------------------------------------------------------------------------

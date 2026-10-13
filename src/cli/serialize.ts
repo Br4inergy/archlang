@@ -18,14 +18,11 @@ import {
   toPdf,
   diagnosticToJson,
   ERROR_CATALOG,
+  isOptionalDepError,
+  planToJson,
 } from "../index.js";
-import type { Diagnostic, Scene, ViewName } from "../index.js";
+import type { Diagnostic, PlanJson, Scene, ViewName, World } from "../index.js";
 import { type Args, type Format, EXIT, asciiCharset, baseDirOf, hasErrors, makeNodeWorld, readInput } from "./io.js";
-
-/** Does this error mean a lazy optional render dependency (resvg/pdfkit) is absent? */
-function isOptionalDepError(e: unknown): boolean {
-  return /resvg|pdfkit|optional dependency/i.test((e as Error).message ?? "");
-}
 
 /** Pick the package manager from the environment (lockfiles / npm_config_user_agent). */
 function detectPackageManager(): string {
@@ -70,8 +67,10 @@ async function runWithInstall<T>(fn: () => Promise<T>, pkg: string, args: Args):
 
 /**
  * Serialize a built Scene to the requested format (auto-installing optional deps if
- * asked). This is the output-format seam: adding a format = a row in `EXPORT_FORMATS`
- * (`src/manifest.ts`) + a serializer line here.
+ * asked). This is the output-format seam: adding a DRAWING format = a row in
+ * `EXPORT_FORMATS` (`src/manifest.ts`) + a serializer line here. `json` is the one row that
+ * is not a drawing: it is projected from the source by {@link planJsonArtifact}, which
+ * {@link renderArtifact} calls before any Scene is serialized, so it never reaches this seam.
  */
 async function serialize(
   scene: Scene,
@@ -94,7 +93,47 @@ async function serialize(
       "@resvg/resvg-js",
       args,
     );
+  // Internal invariant, not a user-source error: a caller that bypassed `renderArtifact` would
+  // otherwise write SVG bytes under a `.json` name.
+  if (format === "json") throw new Error("internal: -f json is projected from the source, not serialized from a Scene");
   return svg;
+}
+
+/** The bytes `-f json` writes: one Plan-JSON document, two-space indented, newline-terminated. */
+const planJsonText = (json: PlanJson): string => `${JSON.stringify(json, null, 2)}\n`;
+
+/**
+ * `-f json`: the Plan JSON of a plan that compiled — the projection `planToJson` makes and
+ * `compile --from-json` reads back, not a drawing of the Scene. It follows the page rules of
+ * every other format: one document per storey (`planToJson`'s `pages`) for `"all"`, the
+ * lowest storey for `"first"`, exactly one storey for `{ level }`. Exported so the
+ * round-trip test drives this exact path over the whole corpus without a process per file.
+ */
+export function planJsonArtifact(
+  source: string,
+  world: World,
+  page: PageSelect,
+  levels: number[],
+  diagnostics: Diagnostic[],
+): Rendered {
+  const { json, pages } = planToJson(source, { world });
+  // Unreachable after a clean compile (it is the same resolve), but never an exception.
+  if (!json) return { diagnostics, levels, error: "Plan JSON projection failed" };
+  if (pages && pages.length > 0) {
+    if (page === "all") {
+      const out: RenderedPage[] = pages.map((p) => ({
+        level: p.level,
+        ...(p.name !== undefined ? { name: p.name } : {}),
+        bytes: planJsonText(p.json),
+      }));
+      return { pages: out, levels, diagnostics };
+    }
+    const want = page === "first" ? pages[0]! : pages.find((p) => p.level === page.level);
+    if (!want) return { diagnostics, levels, badLevel: true };
+    return { bytes: planJsonText(want.json), levels, diagnostics };
+  }
+  if (typeof page === "object") return { diagnostics, levels, badLevel: true };
+  return { bytes: planJsonText(json), levels, diagnostics };
 }
 
 /** One serialized page of a multi-storey plan (`level <n> { … }`). */
@@ -145,10 +184,11 @@ export async function renderArtifact(
   page: PageSelect = "first",
   view?: ViewName,
 ): Promise<Rendered> {
+  const world = makeNodeWorld(baseDir);
   const { svg, diagnostics, scene, pages } = compile(source, {
     width: args.width,
     noCache: true,
-    world: makeNodeWorld(baseDir),
+    world,
     // `--overlay circulation` draws the opt-in diagnostic overlay; unknown names are ignored.
     ...(args.overlay === "circulation" ? { overlays: ["circulation"] as const } : {}),
     // `--error-svg`: a broken plan yields a self-describing error card in `svg`
@@ -198,6 +238,7 @@ export async function renderArtifact(
     }
     return { diagnostics, levels };
   }
+  if (format === "json") return planJsonArtifact(source, world, page, levels, diagnostics);
   try {
     // Multi-storey: serialize the requested page(s). A single-storey plan has no `pages`,
     // so it takes the one-artifact path below exactly as before.

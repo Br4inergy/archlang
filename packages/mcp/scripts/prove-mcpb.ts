@@ -2,7 +2,8 @@
  * Proof that a built `.mcpb` actually runs: unpack it OUTSIDE the repo (so no
  * `node_modules` resolution from the checkout can help it), start the server exactly as
  * the manifest's `mcp_config` says, and drive it over stdio with raw JSON-RPC —
- * `initialize`, `tools/list`, a `tools/call` that compiles a tiny plan, and a resource read.
+ * `initialize`, `tools/list`, a `tools/call` that compiles a tiny plan (to SVG, to Plan JSON,
+ * and to png, which the bundle must refuse because it ships no renderer), and a resource read.
  *
  *   npm run prove:mcpb [-- path/to/archlang-mcp-<v>.mcpb]
  *
@@ -15,6 +16,7 @@ import { tmpdir } from "node:os";
 import { isDeepStrictEqual } from "node:util";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { PNG_NOT_IN_BUNDLE } from "../src/png.js";
 import { MCPB_CLI_VERSION } from "./build-mcpb.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -106,6 +108,19 @@ async function prove(bundle: string): Promise<void> {
     console.log(`tools/call compile: ok=${out.ok} format=${out.format} diagnostics=${out.diagnostics.length}`);
     console.log(`  output: ${String(out.output).slice(0, 70)}… (${String(out.output).length} chars)`);
     if (out.ok !== true || !String(out.output).startsWith("<svg")) fail("compile did not return an SVG");
+
+    // The bundle ships without the PNG renderer: png is refused as data, in the shared sentence.
+    const png = JSON.parse(
+      (await rpc("tools/call", { name: "compile", arguments: { source: src, format: "png" } })).content[0].text,
+    );
+    console.log(`tools/call compile format=png: ok=${png.ok} error=${png.error}`);
+    if (png.ok !== false || png.error !== PNG_NOT_IN_BUNDLE)
+      fail("compile png did not report the bundle's missing renderer");
+    const pj = JSON.parse(
+      (await rpc("tools/call", { name: "compile", arguments: { source: src, format: "json" } })).content[0].text,
+    );
+    console.log(`tools/call compile format=json: ok=${pj.ok} schema=${pj.schema} version=${pj.output?.version}`);
+    if (pj.ok !== true || pj.output?.version !== 1) fail("compile json did not return Plan JSON");
 
     const spec = await rpc("resources/read", { uri: "archlang://spec" });
     console.log(`resources/read archlang://spec: ${spec.contents[0].text.length} chars`);

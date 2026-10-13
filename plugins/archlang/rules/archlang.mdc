@@ -17,7 +17,7 @@ Start with `archlang spec`, which prints the whole language, then loop: write th
 
 Commands:
 - `archlang spec`: print the one-prompt language spec (spec.llm.md)
-- `archlang compile`: render a plan to SVG/DXF/TXT/PDF/PNG
+- `archlang compile`: render a plan to SVG/DXF/TXT/PDF/PNG, or to Plan JSON
 - `archlang fix`: apply the machine-applicable fix suggestions on a plan's diagnostics (bounded fixpoint)
 - `archlang describe`: semantic facts: rooms, areas, adjacency, what doors connect
 - `archlang lint`: architectural soundness warnings

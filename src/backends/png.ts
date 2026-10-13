@@ -35,6 +35,16 @@ export interface PngOptions extends CompileOptions {
   onDiagnostic?: (d: Diagnostic) => void;
 }
 
+export { PNG_PREVIEW_WIDTH } from "./png-defaults.js";
+
+/**
+ * Does this error mean a lazy optional render dependency (`@resvg/resvg-js`, or `pdfkit` for
+ * PDF) is absent? The one test the CLI and the MCP shim share, so the two cannot disagree.
+ */
+export function isOptionalDepError(e: unknown): boolean {
+  return /resvg|pdfkit|optional dependency/i.test((e as Error).message ?? "");
+}
+
 /** The four entities {@link import("../text-safe.js").xmlText} writes, plus numeric ones. */
 function unescapeXml(s: string): string {
   return s.replace(/&(amp|lt|gt|quot|apos|#x[0-9a-fA-F]+|#[0-9]+);/g, (_, e: string) => {
