@@ -1,6 +1,6 @@
 // Bundle the extension (client + LSP server) into self-contained CJS files with
-// esbuild, so the .vsix ships no node_modules. The zero-dep ArchLang core is
-// inlined into the server bundle. `vscode` is provided by the host; the core's
+// esbuild, so the .vsix ships no node_modules. The zero-dep ArchLang core is bundled ONCE
+// into dist/core.js; the extension and server bundles load it by import(). `vscode` is provided by the host; the core's
 // OPTIONAL backends (resvg/pdfkit/clipper2) are marked external so esbuild leaves
 // their lazy `import()`s untouched — the language server never invokes them
 // (it only parses/resolves/diagnoses), so they are never loaded at runtime.
@@ -51,9 +51,23 @@ const common = {
   logLevel: "info",
 };
 
+// ONE copy of the core ships: it is bundled once, into dist/core.js, and the extension and
+// server bundles leave `@chanmeng666/archlang` external, resolved to that sibling file at
+// runtime (both load it with `import()`, which esbuild lowers to a require of ./core.js).
+const sharedCore = {
+  name: "shared-core",
+  setup(build) {
+    build.onResolve({ filter: /^@chanmeng666\/archlang$/ }, () => ({ path: "./core.js", external: true }));
+  },
+};
+
 const builds = [
-  { entryPoints: ["src/extension.ts"], outfile: "dist/extension.js" },
-  { entryPoints: ["src/server.ts"], outfile: "dist/server.js" },
+  { entryPoints: ["src/extension.ts"], outfile: "dist/extension.js", plugins: [sharedCore] },
+  { entryPoints: ["src/server.ts"], outfile: "dist/server.js", plugins: [sharedCore] },
+  {
+    stdin: { contents: 'export * from "@chanmeng666/archlang";', resolveDir: HERE, loader: "js" },
+    outfile: "dist/core.js",
+  },
 ];
 
 if (watch) {
@@ -66,5 +80,5 @@ if (watch) {
 } else {
   await Promise.all(builds.map((b) => esbuild.build({ ...common, ...b })));
   // eslint-disable-next-line no-console
-  console.log(`esbuild: built dist/extension.js + dist/server.js (core ${coreVersion})`);
+  console.log(`esbuild: built dist/extension.js + dist/server.js + dist/core.js (core ${coreVersion})`);
 }

@@ -18,11 +18,13 @@ export type CoreCompile = (source: string) => CoreCompileResult;
 interface FenceToken {
   info: string;
   content: string;
+  /** Source line range `[start, end)`, set by markdown-it for block tokens. */
+  map?: [number, number] | null;
 }
 type FenceRule = (tokens: FenceToken[], idx: number, options: unknown, env: unknown, self: unknown) => string;
 /** The slice of a markdown-it instance the plugin needs. */
 export interface MarkdownItLike {
-  renderer: { rules: { fence?: FenceRule } };
+  renderer: { rules: { fence?: (...args: never[]) => string } };
 }
 
 /** Fence languages rendered as plans. `archlang` is tolerated as an alias. */
@@ -37,8 +39,38 @@ function fenceLang(info: string): string {
   return info.trim().split(/\s+/, 1)[0]?.toLowerCase() ?? "";
 }
 
-/** The HTML for one arch fence body. Never throws. */
-export function renderArchFence(compile: CoreCompile, source: string): string {
+/**
+ * Make every id in one SVG unique within the page. Every compiled plan carries the same
+ * fixed ids (`poche`, `hatch-*`, the layer ids), and `url(#poche)` resolves to the FIRST
+ * match in the document, so a second plan would paint with the first plan's pattern.
+ * Each `id`, each `url(#..)` / `href="#.."` reference and each `aria-labelledby` token
+ * gets the same per-fence prefix. This post-processes the compiler's output here, in the
+ * extension; the core is unchanged.
+ */
+export function namespaceSvgIds(svg: string, prefix: string): string {
+  return svg
+    .replace(/(\sid=")([^"]*)"/g, (_m, a: string, id: string) => `${a}${prefix}${id}"`)
+    .replace(/url\((['"]?)#([^)'"]+)\1\)/g, (_m, q: string, id: string) => `url(${q}#${prefix}${id}${q})`)
+    .replace(/(\shref=")#([^"]*)"/g, (_m, a: string, id: string) => `${a}#${prefix}${id}"`)
+    .replace(
+      /(\saria-(?:labelledby|describedby)=")([^"]*)"/g,
+      (_m, a: string, ids: string) =>
+        `${a}${ids
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((id) => prefix + id)
+          .join(" ")}"`,
+    );
+}
+
+/** The wrapper attributes VS Code's own fence renderer carries, for preview scroll sync. */
+function wrapperAttrs(extraClass: string, line: number | undefined): string {
+  const dataLine = line === undefined ? "" : ` data-line="${line}"`;
+  return `class="archlang-preview${extraClass} code-line"${dataLine}`;
+}
+
+/** The HTML for one arch fence body. Never throws. `line` is the fence's first source line. */
+export function renderArchFence(compile: CoreCompile, source: string, prefix: string, line?: number): string {
   let result: CoreCompileResult;
   try {
     result = compile(source);
@@ -49,13 +81,15 @@ export function renderArchFence(compile: CoreCompile, source: string): string {
   }
   const errors = result.diagnostics.filter((d) => d.severity === "error");
   if (errors.length === 0 && result.svg !== "") {
-    // The SVG is the compiler's own output, embedded verbatim: nothing is stripped
-    // or added, and the compiler emits no script.
-    return `<div class="archlang-preview">${result.svg}</div>\n`;
+    // The SVG is the compiler's own output: nothing is stripped, and the compiler emits
+    // no script. Only its ids are namespaced (see namespaceSvgIds).
+    return `<div ${wrapperAttrs("", line)}>${namespaceSvgIds(result.svg, prefix)}</div>\n`;
   }
-  const lines = errors.map((d) => `${d.code ?? "error"}: ${d.message}`);
+  const lines = errors.length
+    ? errors.map((d) => `${d.code ?? "error"}: ${d.message}`)
+    : ["error: the plan produced no drawing"];
   return (
-    `<div class="archlang-preview archlang-preview-error">` +
+    `<div ${wrapperAttrs(" archlang-preview-error", line)}>` +
     `<pre class="archlang-diagnostics">${escapeHtml(lines.join("\n"))}</pre>` +
     `<pre><code class="language-arch">${escapeHtml(source)}</code></pre></div>\n`
   );
@@ -66,12 +100,27 @@ export function renderArchFence(compile: CoreCompile, source: string): string {
  * fence falls through to the previously installed (default) renderer.
  */
 export function installArchFence<T extends MarkdownItLike>(md: T, compile: CoreCompile): T {
-  const fallback: FenceRule | undefined = md.renderer.rules.fence;
-  md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+  const fallback = md.renderer.rules.fence as FenceRule | undefined;
+  let counter = 0;
+  const rule: FenceRule = (tokens, idx, options, env, self) => {
     const token = tokens[idx]!;
-    if (ARCH_LANGS.has(fenceLang(token.info))) return renderArchFence(compile, token.content);
+    if (ARCH_LANGS.has(fenceLang(token.info))) {
+      // Unique per fence within one render: the source line when mapped, else a counter.
+      const line = token.map?.[0];
+      const prefix = `arch${line ?? `c${counter++}`}-`;
+      return renderArchFence(compile, token.content, prefix, line);
+    }
     if (fallback) return fallback(tokens, idx, options, env, self);
     return `<pre><code>${escapeHtml(token.content)}</code></pre>\n`;
   };
+  md.renderer.rules.fence = rule;
   return md;
+}
+
+/**
+ * The function VS Code's Markdown preview calls with its markdown-it instance. It must
+ * return the instance synchronously, so the core is loaded before this is built.
+ */
+export function createExtendMarkdownIt(compile: CoreCompile): <T extends MarkdownItLike>(md: T) => T {
+  return (md) => installArchFence(md, compile);
 }

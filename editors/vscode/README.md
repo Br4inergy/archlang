@@ -15,7 +15,7 @@ Write floor plans as code. ArchLang is an open-source language that compiles `.a
 
 ## Floor plans in Markdown preview
 
-A fenced block tagged `arch` renders as the compiled floor plan in VS Code's built-in Markdown preview (`Ctrl+Shift+V`). If the plan has an error, the preview shows the error and your source instead.
+A fenced block tagged `arch` renders as the compiled floor plan in VS Code's built-in Markdown preview (`Ctrl+Shift+V`, or `Cmd+Shift+V` on macOS). `archlang` works as a fence tag too. If the plan has an error, the preview shows the error and your source instead.
 
 ````
 ```arch

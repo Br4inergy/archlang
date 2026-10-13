@@ -1,31 +1,18 @@
-/** VS Code extension entry — launches the ArchLang language server. */
+/** VS Code extension entry — the ArchLang language client and the Markdown-preview plugin. */
 import * as path from "node:path";
-import type { ExtensionContext } from "vscode";
-import { installArchFence, type CoreCompile, type MarkdownItLike } from "./markdown.js";
+import { type ExtensionContext, workspace } from "vscode";
 import {
   LanguageClient,
   type LanguageClientOptions,
   type ServerOptions,
   TransportKind,
 } from "vscode-languageclient/node";
+import { type CoreCompile, createExtendMarkdownIt } from "./markdown.js";
 
 let client: LanguageClient | undefined;
 
-/**
- * VS Code's built-in Markdown preview calls this (on the object `activate` returns)
- * to extend its markdown-it instance. The core is ESM-only, so it is `require`d here
- * (esbuild inlines it, lazily, into dist/extension.js: the same core the server
- * bundle carries) and only on the first arch fence rendered.
- */
-export function extendMarkdownIt<T extends MarkdownItLike>(md: T): T {
-  let compile: CoreCompile | undefined;
-  return installArchFence(md, (source) => {
-    compile ??= (require("@chanmeng666/archlang") as { compile: CoreCompile }).compile;
-    return compile(source);
-  });
-}
-
-export function activate(context: ExtensionContext): { extendMarkdownIt: typeof extendMarkdownIt } {
+function startClient(context: ExtensionContext): void {
+  if (client) return;
   const serverModule = context.asAbsolutePath(path.join("dist", "server.js"));
   const serverOptions: ServerOptions = {
     run: { module: serverModule, transport: TransportKind.ipc },
@@ -36,7 +23,26 @@ export function activate(context: ExtensionContext): { extendMarkdownIt: typeof 
   };
   client = new LanguageClient("archlang", "ArchLang Language Server", serverOptions, clientOptions);
   void client.start();
-  return { extendMarkdownIt };
+}
+
+/**
+ * Async because the core is ESM-only and is loaded with `import()` (its exports map has
+ * only an `import` condition, so `require` cannot reach it). VS Code awaits `activate()`
+ * and then calls `extendMarkdownIt` synchronously, so the core is ready by then.
+ *
+ * The Markdown preview activates this extension too, so the language server starts only
+ * once an `arch` document is open, not on a plain Markdown preview.
+ */
+export async function activate(context: ExtensionContext) {
+  const core = (await import("@chanmeng666/archlang")) as unknown as { compile: CoreCompile };
+  const isArch = (languageId: string): boolean => languageId === "arch";
+  if (workspace.textDocuments.some((d) => isArch(d.languageId))) startClient(context);
+  context.subscriptions.push(
+    workspace.onDidOpenTextDocument((d) => {
+      if (isArch(d.languageId)) startClient(context);
+    }),
+  );
+  return { extendMarkdownIt: createExtendMarkdownIt(core.compile) };
 }
 
 export function deactivate(): Thenable<void> | undefined {
