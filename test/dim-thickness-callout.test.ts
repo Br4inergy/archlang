@@ -410,10 +410,12 @@ suite("wall-thickness call-outs stay off doorways and fixtures", () => {
   });
 
   it("holds over the corpus: no call-out in poché, in a doorway or over a piece of furniture", () => {
-    // The shipped examples, the docs gallery, the test fixtures and recovery-corpus copies, and
-    // the eval goldens — every plan here that draws a thickness call-out.
+    // The shipped examples, the test fixtures (this file's own included) and recovery-corpus
+    // copies, and the eval goldens — every plan here that draws a thickness call-out. The site's
+    // agent gallery is deliberately not read: it stays out of the language's corpus
+    // (`test/agent-gallery.test.ts`).
     const root = join(__dirname, "..");
-    const dirs = ["examples", "docs/gallery", "test/fixtures", "test/recovery-corpus", "eval/goldens"];
+    const dirs = ["examples", "test/fixtures", "test/callout-fixtures", "test/recovery-corpus", "eval/goldens"];
     const offenders: string[] = [];
     let seen = 0;
     let plans = 0;
@@ -446,8 +448,8 @@ suite("wall-thickness call-outs stay off doorways and fixtures", () => {
     }
     expect(offenders).toEqual([]);
     // Not vacuous: the corpus is walked, and its call-outs really are found by the finder.
-    expect(plans).toBeGreaterThan(80);
-    expect(seen).toBeGreaterThan(50);
+    expect(plans).toBeGreaterThan(70);
+    expect(seen).toBeGreaterThan(60);
   });
 
   it("never trades poché for a clear doorway: walls first, then openings and furniture", () => {
