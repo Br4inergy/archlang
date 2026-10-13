@@ -354,6 +354,48 @@ describe("NOTES — a fixed column: text adds rows, never width", () => {
     for (const line of lines) expect(line).not.toMatch(/^[̀-ͯ]/);
   });
 
+  it("a run of combining marks or lone low surrogates is still cut at the width — no line is ever unbounded", () => {
+    const W = NOTE_LINE_CHARS;
+    const mark = "́";
+    const cases = [mark.repeat(10_000), `ab${mark.repeat(300)} cd`, "\udc00".repeat(500), `x${"\udc00".repeat(130)}`];
+    for (const note of cases) {
+      const lines = wrapNote(note);
+      for (const l of lines) expect(l.length).toBeLessThanOrEqual(W);
+      // Nothing lost (spaces aside), and no phantom empty line after a word cut at the width.
+      expect(lines.join("").replace(/ /g, "")).toBe(note.replace(/ /g, ""));
+      expect(lines.every((l) => l !== "")).toBe(true);
+    }
+    expect(wrapNote(mark.repeat(10_000)).length).toBe(Math.ceil(10_000 / W));
+    expect(wrapNote("x".repeat(2 * W))).toEqual(["x".repeat(W), "x".repeat(W)]);
+    // A real surrogate pair is still never split, even inside a run of marks.
+    for (const l of wrapNote(`${mark.repeat(W - 1)}😀${mark.repeat(W)}`))
+      expect(l).not.toMatch(/^[\uDC00-\uDFFF]|[\uD800-\uDBFF]$/);
+  });
+
+  it("the count is wrapNote's line count, over generated notes with mark runs, pairs and lone surrogates", () => {
+    // A fixed-seed generator (no randomness in a test): spaces, newlines, letters, combining
+    // marks, emoji pairs, lone low surrogates, in runs of every length.
+    let seed = 12345;
+    const next = (n: number): number => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed % n;
+    };
+    const pieces = [" ", "\n", "a", "word", "́", "́".repeat(80), "😀", "\udc00", "\udc00".repeat(70), "x".repeat(120)];
+    for (let k = 0; k < 300; k++) {
+      let note = "";
+      for (let j = next(40); j > 0; j--) note += pieces[next(pieces.length)];
+      const lines = wrapNote(note);
+      expect(noteLineCount([note], Number.POSITIVE_INFINITY)).toBe(lines.length);
+      for (const l of lines) expect(l.length).toBeLessThanOrEqual(NOTE_LINE_CHARS);
+    }
+  });
+
+  it("a note of 2,000,000 combining marks is refused like any note past the cap", () => {
+    const out = compile(box(`  notes "${"́".repeat(2_000_000)}"\n`), { noCache: true });
+    expect(out.diagnostics.map((d) => d.code)).toContain("E_DRAWING_LIMIT");
+    expect(out.svg).toBe("");
+  });
+
   it("counting stops at the cap: a 2,000,000-character note costs one past the cap to count", () => {
     expect(noteLineCount(["z".repeat(2_000_000)])).toBe(MAX_NOTE_LINES + 1);
     expect(noteLineCount(["a b"], 1)).toBe(1);

@@ -396,33 +396,36 @@ const ROOMS_CELL_CHARS = charsIn(COL_ROOMS);
  */
 export const MAX_NOTE_LINES = 200;
 
-/**
- * A UTF-16 unit a line must not START with: the low half of a surrogate pair (a lone half is
- * not well-formed text in any backend) or a combining mark (it would sit on nothing). The
- * combining blocks are the common ones — Combining Diacritical Marks and their Extended and
- * Supplement blocks, those for symbols, and the half marks.
- */
-const continues = (c: number): boolean =>
-  (c >= 0xdc00 && c <= 0xdfff) ||
+/** A combining mark: it belongs to the letter before it. The common blocks — Combining
+ *  Diacritical Marks and their Extended and Supplement blocks, those for symbols, half marks. */
+const isMark = (c: number): boolean =>
   (c >= 0x0300 && c <= 0x036f) ||
   (c >= 0x1ab0 && c <= 0x1aff) ||
   (c >= 0x1dc0 && c <= 0x1dff) ||
   (c >= 0x20d0 && c <= 0x20ff) ||
   (c >= 0xfe20 && c <= 0xfe2f);
+const isHigh = (c: number): boolean => c >= 0xd800 && c <= 0xdbff;
+const isLow = (c: number): boolean => c >= 0xdc00 && c <= 0xdfff;
+
+/** How far back from the width a cut may look for a better place: a few units, never more. */
+const CUT_LOOKBACK = 4;
 
 /**
- * Where to cut `s` at or before `i` (and after `from`) so the next piece does not start with a
- * {@link continues} unit; if no such cut exists after `from`, the first one past `i`, so a cut
- * always advances.
+ * Where to cut `s` near `i` (strictly after `from`). Preferred: the last place in the few units
+ * at or before `i` ({@link CUT_LOOKBACK}) where the next piece does not start with a combining
+ * mark and no surrogate PAIR is split. Failing that — a long run of marks, say — the cut is made
+ * at `i` anyway (a mark split from its letter is better than an unbounded line), except that a
+ * real surrogate pair is never split: it moves one unit back, or forward when it cannot go back.
+ * A run of LONE low surrogates is no pair, so it is cut like any other text. The result is
+ * always in `(from, i + 1]`, so a cut always advances and a piece is never longer than the width
+ * (bar the one-unit width that cannot hold a pair).
  */
 const cutAt = (s: string, i: number, from = 0): number => {
   if (i <= from || i >= s.length) return i;
-  let c = i;
-  while (c > from + 1 && continues(s.charCodeAt(c))) c--;
-  if (!continues(s.charCodeAt(c))) return c;
-  c = i;
-  while (c < s.length && continues(s.charCodeAt(c))) c++;
-  return c;
+  const splitsPair = (c: number): boolean => isLow(s.charCodeAt(c)) && isHigh(s.charCodeAt(c - 1));
+  for (let c = i; c > from && c >= i - CUT_LOOKBACK; c--) if (!isMark(s.charCodeAt(c)) && !splitsPair(c)) return c;
+  if (!splitsPair(i)) return i;
+  return i - 1 > from ? i - 1 : i + 1;
 };
 
 /** `s` cut to `max` characters, the cut marked with `...` (ASCII, like every table cell). */
@@ -434,8 +437,9 @@ const clip = (s: string, max: number): string =>
  * line with the `[start, end)` ranges of its words in `note` (absent, nothing is collected),
  * and the walk stops as soon as `limit` lines have been counted. A `\n` always breaks; otherwise
  * lines break at spaces (U+0020), runs of spaces collapse, and a word longer than a whole line is
- * cut into line-length pieces (never before a {@link continues} unit). Returns the count, so a
- * note past the cap costs the cap, not its length.
+ * cut into line-length pieces ({@link cutAt}: never splitting a surrogate pair, a mark kept with
+ * its letter when that costs a few units at most). Returns the count, so a note past the cap
+ * costs the cap, not its length; it is the count of lines {@link wrapNote} returns.
  */
 function scanNote(note: string, width: number, limit: number, line?: (ranges: [number, number][]) => void): number {
   let count = 0;
@@ -452,6 +456,7 @@ function scanNote(note: string, width: number, limit: number, line?: (ranges: [n
   while (p <= note.length) {
     const nl = note.indexOf("\n", p);
     const end = nl < 0 ? note.length : nl;
+    const before = count;
     let i = p;
     while (i < end) {
       if (note.charCodeAt(i) === 0x20) {
@@ -483,7 +488,10 @@ function scanNote(note: string, width: number, limit: number, line?: (ranges: [n
         len = we - ws;
       }
     }
-    if (flush()) return count;
+    // Close the paragraph's open line — or draw it empty when it drew nothing at all (an empty
+    // note, a blank line between two `\n`). A paragraph whose last word was cut exactly at the
+    // width has no open line, and no phantom empty one.
+    if ((len > 0 || count === before) && flush()) return count;
     if (nl < 0) break;
     p = nl + 1;
   }

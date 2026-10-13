@@ -16,9 +16,10 @@
  * box or a centroid. Each side of the wall is probed one wall thickness off the centreline
  * (`wallFaceProbes`) and asked whether it is floor (the room/void rings, `pointInRoomBox`):
  *
- * - A **window** tag sits centred on the window, just off the face that HAS floor — inside
- *   the building, so it can never meet a `dims auto` chain (every chain is outside) or the
- *   sill nose (drawn on the face with no floor).
+ * - A **window** tag's first place is centred on the window, just off the face that HAS floor
+ *   — inside the building, clear of the `dims auto` chains (every chain is outside) and of the
+ *   sill nose (drawn on the face with no floor). Only when every inside place is taken may it
+ *   take the outside face, and then only where that is clear of the chains too (below).
  * - A **door** tag sits BESIDE the doorway, never in front of it: past one jamb, just off a
  *   wall face. That keeps it out of the passage (the doorway's clear zone) on both sides and
  *   clear of the leaf's quarter-disc by construction — the disc is centred on the hinge with
@@ -35,9 +36,13 @@
  * tries its candidates in order (a door: both jambs on its preferred face, then on the other
  * face, then one tag-depth further out on the preferred face; a window: centred, beside each
  * jamb, the other face, then the preferred face one tag-depth further out) and takes the
- * first that is clear. When none is, it takes the first that at least clears every other tag,
- * else its first choice: a tag never trades one conflict for another. The work is bounded
- * (a grid of obstacles, a capped probe per candidate), so it is linear in the tags.
+ * first that is clear — so a tag reaches the outside face of an exterior wall only when that
+ * place is clear of the dimension chains and everything else.
+ * When none is, two tags must still never overlap: it takes the first candidate clear of every
+ * other tag — which may be over other ink — and only when none is, its first choice. So a tag
+ * moves off ink only to a place free of everything, and off another tag to a place free of
+ * tags. The work is bounded (a grid of obstacles, a capped probe per candidate), so it is
+ * linear in the tags.
  *
  * What it does not do: step past a room's name (the label pass moves the name instead, once
  * it is buried far enough), or find room where every candidate is taken — the corpus guard
@@ -446,10 +451,11 @@ function tagCandidates(o: RDoor | RWindow, boxes: readonly RoomBox[], ext: (u: P
  * drawing budget counts.
  *
  * Each tag takes its FIRST candidate (see {@link tagCandidates}) when that is clear of every
- * obstacle of the storey — every opening as far as it draws, every straight wall's poché, every
- * tag already placed — and otherwise the first candidate that is. When none is clear it keeps
- * the first: a tag only ever moves to a place that is strictly better, never from one conflict
- * into another. Tags are placed doors first, then windows, each in element order.
+ * obstacle of the storey — every opening as far as it draws, every straight wall's poché,
+ * everything already drawn, every tag already placed — and otherwise the first candidate that
+ * is. When none is clear, the first candidate clear of the other TAGS (two tags never overlap,
+ * though that place may be over other ink), and only when none is, the first. Tags are placed
+ * doors first, then windows, each in element order.
  */
 export function openingTagNodes(
   elements: readonly ResolvedElement[],

@@ -2068,16 +2068,18 @@ and both tables draw.
 | `TYPE` | A door's kind (`hinged`, `sliding`, …); `window` for a window. |
 | `HAND` | A hinged door's hand, by the EN 12519 / DIN 107 convention: stand on the side it opens into (the pull side), face it, and the hinge is on your `left` or `right`. North American (ANSI/BHMA) handing is read from the other side, so an inswing door reads the other way there. Read off the drawn leaf, so it does not depend on which way the wall's points run; `-` for anything else. |
 
-A tag's position comes from the opening's own wall: a window's sits just inside, off the
-face that has floor (so never among the dimension chains outside); a door's sits beside
+A tag's position comes from the opening's own wall: a window's first place is just inside,
+off the face that has floor (so clear of the dimension chains outside); a door's sits beside
 the doorway, past the hinge jamb (or, for a sliding kind, the jamb opposite where the
 panel parks) and off a face with floor, so it is out of the passage and outside the
 leaf's quarter-disc. A tag must also be clear of everything else on the storey — every
 opening as far as it draws, every wall's poché, the furniture, dimension and axis lines and
 every tag already placed — so when its first place is taken it tries the other jamb, then
 the other face, then one tag-depth further out, and takes the first place that is clear.
-If none is, it keeps its first place (or the first that at least clears the other tags):
-a tag never trades one conflict for another, and two tags never overlap. A room's name
+If none is, two tags still never overlap: it takes the first place clear of the other tags
+(which may be over other ink), and only if there is none, its first place. A tag reaches
+the outside face of an exterior wall only when that place is clear of the dimension chains
+and everything else. A room's name
 under a tag is moved by the label pass instead, once it is buried far enough.
 
 **`notes "…"`** draws the sheet's general notes as a numbered **NOTES** table in source
