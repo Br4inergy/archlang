@@ -20,7 +20,8 @@ import {
   roomAreaMm2,
 } from "../../analyze.js";
 import type { Diagnostic } from "../../diagnostics.js";
-import { zoneFixtureCategories } from "../../fixtures-catalog.js";
+import { defaultFootprint, zoneFixtureCategories } from "../../fixtures-catalog.js";
+import { fmt2 } from "../../num-format.js";
 import { mm, shortfall } from "../measure.js";
 import type { RRoom } from "../../ir.js";
 import type { LintContext, LintRule } from "../context.js";
@@ -49,6 +50,26 @@ const CAR_BAY_WIDTH_MM = 2700;
 
 /** Categories that occupy a parking bay. A bicycle or a motorcycle does not. */
 const PARKED_CATEGORIES: ReadonlySet<string> = new Set(["car"]);
+
+/**
+ * The `W_ROOM_NO_FIXTURE` remedy as one statement the author can paste: the fixture
+ * categories are built in (no import), and the example is sized from the catalog footprint
+ * (along × depth, so `anchor top` backs it onto the top edge the right way round). A room
+ * that `anchor` cannot place in — a `polygon`/`circle` floor (E_PLACE_POLY) or a relational
+ * room (E_PLACE_REF) — gets the `at (x,y) … in <room>` form instead.
+ */
+function noFixtureHint(r: RRoom, isWet: boolean): string {
+  const [cat, others] = isWet
+    ? ["wc", "a `basin`, `shower` or `bathtub`"]
+    : ["kitchen_sink", "a `counter`, `stove` or `fridge`"];
+  const fp = defaultFootprint(cat);
+  const size = fp ? ` size ${fmt2(fp.along)}x${fmt2(fp.depth)}` : "";
+  const stmt =
+    r.poly || r._rel !== undefined
+      ? `furniture ${cat} at (x,y)${size} in ${r.id}\` with (x,y) on its floor`
+      : `furniture ${cat} in ${r.id} anchor top flush${size}\``;
+  return `Place a built-in fixture in it (nothing to import) — e.g. \`${stmt}, or ${others}.`;
+}
 
 export const perRoomRules: LintRule = {
   name: "per-room",
@@ -133,9 +154,7 @@ export const perRoomRules: LintRule = {
             code: "W_ROOM_NO_FIXTURE",
             ...at(r),
             message: `${isWet ? "Bathroom" : "Kitchen"} "${labelOf(r)}" has no ${isWet ? "fixtures (WC, basin, shower…)" : "fixtures (sink, counter, stove…)"}.`,
-            hints: [
-              `Add the expected fixtures — e.g. import \`lib/fixtures.arch\` and place a ${isWet ? "`wc`, `basin`, or `shower`" : "`kitchen_sink` and `counter`"}.`,
-            ],
+            hints: [noFixtureHint(r, isWet)],
           });
         }
       }

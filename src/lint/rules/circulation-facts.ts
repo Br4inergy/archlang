@@ -19,9 +19,11 @@
  */
 
 import { type CirculationModel, computeCirculation } from "../../analyze/circulation.js";
+import type { AccessEdge } from "../../analyze.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import type { LintContext, LintRule } from "../context.js";
 import { mm, shortfall } from "../measure.js";
+import { passableDoorWidthMm } from "./doors.js";
 
 const modelCache = new WeakMap<LintContext, CirculationModel | null>();
 
@@ -50,17 +52,80 @@ function circulationOf(ctx: LintContext): CirculationModel | null {
 /**
  * The closed remedy set for `W_PATH_TOO_NARROW`, sized against the ruleset minimum.
  *
- * None of these is a machine-applicable fix and none can be: the bottleneck is a nav-grid
- * CELL, not an element — the model knows the route pinches to N mm, not which door or
- * which piece of furniture to rewrite. `arch repair` is deliberately not named either;
- * it clears wall intrusions, swings, doorway landings and overlaps, not a route pinch,
- * and pointing at a tool that would report "nothing to do" is worse than silence.
+ * None of these is a machine-applicable fix: widening a door rewrites a width the author
+ * chose. When the room's own doors set the limit ({@link doorBottleneck}) the first hint
+ * names each one and the `width` that clears the minimum; otherwise the bottleneck is a
+ * nav-grid CELL the model cannot attribute to one element. `arch repair` is deliberately
+ * not named; it clears wall intrusions, swings, doorway landings and overlaps, not a route
+ * pinch, and pointing at a tool that would report "nothing to do" is worse than silence.
  */
-const narrowHints = (min: number): string[] => [
-  `Widen the tightest door/opening on the way to at least ${mm(min)} mm.`,
-  `Or move the furniture pinching the route so ${mm(min)} mm of clear width survives.`,
-  "Or add a second way in (another door or a leafless `opening`) so the pinch is avoidable.",
-];
+const narrowHints = (min: number, doors: readonly AccessEdge[] | null, ctx: LintContext): string[] =>
+  doors === null
+    ? [
+        `Widen the tightest door/opening on the way to at least ${mm(min)} mm.`,
+        `Or move the furniture pinching the route so ${mm(min)} mm of clear width survives.`,
+        "Or add a second way in (another door or a leafless `opening`) so the pinch is avoidable.",
+      ]
+    : [
+        ...doors.map(
+          (e) =>
+            `Widen ${e.kind} "${e.doorId}" to \`width ${mm(clearingWidth(e, ctx))}\` (now ${mm(e.nominalWidth)}), which leaves the ${mm(min)} mm minimum clear${e.kind === "door" ? " after the leaf allowance" : ""}.`,
+        ),
+        "Or add a second way in (another door or a leafless `opening`) so the pinch is avoidable.",
+      ];
+
+/**
+ * The narrowest width, on the plan's `grid` module, at which this connector stops being a
+ * pinch: a door must also clear `W_DOOR_CLEARANCE` ({@link passableDoorWidthMm}, the same
+ * number the swing rule's narrowing hint is bounded by); an opening keeps its whole width.
+ * Rounded UP to the module because the resolver snaps a written width to it.
+ */
+function clearingWidth(e: AccessEdge, ctx: LintContext): number {
+  const need = e.kind === "door" ? passableDoorWidthMm(ctx.rules) : Math.ceil(ctx.rules.minPathClearWidthMm);
+  const grid = ctx.ir.grid;
+  return grid > 0 ? Math.ceil(need / grid) * grid : need;
+}
+
+/**
+ * The room's own connectors that ARE its bottleneck, or `null` when its doors do not explain it.
+ *
+ * Every walk or route into a room crosses one of its connectors (`computeCirculation` stamps
+ * each carved doorway with the connector's clear width, so the door caps every path through
+ * it), so when the widest connector the room has is exactly `width` wide, no way in can be
+ * wider: the doors ARE the limit, and the ones that wide are named. That is exact for a room
+ * walled all round; one open to a neighbour can also be entered across the open edge, where
+ * a furniture pinch of exactly the door's width would leave the door named but not the only
+ * limit — accepted rather than re-running the walk per door. A room you arrive in by a
+ * shaft is excluded — the run is a way in that is not a connector — and so is a reading the
+ * doors do not reach (a furniture pinch narrower than every door), which stays unattributed.
+ */
+function doorBottleneck(ctx: LintContext, roomId: string, width: number): AccessEdge[] | null {
+  if (ctx.building.arrivalRooms.includes(roomId)) return null;
+  const mine = ctx.access().edges.filter((e) => !e.ambiguous && e.between.includes(roomId));
+  if (mine.length === 0) return null;
+  const widest = Math.round(Math.max(...mine.map((e) => e.estimatedClearWidth)));
+  if (widest !== width) return null;
+  return mine.filter((e) => Math.round(e.estimatedClearWidth) === width);
+}
+
+/** The message clause naming a door-set bottleneck, or nothing. */
+function namedClause(doors: readonly AccessEdge[] | null, owner: string | null, width: number): string {
+  if (doors === null) return "";
+  const whose = owner === null ? "its" : `"${owner}"'s`;
+  const list = doors.map((e) => `${e.kind} "${e.doorId}"`);
+  return list.length === 1
+    ? ` — the bottleneck is ${whose} ${list[0]}, ${mm(width)} mm clear`
+    : ` — the bottleneck is ${whose} ways in: ${list.join(" and ")} are each ${mm(width)} mm clear and none is wider`;
+}
+
+/** One bottleneck's identity: the connectors that set it, in a fixed order. */
+const keyOf = (doors: readonly AccessEdge[] | null): string | null =>
+  doors === null
+    ? null
+    : doors
+        .map((e) => e.doorId)
+        .sort()
+        .join("\u0000");
 
 export const pathTooNarrow: LintRule = {
   name: "path-too-narrow",
@@ -74,6 +139,10 @@ export const pathTooNarrow: LintRule = {
     // One warning per room: entrance-walk pinches first, then a key route's pinch on a
     // from-room not already flagged (dedupe deterministically — rooms, then routes).
     const warned = new Set<string>();
+    // One warning per BOTTLENECK too: a pinch the room's own doors explain is reported once,
+    // on the first diagnostic that names them; a route squeezing through those same doors
+    // (bedroom → its en-suite, through the en-suite's door) is the same defect, not a second.
+    const named = new Set<string>();
     // Walk the rooms in SOURCE order rather than walking `circ.rooms`, so a blocked room
     // — which by construction has no `circ.rooms` entry — lands where it belongs instead
     // of nowhere. `circ.rooms` is itself in source order, so a plan with nothing blocked
@@ -92,18 +161,30 @@ export const pathTooNarrow: LintRule = {
           wayIn > 0
             ? `The walk from the entrance to "${labelOf(r)}" squeezes to ${mm(wayIn)} mm and stops there — no way in is wider, so no route reaches the room (${mm(shortfall(min, wayIn))} mm below the ${mm(min)} mm minimum).`
             : `The walk from the entrance to "${labelOf(r)}" is blocked: furniture and its clearances leave no gap at all (0 mm against the ${mm(min)} mm minimum).`;
-        out.push({ severity: "warning", code: "W_PATH_TOO_NARROW", ...at(r), message, hints: narrowHints(min) });
+        out.push({
+          severity: "warning",
+          code: "W_PATH_TOO_NARROW",
+          ...at(r),
+          message,
+          hints: narrowHints(min, null, ctx),
+        });
         continue;
       }
       const rc = factOf.get(r.id);
       if (!rc || rc.bottleneckClearWidthMm >= min) continue;
       warned.add(r.id);
+      const doors = doorBottleneck(ctx, r.id, rc.bottleneckClearWidthMm);
+      const key = keyOf(doors);
+      if (key !== null) {
+        if (named.has(key)) continue;
+        named.add(key);
+      }
       out.push({
         severity: "warning",
         code: "W_PATH_TOO_NARROW",
         ...at(r),
-        message: `The walk from the entrance to "${labelOf(r)}" squeezes to ${mm(rc.bottleneckClearWidthMm)} mm (${mm(shortfall(min, rc.bottleneckClearWidthMm))} mm below the ${mm(min)} mm minimum).`,
-        hints: narrowHints(min),
+        message: `The walk from the entrance to "${labelOf(r)}" squeezes to ${mm(rc.bottleneckClearWidthMm)} mm (${mm(shortfall(min, rc.bottleneckClearWidthMm))} mm below the ${mm(min)} mm minimum)${namedClause(doors, null, rc.bottleneckClearWidthMm)}.`,
+        hints: narrowHints(min, doors, ctx),
       });
     }
     for (const rt of circ.routes) {
@@ -111,13 +192,22 @@ export const pathTooNarrow: LintRule = {
       const from = roomById.get(rt.fromRoomId);
       if (!from) continue;
       const to = roomById.get(rt.toRoomId);
+      // The destination's doors first (the route ENTERS through them), then the origin's.
+      const intoTo = doorBottleneck(ctx, rt.toRoomId, rt.bottleneckClearWidthMm);
+      const doors = intoTo ?? doorBottleneck(ctx, rt.fromRoomId, rt.bottleneckClearWidthMm);
+      const owner = intoTo !== null ? (to ? labelOf(to) : rt.toRoomId) : labelOf(from);
+      const key = keyOf(doors);
+      if (key !== null) {
+        if (named.has(key)) continue;
+        named.add(key);
+      }
       warned.add(rt.fromRoomId);
       out.push({
         severity: "warning",
         code: "W_PATH_TOO_NARROW",
         ...at(from),
-        message: `The route from "${labelOf(from)}" to "${to ? labelOf(to) : rt.toRoomId}" squeezes to ${mm(rt.bottleneckClearWidthMm)} mm (${mm(shortfall(min, rt.bottleneckClearWidthMm))} mm below the ${mm(min)} mm minimum).`,
-        hints: narrowHints(min),
+        message: `The route from "${labelOf(from)}" to "${to ? labelOf(to) : rt.toRoomId}" squeezes to ${mm(rt.bottleneckClearWidthMm)} mm (${mm(shortfall(min, rt.bottleneckClearWidthMm))} mm below the ${mm(min)} mm minimum)${namedClause(doors, owner, rt.bottleneckClearWidthMm)}.`,
+        hints: narrowHints(min, doors, ctx),
       });
     }
     return out;

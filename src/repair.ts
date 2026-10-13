@@ -53,6 +53,7 @@
  * parsed AST → re-emit via the formatter. No I/O, deterministic.
  */
 
+import { CLI_NAME } from "./command-name.js";
 import { parse } from "./parser.js";
 import { formatPlan } from "./format.js";
 import { fmt3 as numStr } from "./num-format.js";
@@ -577,6 +578,15 @@ function orientationVerdict(
   // only back onto a horizontal edge, so a corner often has one valid answer after all.
   const shape = backCandidateEdges({ w: fr.w, h: fr.h }, defaultFootprint(category));
   const targets = walled.filter((e) => shape.includes(e));
+  // Every walled edge ruled out by the aspect: no `rotate` is right, the SIZE is the wrong
+  // way round. Say that, with the swapped size, rather than ask for a rotation.
+  if (targets.length === 0)
+    return {
+      ambiguous: `has its back to the room, and its ${numStr(fr.w)}x${numStr(fr.h)} size runs its depth along the wall on its ${walled.join(
+        "/",
+      )} side — swap it to \`size ${numStr(fr.h)}x${numStr(fr.w)}\` (a fixture's depth runs away from its wall), then add the \`rotate\` that backs it onto that wall`,
+      problem: `has its back to the room (the wall is on its ${walled.join("/")} side)`,
+    };
   if (targets.length !== 1)
     return {
       ambiguous: `faces the room with no single wall to back onto (walls on its ${walled.join(
@@ -1286,7 +1296,7 @@ function repairPass(source: string, book: SpanBook, record: boolean, pins: Pins)
 
   const parsed = parse(source);
   if (!parsed.plan || parsed.diagnostics.some((d) => d.severity === "error")) {
-    note("plan", "the source does not parse — fix the syntax errors first (`arch compile --json`)");
+    note("plan", `the source does not parse — fix the syntax errors first (\`${CLI_NAME} compile --json\`)`);
     return { source, changes: [], unresolved, changed: false };
   }
   // The parse stage memo shares its PlanNode across callers on the contract that it is
@@ -1299,7 +1309,7 @@ function repairPass(source: string, book: SpanBook, record: boolean, pins: Pins)
   if (!ir) {
     // No resolved geometry ⇒ no positions to reason about. Say so: a plan that does not
     // resolve is exactly the case where a silent `changed: false` reads as "all clear".
-    note("plan", "the plan does not resolve — fix the errors first (`arch validate`), then re-run repair");
+    note("plan", `the plan does not resolve — fix the errors first (\`${CLI_NAME} validate\`), then re-run repair`);
     return { source, changes: [], unresolved, changed: false };
   }
 

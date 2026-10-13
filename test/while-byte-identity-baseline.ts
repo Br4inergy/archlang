@@ -143,6 +143,20 @@
  * `describe()` and `compile().diagnostics` are byte-identical. Field by field in
  * `./byte-identity-baseline.ts`, "an en-suite beside a bathroom off circulation is not
  * flagged". No other example row and no fixture row moved.
+ *
+ * Three rows re-measured, with this test's own digest body, for a deliberate diagnostic-TEXT
+ * change (case (3) in `./byte-identity-baseline.ts`'s header; `test/lint-fix-texts.test.ts`).
+ * Each moves in `lint()` alone: hashing the NEW compile, `describe()` and diagnostics with the
+ * OLD `lint()` reproduces its old row.
+ *   - `examples/hillside-villa.arch` — `W_PATH_TOO_NARROW` names the en-suite doors and gives
+ *     the clearing `width`; the Master Suite → Ensuite route through `d_enm` is withdrawn as
+ *     the same bottleneck. Field by field in `./byte-identity-baseline.ts`, "names the door,
+ *     once".
+ *   - `test/fixtures/diff-a.arch`, `test/fixtures/diff-b.arch` — `W_ROOM_NO_FIXTURE`'s hint
+ *     stops pointing at an unshipped `lib/fixtures.arch` import and gives a pasteable
+ *     statement (`furniture wc in bath anchor top flush size 400x700`). Its message, span and
+ *     every other diagnostic are byte-identical.
+ * No other example row and no other fixture row moved.
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "7d17249d81b43f1ff5b17c6b1219750bbdd695599f31e66fb298be9facc7c169"],
@@ -156,7 +170,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/garden-house.arch", "78af129f024f23540fc2ea037bd3ba8f5eb8875098303ee5899ce5a8fe4715d8"], // re-measured, see header
   ["examples/garden-loft.arch", "1fbeaf41b1f1b981f274a1501ed870bb6b3ebc2ec377bd15e588e78cbd07ab7b"],
   ["examples/hexagon-pavilion.arch", "293447ab543aa86945af475e440ff85cddb8070f3330d6887e94f5e344d4c216"],
-  ["examples/hillside-villa.arch", "8b5d8ea072adfd62d22490b37c32e441219f35544be23182b62aac1aac431e41"], // re-measured, see header
+  ["examples/hillside-villa.arch", "b60e6a9022bd136019363e5a55feb5ebf414cec9d070812583d5424ded70774e"], // re-measured, see header
   ["examples/imports.arch", "dbbdb95881775e34e5abecc72a52bc72160af81a5883ddced18bbf3d7f1a7f2c"],
   ["examples/laneway-house.arch", "2315eb23382b52aa784930c332c00083b7d9931c4620a46b8b710c75e4c1195e"],
   ["examples/library.arch", "5c4913bdc5e2960d6cac2203cdb775ed56179c232550efe893a1dfab492d3215"],
@@ -177,8 +191,8 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/two-storey.arch", "40db64f06de76a95b038de66acc9ddd996020a2c84c48e5d6e1670ac8c247adb"],
   ["test/fixtures/axes-grid.arch", "6f1e4a5a6c27df9deeb26885d5d97da5b574d8e644acd0fa6fc588c11f610695"],
   ["test/fixtures/dense-bays.arch", "22f98cc0f66e94a5db73bd40f2ba111da74740976f5255f1f978467760828de3"],
-  ["test/fixtures/diff-a.arch", "a0aa011cfb507ce20b4945afdc748d71b196d54a016269c539fee59223519f15"],
-  ["test/fixtures/diff-b.arch", "e3824c83ed8db86eda56328ef12cf598ad200cceee01ff63c7400bd13ef8cfb9"],
+  ["test/fixtures/diff-a.arch", "a7bad45dcc57e01a854d130cf857857ae056546c8f8b37ddd5474f22c2cf1bb1"], // re-measured, see header
+  ["test/fixtures/diff-b.arch", "aed751c9f9579dd29c93d4c0363c1f17428fc68f6e6003f59281824eacd7ff06"], // re-measured, see header
   ["test/fixtures/diff-circ-a.arch", "84d413c8733e5dae6fe6adf57a9ecea3ced920501be76a4175f225ea2e8a9974"],
   ["test/fixtures/diff-circ-b.arch", "c22679ed9da2f1386e64c665245bb8a4555ffb5e7f38010e5d4252c858a8f2f9"],
   ["test/fixtures/schedule-sheet.arch", "3f66597531afcf2d8be6c4a297121aa309f08887fc369ca5f322fa12b95433e5"],

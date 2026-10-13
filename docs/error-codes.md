@@ -181,7 +181,7 @@ component c() { accDescr "x" }   # error: only allowed at plan level
 
 **Cause.** An `arc (x,y) radius R` edge asks for a circle of radius R through the previous vertex and this one, but R is less than half the straight-line distance between them (or is not positive) — no such circle exists.
 
-**Fix.** Raise the radius to at least half the chord (the message states the minimum), or move the endpoints closer together. `arch fix` applies the minimum for you.
+**Fix.** Raise the radius to at least half the chord (the message states the minimum), or move the endpoints closer together. `archlang fix` applies the minimum for you.
 
 ```arch static
 wall exterior thickness 200 { (0,0) arc (10000,0) radius 3000 }   # error: needs R >= 5000
@@ -339,7 +339,7 @@ door pocket on w1 at 50% width 900   # error: curved host
 
 **Cause.** `open <f>` is the fraction of its travel a sliding-family panel is DRAWN at — 0 is closed, 1 fully open — so a value outside `[0,1]` names a position the panel cannot reach. It is a drawing fact only: nothing measured (`lint`, `describe`, the intent channel) reads it, so a half-open door can never silence a clearance warning.
 
-**Fix.** Give `open` a fraction in `[0,1]`; `arch fix` clamps it to the nearer end for you. Omit it entirely for the default 0.5.
+**Fix.** Give `open` a fraction in `[0,1]`; `archlang fix` clamps it to the nearer end for you. Omit it entirely for the default 0.5.
 
 ```arch static
 door sliding on w1 at 50% width 1200 open 1.5   # error: outside [0,1]
@@ -930,7 +930,7 @@ stair id=s at (0,0) size 1000000000000x3000 dir up   # error: a 1e12 mm flight
 
 **Cause.** The lexer or the parser could not make a statement out of the bytes at this span — a missing or misspelled keyword, a value where a keyword belongs, an unterminated string, an unbalanced brace, clauses written in the wrong order, or blocks and expressions nested past the parser's limit (256 levels — far beyond any real plan; the deeper block is skipped, not read). It is the one code that says nothing about what the plan MEANS: resolution never ran here, so no measurement, no geometry and no soundness rule had a chance to speak.
 
-**Fix.** Read the message: it names what was expected and what was found, at a byte span. Compare the statement against `arch spec`'s one line for that keyword — clause ORDER is part of the grammar, not a suggestion. Unlike every other code in this catalog, there is no machine-applicable fix to apply, because the compiler has no reading of the text to correct.
+**Fix.** Read the message: it names what was expected and what was found, at a byte span. Compare the statement against `archlang spec`'s one line for that keyword — clause ORDER is part of the grammar, not a suggestion. Unlike every other code in this catalog, there is no machine-applicable fix to apply, because the compiler has no reading of the text to correct.
 
 ```arch static
 door on w1 at 40% width 900 wall w1   # error: `wall` pairs with the `at (x,y)` form only
@@ -970,7 +970,7 @@ furniture bed in bedrm centered size 1500x2000   # error: no room id=bedrm
 **Fix.** Install the optional dependency (`npm install @resvg/resvg-js`), or re-run with `--install` to fetch it automatically, or render to SVG/DXF (zero-dependency).
 
 ```arch static
-arch preview plan.arch --install   # fetches @resvg/resvg-js, then renders the PNG
+archlang preview plan.arch --install   # fetches @resvg/resvg-js, then renders the PNG
 ```
 
 ## E_RANGE_LIMIT
@@ -1526,7 +1526,7 @@ dim (0,-100)->(4000,-100) offset -300 text "4000"   # warning: both in the same 
 
 **Cause.** A piece of furniture/fixture sits in the clear landing space immediately on either side of a door opening, so you cannot pass through the doorway even when the leaf is open. This is the approach path, distinct from the leaf's swing arc (`W_SWING_OBSTRUCTED`). The warning states the landing depth required, the depth actually left, and the shortfall.
 
-**Fix.** Move the obstruction clear of the opening by the shortfall the warning quotes (`arch repair` computes the smallest clearing shift), shrink it by that much on the axis facing the door, or move the door along its wall so its landing misses it.
+**Fix.** Move the obstruction clear of the opening by the shortfall the warning quotes (`archlang repair` computes the smallest clearing shift), shrink it by that much on the axis facing the door, or move the door along its wall so its landing misses it.
 
 ```arch static
 door at (6000,3000) width 800
@@ -1615,7 +1615,7 @@ plan "Empty" { units mm }   # warning
 
 **Cause.** A fixture whose symbol has a distinct back — a plumbed one (a WC's cistern, a basin's tap, a counter's nosing) or a piece of furniture that simply has a front (a bed's headboard, a wardrobe's door line, a bookshelf's open face) — is touching a wall, but its back is turned to the room instead of to that wall: the drawing shows the WC's tank, or the headboard, sticking into the floor space. Position right, quarter-turn wrong: fixture symbols are drawn with their back on the TOP edge, so `rotate` is what aims them (0 = back to the north, 90 = east, 180 = south, 270 = west). A rotation-symmetric symbol (a shower tray, a round stool) never trips this, nor does arranged seating whose back to the room is a legitimate layout. A fixture that touches no wall at all is `W_FIXTURE_FLOATING` instead — and only where the piece genuinely needs one for services, which furniture does not.
 
-**Fix.** Add the `rotate` that puts the back on the walled edge — the machine-applicable fix inserts it when exactly one edge is walled. Better still, place the piece with `against wall <id>` or `in <room> anchor <edge>` and let the rotation be derived.
+**Fix.** Get the plan `size` right first, then the `rotate`. `size` is W×H in plan axes, and a fixture's catalogued depth runs AWAY from the wall it backs onto, so the size decides which walls it can back onto: a WC (400 along × 700 deep) is `size 400x700` against a north or south wall and `size 700x400` against an east or west one. With the size right, add the `rotate` that puts the back on the walled edge (0 = back to the north, 90 = east, 180 = south, 270 = west); the machine-applicable fix inserts it when exactly one walled edge fits the size. Or let it be derived: `in <room> anchor <edge>` derives the rotation once the size fits that edge, and `against wall <id>` takes `size` as along×depth and derives both. A `rotate` on a size the wrong way round silences this warning but draws the symbol squashed. A square size, or a family whose catalogued footprint is square (`counter`, `stove`), can back onto any edge.
 
 ```arch static
 furniture wc at (5200,5200) size 400x700   # warning: south wall behind it, cistern facing north
@@ -1664,7 +1664,7 @@ furniture bed  at (1000,500) size 1500x2000   # lint: overlaps the sofa
 
 **Cause.** A furniture/fixture rectangle intrudes into a wall's solid (it crosses the wall's thickness band rather than sitting flush against its face), so it would physically pass through the wall — a coordinate or size mistake. A piece merely touching the wall face is fine. Measured in the wall's own frame, so a wall at any angle is checked; a CURVED wall edge (`arc`) is not checked at all.
 
-**Fix.** Move or resize the piece so it sits fully inside the room (against the wall face, not through it), or anchor it with `against wall <id>`.
+**Fix.** The message names the wall the piece crosses and how far into its thickness. For a piece placed `against wall <id>`, `offset` is the distance along that wall to the piece's CENTRE, not its edge (omitted, it is the segment's midpoint): a 600 mm fridge at `offset 4100` spans 3800–4400 along the wall, so it crosses a 100 mm partition standing at 4000; the hint gives the `offset` that clears it. Otherwise move or resize the piece so it sits fully inside the room, against the wall face rather than through it, or place it with `against wall <id>` or `in <room> anchor <edge> flush`.
 
 ```arch static
 furniture sofa at (350,2300) size 2000x900   # lint: crosses the partition at y3000
@@ -1789,7 +1789,7 @@ outdoor paving at (1000,1000) size 3000x2000   # warning: on the living-room flo
 
 **Cause.** The widest route from the entrance into a room (or between a key pair of rooms, e.g. bedroom→bath) has an unavoidable pinch narrower than the minimum passable clear width — a too-narrow door/opening, or furniture crowding the way. The limit case is reported too: when no route reaches the room at all, the message gives the MEASURED width of the best way in that does exist (found by asking which smaller body does get there) rather than a fabricated zero, and calls the walk blocked only when there is no gap at all. A coarse fact from the circulation nav grid (ADR 0008); the number is grid-quantised, and it is the width a body passes through, not the room left over after its own clearance.
 
-**Fix.** Widen the tightest door/opening on the route to at least the minimum, move the furniture pinching it, or add a second way in so the pinch is avoidable. There is no machine-applicable fix: the bottleneck is a nav-grid cell, not a named element, so nothing can be rewritten for you.
+**Fix.** When the room's own doors set the limit, the message names the door and the hint gives the `width` that clears the minimum (a door loses a leaf-and-stop allowance from its nominal width; a leafless `opening` keeps all of it). Otherwise the pinch is furniture: move the furniture pinching the route, or add a second way in so the pinch is avoidable. One bottleneck is reported once, so a route that squeezes through a door already named for its room is not reported again. There is no machine-applicable fix: widening a door rewrites a number you chose.
 
 ```arch static
 door at (4000,1500) width 600
@@ -1813,9 +1813,9 @@ door pocket on w1 at 80% width 900 slide right   # lint: only ~600 mm of run
 
 *warning* — Reassignment (`NAME = expr`) is deprecated and will be removed in a future major version.
 
-**Cause.** Reassigning an existing `let` binding exists only to make a `while` loop progress. Outside that role it is the same referential-transparency break `while` is deprecated for: a name bound with `let` can no longer be trusted to keep its first value, which breaks the equational tools (rename, `arch fix`, the planned re-roll refactor) that treat a `let` as a substitutable value. A reassignment LEXICALLY INSIDE a `while` body (at any depth, including inside a nested `if`/`for`/`zone`) does not also raise this — every reassignment there is already covered by that loop's own `W_WHILE_DEPRECATED`.
+**Cause.** Reassigning an existing `let` binding exists only to make a `while` loop progress. Outside that role it is the same referential-transparency break `while` is deprecated for: a name bound with `let` can no longer be trusted to keep its first value, which breaks the equational tools (rename, `archlang fix`, the planned re-roll refactor) that treat a `let` as a substitutable value. A reassignment LEXICALLY INSIDE a `while` body (at any depth, including inside a nested `if`/`for`/`zone`) does not also raise this — every reassignment there is already covered by that loop's own `W_WHILE_DEPRECATED`.
 
-**Fix.** Bind a new name with `let` instead of reassigning it, or express the surrounding loop as `for NAME in A..B { … }` — `arch fix` offers this on `W_WHILE_DEPRECATED` for the canonical shape, once proved against this file's own expansion (component sites need `--unsafe`).
+**Fix.** Bind a new name with `let` instead of reassigning it, or express the surrounding loop as `for NAME in A..B { … }` — `archlang fix` offers this on `W_WHILE_DEPRECATED` for the canonical shape, once proved against this file's own expansion (component sites need `--unsafe`).
 
 ```arch static
 let total = 0
@@ -1890,7 +1890,7 @@ furniture shower at (5000,3000) size 2000x2000   # lint: fills the bathroom agai
 
 **Cause.** A room labelled as a bathroom or kitchen contains no plumbing/kitchen fixture (WC, basin, shower, sink, counter…), so it is drawn as an empty box.
 
-**Fix.** Place the expected fixtures — e.g. import `lib/fixtures.arch` and add a `wc`, `basin`, `shower`, or `kitchen_sink`.
+**Fix.** Place a fixture inside the room; the categories are built in, so nothing needs importing. A bathroom or WC takes a `wc`, `basin`, `shower` or `bathtub` (e.g. `furniture wc in bath anchor top flush size 400x700`); a kitchen takes a `kitchen_sink`, `counter`, `stove` or `fridge` (e.g. `furniture kitchen_sink in kitchen anchor top flush size 800x600`). A bare `sink` counts for either. A `polygon` or `circle` room cannot take `anchor`: place the piece `at (x,y)` with `in <roomId>` instead.
 
 ```arch static
 room at (4000,4000) size 3000x2000 label "Bath"   # lint: no fixtures inside
@@ -1977,7 +1977,7 @@ level 2 "1" { }   # warning: "s" is on level 1 only
 
 **Cause.** The quarter-circle a door leaf sweeps overlaps a piece of furniture/fixture or another door's swing, so the door cannot open fully. Two swings that meet in a single point are clear: a double door's leaves, meeting only at their shared closed jamb, do not obstruct each other. The warning states the clear radius the swing needs, what it actually has, and the shortfall.
 
-**Fix.** Hang the leaf on the other jamb (`hinge left|right`) — a machine-applicable fix when the flipped swing is proved clear; or open it the other way (`swing in|out`), move the door along its wall, move the obstruction (`arch repair`), narrow the leaf to the width the warning quotes (never below the minimum passable width — that relocates the problem into `W_DOOR_CLEARANCE`), hang no swinging leaf at all (a `sliding`, `pocket` or `barn` door sweeps nothing, so this rule cannot apply to it), or make it a leafless `opening`.
+**Fix.** Hang the leaf on the other jamb (`hinge left|right`) — a machine-applicable fix when the flipped swing is proved clear; or open it the other way (`swing in|out`), move the door along its wall, move the obstruction (`archlang repair`), narrow the leaf to the width the warning quotes (never below the minimum passable width — that relocates the problem into `W_DOOR_CLEARANCE`), hang no swinging leaf at all (a `sliding`, `pocket` or `barn` door sweeps nothing, so this rule cannot apply to it), or make it a leafless `opening`.
 
 ```arch static
 door at (4000,1500) width 900 swing in   # lint: leaf sweeps onto the bed
@@ -2035,9 +2035,9 @@ theme { nope: "#000" }   # warning
 
 *warning* — `while` is deprecated and will be removed in a future major version.
 
-**Cause.** `while` plus a reassignment to make it terminate is the one construct in ArchLang's expand-time language that breaks referential transparency: a `let` binding reassigned later is no longer a value that can be substituted, which every equational tool (LSP rename, `arch fix`'s rewrite-in-your-form, the planned re-roll refactor) relies on. `for x in a..b` covers every counted loop `while` is used for in practice.
+**Cause.** `while` plus a reassignment to make it terminate is the one construct in ArchLang's expand-time language that breaks referential transparency: a `let` binding reassigned later is no longer a value that can be substituted, which every equational tool (LSP rename, `archlang fix`'s rewrite-in-your-form, the planned re-roll refactor) relies on. `for x in a..b` covers every counted loop `while` is used for in practice.
 
-**Fix.** Rewrite the loop as `for I in A..B { … }`. `compile()` never offers this fix — only `arch fix` proves it, against THIS file's own expansion: a shape that merely LOOKS canonical, but whose body calls a component that reads or writes `I`, that never actually ran (a library compiled standalone, a dead `if` branch), or that already caps out at `while`'s 10,000-iteration limit, is left as a warning with no fix. A proven fix at plan level is `machine-applicable`; one inside a `component` is `maybe-incorrect` (needs `arch fix --unsafe`) — the proof only covers how THIS file instantiates it, and an importer may call it differently. Anything the fix declines needs a hand rewrite.
+**Fix.** Rewrite the loop as `for I in A..B { … }`. `compile()` never offers this fix — only `archlang fix` proves it, against THIS file's own expansion: a shape that merely LOOKS canonical, but whose body calls a component that reads or writes `I`, that never actually ran (a library compiled standalone, a dead `if` branch), or that already caps out at `while`'s 10,000-iteration limit, is left as a warning with no fix. A proven fix at plan level is `machine-applicable`; one inside a `component` is `maybe-incorrect` (needs `archlang fix --unsafe`) — the proof only covers how THIS file instantiates it, and an importer may call it differently. Anything the fix declines needs a hand rewrite.
 
 ```arch static
 let i = 0
