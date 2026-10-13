@@ -499,7 +499,7 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "E_INPUT_TOO_LARGE",
     "The source is larger than this host accepts.",
     "A host with a per-request CPU ceiling (the hosted MCP server) refuses a source above its byte cap before compiling it. `compile()` itself has no size cap: its budgets are counts, and every input it is given returns a diagnostic.",
-    "Compile it locally, where there is no cap: `npx -y @chanmeng666/archlang compile plan.arch`, or the stdio MCP server `npx -y @chanmeng666/archlang-mcp`. Or split the plan into `import`ed modules and send a smaller one.",
+    "Compile it locally, where there is no cap: `npx -y @chanmeng666/archlang compile plan.arch`, or the stdio MCP server `npx -y @chanmeng666/archlang-mcp`. Or send a smaller plan.",
     "tools/call compile { source: <more bytes than the host's cap> }   # error on the hosted MCP server, before any compile work",
   ),
   E_INSTANCE_NO_TRANSFORM: E(

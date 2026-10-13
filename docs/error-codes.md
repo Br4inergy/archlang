@@ -595,7 +595,7 @@ let x = a[5]   # error
 
 **Cause.** A host with a per-request CPU ceiling (the hosted MCP server) refuses a source above its byte cap before compiling it. `compile()` itself has no size cap: its budgets are counts, and every input it is given returns a diagnostic.
 
-**Fix.** Compile it locally, where there is no cap: `npx -y @chanmeng666/archlang compile plan.arch`, or the stdio MCP server `npx -y @chanmeng666/archlang-mcp`. Or split the plan into `import`ed modules and send a smaller one.
+**Fix.** Compile it locally, where there is no cap: `npx -y @chanmeng666/archlang compile plan.arch`, or the stdio MCP server `npx -y @chanmeng666/archlang-mcp`. Or send a smaller plan.
 
 ```arch static
 tools/call compile { source: <more bytes than the host's cap> }   # error on the hosted MCP server, before any compile work
