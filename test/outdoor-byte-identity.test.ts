@@ -190,19 +190,26 @@ import { type CompilerApi, semanticDigestWith } from "./byte-identity-digest.js"
 // station, the drawing only: the OLD SVG put back into the new payload reproduces each old
 // row, and SEMANTIC_BASELINE did not move. Each moved call-out in ./byte-identity-baseline.ts
 // ("thickness call-outs keep off doorways and fixtures").
+// Every row re-measured once for net internal area (owner decision 2): describe() gains
+// net_area_m2 / totals.net_floor_area_m2; SVG and lint unchanged except room schedules.
+// A hybrid run of this file, unedited, with describe() from the pre-change tree (1eb1bf9)
+// reproduces every old SUMMARY row and every old whole-surface row but `aquarium`'s, which
+// set `schedule rooms` and gain the NET AREA column; with compile() too from that tree
+// they reproduce as well. The account is in ./byte-identity-baseline.ts ("EVERY row
+// re-measured, once").
 const BASELINE: [string, string][] = [
-  ["laneway-house", "779d485d40bc85d86a029a8552d1f69dc5f337e322d81d01f467b265973f3232"],
-  ["studio", "a673da24ae4ecee5a7de64e34efbf5f24df2cf6bfb85d4d8e79bcfd54c7a1acb"],
-  ["gallery-l", "ffd6dd1847abaddeb7fc923e60bc66b7d798250ef53f29f2db918f1dee9583a0"],
-  ["aquarium", "e665a074e8738a1ac4aeded2cb719c7ac7267cbd8758ab74465d5dfd922b2538"],
+  ["laneway-house", "fe584e22b63295a27537b93db681c7fb5ab1968caa27761cb97191e331d964d2"],
+  ["studio", "fe06b9554615b4722732d13e7976991b7469d03387e8846ad83f54f83f3cbde7"],
+  ["gallery-l", "7ab8ddd688e0a9fabb909fbfd910879a5e247ae4ae846412350951cd49dea6f0"],
+  ["aquarium", "dd68e90548fa0cbde92f1ee00314b17e2a4a618fd1a3f9a207275e184029fec1"],
 ];
 
 /** The SUMMARY half of the same law — see the header. Re-measured once, for `aquarium`, because its rooms were wrong. */
 const SEMANTIC_BASELINE: [string, string][] = [
-  ["laneway-house", "9a173beb7f213286b8e0c117d829d126166b93e118f91894ba278005254a5255"],
-  ["studio", "540245f5c6c0f523e13b455cad9bcfc3c6d21cf96ca953ce1bbfa3d547345208"],
-  ["gallery-l", "cef0ee1863a505bb831aa2512ca204547117872a61cf1a1ddd293361f0b688be"],
-  ["aquarium", "299f0e348e915d0f4f7aac16a047f708cc7003f3103892b10f46ee945a6b477c"],
+  ["laneway-house", "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0"],
+  ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
+  ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
+  ["aquarium", "6f903304483fcf9b9062f3f7f1d20bfaec7a6ff72f76fc6dffbf1d8856517aa0"],
 ];
 
 /** The compiler surface the summary-half pins are taken over. */

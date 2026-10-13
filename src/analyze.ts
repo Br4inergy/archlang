@@ -156,6 +156,14 @@ export function roomAreaMm2(r: {
   return r.poly ? polygonArea(r.poly) : r.size.w * r.size.h;
 }
 
+/**
+ * A room's NET internal area in mm²: its own shape inset by half the thickness of each wall
+ * whose centreline runs along its edge (`describe().rooms[].net_area_m2`, the room
+ * schedule's NET AREA column). Beside {@link roomAreaMm2}, never instead of it: the rule
+ * lives in `analyze/net-area.ts`, and takes the storey's wall segments.
+ */
+export { roomNetAreaMm2 } from "./analyze/net-area.js";
+
 /** Is the point inside the room's floor (closed bounds — the boundary counts)? */
 export function pointInRoomBox(p: Point, b: RoomBox): boolean {
   return b.poly ? pointInPolygon(p.x, p.y, b.poly) : pointInRect(p.x, p.y, b);

@@ -300,6 +300,11 @@ const PAGE_META = [
     "ADR 26 — a scripted Worker hosts the MCP server",
     "Why ArchLang's MCP server also runs as one scripted Cloudflare Worker: stateless HTTP, an SVG image URL, a byte cap before compiling, and the measured CPU cost.",
   ],
+  [
+    "/adr/0027-net-internal-area",
+    "ADR 27 — net area beside centreline area",
+    "describe() reports each room's net internal area: its shape inset by half of each bounding wall's thickness, exact, beside the unchanged centreline area_m2.",
+  ],
 ] as const;
 
 type PageMeta = { readonly title: string; readonly description: string };

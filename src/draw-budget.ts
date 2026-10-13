@@ -104,8 +104,8 @@ export function storeyPassUnits(ir: ResolvedPlan, registry: Registry): number {
   }
   const rooms = ir.elements.filter((e): e is RRoom => e.kind === "room");
   if (ir.schedule) {
-    const s = roomSchedule(rooms, ir.zones);
-    n += 16 + 4 * s.rows.length + 8 * s.groups.length;
+    const s = roomSchedule(rooms, ir.zones, ir.walls);
+    n += 16 + 5 * s.rows.length + 9 * s.groups.length;
   }
   if (ir.legend) {
     const outdoors = ir.elements.filter((e): e is ROutdoor => e.kind === "outdoor");

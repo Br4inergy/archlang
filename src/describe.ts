@@ -38,6 +38,7 @@ import {
   rectOf,
   pointInRoomBox,
   roomAreaMm2,
+  roomNetAreaMm2,
   roomBox,
   roomsAdjacent,
   roomsAtPoint,
@@ -52,7 +53,7 @@ import {
   type BBox,
   type RoomBox,
 } from "./analyze.js";
-import { outerFaceBounds } from "./geometry.js";
+import { outerFaceBounds, segmentsOfWall } from "./geometry.js";
 import type { PaperOrientation, PaperSize } from "./sheet.js";
 import { computeCirculation, type CirculationModel } from "./analyze/circulation.js";
 import { symmetryFacts, type SymmetryFacts } from "./analyze/symmetry.js";
@@ -144,8 +145,20 @@ export interface RoomSummary {
   uses: string[];
   /** Canonical RPLAN-style room category derived from {@link uses}. */
   room_type: string;
-  /** Floor area in square metres, rounded to 2 decimals. */
+  /**
+   * Floor area in square metres, rounded to 2 decimals — measured on the room's own shape,
+   * which is drawn on wall CENTRELINES, so it runs to the middle of every wall round it.
+   */
   area_m2: number;
+  /**
+   * NET internal area in square metres, rounded to 2 decimals: the room's shape inset by
+   * half the thickness of each wall whose centreline runs along its edge (each wall its own
+   * thickness; an edge with no wall is not inset), so it stops at the walls' inner faces.
+   * Always `<= area_m2`; equal to it for a room with no wall on its edge. A circle is inset
+   * only by concentric arc walls. The rule: `docs/adr/0027-net-internal-area.md`.
+   * Appended beside {@link area_m2}, which is unchanged.
+   */
+  net_area_m2: number;
   bbox: BBox;
   /**
    * The room's FLOOR as a closed ring: a rectangle's four corners clockwise from
@@ -708,6 +721,12 @@ export interface SceneSummary {
     windows: number;
     floor_area_m2: number;
     /**
+     * Sum of the rooms' {@link RoomSummary.net_area_m2}, rounded to 2 decimals — summed from
+     * the same rounded per-room figures, the way `floor_area_m2` is, so the total and the
+     * list never disagree by a rounding step.
+     */
+    net_floor_area_m2: number;
+    /**
      * Total `outdoor` area in m², 2 dp — present ONLY when the storey declares a
      * ground surface, so every existing `totals` object is byte-identical.
      *
@@ -730,11 +749,12 @@ export interface SceneSummary {
    */
   freedom: FreedomReport;
   /**
-   * The ROOM SCHEDULE exactly as the sheet draws it — `{ no, id, name, area_m2 }`
-   * per room in source order, so an agent can read the numbered table it just rendered
-   * without OCR'ing the SVG. Present **only when the plan sets `schedule rooms`**; absent
-   * otherwise, so existing summaries are unchanged. `area_m2` matches
-   * {@link RoomSummary.area_m2} and the drawn TOTAL matches {@link totals}`.floor_area_m2`.
+   * The ROOM SCHEDULE exactly as the sheet draws it — `{ no, id, name, area_m2,
+   * net_area_m2 }` per room in source order, so an agent can read the numbered table it just
+   * rendered without OCR'ing the SVG. Present **only when the plan sets `schedule rooms`**;
+   * absent otherwise, so existing summaries are unchanged. `area_m2` and `net_area_m2` match
+   * {@link RoomSummary.area_m2} and {@link RoomSummary.net_area_m2}, and the drawn TOTALs
+   * match {@link totals}`.floor_area_m2` and `.net_floor_area_m2`.
    * The `legend` setting has no counterpart here on purpose: it is pure rendering, and
    * every fact it shows (wall materials, furniture categories) is already in `furniture`
    * and the source.
@@ -1099,6 +1119,8 @@ function summarize(
   const roomRects = new Map<string, RoomBox>(roomEls.map((r) => [r.id, roomBox(r)]));
 
   const adjacency = roomAdjacency(roomEls, roomRects, tol);
+  // The storey's wall segments, once: every room's net area reads them.
+  const wallSegs = ir.walls.flatMap((w) => segmentsOfWall(w));
 
   const rooms: RoomSummary[] = roomEls.map((r, i) => {
     const rect = roomRects.get(r.id)!;
@@ -1110,6 +1132,7 @@ function summarize(
       uses: [...uses],
       room_type: roomTypeForUses(uses),
       area_m2: r2(roomAreaMm2(r) / 1_000_000),
+      net_area_m2: r2(roomNetAreaMm2(r, wallSegs) / 1_000_000),
       // `bbox` stays a plain {x,y,w,h} — never the RoomBox, whose `poly` would leak a
       // fifth key into the JSON. A polygon room's true floor is `floor_polygon`.
       bbox: { x: rect.x, y: rect.y, w: rect.w, h: rect.h },
@@ -1288,6 +1311,7 @@ function summarize(
     doors: doors.length,
     windows: windows.length,
     floor_area_m2: floorArea,
+    net_floor_area_m2: r2(rooms.reduce((s, r) => s + r.net_area_m2, 0)),
     // Summed from the same already-rounded per-surface numbers the rows report, the way
     // `floor_area_m2` is summed from the rooms — so the total and the list can never
     // disagree by a rounding step. Spread, so a plan with no ground has no key at all.
@@ -1390,7 +1414,7 @@ function summarize(
     // The drawn schedule, from the same pure derivation the renderer uses — so the table
     // in the SVG and this JSON can never disagree. Opt-in only. `ir.zones` is passed for
     // exactly the same reason: the rows here must be the rows drawn, grouping included.
-    ...(ir.schedule === "rooms" ? { schedule: roomSchedule(roomEls, ir.zones).rows } : {}),
+    ...(ir.schedule === "rooms" ? { schedule: roomSchedule(roomEls, ir.zones, ir.walls).rows } : {}),
     ...(zones ? { zones } : {}),
     // Opt-in derived facts: computed and present ONLY when requested, so the default
     // summary is byte-identical. The logic lives in `analyze/symmetry.ts`/`analyze/syntax.ts`.
@@ -1492,7 +1516,7 @@ function summarizeResolved(
       furniture: [],
       access: { entrances: [], hasEntrance: false, edges: [], rooms: [] },
       circulation: null,
-      totals: { rooms: 0, doors: 0, windows: 0, floor_area_m2: 0 },
+      totals: { rooms: 0, doors: 0, windows: 0, floor_area_m2: 0, net_floor_area_m2: 0 },
       input_graph: {},
       freedom: emptyFreedom(),
       diagnostics,

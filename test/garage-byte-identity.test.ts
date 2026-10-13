@@ -155,17 +155,24 @@ const ROOT = join(HERE, "..");
 // drawing only: the OLD SVG put back into the new payload reproduces each old row, and
 // SEMANTIC_BASELINE did not move. Each moved call-out in ./byte-identity-baseline.ts
 // ("thickness call-outs keep off doorways and fixtures").
+// Every row re-measured once for net internal area (owner decision 2): describe() gains
+// net_area_m2 / totals.net_floor_area_m2; SVG and lint unchanged except room schedules.
+// A hybrid run of this file, unedited, with describe() from the pre-change tree (1eb1bf9)
+// reproduces every old SUMMARY row and every old whole-surface row but `bungalow` and `furnished-flat`'s, which
+// set `schedule rooms` and gain the NET AREA column; with compile() too from that tree
+// they reproduce as well. The account is in ./byte-identity-baseline.ts ("EVERY row
+// re-measured, once").
 const BASELINE: Readonly<Record<string, string>> = {
-  "studio.arch": "daacc21fb471e0d7d29c88191b838607a07b3f73e82a0508d42a8cbd8184bef3",
-  "laneway-house.arch": "db057207a832b3c0bce1cdb9580acb50a0eba0562db7332b3465c210c7910811",
-  "bungalow.arch": "4385f60b8dae41c7f1b5e8b14f52171242bcfeb378602c2523c843dcfba8c4dc",
+  "studio.arch": "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f",
+  "laneway-house.arch": "62b3fdb835ccc7eb565f982ed7930d99cfced87bbf4ae9d6bb5410e4945d255c",
+  "bungalow.arch": "305d71fb79d001f1c7df716aa629ec82890d79ddd27294d509aa324d4b782448",
   // Re-measured for the `overhead` flag. Its SOURCE gained two statements —
   // a `range_hood` over the stove and a `mirror` over the basin, the two correct drawings
   // the missing flag had kept out of the flagship — so this plan is a different building
   // and both its digests move. See the SEMANTIC_BASELINE note for the proof that the CODE
   // is innocent: the pre-`overhead` source reproduces the OLD hexes exactly under the NEW compiler.
-  "furnished-flat.arch": "889f4246f5e98f589952d5e20e0acdfd6057f542e0620c8d20bce01dd17c88f0",
-  "two-bed.arch": "e2df66666ea707a11618a9b718820fe12998123d03e6f2cd5ab4698539eac1d5",
+  "furnished-flat.arch": "5022c83f78694ffbd62e0f16daf188b3317f8696f26242933bf543ba65d531fc",
+  "two-bed.arch": "83db33c0b0b8322c06643658b574cfd5fc0e320d7ddbe22c815cf0d7a3ae94f4",
 };
 
 /**
@@ -176,9 +183,9 @@ const BASELINE: Readonly<Record<string, string>> = {
  * allowed to move {@link BASELINE}; nothing in this release is allowed to move these.
  */
 const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
-  "studio.arch": "540245f5c6c0f523e13b455cad9bcfc3c6d21cf96ca953ce1bbfa3d547345208",
-  "laneway-house.arch": "9a173beb7f213286b8e0c117d829d126166b93e118f91894ba278005254a5255",
-  "bungalow.arch": "93a7bbad33a456a3f9a72b8ec7e0ccc116c3ea777b464149a6c40d0328e3d48d",
+  "studio.arch": "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a",
+  "laneway-house.arch": "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0",
+  "bungalow.arch": "f35202195cf872e00bf31d62fffa7c783d04cfac55e7339154a048c496e8fc3a",
   // `furnished-flat.arch` is the ONE value in this table that is not the original `5298b99`
   // measurement, and the exception proves the rule rather than bending it. Its SOURCE keeps
   // being edited -- seven of the new families in the furniture pass, then a `range_hood` and a `mirror`
@@ -194,8 +201,8 @@ const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
   // auto-id renumbering that inserting two statements mid-file forces on every later piece;
   // `lint()` still returns ONE diagnostic, the same `W_PATH_TOO_NARROW` with the same
   // message and hints, its byte span shifted by the comment lines added above it.
-  "furnished-flat.arch": "c55ce2b43dd4acf0eec4eada9ee456c799bf4188f6f1a2f6d32a8cb691424fc4",
-  "two-bed.arch": "061698b483472d4cee3801c39a6e1f74070037d82c8ea7efa19906388f24a79a",
+  "furnished-flat.arch": "dab3b998a75ba65679021c8ae9282cb785d8daf69e6c0d64c39aea0c35a36fa5",
+  "two-bed.arch": "956cb006115d475428a5eaed61fb01cf5ec47bcdf08899a4cd5bca56e5d72725",
 };
 
 suite("the outdoor tranche — the byte-identity law", () => {
