@@ -346,6 +346,8 @@ export interface TitleJson {
   project?: string;
   drawn_by?: string;
   date?: string;
+  number?: string;
+  revision?: string;
 }
 
 /** One connector edge (output-only), from the modeled door/opening access graph. */
@@ -662,11 +664,19 @@ function northIsDefault(n: NorthDir): boolean {
   return n === "up";
 }
 
-function titleToJson(t: { project?: string; drawnBy?: string; date?: string }): TitleJson {
+function titleToJson(t: {
+  project?: string;
+  drawnBy?: string;
+  date?: string;
+  number?: string;
+  revision?: string;
+}): TitleJson {
   return {
     ...(t.project !== undefined ? { project: t.project } : {}),
     ...(t.drawnBy !== undefined ? { drawn_by: t.drawnBy } : {}),
     ...(t.date !== undefined ? { date: t.date } : {}),
+    ...(t.number !== undefined ? { number: t.number } : {}),
+    ...(t.revision !== undefined ? { revision: t.revision } : {}),
   };
 }
 
@@ -1070,6 +1080,8 @@ function emitArch(p: PlanJson): string {
     if (p.title.project !== undefined) L.push(`    project ${q(p.title.project)}`);
     if (p.title.drawn_by !== undefined) L.push(`    drawn_by ${q(p.title.drawn_by)}`);
     if (p.title.date !== undefined) L.push(`    date ${q(p.title.date)}`);
+    if (p.title.number !== undefined) L.push(`    number ${q(p.title.number)}`);
+    if (p.title.revision !== undefined) L.push(`    revision ${q(p.title.revision)}`);
     L.push(`  }`);
   }
 
@@ -1665,6 +1677,8 @@ export const PLAN_JSON_SCHEMA = {
         project: { type: "string", description: "Project name." },
         drawn_by: { type: "string", description: "Author / drafter." },
         date: { type: "string", description: "Date string." },
+        number: { type: "string", description: "Drawing number, e.g. A-101." },
+        revision: { type: "string", description: "Drawing revision, e.g. B." },
       },
     },
     edges: {

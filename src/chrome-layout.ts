@@ -102,6 +102,8 @@ export interface ChromeInput {
   schedule?: RoomSchedule | null;
   /** Derived legend rows when the plan set `legend`. */
   legend?: readonly LegendEntry[] | null;
+  /** The plan's `notes`, when it wrote any. */
+  notes?: readonly string[] | null;
   /** Which storey this page draws, for a multi-storey plan (see {@link titleRows}). */
   level?: LevelStamp;
 }
@@ -129,6 +131,9 @@ export function titleRows(title: TitleNode | undefined, scale: string | undefine
   if (title?.project) rows.push({ k: "PROJECT", v: title.project });
   if (title?.drawnBy) rows.push({ k: "DRAWN BY", v: title.drawnBy });
   if (title?.date) rows.push({ k: "DATE", v: title.date });
+  // The drawing's identity on a set: its number and revision, each a row only when written.
+  if (title?.number) rows.push({ k: "DRAWING NO.", v: title.number });
+  if (title?.revision) rows.push({ k: "REVISION", v: title.revision });
   if (scale) rows.push({ k: "SCALE", v: scale });
   if (level) rows.push({ k: "LEVEL", v: level.name ? `${level.level} — ${level.name}` : String(level.level) });
   return rows;
@@ -237,6 +242,7 @@ export function layoutChrome(input: ChromeInput): ChromeLayout {
     top: bandBottom + gap,
     schedule: input.schedule ?? null,
     legend: input.legend ?? null,
+    notes: input.notes ?? null,
   });
 
   const margin: PageMargins = {

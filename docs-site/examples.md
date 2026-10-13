@@ -228,6 +228,17 @@ nudged away.
 
 <ArchLive :src="EXAMPLES['furnished-flat']" :rows="30" />
 
+### Issued Sheet (drawing number, revision and notes)
+
+A three-room flat — **3 rooms, 54 m², 3 doors, 3 windows**, 9.2 × 6.2 m to the outer
+faces — drawn the way a sheet leaves the office, on A3 at `scale 1:50`. The title block
+carries a drawing **number** and **revision** (`title { … number "A-101" revision "B" }`),
+and the general notes sit in a numbered **NOTES** table (`notes "…"`) beside the room
+schedule. Both draw only — `archlang describe` and `archlang lint` report exactly what
+they would without those lines.
+
+<ArchLive :src="EXAMPLES['sheet-notes']" :rows="30" />
+
 ### Suburban Bungalow (orientation, and doors that are not hinged)
 
 A single-storey house — **8 rooms, 102 m², 6 doors, 7 windows** at `scale 1:100` — on a

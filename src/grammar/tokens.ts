@@ -39,6 +39,9 @@ export const KEYWORDS = {
     "schedule",
     "legend",
     "site",
+    // `notes "…"` — the sheet's general-notes table. A statement keyword like `legend`;
+    // appended at the end so every earlier keyword keeps its position.
+    "notes",
   ],
   /** Built-in element kinds → `storage.type.element`, CM `typeName`. */
   element: [
@@ -93,6 +96,10 @@ export const KEYWORDS = {
     "project",
     "drawn_by",
     "date",
+    // `title { number "A-101" revision "B" }` — the drawing number and revision fields,
+    // beside the other title-block field words.
+    "number",
+    "revision",
     "from",
     "as",
     "right-of",
@@ -450,4 +457,6 @@ export const STATEMENT_STARTS: readonly string[] = [
   // unaffected — that clause is consumed inside `parseStrip`, which never re-enters this
   // dispatch.
   "height",
+  // The sheet's `notes "…"` statement, for the same reason `legend` is here.
+  "notes",
 ];

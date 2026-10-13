@@ -19,7 +19,7 @@ import { concat, type Doc, hardline, indent, join, printDoc } from "./doc.js";
 import { fmtSource as numStr } from "./num-format.js";
 // Expression re-emission lives in one place (shared with the fix producers) so
 // the formatter and `arch fix` render an expression byte-identically.
-import { exprToSource as exprStr } from "./expr-source.js";
+import { escapeStr, exprToSource as exprStr } from "./expr-source.js";
 // The leaf (non-block) statement kinds print through the one shared printer an
 // element's own fix producers also lower onto — see `statement-print.ts`'s header.
 import { ptStr, statementText } from "./statement-print.js";
@@ -108,6 +108,8 @@ function titleDoc(title: TitleNode): Doc {
   if (title.project !== undefined) fields.push(`project ${JSON.stringify(title.project)}`);
   if (title.drawnBy !== undefined) fields.push(`drawn_by ${JSON.stringify(title.drawnBy)}`);
   if (title.date !== undefined) fields.push(`date ${JSON.stringify(title.date)}`);
+  if (title.number !== undefined) fields.push(`number "${escapeStr(title.number)}"`);
+  if (title.revision !== undefined) fields.push(`revision "${escapeStr(title.revision)}"`);
   if (fields.length === 0) return "title { }";
   return concat(["title {", indent(concat([hardline, join(hardline, fields)])), hardline, "}"]);
 }
@@ -258,6 +260,9 @@ export function formatPlan(plan: PlanNode, source: string): string {
   if (plan.autoDims) settings.push(`dims auto ${plan.autoDims}`);
   if (plan.schedule) settings.push(`schedule ${plan.schedule}`);
   if (plan.legend) settings.push("legend");
+  // One `notes` line per note, in source order — repeated statements append, so this is a
+  // fixed point whether the author wrote one statement or several.
+  for (const n of plan.notes ?? []) settings.push(`notes "${escapeStr(n)}"`);
   if (plan.accTitle !== undefined) settings.push(`accTitle ${JSON.stringify(plan.accTitle)}`);
   if (plan.accDescr !== undefined) settings.push(`accDescr ${JSON.stringify(plan.accDescr)}`);
 

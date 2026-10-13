@@ -59,6 +59,7 @@ plan "My Home" {
 | `axes { x at … y at … }` | The plan's **positioning axes** (定位轴线) — declared structural datum lines, drawn dash-dot with a labelled bubble and used as the ticks of the middle dimension chain. See [Positioning axes](#positioning-axes-定位轴线). | none |
 | `schedule rooms` | Draw the **ROOM SCHEDULE** table in the sheet's bottom band — number, name and area per room, closed by a total. Rows are derived from the rooms, never authored. See [Sheet tables](#sheet-tables--room-schedule--legend). | off |
 | `legend` | Draw the **LEGEND** table beside the schedule — one row per wall hatch material and per fixture symbol the drawing actually uses, each with a real swatch. Fully derived; nothing to configure. See [Sheet tables](#sheet-tables--room-schedule--legend). | off |
+| `notes "…" ["…" …]` | The sheet's general **NOTES**, drawn as a numbered table in the same band. Repeated statements append. See [Sheet tables](#sheet-tables--room-schedule--legend). | none |
 | `height <mm>` | The building's default **floor-to-floor** storey height. The vertical datum: it draws nothing at all, because a floor plan is a horizontal cut. A `level` may override it and a `wall` may override that. See [Heights (the datum layer)](#heights-the-datum-layer). | `3000` |
 
 ### Paper and scale (the sheet)
@@ -1958,10 +1959,15 @@ title {
   project "<name>"
   drawn_by "<name>"
   date "<date>"
+  number "<drawing number>"
+  revision "<revision>"
 }
 ```
 
-Rendered as a title block in the lower-right corner (with `scale` if set).
+Rendered as a title block in the lower-right corner (with `scale` if set). Every field is
+optional and draws one row only when written; `number` and `revision` draw `DRAWING NO.`
+and `REVISION` rows after `DATE`. They draw only — `describe()` does not report them —
+and Plan JSON carries them in `title` like the other three.
 
 ### Positioning axes (定位轴线)
 
@@ -2024,6 +2030,7 @@ plan "Clinic" {
   dims auto all
   schedule rooms      # the ROOM SCHEDULE table
   legend              # the LEGEND table, derived from the plan
+  notes "Do not scale from this drawing."   # the NOTES table
   # … walls, rooms, fixtures …
 }
 ```
@@ -2048,6 +2055,10 @@ A final **`TOTAL`** row closes the table with the same number as
 `windows` or `finishes` can be added later without a respelling — anything else is a
 parse error with a did-you-mean, never a silently ignored word.
 
+**`notes "…"`** draws the sheet's general notes as a numbered **NOTES** table, one row per
+note in source order; a statement may carry several strings and repeated statements append.
+A `\n` inside a note continues it on an unnumbered line.
+
 **`legend`** draws a legend derived closed-form from the drawing:
 
 - one row per distinct **wall hatch** in use, its swatch filled with the very pattern
@@ -2059,12 +2070,14 @@ Nothing is listed that is not drawn, and a category that renders as a plain labe
 rectangle gets no row (there is no symbol to explain). There is nothing to configure —
 which is the point: the legend cannot drift from the drawing.
 
-Both tables are ordinary `annotations`-pass primitives on the CAD layer **`A-ANNO`**, so
+The tables sit side by side in one row — room schedule, legend, notes — and the sheet
+fit reserves the tallest. All of them are ordinary
+`annotations`-pass primitives on the CAD layer **`A-ANNO`**, so
 SVG, PNG, PDF and DXF all draw them from one implementation; the ASCII plan (`-f txt`)
 has no sheet chrome and still has none. Every size derives from the drawing's size
-system, so the tables scale with the sheet. `describe()` reports the schedule as
-`schedule[]` (see [Analysis](analysis.md)); `legend` is pure rendering and adds no
-field — every fact it shows is already in `furniture` and the source.
+system, so the tables scale with the sheet. `describe()` reports the room schedule as
+`schedule[]` (see [Analysis](analysis.md)); `legend` and `notes` are pure rendering and
+add no field — every fact they show is already in `furniture` or the source.
 
 ## Levels — a multi-storey building (v1.21)
 

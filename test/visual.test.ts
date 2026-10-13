@@ -95,6 +95,9 @@ const EXAMPLES = [
   // burner ring that faceted, a pillow branch that flipped, all draw the same STRING
   // length and would slip past a snapshot while moving pixels here.
   "furnished-flat.arch",
+  // The issued-sheet example: the only golden with the title block's `number`/`revision`
+  // rows and a NOTES table, so it is where either would show a drift first.
+  "sheet-notes.arch",
 ];
 
 async function hasResvg(): Promise<boolean> {

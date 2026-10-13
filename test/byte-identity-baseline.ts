@@ -785,6 +785,13 @@
  * Outside this table, five `eval/fidelity-plans` rows keep their `W_BATH_VIA_BEDROOM` — each
  * plan's only wet room is behind a bedroom — with a reworded hint
  * (`test/import-module-lets.test.ts`).
+ *
+ * ## `sheet-notes`: a row ADDED with a new example, nothing re-measured
+ *
+ * `examples/sheet-notes.arch` arrived with the issued-sheet statements (`notes`, the title
+ * block's `number`/`revision`). Its two rows were measured with this file's own digest
+ * bodies on the branch that added it, when the example first existed; no other row moved
+ * (the law suites and a per-payload sweep of the whole corpus, before against after, agree).
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -811,6 +818,7 @@ export const BASELINE: [string, string][] = [
   ["one-room", "006f9e2008584250fa6aa645769f01ad4ad3dcc5053d76c1c4fa963c6dbc3283"],
   ["parametric", "b8055080fe56197849ab4624be16eed46510ac467de6218df59f093979e8235c"],
   ["relational", "776f94d7f8a94ebf78b752697fa433cf49a05b1e4309430e8725a71e15780354"],
+  ["sheet-notes", "786f0550ba6d245c3c4b421dc8be1ac8b28ef6d802bec0c3513fdbb3a81aa7ec"], // added with the example, see header
   ["studio", "daacc21fb471e0d7d29c88191b838607a07b3f73e82a0508d42a8cbd8184bef3"],
   ["terrace-row", "5c7a1b1380f8ca14f6927a1fefa481ffba57deb85deee79fc83930863bbab898"], // re-measured, see header
   ["themed", "b6ba97d9000126e4355dd8c4a853c19fb8aa8790be0603dedf3e10fb1620cccf"],
@@ -855,6 +863,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["one-room", "4313ab047cbd42c75be08c6a6c72e3bbe8ee6b1e598a816d722d0aa8655c0551"],
   ["parametric", "5783da773c0493767621e2c063e6da257c660dec2edb5351893f0ad4907afc3a"],
   ["relational", "d31bd84bfcb7bfce8d662470f8828144f55ef3e4117924af898587706bf46293"],
+  ["sheet-notes", "a26a55ae94a0b036450096f6f6c496594a76c8d3ac61da07a47c8145b785ac87"], // added with the example, see header
   ["studio", "540245f5c6c0f523e13b455cad9bcfc3c6d21cf96ca953ce1bbfa3d547345208"],
   ["terrace-row", "172aac3cd62b8ccbbdf2d58374fe0535e4657d1344f60c1c7cb825ae3e2a59b8"],
   ["themed", "3644012b9d972af8e0314ce0a210073cc0315127d38a5f6b35220b00c883aff8"],

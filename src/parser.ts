@@ -425,6 +425,9 @@ class Parser {
             this.next();
             plan.legend = true;
             break;
+          case "notes":
+            this.parseNotesSetting(plan);
+            break;
           case "accTitle":
             this.next();
             if (plan.accTitle !== undefined) this.warnDupAcc("accTitle", t);
@@ -744,6 +747,18 @@ class Parser {
   }
 
   /**
+   * `notes "…" ["…" …]` — one or more general-note strings for the sheet's NOTES table.
+   * At least one string is required; repeated statements APPEND in source order (as
+   * `axes` rows do), so a long list may be written one note per line.
+   */
+  private parseNotesSetting(plan: PlanNode): void {
+    this.next();
+    const notes = [this.eatString()];
+    while (this.isType("string")) notes.push(this.eatString());
+    plan.notes = [...(plan.notes ?? []), ...notes];
+  }
+
+  /**
    * One value from a closed vocabulary, spanned on the OFFENDING WORD with a `closest()`
    * did-you-mean — the `schedule` variant of the pattern, factored out because `site` has
    * two such fields. `what` names the slot in the message ("street direction").
@@ -942,6 +957,14 @@ class Parser {
         case "date":
           this.next();
           node.date = this.eatString();
+          break;
+        case "number":
+          this.next();
+          node.number = this.eatString();
+          break;
+        case "revision":
+          this.next();
+          node.revision = this.eatString();
           break;
         default:
           this.fail(`Unknown title field "${t.value}"`, t);

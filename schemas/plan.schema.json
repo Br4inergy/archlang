@@ -670,6 +670,14 @@
         "date": {
           "type": "string",
           "description": "Date string."
+        },
+        "number": {
+          "type": "string",
+          "description": "Drawing number, e.g. A-101."
+        },
+        "revision": {
+          "type": "string",
+          "description": "Drawing revision, e.g. B."
         }
       }
     },

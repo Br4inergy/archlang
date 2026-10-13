@@ -119,7 +119,9 @@ export const STATEMENT_GRAMMAR: Record<string, string> = {
   zone: 'zone <id> ["Label"] { … }   # a WING/DEPARTMENT grouping: pure metadata, ZERO geometry — every statement inside resolves as if the wrapper were deleted (same coordinates, same ids; a zone is NOT a scope), so the SVG is byte-identical. Membership is DECLARED, never inferred from position. Nests (`zone west { zone galleries { … } }` → path `west.galleries`, innermost wins) and is legal wherever a statement is, incl. inside `level`. `describe --json` adds `zones[]` (path/rooms/floor_area_m2; nested rooms roll UP, so summing zones double-counts) + `describe --zone <path>` to read one wing',
   schedule: `schedule ${SCHEDULE_SUBJECTS.join("|")}   # draw the ROOM SCHEDULE table below the title block: NO. (01, 02, … source order) · NAME (label, else id) · AREA (m²) + a TOTAL row, all derived from the rooms. \`rooms\` is the only subject (anything else is a parse error). Same rows as \`describe --json\`'s \`schedule[]\`. With \`zone\` blocks the rows group by zone, each closed by a SUBTOTAL row`,
   legend:
-    "legend   # draw the LEGEND table beside the schedule: a row per wall hatch material used and per placed fixture category that has a plan symbol, each with a real swatch. Fully derived; nothing to configure. Pure rendering — no `describe()` field",
+    "legend   # draw the LEGEND table beside the schedule: a row per wall hatch material used and per placed fixture category that has a plan symbol, each with a real swatch. Fully derived",
+  notes:
+    'notes "…" ["…" …]   # a numbered NOTES table beside the others; repeats append. Like `legend` and the title-block `number`/`revision` rows, it draws only: no `describe()` field',
   site: `site { street ${COMPASS_DIRECTIONS.join("|")} [hemisphere ${HEMISPHERES.join("|")}] [boundary (x,y) (x,y) (x,y) …] }   # \`street\`/\`hemisphere\` are semantics only and draw NOTHING; \`boundary\` is the LOT LINE and is the one part that draws (a dash-dot property line on C-PROP) and grows the page, adding \`site.lot_area_m2\` (exact shoelace) + \`site.lot_bbox\` (E_SITE_BOUNDARY_DEGENERATE, E_SITE_BOUNDARY_SELF_INTERSECT). \`street\` is a TRUE compass direction (read WITH \`north\`, not instead of it) and names five on \`describe --json\`'s \`site\`: \`street\`, \`back\` (opposite), \`equator_side\` (S north of the equator, N south of it), \`sunrise_side\` (E), \`sunset_side\` (W). An intent's \`windows.facing\` may assert those NAMES instead of a letter (no \`site\` = E_INTENT_NO_SITE). They are a DRAFTING HEURISTIC for an aspect, NOT daylight — there is no sun model. \`street\` required (E_SITE_NO_STREET), one block (E_SITE_DUP), plan-level only`,
   place:
     'place <component>(<args>) as <name> at (x,y) [rotate 0|90|180|270] [mirror x|y]   # instantiate a component as an ADDRESSABLE instance, authored in LOCAL coords from (0,0); `as`+`at` required. Ids inside become `<name>.<id>` (auto-ids restart per instance) and the plan addresses them dotted — `door on west.perimeter at 50%`, `furniture bed in west.main centered`, `describe --room west.main`. `mirror x` flips left↔right, `y` top↔bottom: a real reflection, so door swings mirror. `import "wing.arch" as wing` makes a WHOLE FILE a zero-arg component. Bare `<component>(<args>)` stays the old INLINE macro — caller\'s coords and id space, no namespace',
@@ -220,6 +222,9 @@ export const CLAUSE_ATTRIBUTES: readonly string[] = [
   "project",
   "drawn_by",
   "date",
+  // Title-block fields, taught by the Structure fence's `title { … }` line like the three above.
+  "number",
+  "revision",
   "from",
   "as",
   "right-of",
@@ -637,7 +642,7 @@ a \`fix\`). This page is everything you need to author it.
 plan "Title" {
 ${settingLines}
   # … elements and scripting …
-  title { project "…" drawn_by "…" date "…" }
+  title { project "…" drawn_by "…" date "…" number "…" revision "…" }
 }
 \`\`\`
 

@@ -1,5 +1,6 @@
 /**
- * **Sheet tables** — the ROOM SCHEDULE and the derived LEGEND.
+ * **Sheet tables** — the ROOM SCHEDULE and the derived LEGEND, and beside them the
+ * authored NOTES (`notes "…"`), drawn only when the plan writes it.
  *
  * A professional floor-plan sheet is not just the drawing: it carries tabular blocks in
  * the margin that let a reader audit the plan without measuring it. GB/T 50104 sheets
@@ -40,6 +41,7 @@ import type { Theme } from "./theme.js";
 import { FIXTURE_CATEGORIES, fixtureGlyph, hasFixtureGlyph } from "./elements/fixtures-glyphs.js";
 import { fmt2 } from "./num-format.js";
 import { roomAreaMm2 } from "./analyze.js";
+import { textWidth } from "./text-metrics.js";
 
 /** Round to 2 decimals, deterministically — the same rounding `describe()` applies. */
 const r2 = (n: number): number => Math.round(n * 100) / 100;
@@ -304,10 +306,22 @@ export interface LegendTableBox extends TableBox {
   swatchW: number;
 }
 
+/** The NOTES table (`notes "…"`): a number column and the note text, one drawn line per row. */
+export interface NotesTableBox extends TableBox {
+  /** Width of the number column (`1.`, `2.`, …). */
+  noW: number;
+  /** One entry per drawn line: the number on a note's first line (empty on a continuation
+   *  line of a note written with `\n`), then the text. */
+  lines: { no: string; text: string }[];
+}
+
 /** The laid-out sheet tables, plus the box they occupy (what the margins must contain). */
 export interface SheetTables {
   schedule: ScheduleTableBox | null;
   legend: LegendTableBox | null;
+  /** Present only when the plan wrote `notes`, so an existing layout's object (and the
+   *  bytes drawn from it) is unchanged. */
+  notes?: NotesTableBox;
   /** Left-most x any table starts at (both share it — they sit in one row). */
   left: number;
   /** Top y of the row (both tables share it). */
@@ -325,6 +339,8 @@ export interface SheetTablesInput {
   top: number;
   schedule?: RoomSchedule | null;
   legend?: readonly LegendEntry[] | null;
+  /** The plan's `notes`, when it wrote any. */
+  notes?: readonly string[] | null;
 }
 
 /** Table metrics as fractions of the drawing's reference dimension (see `RenderSizes`). */
@@ -336,6 +352,9 @@ const COL_NAME = 0.2;
 const COL_AREA = 0.105;
 const LEGEND_SWATCH = 0.05;
 const LEGEND_NAME = 0.22;
+/** NOTES: the number column, and the minimum width of the text column (widened to fit). */
+const NOTES_NO = 0.035;
+const NOTES_TEXT = 0.2;
 /** Gap between the two tables when both are drawn. */
 const TABLE_GAP = 0.03;
 
@@ -353,14 +372,24 @@ const TABLE_GAP = 0.03;
  */
 export const scheduleRowCount = (s: RoomSchedule): number => 3 + s.rows.length + 2 * s.groups.length;
 export const legendRowCount = (entries: number): number => 1 + entries;
+/** The NOTES table's drawn lines: a note written with `\n` draws one line per part. */
+const noteLines = (notes: readonly string[]): string[][] => notes.map((s) => s.split("\n"));
+/** The NOTES table: caption plus one row per drawn line. */
+export const notesRowCount = (notes: readonly string[]): number =>
+  1 + noteLines(notes).reduce((s, l) => s + l.length, 0);
 
 /**
- * How deep the table ROW is, for the tables a plan actually opted into: the taller of the
- * two, or `0` when it opted into neither (which is what keeps an opted-out plan's margins,
- * and therefore its bytes, unchanged).
+ * How deep the table ROW is, for the tables a plan actually opted into: the tallest of
+ * them, or `0` when it opted into none (which is what keeps an opted-out plan's margins,
+ * and therefore its bytes, unchanged). `extraRows` is the NOTES table's (`0` when it is not
+ * drawn).
  */
-export function tableBandRows(schedule: RoomSchedule | null, legend: readonly LegendEntry[] | null): number {
-  return Math.max(schedule ? scheduleRowCount(schedule) : 0, legend ? legendRowCount(legend.length) : 0);
+export function tableBandRows(
+  schedule: RoomSchedule | null,
+  legend: readonly LegendEntry[] | null,
+  extraRows = 0,
+): number {
+  return Math.max(schedule ? scheduleRowCount(schedule) : 0, legend ? legendRowCount(legend.length) : 0, extraRows);
 }
 
 /** That row count as a height, in the same units as `refDim`. */
@@ -391,12 +420,16 @@ export function planTableRows(input: {
    * declared paper while `sheet.fits` says `true`), and a lawn adds a row.
    */
   outdoor?: readonly ROutdoor[];
+  /** The plan's `notes`, which draw a table in the same band — optional for the same reason
+   *  `outdoor` is, and as binding: the fit rule must reserve the row. */
+  notes?: readonly string[] | undefined;
 }): number {
   const schedule = input.schedule === "rooms" ? roomSchedule(input.rooms, input.zones) : null;
   const legend = input.legend
     ? legendEntries(hatchesUsed(input.walls, groundMaterialsUsed(input.outdoor ?? [])), input.furniture)
     : null;
-  return tableBandRows(schedule, legend);
+  const notes = input.notes && input.notes.length > 0 ? notesRowCount(input.notes) : 0;
+  return tableBandRows(schedule, legend, notes);
 }
 
 /**
@@ -408,7 +441,8 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
   const { bounds: b, refDim, top } = input;
   const sched = input.schedule ?? null;
   const legendRows = input.legend ?? null;
-  if (!sched && !legendRows) return null;
+  const notesData = input.notes && input.notes.length > 0 ? input.notes : null;
+  if (!sched && !legendRows && !notesData) return null;
 
   const rowH = refDim * ROW_H;
   const fs = refDim * FONT;
@@ -467,7 +501,37 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
     bottom = Math.max(bottom, top + h);
   }
 
-  return { schedule, legend, left: b.minX, top, bottom, right: x };
+  // NOTES close the row on the right. Its text column is as wide as the longest line, so a
+  // note is never cut; the drawn lines are the notes in source order, numbered.
+  let notes: NotesTableBox | undefined;
+  if (notesData) {
+    // The schedule leaves a gap after itself; the legend does not, so add one after it.
+    if (legend) x += refDim * TABLE_GAP;
+    const lines = noteLines(notesData).flatMap((parts, i) =>
+      parts.map((text, k) => ({ no: k === 0 ? `${i + 1}.` : "", text })),
+    );
+    const noW = refDim * NOTES_NO;
+    const textW = Math.max(
+      refDim * NOTES_TEXT,
+      textWidth("NOTES", fs) + fs,
+      lines.reduce((m, l) => Math.max(m, textWidth(l.text, fs)), 0) + fs,
+    );
+    const w = noW + textW;
+    const h = tableRowsHeight(refDim, notesRowCount(notesData));
+    notes = { x0: x, y0: top, w, h, rowH, fs, pad: w * 0.02, caption: "NOTES", noW, lines };
+    x += w;
+    bottom = Math.max(bottom, top + h);
+  }
+
+  return {
+    schedule,
+    legend,
+    ...(notes ? { notes } : {}),
+    left: b.minX,
+    top,
+    bottom,
+    right: x,
+  };
 }
 
 /**
@@ -481,6 +545,7 @@ export function translateSheetTables(t: SheetTables, dx: number, dy: number): Sh
   return {
     schedule: t.schedule ? move(t.schedule) : null,
     legend: t.legend ? move(t.legend) : null,
+    ...(t.notes ? { notes: move(t.notes) } : {}),
     left: t.left + dx,
     top: t.top + dy,
     bottom: t.bottom + dy,
@@ -755,14 +820,30 @@ function legendNodes(t: LegendTableBox, theme: Theme, sizes: RenderSizes, out: S
   });
 }
 
+/** The NOTES table's primitives: frame, caption, a rule, then each line's number and text.
+ *  At most `3 + 2 × lines`. */
+function notesNodes(t: NotesTableBox, theme: Theme, sizes: RenderSizes, out: SceneNode[]): void {
+  const d = drawer(theme, sizes, out);
+  const { x0, y0, w, h, rowH, fs, pad, noW } = t;
+  d.frame(x0, y0, w, h);
+  d.text({ x: x0 + pad, y: y0 + rowH * 0.5 }, t.caption, fs, "start", { weight: BOLD });
+  d.rule({ x: x0, y: y0 + rowH }, { x: x0 + w, y: y0 + rowH });
+  t.lines.forEach((l, i) => {
+    const y = y0 + rowH * (1.5 + i);
+    if (l.no !== "") d.text({ x: x0 + noW - pad, y }, l.no, fs, "end");
+    d.text({ x: x0 + noW, y }, l.text, fs, "start");
+  });
+}
+
 /**
  * Lower the laid-out tables to Scene primitives on the `annotations` pass (the last pass,
  * so a table always reads on top). Every backend that walks `RENDER_PASSES` gets them for
- * free; nothing is emitted when neither table is present.
+ * free; nothing is emitted when no table is present. Emitted left to right, as laid out.
  */
 export function sheetTableNodes(t: SheetTables, theme: Theme, sizes: RenderSizes): SceneNode[] {
   const out: SceneNode[] = [];
   if (t.schedule) scheduleNodes(t.schedule, theme, sizes, out);
   if (t.legend) legendNodes(t.legend, theme, sizes, out);
+  if (t.notes) notesNodes(t.notes, theme, sizes, out);
   return out;
 }

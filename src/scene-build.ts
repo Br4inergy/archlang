@@ -873,6 +873,7 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
     scale: ir.scale,
     schedule: scheduleData,
     legend: legendData,
+    ...(ir.notes ? { notes: ir.notes } : {}),
     // Multi-storey: stamp the page with its storey, so a drawing SET is readable (a plan
     // with no `level` block passes nothing and its chrome is byte-identical).
     ...(ir.level !== undefined

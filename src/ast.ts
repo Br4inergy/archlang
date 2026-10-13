@@ -1124,6 +1124,10 @@ export interface TitleNode {
   project?: string;
   drawnBy?: string;
   date?: string;
+  /** `number "A-101"` — the drawing number, a title-block row. Absent unless authored. */
+  number?: string;
+  /** `revision "B"` — the drawing's revision, a title-block row. Absent unless authored. */
+  revision?: string;
   line: number;
   span?: Span;
 }
@@ -1271,6 +1275,13 @@ export interface PlanNode {
    * derived closed-form from the plan. Absent unless the plan opts in.
    */
   legend?: boolean;
+  /**
+   * `notes "…" ["…" …]` — the sheet's general NOTES, one entry per string in source
+   * order (repeated statements append). Drawn as a numbered NOTES table in the sheet's
+   * bottom band; presentation only, never read by `describe()` or `lint()`. Absent
+   * unless authored.
+   */
+  notes?: string[];
   title?: TitleNode;
   /** Explicit accessible title (`accTitle "…"`) — overrides the plan name in the
    *  accessible-SVG `<title>` (`compile(src, { accessible: true })`). Metadata only. */
