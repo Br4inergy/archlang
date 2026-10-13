@@ -53,8 +53,6 @@ export function createHostedServer(origin: string, assets: HostedAssets): McpSer
   const server = new McpServer({ name: "archlang", version: assets.version }, { instructions: INSTRUCTIONS });
 
   registerTools(server, {
-    // The Worker bundles this checkout's own core, so no older core can sit under it.
-    coreMin: "",
     loadLinks: () => import("@chanmeng666/archlang/link"),
     pngUnavailable: PNG_HOSTED,
     // As `registerAppTool` (ext-apps) writes it: the current key and the deprecated flat one.

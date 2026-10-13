@@ -106,9 +106,24 @@ describe("hosted MCP over Streamable HTTP", () => {
     expect(Object.keys(paths).sort()).toEqual(RESOURCE_DEFS.map(([n]) => n).sort());
   });
 
-  it('format "png" is refused as data, saying why, never an exception', async () => {
+  it('format "png" is refused with E_PNG_DEPENDENCY and a Worker-specific fix, never an exception', async () => {
     const out = toolText(await rpc("tools/call", { name: "compile", arguments: { source: TINY, format: "png" } }));
     expect(out).toMatchObject({ ok: false, format: "png", code: "E_PNG_DEPENDENCY", error: PNG_HOSTED });
+    // The catalogued code rides inside `diagnostics`, as on npm, but its `fix` is this host's own
+    // sentence: the catalogue's says to install a renderer, which nothing can do in a Worker.
+    const dep = out.diagnostics.find((d: { code: string }) => d.code === "E_PNG_DEPENDENCY");
+    expect(dep).toEqual({ code: "E_PNG_DEPENDENCY", severity: "error", message: PNG_HOSTED, fix: PNG_HOSTED });
+    expect(dep.fix).not.toBe(ERROR_CATALOG.E_PNG_DEPENDENCY!.fix);
+    // One storey of a multi-storey plan is refused the same way, and the description says so up front.
+    const two = toolText(
+      await rpc("tools/call", {
+        name: "compile",
+        arguments: { source: read("examples/two-storey.arch"), format: "png", level: 1 },
+      }),
+    );
+    expect(two).toMatchObject({ ok: false, code: "E_PNG_DEPENDENCY", error: PNG_HOSTED, level: 1 });
+    const def = (await rpc("tools/list")).tools.find((t: { name: string }) => t.name === "compile");
+    expect(def.description).toContain(PNG_HOSTED);
   });
 
   it("link mints the same URLs the CLI does (one encoder)", async () => {
