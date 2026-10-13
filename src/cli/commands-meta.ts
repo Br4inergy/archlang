@@ -172,7 +172,7 @@ export function cmdContext(args: Args): number {
 
 export function cmdExplain(args: Args): number {
   const code = args._[0];
-  if (!code) return usageError("missing error code (e.g. archlang explain E_ROOM_SIZE)");
+  if (!code) return usageError(`missing error code (e.g. ${CLI_NAME} explain E_ROOM_SIZE)`);
   const upper = code.toUpperCase();
   const entry = ERROR_CATALOG[upper];
   if (!entry) {

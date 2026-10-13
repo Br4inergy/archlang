@@ -13,4 +13,5 @@ paths:
   `examples[]` entry, and a drift test pins the manifest against `FLAG_KEYS` (`src/cli/io.ts`).
 - `--code`/`--severity`/`--select`/`--room` are DISPLAY filters: `ok` and the exit code come from the
   unfiltered set. Narrowing lives in `src/cli/commands-analyze.ts`, never in `describe()`/`lint()`.
-- A manifest edit moves `docs/cli-reference.md` — `npm run gen:cli`, never hand-edit.
+- A manifest edit moves `docs/cli-reference.md` and `llms-full.txt` — `npm run gen:all` (`gen:llms`
+  measures the bundle size the `context` help states, then `gen:cli`), never hand-edit.

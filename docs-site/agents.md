@@ -46,8 +46,8 @@ Then ask in plain language; the agent writes the `.arch`, compiles it, and check
 npx -y @chanmeng666/archlang help
 ```
 
-This page writes every call as `archlang <cmd>`, the command `npm i -g @chanmeng666/archlang`
-installs. Without that, write `npx -y @chanmeng666/archlang <cmd>`. Two names look shorter and
+The recommended forms are `npx -y @chanmeng666/archlang <cmd>`, or `npm i -g @chanmeng666/archlang`
+followed by `archlang <cmd>`; this page writes the short one. Two names look shorter and
 are wrong: the unscoped npm package `archlang` belongs to someone else, and a bare `arch` runs the
 coreutils command on Linux, macOS and Git Bash. (The package installs `arch` as an alias too.)
 

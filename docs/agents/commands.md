@@ -9,7 +9,7 @@
   the four workspaces. Run `npm run build` first: without `dist/` the playground resolves the bare
   `archlang` specifier to the wrong package and reports dozens of spurious "no exported member" errors.
 - `npm run check:drift` is separate from `check` and is a CI gate. `gen:all` orders `gen:spec`
-  before `gen:llms`. Run `gen:example-svgs` after any rendering change.
+  before `gen:llms` before `gen:cli` (the CLI reference states the bundle size `gen:llms` measures). Run `gen:example-svgs` after any rendering change.
 - `npm test` runs the vitest include list in `vitest.config.ts` — `test/`, `playground/test/`,
   `packages/*/test/`, `editors/vscode/test/`. `check:test-wiring` fails on a test outside it.
 - `*:build:only` scripts skip the core rebuild; `npm run build` must have run.

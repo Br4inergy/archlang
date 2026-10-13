@@ -290,16 +290,18 @@ the `GENERATORS` table in `scripts/check-drift.ts` — this table mirrors it:
 |--------------------|-----------|-----------------|
 | `editors/archlang.tmLanguage.json`, `playground/src/arch-language.js`, `docs-site/.vitepress/theme/arch-highlight.js` | `gen:grammars` | `src/grammar/tokens.ts` |
 | `docs/error-codes.md` | `gen:errors` | `src/error-catalog.ts` |
-| `docs/cli-reference.md` | `gen:cli` | `src/manifest.ts` |
 | `spec.llm.md` | `gen:spec` | `src/grammar/tokens.ts` + `examples/` |
 | `llms-full.txt` | `gen:llms` | `spec.llm.md` + `SKILL.md` + `src/manifest.ts` + `src/error-catalog.ts` |
+| `src/context-size.ts` | `gen:llms` | the byte size of the rendered `llms-full.txt` and of each `--section` |
+| `docs/cli-reference.md` | `gen:cli` | `src/manifest.ts` (which states the sizes in `src/context-size.ts`) |
 | `grammars/archlang.gbnf` | `gen:gbnf` | `src/grammar/tokens.ts` |
 | `schemas/plan.schema.json` | `gen:plan-schema` | `PLAN_JSON_SCHEMA` |
 | `schemas/intent.schema.json` | `gen:intent-schema` | `INTENT_JSON_SCHEMA` |
 | the `examples/*.svg` the README embeds, plus the axonometric renders | `gen:example-svgs` | the matching `examples/*.arch` (lists: `README_SVGS`, `VIEW_SVGS`) |
 
 Whenever a generator's source changes, run `npm run gen:all` to regenerate every artifact in
-dependency order (`gen:spec` before `gen:llms`, which consumes it) and commit the output;
+dependency order (`gen:spec` before `gen:llms`, which consumes it, and `gen:llms` before `gen:cli`,
+which states the bundle size it measures) and commit the output;
 **generated files must never be hand-edited.** `npm run check:drift` reproduces the CI gate locally.
 
 ### The CLI surface lives in `src/manifest.ts`

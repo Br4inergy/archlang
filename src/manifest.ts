@@ -86,6 +86,11 @@ export interface ManifestCommand {
 
 export interface Manifest {
   name: "arch";
+  /**
+   * The command to type, `archlang`. `name` stays `"arch"` for existing readers, but a command
+   * built from it runs coreutils on Linux, macOS and Git Bash; build commands from `invoke`.
+   */
+  invoke: typeof CLI_NAME;
   version: string;
   description: string;
   exitCodes: Record<string, string>;
@@ -917,6 +922,7 @@ const COMMANDS: ManifestCommand[] = [
 export function buildManifest(version: string): Manifest {
   return {
     name: "arch",
+    invoke: CLI_NAME,
     version,
     description: "ArchLang compiler — agent-native CLI. Compile .arch floor-plan source to SVG/PNG/PDF/DXF.",
     exitCodes: {

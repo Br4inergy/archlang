@@ -123,7 +123,8 @@ describe("docs never document a flag the command doesn't take", () => {
  * and the unscoped npm name `archlang` belongs to another publisher, so neither may be what an
  * agent copies. `arch` stays a working alias bin, and the generated spec keeps it under one line
  * that says what it means; these hand-written pages do not use it. A plain `npx @chanmeng666/archlang`
- * (no `-y`) stops at npm's install prompt in a non-interactive shell.
+ * (no `-y`) is not written either: npx prompts only when stdin is a TTY (a person, or an agent
+ * harness with a PTY); `-y` makes every case non-interactive.
  */
 describe("agent-facing docs never tell an agent to run a bare `arch` or a prompting npx", () => {
   const AGENT_DOCS = [
@@ -136,6 +137,14 @@ describe("agent-facing docs never tell an agent to run a bare `arch` or a prompt
     "docs-site/index.md",
     "docs-site/examples.md",
     "docs-site/gallery.md",
+    // The reference pages the docs site syncs from `docs/` (the generated spec is exempt: it keeps
+    // `arch <cmd>` under its one alias line).
+    "docs/language-reference.md",
+    "docs/analysis.md",
+    "docs/intent.md",
+    "docs/furniture.md",
+    "docs/showcase.md",
+    "docs/axonometric.md",
     ...readdirSync("skills").map((d) => `skills/${d}/SKILL.md`),
   ];
   const verbs = [...declaredFlags().keys(), "help"].join("|");

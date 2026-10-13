@@ -35,6 +35,14 @@ describe("package.json bins", () => {
     expect(bin[CLI_NAME]).toBe("dist/cli.js");
     expect(bin.arch).toBe(bin[CLI_NAME]);
   });
+
+  it("the manifest JSON names the command to type in `invoke`, and keeps `name` for old readers", () => {
+    const m = buildManifest("9.9.9");
+    expect(m.invoke).toBe("archlang");
+    expect(m.invoke).toBe(CLI_NAME);
+    expect(bin[m.invoke]).toBe("dist/cli.js");
+    expect(m.name).toBe("arch");
+  });
 });
 
 describe("manifest — content", () => {

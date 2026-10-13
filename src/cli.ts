@@ -112,7 +112,7 @@ async function main(): Promise<void> {
   if (!command) {
     const hint = closest(cmd, [...MANIFEST_COMMAND_NAMES]);
     const mean = hint ? ` — did you mean \`${CLI_NAME} ${hint}\`?` : "";
-    process.exit(usageError(`unknown command "${cmd}"${mean} (try \`archlang help\`)`));
+    process.exit(usageError(`unknown command "${cmd}"${mean} (try \`${CLI_NAME} help\`)`));
   }
 
   // Parsed against the RESOLVED command, so a flag it does not declare is rejected below
@@ -184,7 +184,7 @@ async function main(): Promise<void> {
     case "explain":
       return finish(cmdExplain(args));
     default:
-      return finish(usageError(`unknown command "${cmd}" (try \`archlang help\`)`));
+      return finish(usageError(`unknown command "${cmd}" (try \`${CLI_NAME} help\`)`));
   }
 }
 

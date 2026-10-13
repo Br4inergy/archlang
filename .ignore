@@ -9,6 +9,7 @@ CHANGELOG.md
 # Generated artifacts (sources: scripts/check-drift.ts GENERATORS; regenerate with `npm run gen:*`)
 spec.llm.md
 llms-full.txt
+src/context-size.ts
 docs/cli-reference.md
 docs/error-codes.md
 grammars/archlang.gbnf
