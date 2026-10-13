@@ -142,3 +142,5 @@ moves. Zones, the caption and Plan JSON are unchanged.
   and mirror of a placed plan.
 - The measurement is quadratic in the band edges near one room. It is capped per room by
   `MAX_NET_CURVES` and, inside `compile()`, charged to the drawing budget before it runs.
+  `describe()` has no budget, so there the cost is that cap times the number of rooms; compile
+  charges it only under `schedule rooms`, and in practice the hosted Worker's CPU cap bounds it.

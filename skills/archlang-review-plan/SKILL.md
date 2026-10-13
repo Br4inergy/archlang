@@ -23,8 +23,9 @@ your report must not say that it does.
    with errors has no facts to review until they are fixed.
 2. **Read the facts.** `archlang describe plan.arch --json` gives rooms with areas and uses, what each
    door and window connects, the access graph and the totals. On a large plan narrow it:
-   `archlang describe plan.arch --select rooms,access,totals --json`. Room areas are measured on wall
-   centrelines, so they exceed the floor area inside the walls; say so when you quote one.
+   `archlang describe plan.arch --select rooms,access,totals --json`. `area_m2` is measured on wall
+   centrelines, so it counts the wall bands that stand on the room; `net_area_m2` subtracts them.
+   Say which one you quote.
 3. **Run the default lint.** `archlang lint plan.arch --json`. Each warning has a code, a place in the
    source and a `fix` in prose. `archlang explain <CODE> --json` explains a code you do not know.
 4. **Run the accessibility profile when the user asks about access,** or when the brief mentions

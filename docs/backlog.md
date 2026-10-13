@@ -2361,6 +2361,21 @@ The strip is a reader-facing surface, so the wording follows `docs/adr/0027-net-
 **Gate:** the strip and tooltip name which figure they show; `playground/test` and
 `npm run e2e:playground` cover the new text. **Size:** S.
 
+### U.22 · `describe()` is unbudgeted, and the net-area term is quadratic per room — `todo`
+
+**Observed (card D1 review).** The net-area measurement pairs a room's edges with the wall-band
+curves near it, capped per room at `MAX_NET_CURVES` (`src/analyze/net-area.ts`), but nothing caps
+rooms times that: 200 overlapping rooms each meeting 1,920 curves take about 4.2 s in
+`describe()`, linear in rooms up to `MAX_ELEMENTS`. `compile()` charges the term to the drawing
+budget only under `schedule rooms`; `describe()` has never had a budget (adjacency is already
+quadratic in rooms). The hosted Worker's CPU cap bounds it in practice.
+
+**Hypothesis.** Give `describe()` a work meter of its own, or charge the net-area pairs to a
+per-plan total and omit `net_area_m2` past it, as a single room already omits past its cap.
+
+**Gate:** the adversarial plan above returns within the budget, with net areas omitted rather
+than late; the corpus `describe()` output does not move. **Size:** M.
+
 ## Registry listings (opened 2026-10-10)
 
 The state of each listing is the table in `docs/seo.md` § 8. These are what is still owed.
