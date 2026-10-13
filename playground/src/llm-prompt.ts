@@ -106,7 +106,7 @@ export function isChatHost(s: string | undefined): s is ChatHost {
  * figure under common request-line limits. The plan already travels compressed (the
  * share link's `#z=` IS the deflate-raw + base64url payload), so the one lever left is
  * the prompt's own words, kept short enough that every bundled example — the largest
- * being Hillside Villa, the plan a first visit loads — fits with 100 characters to
+ * being Hillside Villa, the plan a first visit loads — fits with 80 characters to
  * spare for another engine's zlib (`playground/test/llm-prompt.test.ts` holds that).
  */
 export const MAX_CHAT_URL = 8000;
@@ -118,14 +118,15 @@ export const MAX_CHAT_URL = 8000;
  * `share.ts` — so zlib's `wbits` is -15); `#src=` (a browser without
  * CompressionStream) is unpadded base64url of the UTF-8. Python ignores surplus "="
  * but rejects missing ones, so a flat "==" restores any padding. Every character is
- * paid for in the URL cap (a space costs 3), so the spec pointer did not survive:
- * the link's own domain leads to it.
+ * paid for in the URL cap (a space costs 3): the spec pointer did not survive (the
+ * link's own domain leads to it), and the expression stops at the bytes, leaving the
+ * `.decode()` to the reader, so the line can open with the ask, "ArchLang floor plan".
  */
 export function buildChatPrompt(shareUrl: string): string {
   const recipe = /[#&]src=/.test(shareUrl)
-    ? "s=b64url(.arch): base64.urlsafe_b64decode(s+'==').decode()"
-    : "z=b64url(deflate-raw(.arch)): zlib.decompress(base64.urlsafe_b64decode(z+'=='),-15).decode()";
-  return [`ArchLang ${shareUrl}`, recipe].join("\n");
+    ? "s=b64url(.arch): base64.urlsafe_b64decode(s+'==')"
+    : "z=b64url(deflate-raw(.arch)): zlib.decompress(base64.urlsafe_b64decode(z+'=='),-15)";
+  return [`ArchLang floor plan: ${shareUrl}`, recipe].join("\n");
 }
 
 /**

@@ -86,6 +86,7 @@ describe("Open in Claude / ChatGPT", () => {
   it("prefills a short prompt that carries the share link and says what z is", () => {
     const prompt = buildChatPrompt(SHARE);
     expect(prompt).toContain(SHARE);
+    expect(prompt.startsWith(`ArchLang floor plan: ${SHARE}\n`)).toBe(true); // the ask, then the link
     expect(prompt).toContain("z=b64url(deflate-raw(.arch))");
     // Every character is paid for under the URL cap.
     expect(prompt.length).toBeLessThan(SHARE.length + 120);
@@ -94,9 +95,9 @@ describe("Open in Claude / ChatGPT", () => {
   it("gives a padding-safe decode recipe for the hash form the link actually uses", () => {
     // Python's base64 decoder ignores surplus "=" but rejects missing ones, so "==" always
     // suffices for unpadded base64url; wbits -15 is raw DEFLATE (no zlib header).
-    expect(buildChatPrompt(SHARE)).toContain("zlib.decompress(base64.urlsafe_b64decode(z+'=='),-15).decode()");
+    expect(buildChatPrompt(SHARE)).toContain("zlib.decompress(base64.urlsafe_b64decode(z+'=='),-15)");
     const legacy = buildChatPrompt("https://playground.archlang.uk/#src=cGxhbiAiWCIge30");
-    expect(legacy).toContain("base64.urlsafe_b64decode(s+'==').decode()");
+    expect(legacy).toContain("base64.urlsafe_b64decode(s+'==')");
     expect(legacy).not.toContain("zlib");
   });
 
@@ -127,7 +128,7 @@ describe("Open in Claude / ChatGPT", () => {
   // Needs the compressed `#z=` form; Node 18 (a CI leg) has no deflate-raw and would
   // measure the uncompressed `#src=` fallback, which no current browser writes.
   it.skipIf(!supportsDeflateRaw)(
-    "gives every bundled example a prefilled link with at least 100 characters to spare",
+    "gives every bundled example a prefilled link with at least 80 characters to spare",
     async () => {
       // HEADROOM: deflate output is implementation-dependent (Firefox's vanilla zlib was
       // measured ~35 characters longer than Node/Chromium on Hillside Villa), and a plan
@@ -135,7 +136,11 @@ describe("Open in Claude / ChatGPT", () => {
       // encodeURIComponent: the host base (24, `https://claude.ai/new?q=`), the prompt
       // prefix, the encoded origin (39, every `:` and `/` costs 3), `#z=` (7), the newline
       // and recipe line, and the payload itself.
-      const HEADROOM = 100;
+      //
+      // 80, not 100: the line must open with its ask ("ArchLang floor plan:"), and that
+      // cost the 100. 80 still covers the ~35 characters Firefox's vanilla zlib was
+      // measured to add over Node/Chromium on Hillside Villa, with room to spare.
+      const HEADROOM = 80;
       expect(Object.keys(EXAMPLES).length).toBeGreaterThan(20);
       for (const [label, source] of Object.entries(EXAMPLES)) {
         const hash = await encodeSrc(source);

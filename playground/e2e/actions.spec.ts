@@ -205,6 +205,31 @@ test.describe("header actions", () => {
     }
   });
 
+  test("a chat link drops to the bare host on an edit and comes back on its undo", async ({ page }) => {
+    await page.goto("/");
+    await waitForPlan(page);
+    await setEditorSource(page, SIMPLE_PLAN);
+    await page.getByText("Ask AI").click();
+    await chatLinkReady(page, "Open in Claude ↗");
+    // Read the link by its attribute: the menu closes once the editor is clicked.
+    const link = page.locator('a[data-chat-host="claude"]');
+    const planInHref = async () =>
+      planInPrompt(new URL((await link.getAttribute("href")) ?? "about:blank").searchParams.get("q") ?? "");
+    expect(await planInHref()).toBe(SIMPLE_PLAN);
+
+    const editor = page.locator(".cm-content");
+    await editor.click();
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.type("x");
+    // Stale at once: no ready mark, and the href is the bare host, never the old plan.
+    await expect(link).not.toHaveAttribute("data-ready", "true");
+    await expect(link).toHaveAttribute("href", "https://claude.ai/new");
+
+    // Undo back to the encoded plan: the link is current again and carries it.
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(link).toHaveAttribute("data-ready", "true");
+    expect(await planInHref()).toBe(SIMPLE_PLAN);
+  });
   test("the plan a first visit loads gets a prefilled link, with no edit and no hash yet", async ({
     page,
     context,

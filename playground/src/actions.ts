@@ -470,10 +470,11 @@ export function mountActions(ctx: ActionsCtx): ActionsHandle {
   }
 
   return {
-    // Called on every document change: a chat link must never keep pointing at an older plan.
-    sourceChanged: () => {
-      if (chatEncoded?.source !== getSource()) syncChatLinks();
-    },
+    // Called on every document change. Resync unconditionally: a change AWAY from the
+    // encoded source must drop the link to the bare host, and a change BACK to it (an
+    // undo) must restore the prefilled link and `data-ready`, or a middle-click would
+    // open the bare host as if it were current.
+    sourceChanged: () => syncChatLinks(),
   };
 }
 
