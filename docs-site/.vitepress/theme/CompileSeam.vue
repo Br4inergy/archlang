@@ -11,6 +11,7 @@
 // an IntersectionObserver rewinds to empty and replays the typing on a rAF loop,
 // exactly once, and only when the hero is on-screen and motion is allowed.
 import { ref, shallowRef, computed, onMounted, onBeforeUnmount, watch } from "vue";
+import { useData } from "vitepress";
 import { compile, describe } from "archlang";
 import { EXAMPLES, EXAMPLE_LINKS } from "./examples-data.js";
 import { highlightArch } from "./arch-highlight.js";
@@ -21,6 +22,31 @@ import { stripHeaderComments } from "./strip-header-comments.js";
 // bound ONCE so the source, the file-name chip and the aspect fallback below can
 // never name three different plans.
 const HERO = "laneway-house";
+
+// The definition under the headline IS the page's meta description: config.ts patches
+// `page.description` from PAGE_META, so reading it here keeps one sentence, not two.
+const { page } = useData();
+const definition = computed(() => page.value.description);
+
+// The three ways in, each one line and copyable. The package names are the published
+// ones; no version appears anywhere (versions come from npm, never a doc).
+const INSTALL_LINES = [
+  { label: "CLI", cmd: "npx -y @chanmeng666/archlang compile plan.arch" },
+  { label: "MCP", cmd: "claude mcp add archlang -- npx -y @chanmeng666/archlang-mcp" },
+  { label: "Skill", cmd: "npx -y skills add ChanMeng666/archlang --yes" },
+] as const;
+const copied = ref("");
+async function copyCmd(cmd: string) {
+  try {
+    await navigator.clipboard.writeText(cmd);
+    copied.value = cmd;
+    setTimeout(() => {
+      if (copied.value === cmd) copied.value = "";
+    }, 1500);
+  } catch {
+    /* clipboard unavailable: the line is still selectable text */
+  }
+}
 // …minus its leading prose header. The file opens with seven comment lines the
 // reader of the FILE wants and the watcher of the ANIMATION cannot use: at 90
 // chars/s they are 5.3 seconds of an empty sheet before the first prefix that
@@ -221,10 +247,21 @@ onBeforeUnmount(() => {
             <span class="headline__sub">A declarative language for floor plans.</span>
           </h1>
 
-          <p class="tagline">
-            A small declarative language that compiles to professional SVG floor plans.
-            Zero-dependency, deterministic, isomorphic.
-          </p>
+          <p class="tagline">{{ definition }}</p>
+
+          <ul class="install" aria-label="Install">
+            <li v-for="l in INSTALL_LINES" :key="l.label" class="install__row">
+              <code class="install__cmd"><span class="install__prompt" aria-hidden="true">$</span> {{ l.cmd }}</code>
+              <button
+                type="button"
+                class="install__copy"
+                :aria-label="`Copy ${l.label} command`"
+                @click="copyCmd(l.cmd)"
+              >
+                {{ copied === l.cmd ? "Copied" : "Copy" }}
+              </button>
+            </li>
+          </ul>
 
           <div class="actions">
             <a class="btn btn--solid" href="/guide">Get started</a>
@@ -391,12 +428,58 @@ onBeforeUnmount(() => {
   color: var(--src-muted);
 }
 
+/* ── Install lines (above the fold at 1280×800 and 390×844) ──────────────── */
+.install {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.install__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 8px 6px 10px;
+  border: 1px solid var(--src-rule);
+  border-radius: 3px;
+}
+.install__cmd {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--src-fg);
+  background: none;
+  padding: 0;
+  overflow-wrap: anywhere;
+}
+.install__prompt {
+  color: var(--plum);
+}
+.install__copy {
+  flex: none;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--src-muted);
+  cursor: pointer;
+}
+.install__copy:hover {
+  color: var(--src-fg);
+}
+
 /* ── CTAs ────────────────────────────────────────────────────────────────── */
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 30px;
+  margin-top: 16px;
 }
 .btn {
   display: inline-flex;

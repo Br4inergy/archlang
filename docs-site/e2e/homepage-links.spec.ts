@@ -138,3 +138,32 @@ test.describe("every home-page drawing opens its own plan in the playground", ()
     }
   });
 });
+
+/**
+ * The front door: the definition and the three install lines are visible WITHOUT scrolling
+ * at the two viewports peers are judged at, and the home never scrolls sideways at 390.
+ */
+test.describe("home above the fold", () => {
+  for (const [width, height] of [
+    [1280, 800],
+    [390, 844],
+  ] as const) {
+    test(`install lines are above the fold at ${width}x${height}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await page.goto("/");
+      const rows = page.locator(".install__row");
+      await expect(rows).toHaveCount(3);
+      const cmds = page.locator(".install__cmd");
+      await expect(cmds.nth(0)).toContainText("npx -y @chanmeng666/archlang compile plan.arch");
+      await expect(cmds.nth(1)).toContainText("claude mcp add archlang -- npx -y @chanmeng666/archlang-mcp");
+      await expect(cmds.nth(2)).toContainText("npx -y skills add ChanMeng666/archlang --yes");
+      for (const row of await rows.all()) {
+        const box = await row.boundingBox();
+        expect(box, "install row must render").not.toBeNull();
+        expect(box!.y + box!.height, "install row ends inside the first screen").toBeLessThanOrEqual(height);
+      }
+      const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(over, "no horizontal overflow").toBeLessThanOrEqual(0);
+    });
+  }
+});
