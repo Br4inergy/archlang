@@ -5,6 +5,9 @@
  * the refusal is pinned on every machine, renderer installed or not. The bundle half is pinned
  * through the build's own check: the bundled `compile` must carry `PNG_NOT_IN_BUNDLE`, the same
  * string the call returns, and the bundle must keep the renderer out.
+ *
+ * The same mocked core also stands in for one OLDER than this shim, whose `planToJson` has no
+ * per-storey `pages`: `format:"json"` on a multi-storey plan must say so, not repeat the ground floor.
  */
 import { describe, expect, it, vi } from "vitest";
 import { assertBundleSaysNoPng, MCPB_EXTERNAL } from "../scripts/build-mcpb.js";
@@ -16,7 +19,7 @@ import {
   PNG_RENDERER,
   pngUnavailable,
 } from "../src/png.js";
-import { call, connect, TWO_ROOMS } from "./helpers.js";
+import { call, connect, TWO_ROOMS, TWO_STOREY } from "./helpers.js";
 
 vi.mock("@chanmeng666/archlang", async (importOriginal) => {
   const core = await importOriginal<typeof import("@chanmeng666/archlang")>();
@@ -28,7 +31,23 @@ vi.mock("@chanmeng666/archlang", async (importOriginal) => {
         "PNG export needs the optional dependency '@resvg/resvg-js'. Install it: npm install @resvg/resvg-js",
       );
     },
+    // An older core: the projection without `pages`.
+    planToJson: (...args: Parameters<typeof core.planToJson>) => {
+      const { pages: _pages, ...older } = core.planToJson(...args);
+      return older;
+    },
   };
+});
+
+describe("compile json against a core older than the shim", () => {
+  it("refuses a multi-storey projection as data; a single storey is unaffected", async () => {
+    const client = await connect();
+    const multi = await call(client, "compile", { source: TWO_STOREY, format: "json" });
+    expect(multi.ok).toBe(false);
+    expect(multi.error).toMatch(/^per-storey Plan JSON needs @chanmeng666\/archlang >= \d+\.\d+\.\d+/);
+    const single = await call(client, "compile", { source: TWO_ROOMS, format: "json" });
+    expect(single.ok).toBe(true);
+  });
 });
 
 describe("compile png without the renderer", () => {

@@ -274,6 +274,15 @@ export function createServer(): McpServer {
       const projection = format === "json" ? planToJson(r.source) : undefined;
       if (projection && !projection.json)
         return json({ ok: false, format, error: "Plan JSON projection failed", diagnostics: diags });
+      // A core older than this shim projects only the lowest storey (no `pages`): say so as data
+      // rather than hand back the ground floor once per storey.
+      if (projection && pages && !projection.pages)
+        return json({
+          ok: false,
+          format,
+          error: `per-storey Plan JSON needs @chanmeng666/archlang >= ${CORE_MIN || "the shim's release"}; the installed core projects only the lowest storey`,
+          diagnostics: diags,
+        });
       const schema = projection ? { schema: PLAN_JSON_SCHEMA.$id } : {};
       const render = (pageSvg: string, pageScene: typeof scene, level?: number): unknown => {
         if (projection) {
