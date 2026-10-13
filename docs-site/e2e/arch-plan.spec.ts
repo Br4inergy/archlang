@@ -84,6 +84,14 @@ test.describe("the <arch-plan> element", () => {
     expect(cdn).toEqual([]);
   });
 
+  test("if the script never loads, inline source is hidden at first and readable after 3 s", async ({ page }) => {
+    await page.route("**/arch-plan.js", (route) => route.abort());
+    await page.goto("/arch-plan-demo.html");
+    await expect(page.locator("#inline")).toBeHidden(); // `:not(:defined)` hides the raw source…
+    await expect(page.locator("#inline")).toBeVisible({ timeout: 6000 }); // …and the animation gives it back
+    await expect(page.locator("#inline")).toContainText('plan "Garden studio"');
+  });
+
   test("/embed shows the recipe at the version this site was built from", async ({ page, request }) => {
     const pinned = `https://cdn.jsdelivr.net/npm/@chanmeng666/archlang@${VERSION}/+esm`;
     await page.goto("/embed");

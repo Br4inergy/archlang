@@ -18,7 +18,7 @@
  * `buildArchPlan()` is pure apart from reading the sources, so the generator, the package
  * build and the drift test all call this one function and cannot disagree.
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, type Plugin } from "esbuild";
@@ -77,8 +77,35 @@ function banner(variant: Variant, version: string): string {
   return `${head}.`;
 }
 
+/** The newest modification time under `dir`, in ms. */
+function newestMtime(dir: string): number {
+  let newest = 0;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    newest = Math.max(newest, entry.isDirectory() ? newestMtime(path) : statSync(path).mtimeMs);
+  }
+  return newest;
+}
+
+/**
+ * The standalone build inlines the repo's BUILT core, so a missing or out-of-date `dist/` would
+ * ship a stale compiler without a word (nothing else gates that file). Refuse instead: `dist/`
+ * must exist and be newer than every file under `src/`.
+ */
+export function assertFreshCore(): void {
+  const entry = join(ROOT, "dist", "index.js");
+  const fix = "run `npm run build` at the repo root first";
+  if (!existsSync(entry)) throw new Error(`arch-plan standalone build: ${entry} is missing; ${fix}`);
+  if (statSync(entry).mtimeMs < newestMtime(join(ROOT, "src"))) {
+    throw new Error(
+      `arch-plan standalone build: dist/index.js is older than src/ (it would inline a stale core); ${fix}`,
+    );
+  }
+}
+
 /** One build, in memory. */
 export async function buildArchPlan(variant: Variant): Promise<string> {
+  if (variant === "standalone") assertFreshCore();
   const version = coreVersion();
   const result = await build({
     entryPoints: [ENTRY],

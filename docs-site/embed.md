@@ -78,12 +78,19 @@ plan "Two storeys" {
 </arch-plan>
 ```
 
-Until the module has loaded, the browser shows inline source as plain text. Hide it until then
-with one rule in the page's CSS: `arch-plan:not(:defined) { visibility: hidden; }`.
+Until the module has loaded, the browser shows inline source as plain text. To hide it until
+then, add this to the page's CSS. The animation shows the text again after three seconds, so a
+script that never loads (a 404, a blocked origin) leaves the source readable rather than a blank:
+
+```css
+arch-plan:not(:defined) { visibility: hidden; animation: arch-plan-reveal 0s 3s forwards; }
+@keyframes arch-plan-reveal { to { visibility: visible; } }
+```
 
 A plan with errors draws a `<pre>` instead, one line per error as `CODE line:col message`, for
 example `E_PARSE 3:1 Expected a value but found "}"`. For inline source, lines count from the
-plan's first non-blank line, not from the opening tag. A failed fetch, an unknown theme or a
+plan's first non-blank line, not from the opening tag; columns count from the start of the line,
+so they include any indent the HTML gives the plan. A failed fetch, an unknown theme or a
 missing storey are reported in the same `<pre>`; the element never throws. Changing an attribute
 or the inline text redraws it. After each render the element dispatches a `render` event whose
 `detail` is `{ ok, problems }`, and the drawing and the error list are styleable from the page as

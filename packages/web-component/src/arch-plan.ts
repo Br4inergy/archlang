@@ -47,17 +47,25 @@ const STYLE = `:host{display:block;color-scheme:only light}
 .plan svg{display:block;max-width:100%;height:auto}
 pre{margin:0;padding:12px 14px;background:#fff5f5;color:#7a1414;border:1px solid #e6b8b8;border-radius:4px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}`;
 
+type RenderOptions = { level?: string | null; theme?: string | null };
+
 /** `level` / `theme` / source → a drawing or the problems. Never throws. */
-export async function renderPlan(
-  source: string,
-  opts: { level?: string | null; theme?: string | null } = {},
-): Promise<ArchPlanResult> {
-  let core: CoreModule;
+export async function renderPlan(source: string, opts: RenderOptions = {}): Promise<ArchPlanResult> {
+  const core = await loadCoreOrProblem();
+  return "compile" in core ? compileWith(core, source, opts) : core;
+}
+
+/** The compiler, or the problem that says why it would not load. */
+async function loadCoreOrProblem(): Promise<CoreModule | ArchPlanResult> {
   try {
-    core = await loadCore();
+    return await loadCore();
   } catch (e) {
     return fail(`arch-plan: could not load the ArchLang compiler (${message(e)})`);
   }
+}
+
+/** The synchronous half of {@link renderPlan}, once the compiler is in hand. */
+function compileWith(core: CoreModule, source: string, opts: RenderOptions): ArchPlanResult {
   try {
     let theme: Partial<Core.Theme> | undefined;
     if (opts.theme) {
@@ -139,6 +147,9 @@ export class ArchPlanElement extends Base {
 
   disconnectedCallback(): void {
     this.#observer?.disconnect();
+    // Retire any render in flight: a fetch that lands after removal writes nothing and fires no
+    // `render` event. Reconnecting schedules a fresh render.
+    ++this.#run;
   }
 
   attributeChangedCallback(_name: string, previous: string | null, next: string | null): void {
@@ -156,6 +167,7 @@ export class ArchPlanElement extends Base {
     this.#queued = true;
     this.#done = Promise.resolve().then(() => {
       this.#queued = false;
+      if (!this.isConnected) return; // removed before the render began
       return this.#render(++this.#run);
     });
   }
@@ -204,7 +216,6 @@ export class ArchPlanElement extends Base {
       }
       if (!response.ok) return fail(`arch-plan: could not fetch ${src} (HTTP ${response.status})`);
       source = await response.text();
-      if (run !== this.#run) return null; // overtaken while fetching: skip the compile
     } else {
       // The text starts right after the opening tag, so markup that puts the plan on the next line
       // (or inside a `<script type="text/plain">` there) would count a line or two that are not
@@ -212,7 +223,12 @@ export class ArchPlanElement extends Base {
       source = (this.textContent ?? "").replace(/^\s*\n/, "");
       if (source.trim() === "") return null;
     }
-    return renderPlan(source, { level: this.getAttribute("level"), theme: this.getAttribute("theme") });
+    const core = await loadCoreOrProblem();
+    // Overtaken (or removed) during the fetch or the first import of the compiler: the result
+    // would be dropped anyway, so skip the compile. Nothing awaits between here and it.
+    if (run !== this.#run) return null;
+    if (!("compile" in core)) return core;
+    return compileWith(core, source, { level: this.getAttribute("level"), theme: this.getAttribute("theme") });
   }
 }
 

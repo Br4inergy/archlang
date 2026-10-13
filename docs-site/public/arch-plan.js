@@ -16,12 +16,17 @@ var STYLE = `:host{display:block;color-scheme:only light}
 .plan svg{display:block;max-width:100%;height:auto}
 pre{margin:0;padding:12px 14px;background:#fff5f5;color:#7a1414;border:1px solid #e6b8b8;border-radius:4px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}`;
 async function renderPlan(source, opts = {}) {
-  let core;
+  const core = await loadCoreOrProblem();
+  return "compile" in core ? compileWith(core, source, opts) : core;
+}
+async function loadCoreOrProblem() {
   try {
-    core = await loadCore();
+    return await loadCore();
   } catch (e) {
     return fail(`arch-plan: could not load the ArchLang compiler (${message(e)})`);
   }
+}
+function compileWith(core, source, opts) {
   try {
     let theme;
     if (opts.theme) {
@@ -89,6 +94,7 @@ var ArchPlanElement = class extends Base {
   }
   disconnectedCallback() {
     this.#observer?.disconnect();
+    ++this.#run;
   }
   attributeChangedCallback(_name, previous, next) {
     if (previous !== next && this.isConnected) this.#schedule();
@@ -104,6 +110,7 @@ var ArchPlanElement = class extends Base {
     this.#queued = true;
     this.#done = Promise.resolve().then(() => {
       this.#queued = false;
+      if (!this.isConnected) return;
       return this.#render(++this.#run);
     });
   }
@@ -150,12 +157,14 @@ var ArchPlanElement = class extends Base {
       }
       if (!response.ok) return fail(`arch-plan: could not fetch ${src} (HTTP ${response.status})`);
       source = await response.text();
-      if (run !== this.#run) return null;
     } else {
       source = (this.textContent ?? "").replace(/^\s*\n/, "");
       if (source.trim() === "") return null;
     }
-    return renderPlan(source, { level: this.getAttribute("level"), theme: this.getAttribute("theme") });
+    const core = await loadCoreOrProblem();
+    if (run !== this.#run) return null;
+    if (!("compile" in core)) return core;
+    return compileWith(core, source, { level: this.getAttribute("level"), theme: this.getAttribute("theme") });
   }
 };
 if (typeof customElements !== "undefined" && !customElements.get("arch-plan")) {

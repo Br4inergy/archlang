@@ -41,9 +41,16 @@
       a {
         color: #0b57d0;
       }
-      /* Inline source is plain text until the module upgrades the element. */
+      /* Inline source is plain text until the module upgrades the element; if the script never
+         loads, the animation shows it again after 3 s instead of leaving a blank (see /embed). */
       arch-plan:not(:defined) {
         visibility: hidden;
+        animation: arch-plan-reveal 0s 3s forwards;
+      }
+      @keyframes arch-plan-reveal {
+        to {
+          visibility: visible;
+        }
       }
       arch-plan {
         border: 1px solid #d9dce2;

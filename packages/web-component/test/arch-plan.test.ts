@@ -192,6 +192,51 @@ describe("<arch-plan>", () => {
     await vi.waitFor(() => expect(root.querySelector(".plan > svg")).not.toBeNull());
   });
 
+  it("an inline render overtaken while the compiler import settles is not compiled", async () => {
+    const PLAN = `${TWO_STOREY}# overtaken at the core import\n`;
+    const el = dom.window.document.createElement("arch-plan") as ArchPlanElement;
+    el.textContent = PLAN;
+    dom.window.document.body.append(el);
+    await Promise.resolve(); // the first render has begun and is awaiting the (cached) core
+    el.setAttribute("level", "2"); // a newer render, requested before the first one compiles
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".plan > svg")).not.toBeNull();
+    expect(compiles.get(PLAN), "the overtaken render compiled too").toBe(1);
+  });
+
+  it("removed before its render starts: nothing is fetched", async () => {
+    fetchMock.mockClear();
+    const el = dom.window.document.createElement("arch-plan") as ArchPlanElement;
+    el.setAttribute("src", "https://example.test/never.arch");
+    dom.window.document.body.append(el);
+    el.remove(); // same task: the queued render finds the element gone
+    await el.updateComplete;
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("removed while fetching: the late response writes nothing and fires no render", async () => {
+    const LATE = `${STUDIO}# landed after removal\n`;
+    let release: ((r: Response) => void) | undefined;
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const events: ArchPlanRenderDetail[] = [];
+    const el = dom.window.document.createElement("arch-plan") as ArchPlanElement;
+    el.addEventListener("render", (e) => events.push((e as CustomEvent<ArchPlanRenderDetail>).detail));
+    el.setAttribute("src", "https://example.test/late.arch");
+    dom.window.document.body.append(el);
+    await vi.waitFor(() => expect(release).toBeTypeOf("function"));
+    el.remove();
+    release!(new Response(LATE));
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector(".plan, pre")).toBeNull();
+    expect(events).toEqual([]);
+    expect(compiles.get(LATE) ?? 0).toBe(0);
+  });
+
   it("drops a render a newer one overtook, without compiling the stale source", async () => {
     const SLOW = `${BROKEN}# slow\n`;
     let release: ((r: Response) => void) | undefined;
