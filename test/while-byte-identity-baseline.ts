@@ -182,6 +182,12 @@
  * the OLD SVG put back reproduces each old row; `describe()`, `lint()` and
  * `compile().diagnostics` are byte-identical. Each moved call-out in
  * `./byte-identity-baseline.ts`, "thickness call-outs keep off doorways and fixtures".
+ *
+ * `examples/sheet-notes.arch` re-measured once more, for the same call-out change meeting the
+ * example on merge: two call-outs move out of d_bed and d_front, nothing else in the drawing;
+ * `compile().diagnostics` is still `[]`, and the old SVG put back into the new payload
+ * reproduces its old row (`365c38ef…`). Field by field in `./byte-identity-baseline.ts`,
+ * "`sheet-notes`'s whole-surface row re-measured when the call-out change met it".
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "7d17249d81b43f1ff5b17c6b1219750bbdd695599f31e66fb298be9facc7c169"],
@@ -206,7 +212,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/one-room.arch", "050d5beb84aff06312d933a3b16de45f4b98cac0aa2d25efba6ed0234f45e4ca"],
   ["examples/parametric.arch", "50542aff6a0a3f03bb8e1ff9ba69d10d721d81bc78c7b7147b10acdab77e25fd"],
   ["examples/relational.arch", "78396bc038b0198f2ed2952cc6169d0c810ffeb4149d04ba3203aa397a16cabd"],
-  ["examples/sheet-notes.arch", "365c38efe863ccf2b0b12be57bc7a0a899335efc75cf30241e82e0f73800f337"], // added with the example, see header
+  ["examples/sheet-notes.arch", "90e7d0ad148524bd71ba014f2b3849737034c6a23f27bf6f5a40ea800c20eaa1"], // re-measured, see header
   ["examples/studio.arch", "6f0c677cc5c7bc15b4cea1faee4d61bf30e4e775aa96c2efb2f374f773047362"],
   ["examples/terrace-row.arch", "93825c78af4638012261cfa52b8645ff1bfcb2859f4d65a4595a1a8505a40424"],
   ["examples/themed.arch", "94ea6112f46d9827b260dbfee48cfe1a5fe694d78256bfb70dc12a85be7532a0"],

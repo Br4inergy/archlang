@@ -39,7 +39,6 @@ const world: World = {
 
 /** Every tag that covers ink, as `file#page:tag`, with why it is allowed to. */
 const ALLOWED: Record<string, string> = {
-  "aquarium.arch:W03": "every candidate place is taken; the tag keeps its first choice (dims:line,dims:text)",
   "bungalow.arch:W02": "every candidate place is taken; the tag keeps its first choice (furniture:path)",
   "bungalow.arch:W03": "every candidate place is taken; the tag keeps its first choice (furniture:path)",
   "courtyard-house.arch:W06":
@@ -56,7 +55,7 @@ const ALLOWED: Record<string, string> = {
   "library.arch:W13": "every candidate place is taken; the tag keeps its first choice (furniture:path)",
   "library.arch:W14": "every candidate place is taken; the tag keeps its first choice (furniture:polygon)",
   "materials.arch:W05":
-    "every candidate place is taken; the tag keeps its first choice (dims:text,furniture:line,furniture:polygon)",
+    "every candidate place is taken; the tag keeps its first choice (furniture:line,furniture:polygon)",
   "museum-wings.arch:D05": "every candidate place is taken; the tag keeps its first choice (poche)",
   "museum-wings.arch:D06": "every candidate place is taken; the tag keeps its first choice (axes:line,poche)",
   "terrace-row.arch:D02":

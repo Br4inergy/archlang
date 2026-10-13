@@ -361,9 +361,10 @@ const BASELINE: [string, string][] = [
   ["examples/one-room.arch", "050d5beb84aff06312d933a3b16de45f4b98cac0aa2d25efba6ed0234f45e4ca"],
   ["examples/parametric.arch", "50542aff6a0a3f03bb8e1ff9ba69d10d721d81bc78c7b7147b10acdab77e25fd"],
   ["examples/relational.arch", "78396bc038b0198f2ed2952cc6169d0c810ffeb4149d04ba3203aa397a16cabd"],
-  // ADDED with the new example (the issued-sheet statements), not re-measured: the same row,
-  // with the same digest body, as `./while-byte-identity-baseline.ts`, whose header has it.
-  ["examples/sheet-notes.arch", "365c38efe863ccf2b0b12be57bc7a0a899335efc75cf30241e82e0f73800f337"],
+  // ADDED with the new example (the issued-sheet statements), then re-measured once when the
+  // thickness call-out change met it (drawing only): the same row, with the same digest body,
+  // as `./while-byte-identity-baseline.ts`, whose header has both.
+  ["examples/sheet-notes.arch", "90e7d0ad148524bd71ba014f2b3849737034c6a23f27bf6f5a40ea800c20eaa1"],
   ["examples/studio.arch", "6f0c677cc5c7bc15b4cea1faee4d61bf30e4e775aa96c2efb2f374f773047362"],
   ["examples/terrace-row.arch", "93825c78af4638012261cfa52b8645ff1bfcb2859f4d65a4595a1a8505a40424"],
   ["examples/themed.arch", "94ea6112f46d9827b260dbfee48cfe1a5fe694d78256bfb70dc12a85be7532a0"],

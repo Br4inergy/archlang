@@ -888,6 +888,22 @@
  * `docs/gallery/*.arch` (all but `narrow-plot`) and the `docs/overview.md` fence. Each PNG
  * golden's changed pixels lie in the boxes around the old and new call-out (and moved label)
  * positions.
+ *
+ * ## `sheet-notes`'s whole-surface row re-measured when the call-out change met it
+ *
+ * The call-out change above was measured on a tree without `sheet-notes`; the example came
+ * with the issued-sheet statements on the other branch. Merged, it is the same case (1) on one
+ * more plan, the drawing only: "100" on `w_mid` y 1525 → 2450, out of d_bed; "200" on `shell`
+ * x 2525 → 3975, out of d_front. Those two call-outs (a `<text>` and three `<line>`s each) are
+ * the only changed SVG nodes; its door and window tags, NOTES and both schedules are
+ * byte-identical. Its `describe()`, `lint()` and `compile().diagnostics` did not move, so the
+ * `SEMANTIC_BASELINE` row holds (`a26a55ae…`), and the OLD SVG put back into the NEW payload
+ * reproduces the old rows here (`cd9df889…`) and in `while-byte-identity-baseline.ts` and
+ * `import-module-lets.test.ts` (`365c38ef…`). The new stations are the call-out change's own:
+ * the plan with its `notes`, `schedule openings` and title `number`/`revision` removed draws
+ * both call-outs at the same coordinates on the call-out branch's tree, which has none of the
+ * issued-sheet code. Its PNG golden's changed pixels lie in the boxes around the old and new
+ * call-outs.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -914,7 +930,7 @@ export const BASELINE: [string, string][] = [
   ["one-room", "006f9e2008584250fa6aa645769f01ad4ad3dcc5053d76c1c4fa963c6dbc3283"],
   ["parametric", "b8055080fe56197849ab4624be16eed46510ac467de6218df59f093979e8235c"],
   ["relational", "776f94d7f8a94ebf78b752697fa433cf49a05b1e4309430e8725a71e15780354"],
-  ["sheet-notes", "cd9df889546b54e26fa92b5d56e04ba2a28490df1d839501647d266983feb19b"], // added with the example, see header
+  ["sheet-notes", "5613c91f3afa00f15548a362f71354d55ba1f25a5214605595760e6e3ec83aef"], // re-measured, see header
   ["studio", "daacc21fb471e0d7d29c88191b838607a07b3f73e82a0508d42a8cbd8184bef3"],
   ["terrace-row", "5c7a1b1380f8ca14f6927a1fefa481ffba57deb85deee79fc83930863bbab898"], // re-measured, see header
   ["themed", "b6ba97d9000126e4355dd8c4a853c19fb8aa8790be0603dedf3e10fb1620cccf"],
