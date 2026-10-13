@@ -24,6 +24,8 @@
       // to the generated sources, so the formatter must not touch them either):
       "!docs-site/public/plan.schema.json",
       "!docs-site/public/intent.schema.json",
+      // The served <arch-plan> element (`npm run gen:arch-plan`, esbuild output).
+      "!docs-site/public/arch-plan.js",
       "!bench/baseline.json",
       "!test/__snapshots__",
       "!test/__goldens__",

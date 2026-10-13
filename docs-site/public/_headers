@@ -88,6 +88,9 @@
 /relational.md
   Content-Type: text/markdown; charset=utf-8
 
+/embed.md
+  Content-Type: text/markdown; charset=utf-8
+
 # END GENERATED
 
 # The GBNF grammar has an extension no static host knows: Cloudflare sends no
@@ -96,4 +99,11 @@
 # alongside /llms.txt, so say so. (scripts/smoke.mjs still asserts on the BODY and
 # never on this header, deliberately — see its comment.)
 /archlang.gbnf
+  Content-Type: text/plain; charset=utf-8
+
+# The gallery plans' sources (`/examples/<name>.arch`, written by sync-docs.mjs beside each SVG;
+# the /embed page's `<arch-plan src>` loads them). `.arch` is another extension no host knows, so
+# without this a reader who opens one gets a download. A glob, unlike the `.md` rules: a missing
+# `/examples/x.arch` shows its 404 page's HTML as text, still with status 404, which is accepted.
+/examples/*.arch
   Content-Type: text/plain; charset=utf-8

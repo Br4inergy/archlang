@@ -4,6 +4,8 @@ import { ADRS } from "./theme/adr-data.js";
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+// The `%ARCHLANG_VERSION%` substitution, shared with the raw `.md` copies (sync-docs.mjs).
+import { withVersion } from "../site-markdown.mjs";
 
 // The ArchLang TextMate grammar — generated from the single source of truth
 // (scripts/gen-grammars.ts → editors/archlang.tmLanguage.json, the same grammar
@@ -102,6 +104,11 @@ const PAGE_META = [
     "/agents",
     "Floor plans from an AI agent",
     "How an AI agent drives ArchLang end to end from the CLI: one context bundle, JSON output, exit codes, and checking a plan against a brief without an image.",
+  ],
+  [
+    "/embed",
+    "Embed a floor plan in a web page",
+    "Put an ArchLang floor plan on a web page: import the compiler from jsDelivr and set the SVG yourself, or use the arch-plan element with a .arch file.",
   ],
   [
     "/gallery",
@@ -557,6 +564,9 @@ export default defineConfig({
     // knows .txt/.json are assets, but not the unknown .gbnf extension — it takes
     // /archlang.gbnf for a page route and calls it dead. It is a real, served file.
     /^\/archlang\.gbnf$/,
+    // The `<arch-plan>` sample page (/embed links to it): a hand-written file in public/, served
+    // verbatim, which VitePress takes for a page route because of its `.html`.
+    /^\/arch-plan-demo\.html$/,
   ],
   // Register the ArchLang grammar with Shiki under the `arch` fence id (the
   // grammar's own `name` is "ArchLang"; its scopeName stays `source.arch`). The
@@ -575,6 +585,10 @@ export default defineConfig({
     // stays a plain highlighted block. `arch` is still the first info token so
     // Shiki highlights it as ArchLang either way.
     config(md) {
+      // A page names the core's version as `%ARCHLANG_VERSION%` (the `/embed` page's pinned
+      // jsDelivr URL), never as a typed number: substituted before parsing, so fences get it too.
+      const parse = md.parse.bind(md);
+      md.parse = (src, env) => parse(withVersion(src, CORE_VERSION), env);
       const defaultFence = md.renderer.rules.fence!;
       md.renderer.rules.fence = (tokens, idx, options, env, self) => {
         // markdown-it only ever calls a fence rule with an in-range `idx`; the `!`
@@ -640,6 +654,7 @@ export default defineConfig({
         items: [
           { text: "Use it from an agent", link: "/agents" },
           { text: "Plans written by agents", link: "/gallery" },
+          { text: "Embed in a web page", link: "/embed" },
           { text: "One-page spec", link: "/spec" },
           { text: "CLI reference", link: "/cli" },
         ],
@@ -672,6 +687,7 @@ export default defineConfig({
         items: [
           { text: "Use it from an agent", link: "/agents" },
           { text: "Plans written by agents", link: "/gallery" },
+          { text: "Embed in a web page", link: "/embed" },
           { text: "One-page spec", link: "/spec" },
         ],
       },

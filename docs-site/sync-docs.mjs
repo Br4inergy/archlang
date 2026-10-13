@@ -65,6 +65,7 @@ const SITE_PAGES = [
   ["docs-site/examples.md", "examples.md"],
   ["docs-site/gallery.md", "gallery.md"],
   ["docs-site/relational.md", "relational.md"],
+  ["docs-site/embed.md", "embed.md"],
 ];
 
 /**
@@ -284,6 +285,9 @@ if (compile) {
         continue;
       }
       writeFileSync(join(exDest, `${name}.svg`), svg);
+      // The source beside its drawing, so `<arch-plan src="https://archlang.uk/examples/<name>.arch">`
+      // (the /embed page) and any other fetcher can load a gallery plan by URL.
+      writeFileSync(join(exDest, `${name}.arch`), sources[name]);
       // A multi-storey plan is one drawing PER STOREY, and `.svg` above is only page 1
       // (the lowest level) — so a page that wants to show a building's floors has
       // nothing to point at. `pages` is absent for a single-storey plan, so this is
@@ -307,7 +311,7 @@ if (failures.length > 0) {
   );
   process.exit(1);
 }
-console.log(`  ${examples.length} example SVGs (+ ${levelSvgCount} per-storey pages) → public/examples/`);
+console.log(`  ${examples.length} example SVGs + sources (+ ${levelSvgCount} per-storey pages) → public/examples/`);
 
 // The hand-written pages' raw markdown at /<route>.md. After the gallery gate above because it
 // needs the built core (the home page's facts band is `describe()`, the agent gallery's sheet

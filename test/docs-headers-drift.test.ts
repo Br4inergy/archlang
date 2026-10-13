@@ -24,6 +24,11 @@ describe("docs-site/public/_headers", () => {
     }
   });
 
+  it("serves the gallery plans' `.arch` sources as UTF-8 text (an unknown extension otherwise downloads)", () => {
+    // scripts/smoke.mjs asserts the header itself after a deploy; the local preview applies no _headers.
+    expect(headers).toContain("\n/examples/*.arch\n  Content-Type: text/plain; charset=utf-8\n");
+  });
+
   it("only the generated routes carry a markdown Content-Type (no glob, no placeholder)", () => {
     // Closed-world: every path whose rule block types the response as markdown, wherever in the
     // file it sits. A glob or `:placeholder` rule would match a missing page too, and its 404

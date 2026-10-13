@@ -53,6 +53,13 @@ suite("siteMarkdown over every SITE_PAGES row", () => {
     });
   }
 
+  it("the /embed copy names the core's real version, never the placeholder", () => {
+    const md = render("docs-site/embed.md");
+    const version = JSON.parse(readFileSync("package.json", "utf8")).version as string;
+    expect(md).toContain(`https://cdn.jsdelivr.net/npm/@chanmeng666/archlang@${version}/+esm`);
+    expect(md).not.toContain("%ARCHLANG_VERSION%");
+  });
+
   it("the home copy carries the hero, every feature card and the facts band", () => {
     const md = render("docs-site/index.md");
     expect(md).toContain("# Designs that compile.");

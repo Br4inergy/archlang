@@ -205,7 +205,10 @@ test.describe("the hand-written pages serve a raw /<page>.md copy", { tag: "@pro
       const body = (await res.text()).replace(/\r\n/g, "\n");
       expect(body.trim().length).toBeGreaterThan(200);
       expect(body.startsWith("# "), `${route} should open with its title`).toBe(true);
-      expect(body, `${route} still carries component markup`).not.toMatch(/^<[A-Za-z]/m);
+      // Component markup would be PROSE starting with a tag. Fenced code is code: /embed's HTML
+      // examples legitimately open lines with `<`, the exemption test/site-markdown.test.ts makes.
+      const prose = body.replace(/```[\s\S]*?```/g, "");
+      expect(prose, `${route} still carries component markup`).not.toMatch(/^<[A-Za-z]/m);
     });
   }
 });

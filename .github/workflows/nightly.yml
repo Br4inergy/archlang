@@ -251,6 +251,9 @@ jobs:
         run: npx playwright test -c docs-site --grep @prod
         env:
           E2E_BASE_URL: https://archlang.uk
+          # Opts in the one case that loads the REAL jsDelivr core (docs-site/e2e/arch-plan.spec.ts):
+          # it catches a published core that jsDelivr re-bundles badly, and an unpublished pin.
+          E2E_PROD: "1"
 
       - name: Upload Playwright report
         if: failure()
