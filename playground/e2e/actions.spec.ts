@@ -1,5 +1,6 @@
 import { expect, type Download, type Page, test } from "@playwright/test";
-import { AUTOSAVE_KEY, SIMPLE_PLAN, setEditorSource, waitForPlan, watchStatus } from "./fixtures.js";
+import { readFileSync } from "node:fs";
+import { AUTOSAVE_KEY, SIMPLE_PLAN, setEditorSource, shareHash, waitForPlan, watchStatus } from "./fixtures.js";
 
 /** Sloppy but valid — `format()` must rewrite it, which is what makes the test honest. */
 const UNFORMATTED = `plan "E2E" {
@@ -83,8 +84,7 @@ test.describe("header actions", () => {
     await status.expectFlash("Nothing to finish");
     await expect(panel).toContainText("Finish — 6 changes");
 
-    // One Ctrl+Z in the editor reverts the whole Finish, back to the exact source,
-    // and the log of an edit that is no longer there goes away.
+    // The log of an edit that is no longer there goes away: undo the whole Finish.
     await editor.click();
     await page.keyboard.press("ControlOrMeta+z");
     await expect(editor).not.toContainText("dims auto all");
@@ -92,6 +92,31 @@ test.describe("header actions", () => {
       .poll(() => page.evaluate((k) => localStorage.getItem(k), AUTOSAVE_KEY), { timeout: 10_000 })
       .toBe(SIMPLE_PLAN);
     await expect(panel).toBeHidden();
+  });
+
+  test("Finish is its own undo step even straight after typing", async ({ page }) => {
+    // CodeMirror merges adjacent changes made within 500 ms into one undo step. Typing
+    // and then pressing Finish at once must still undo Finish ALONE, keeping the typing
+    // — which only `isolateHistory` on the replacement guarantees.
+    await page.goto("/");
+    await waitForPlan(page);
+    await setEditorSource(page, SIMPLE_PLAN);
+    const editor = page.locator(".cm-content");
+    await editor.click();
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.type("\n# typed");
+    await page.getByRole("button", { name: "Finish", exact: true }).click();
+    await expect(editor).toContainText("dims auto all");
+    await editor.click();
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(editor).not.toContainText("dims auto all");
+    await expect(editor).toContainText("# typed");
+    // Exactly the typed text on top of the plan (whatever indent Enter chose), no Finish.
+    await expect
+      .poll(() => page.evaluate((k) => localStorage.getItem(k), AUTOSAVE_KEY), { timeout: 10_000 })
+      .toMatch(/^plan "E2E" \{[\s\S]*\n\}\n[ \t]*# typed$/);
+    const saved = (await page.evaluate((k) => localStorage.getItem(k), AUTOSAVE_KEY)) ?? "";
+    expect(saved.startsWith(SIMPLE_PLAN)).toBe(true);
   });
 
   test("Finish that declines says so, opens Lint, and offers Reissue sheet", async ({ page }) => {
@@ -151,13 +176,38 @@ test.describe("header actions", () => {
       expect(`${url.origin}${url.pathname}`).toBe(base);
       expect([...url.searchParams.keys()]).toEqual(["q"]); // no tracking parameter
       const q = url.searchParams.get("q") ?? "";
-      // The prompt carries the very URL Copy link would copy, and how to decode it.
-      expect(q).toContain(await page.evaluate(() => window.location.href));
-      expect(q).toMatch(/#z=/);
+      // The prompt carries this plan's share link (the real codec), and how to decode it.
+      const origin = await page.evaluate(() => location.origin + location.pathname);
+      expect(q).toContain(`${origin}${await shareHash(SIMPLE_PLAN)}`);
       expect(q).toContain("zlib.decompress(");
       await popup.close();
       await expect(note).toBeHidden(); // choosing a link closes the menu
     }
+  });
+
+  test("the plan a first visit loads gets a prefilled link, with no edit and no hash yet", async ({
+    page,
+    context,
+  }) => {
+    await context.route(/^https:\/\/(claude\.ai|chatgpt\.com)\//, (route) =>
+      route.fulfill({ contentType: "text/plain", body: "stub" }),
+    );
+    // Hillside Villa, the default, is the largest bundled plan; no hash in the URL yet.
+    await page.goto("/");
+    await waitForPlan(page);
+    expect(await page.evaluate(() => location.hash)).toBe("");
+    const villa = readFileSync(new URL("../../examples/hillside-villa.arch", import.meta.url), "utf8").replace(
+      /\r\n?/g,
+      "\n",
+    );
+    await page.getByText("Ask AI").click();
+    const [popup] = await Promise.all([
+      context.waitForEvent("page"),
+      page.getByRole("link", { name: "Open in Claude ↗" }).click(),
+    ]);
+    await popup.waitForURL((u) => u.href.startsWith("https://claude.ai/new"));
+    const q = new URL(popup.url()).searchParams.get("q") ?? "";
+    expect(q).toContain(await shareHash(villa));
   });
 
   test("a plan too long for a chat URL copies the full prompt and opens the host empty", async ({ page, context }) => {
@@ -196,16 +246,26 @@ test.describe("header actions", () => {
       await page.setViewportSize({ width, height: 800 });
       await page.goto("/");
       await waitForPlan(page);
-      const { scroll, client, rows } = await page.evaluate(() => {
+      // EVERY visible header item counts — the "⋯" menu is the last flex item and so the
+      // first to wrap. Items are vertically centred or stretched, so "one row" means each
+      // item starts above the first cell's bottom edge, not that all tops are equal.
+      const { scroll, client, wrapped } = await page.evaluate(() => {
         const h = document.querySelector("header")!;
-        const tops = new Set([...h.querySelectorAll(":scope > .tb-cell")].map((c) => c.getBoundingClientRect().top));
-        return { scroll: h.scrollWidth, client: h.clientWidth, rows: tops.size };
+        const items = [...h.children].filter(
+          (c) => getComputedStyle(c).display !== "none" && !c.classList.contains("spacer"),
+        );
+        const firstBottom = items[0]!.getBoundingClientRect().bottom;
+        return {
+          scroll: h.scrollWidth,
+          client: h.clientWidth,
+          wrapped: items.filter((c) => c.getBoundingClientRect().top >= firstBottom - 1).map((c) => c.className),
+        };
       });
       expect(scroll, `header overflows at ${width}px`).toBeLessThanOrEqual(client);
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
       // Below 1280 the cells may wrap (better than a sideways scroll); from 1280 up the
       // title block is one row, as it was before Finish and Ask AI joined it.
-      if (width >= 1280) expect(rows, `header wraps at ${width}px`).toBe(1);
+      if (width >= 1280) expect(wrapped, `header items on a second row at ${width}px`).toEqual([]);
     }
   });
 
@@ -304,6 +364,20 @@ test.describe("header actions", () => {
     await expect(page.locator(".embed-dialog").getByLabel(/this example's drawing/)).toHaveValue(
       /\(https:\/\/archlang\.uk\/examples\/hillside-villa\.L1\.svg\)/,
     );
+    await page.locator(".embed-close").click();
+
+    // Switch to the upper storey: the snippet follows the drawing on screen.
+    await page.locator('#storeys button[data-level="2"]').click();
+    await page.locator("#embed").click();
+    await expect(page.locator(".embed-dialog").getByLabel(/this example's drawing/)).toHaveValue(
+      /\(https:\/\/archlang\.uk\/examples\/hillside-villa\.L2\.svg\)/,
+    );
+    await page.locator(".embed-close").click();
+
+    // Under a View theme override the gallery drawing is not what is on screen: plain link.
+    await page.locator("#theme").selectOption("blueprint");
+    await page.locator("#embed").click();
+    await expect(page.locator(".embed-dialog").getByLabel(/Markdown link/)).toHaveValue(/^\[ArchLang floor plan/);
   });
 });
 

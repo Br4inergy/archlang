@@ -12,6 +12,8 @@ import {
   isChatHost,
   MAX_CHAT_URL,
 } from "../src/llm-prompt.js";
+import { EXAMPLES } from "../src/examples.js";
+import { encodeSrc } from "../src/share.js";
 
 const STUDIO = `plan "Studio" {
   units mm
@@ -83,16 +85,17 @@ describe("Open in Claude / ChatGPT", () => {
   it("prefills a short prompt that carries the share link and the spec pointer", () => {
     const prompt = buildChatPrompt(SHARE);
     expect(prompt).toContain(SHARE);
-    expect(prompt).toContain("https://archlang.uk/spec");
-    expect(prompt.length).toBeLessThan(SHARE.length + 500);
+    expect(prompt).toContain("archlang.uk/spec");
+    // Every character is paid for under the URL cap.
+    expect(prompt.length).toBeLessThan(SHARE.length + 200);
   });
 
   it("gives a padding-safe decode recipe for the hash form the link actually uses", () => {
     expect(buildChatPrompt(SHARE)).toContain(
-      'zlib.decompress(base64.urlsafe_b64decode(z + "=" * (-len(z) % 4)), -15).decode()',
+      'zlib.decompress(base64.urlsafe_b64decode(z+"="*(-len(z)%4)),-15).decode()',
     );
     const legacy = buildChatPrompt("https://playground.archlang.uk/#src=cGxhbiAiWCIge30");
-    expect(legacy).toContain('base64.urlsafe_b64decode(s + "=" * (-len(s) % 4)).decode()');
+    expect(legacy).toContain('base64.urlsafe_b64decode(s+"="*(-len(s)%4)).decode()');
     expect(legacy).not.toContain("zlib");
   });
 
@@ -118,6 +121,21 @@ describe("Open in Claude / ChatGPT", () => {
     const exact = chatHostUrl("claude", "x");
     expect(chatHostUrl("claude", "x", exact.url.length)).toEqual(exact);
     expect(chatHostUrl("claude", "x", exact.url.length - 1).fits).toBe(false);
+  });
+
+  it("gives every bundled example a prefilled link, not the copy fallback", async () => {
+    // The share hash is built by the real codec (`encodeSrc`, CompressionStream in Node as
+    // in the browser) on the production origin, the longest base a link carries.
+    expect(Object.keys(EXAMPLES).length).toBeGreaterThan(20);
+    for (const [label, source] of Object.entries(EXAMPLES)) {
+      const hash = await encodeSrc(source);
+      expect(hash.startsWith("#z="), "the compressed form, as every current browser writes").toBe(true);
+      const prompt = buildChatPrompt(`https://playground.archlang.uk/${hash}`);
+      for (const host of Object.keys(CHAT_HOSTS) as ChatHost[]) {
+        const { url, fits } = chatHostUrl(host, prompt);
+        expect(fits, `${label} on ${host}: ${url.length} > ${MAX_CHAT_URL}`).toBe(true);
+      }
+    }
   });
 
   it("recognises only the known hosts", () => {

@@ -31,7 +31,9 @@ describe("embedSnippets", () => {
   it("recognises only an unedited bundled example", () => {
     const studio = studioSource;
     expect(exampleNameFor(studio)).toBe("studio");
-    expect(exampleNameFor(studio.replace(/\r\n?/g, "\n"))).toBe("studio");
+    // Either line-end convention: the editor holds LF, a Windows checkout may hold CRLF.
+    expect(exampleNameFor(studio.replace(/\r?\n/g, "\n"))).toBe("studio");
+    expect(exampleNameFor(studio.replace(/\r?\n/g, "\r\n"))).toBe("studio");
     expect(exampleNameFor(`${studio}\n# edited`)).toBeUndefined();
     expect(exampleNameFor("")).toBeUndefined();
   });

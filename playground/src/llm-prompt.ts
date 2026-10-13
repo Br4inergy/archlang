@@ -98,36 +98,40 @@ export function isChatHost(s: string | undefined): s is ChatHost {
 }
 
 /**
- * The longest prefilled chat URL a link will carry. Past it the prompt is copied
- * to the clipboard instead and the link opens the host empty. A conservative bound
- * under the request-line limits common front-end proxies enforce, not a figure
- * either host documents.
+ * The longest prefilled chat URL a link will carry. Past it the full Copy-for-LLM
+ * prompt is copied instead and the link opens the host empty.
+ *
+ * AN UNMEASURED GUESS: no limit was measured against claude.ai or chatgpt.com, nor
+ * against the proxies in front of them; neither host documents one. It is a round
+ * figure under common request-line limits. The plan already travels compressed (the
+ * share link's `#z=` IS the deflate-raw + base64url payload), so the one lever left is
+ * the prompt's own words, kept short enough that every bundled example — the largest
+ * being Hillside Villa, the plan a first visit loads — still fits
+ * (`playground/test/llm-prompt.test.ts` holds that).
  */
 export const MAX_CHAT_URL = 8000;
 
 /**
  * The short prompt the "Open in Claude / ChatGPT" links prefill: the plan's share
- * link plus enough context for a cold model to read it. Unlike the clipboard
- * prompt above it carries no source text of its own, only the link (whose `#z=`
- * holds the source).
+ * link plus a one-line recipe that decodes it. The link's fragment holds the source:
+ * `#z=` is unpadded base64url of raw DEFLATE (`encodeSrc`, `share.ts` — so zlib's
+ * `wbits` is -15), `#src=` (a browser without CompressionStream) unpadded base64url
+ * of the UTF-8. Every character here is paid for in the URL cap, so it is terse.
  */
 export function buildChatPrompt(shareUrl: string): string {
-  // `encodeSrc` writes `#z=` (raw DEFLATE), or `#src=` on a browser without
-  // CompressionStream; both are UNPADDED base64url, so the recipe restores the padding.
-  const decode = /[#&]src=/.test(shareUrl)
-    ? 'The plan source is the text s after #src=. Decode it with Python: base64.urlsafe_b64decode(s + "=" * (-len(s) % 4)).decode()'
-    : 'The plan source is the text z after #z=. Decode it with Python: zlib.decompress(base64.urlsafe_b64decode(z + "=" * (-len(z) % 4)), -15).decode()';
-  return [
-    `Help me work on this ArchLang floor plan: ${shareUrl}`,
-    "ArchLang is a declarative language that compiles .arch source to SVG floor plans (spec: https://archlang.uk/spec).",
-    decode,
-  ].join("\n");
+  const recipe = /[#&]src=/.test(shareUrl)
+    ? 'Source, in Python: base64.urlsafe_b64decode(s+"="*(-len(s)%4)).decode()'
+    : 'Source, in Python: zlib.decompress(base64.urlsafe_b64decode(z+"="*(-len(z)%4)),-15).decode()';
+  return [`ArchLang floor plan (spec: archlang.uk/spec): ${shareUrl}`, recipe].join("\n");
 }
 
 /**
  * The URL that opens `host` with `prompt` prefilled. When that URL would pass
  * `max` characters, `fits` is false and `url` is the bare host: the caller copies
  * the prompt for the user to paste. Carries no tracking parameter.
+ *
+ * UNVERIFIED: that `?q=` prefills (or, on ChatGPT, submits) the prompt has not been
+ * checked on either host; the e2e suite stubs both hosts and reads only the URL.
  */
 export function chatHostUrl(host: ChatHost, prompt: string, max = MAX_CHAT_URL): { url: string; fits: boolean } {
   const { base } = CHAT_HOSTS[host];

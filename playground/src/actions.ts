@@ -19,7 +19,7 @@ import {
 import { escapeHtml } from "./escape.js";
 import { embedSnippets, exampleImageUrl } from "./embed-snippets.js";
 import { exampleNameFor } from "./examples.js";
-import { buildChatPrompt, buildLlmPrompt, CHAT_HOSTS, chatHostUrl, isChatHost } from "./llm-prompt.js";
+import { buildChatPrompt, buildLlmPrompt, CHAT_HOSTS, type ChatHost, chatHostUrl, isChatHost } from "./llm-prompt.js";
 import { encodeSrc, updateHash } from "./share.js";
 import { mountSnapshots } from "./snapshots.js";
 import { KEYS, readStr, writeStr } from "./storage.js";
@@ -43,6 +43,8 @@ interface ActionsCtx {
   onExportError: (format: string, err: unknown) => void;
   /** Bring the Lint tab to the front (where Finish and Repair report). */
   showLintTab: () => void;
+  /** The render-theme override picked in the View menu, or "" for the source's own. */
+  getThemeOverride: () => string;
   els: {
     formatBtn: HTMLButtonElement | null;
     finishBtn: HTMLButtonElement | null;
@@ -63,7 +65,18 @@ interface ActionsCtx {
 }
 
 export function mountActions(ctx: ActionsCtx): void {
-  const { getSource, loadSource, flash, getCleanSvg, getScene, getLevel, onExportError, showLintTab, els } = ctx;
+  const {
+    getSource,
+    loadSource,
+    flash,
+    getCleanSvg,
+    getScene,
+    getLevel,
+    onExportError,
+    showLintTab,
+    getThemeOverride,
+    els,
+  } = ctx;
 
   // Format (idempotent, comment-preserving) — rewrite the source in place.
   els.formatBtn?.addEventListener("click", () => {
@@ -153,46 +166,88 @@ export function mountActions(ctx: ActionsCtx): void {
   // Open in Claude / ChatGPT — open the chat host with a short prompt carrying the
   // plan's share link. This DOES put the plan in the host's URL (the panel says so),
   // unlike Copy link, whose `#z=` fragment never leaves the browser. No tracking
-  // parameter. A prompt too long for a URL copies the full Copy-for-LLM prompt
-  // instead and opens the host empty.
+  // parameter, and no inbound query string: the link is origin + path + hash.
   //
-  // Nothing is awaited inside the click: a popup or clipboard write after an `await`
-  // has spent the click's user activation, which Safari's blockers refuse (silently,
-  // with `noopener`). So the hash and the href are refreshed BEFORE the click —
-  // on hover, focus and press — and the click itself only reads them.
+  // The share codec is async (CompressionStream) and a click must not await before
+  // opening a tab (that spends the user activation popup blockers check). So the
+  // current source is encoded AHEAD of the click — at mount, when the menu opens, on
+  // hover, focus and press — into `chatEncoded`, tagged with the source it encodes.
+  // The click uses it only if that source is still the editor's text; anything else
+  // (a click before the encoding landed, a stale one) takes the copy path below.
+  let chatEncoded: { source: string; hash: string } | undefined;
+  const shareBase = () => location.origin + location.pathname;
+  const chatTarget = (host: ChatHost): { url: string; fits: boolean } => {
+    if (chatEncoded?.source !== getSource()) return { url: CHAT_HOSTS[host].base, fits: false };
+    return chatHostUrl(host, buildChatPrompt(`${shareBase()}${chatEncoded.hash}`));
+  };
+  async function encodeForChat() {
+    const source = getSource();
+    if (chatEncoded?.source === source) return;
+    const hash = await encodeSrc(source);
+    if (getSource() !== source) return; // edited meanwhile; the next trigger re-encodes
+    chatEncoded = { source, hash };
+    for (const link of els.chatLinks)
+      if (isChatHost(link.dataset.chatHost)) link.href = chatTarget(link.dataset.chatHost).url;
+  }
+  /** Copy the full prompt, THEN open the host: a tab opened first can take focus and
+   *  make the clipboard write fail. If the popup is then refused, say where to paste. */
+  async function copyThenOpen(host: ChatHost, why: string) {
+    const { name, base } = CHAT_HOSTS[host];
+    try {
+      await navigator.clipboard.writeText(llmPrompt());
+    } catch {
+      flash("Copy failed");
+      return;
+    }
+    const tab = window.open(base, "_blank");
+    if (tab) {
+      tab.opener = null;
+      flash(`${why}: full prompt copied, paste it into ${name}`);
+    } else {
+      flash(`${why}: full prompt copied; open ${name} and paste it`);
+    }
+  }
+  void encodeForChat();
+  els.chatMenu?.addEventListener("toggle", () => {
+    if (els.chatMenu?.open) void encodeForChat();
+  });
   for (const link of els.chatLinks) {
     const host = link.dataset.chatHost;
     if (!isChatHost(host)) continue;
-    const refresh = async () => {
-      await updateHash(getSource()); // the share link must carry the latest edit
-      link.href = chatHostUrl(host, buildChatPrompt(location.href)).url;
-    };
-    for (const type of ["pointerenter", "focus", "pointerdown"]) link.addEventListener(type, () => void refresh());
+    for (const type of ["pointerenter", "focus", "pointerdown"])
+      link.addEventListener(type, () => void encodeForChat());
     link.addEventListener("click", (e) => {
-      const { url, fits } = chatHostUrl(host, buildChatPrompt(location.href));
+      const fresh = chatEncoded?.source === getSource();
+      const { url, fits } = chatTarget(host);
       link.href = url;
       setTimeout(closeChatMenu, 0); // after the anchor's own activation
       if (fits) return; // the anchor itself opens the prefilled host
       e.preventDefault();
+      void copyThenOpen(host, fresh ? "Plan too long for a link" : "Link not ready");
+    });
+    // A middle-click opens the href as it stands; when that is the bare host, still copy.
+    link.addEventListener("auxclick", (e) => {
+      if (e.button !== 1 || chatTarget(host).fits) return;
       navigator.clipboard.writeText(llmPrompt()).then(
-        () => flash(`Plan too long for a link: full prompt copied, paste it into ${CHAT_HOSTS[host].name}`),
+        () => flash(`Full prompt copied, paste it into ${CHAT_HOSTS[host].name}`),
         () => flash("Copy failed"),
       );
-      window.open(url, "_blank", "noopener,noreferrer");
     });
   }
 
-  // The "Ask AI" disclosure closes like the Saved popover: Escape, a click
-  // outside it, or choosing a link.
+  // The "Ask AI" disclosure closes like the Saved popover: Escape (listened for on the
+  // document, since Safari does not focus a clicked <summary>), a click outside it, or
+  // choosing a link.
   const chatMenu = els.chatMenu;
   function closeChatMenu() {
     if (chatMenu) chatMenu.open = false;
   }
   if (chatMenu) {
-    chatMenu.addEventListener("keydown", (e) => {
+    document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape" || !chatMenu.open) return;
+      const inside = chatMenu.contains(document.activeElement);
       closeChatMenu();
-      chatMenu.querySelector("summary")?.focus();
+      if (inside) chatMenu.querySelector("summary")?.focus();
     });
     document.addEventListener("click", (e) => {
       if (chatMenu.open && !chatMenu.contains(e.target as Node)) closeChatMenu();
@@ -250,7 +305,9 @@ export function mountActions(ctx: ActionsCtx): void {
       (changeRows ? `<ul class="repair-list">${changeRows}</ul>` : "") +
       (unresolvedRows
         ? `<p class="repair-un-h">Left for you to resolve (finish never guesses):</p><ul class="repair-list">${unresolvedRows}</ul>`
-        : "");
+        : "") +
+      // The core's note names the CLI flag; say what it is called here.
+      (canReissue ? `<p class="repair-un-h">Here, Reissue sheet does what <code>--reissue</code> does.</p>` : "");
     panel.querySelector(".finish-reissue")?.addEventListener("click", () => runFinish(true));
   }
 
@@ -302,7 +359,9 @@ export function mountActions(ctx: ActionsCtx): void {
     const hash = await encodeSrc(src);
     const base = location.origin + location.pathname.replace(/[^/]*$/, "");
     const example = exampleNameFor(src);
-    const imageUrl = example ? exampleImageUrl(example, getLevel()) : undefined;
+    // The gallery drawing is the source's own theme; under a View override it would
+    // not be the picture on screen, so that case gets the plain link.
+    const imageUrl = example && !getThemeOverride() ? exampleImageUrl(example, getLevel()) : undefined;
     const { embedUrl, iframe, markdown: md } = embedSnippets(base, hash, imageUrl);
     const dialog = document.createElement("div");
     dialog.className = "embed-dialog";

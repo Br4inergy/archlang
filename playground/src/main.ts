@@ -429,6 +429,7 @@ async function init() {
     getLevel: () => activeLevel,
     onExportError,
     showLintTab: () => document.getElementById("tab-lint")?.click(),
+    getThemeOverride: () => themeSelect.value,
     els: {
       formatBtn,
       finishBtn: document.getElementById("finishSrc") as HTMLButtonElement | null,

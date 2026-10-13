@@ -555,15 +555,15 @@ main {
   }
 }
 
-/* <760px: title-block cells wrap; panes stack; the seam becomes a hairline. */
-@media (max-width: 760px) {
-  header {
-    flex-wrap: wrap;
-    align-items: stretch;
-  }
+/* <1280px the title-block cells may wrap; a hairline under each keeps the rows ruled. */
+@media (max-width: 1279px) {
   .tb-cell {
     border-bottom: 1px solid var(--src-border);
   }
+}
+
+/* <760px: title-block cells wrap; panes stack; the seam becomes a hairline. */
+@media (max-width: 760px) {
   main {
     grid-template-columns: 1fr !important;
     grid-template-rows: 1fr 1fr;
