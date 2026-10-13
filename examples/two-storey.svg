@@ -201,14 +201,14 @@
 <line x1="8842.43" y1="7057.57" x2="8757.57" y2="7142.43" stroke="#0E5484" stroke-width="9"/>
 <line x1="8842.43" y1="-142.43" x2="8757.57" y2="-57.57" stroke="#0E5484" stroke-width="9"/>
 <text x="8887.5" y="3500" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 8887.5 3500)">7200</text>
-<line x1="2150" y1="1825" x2="2250" y2="1825" stroke="#0E5484" stroke-width="9"/>
-<line x1="2192.43" y1="1867.43" x2="2107.57" y2="1782.57" stroke="#0E5484" stroke-width="9"/>
-<line x1="2292.43" y1="1867.43" x2="2207.57" y2="1782.57" stroke="#0E5484" stroke-width="9"/>
-<text x="2428.75" y="1825" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(0 2428.75 1825)">100</text>
-<line x1="5075" y1="100" x2="5075" y2="-100" stroke="#0E5484" stroke-width="9"/>
-<line x1="5117.43" y1="57.57" x2="5032.57" y2="142.43" stroke="#0E5484" stroke-width="9"/>
-<line x1="5117.43" y1="-142.43" x2="5032.57" y2="-57.57" stroke="#0E5484" stroke-width="9"/>
-<text x="5075" y="278.75" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 5075 278.75)">200</text>
+<line x1="2150" y1="2900" x2="2250" y2="2900" stroke="#0E5484" stroke-width="9"/>
+<line x1="2192.43" y1="2942.43" x2="2107.57" y2="2857.57" stroke="#0E5484" stroke-width="9"/>
+<line x1="2292.43" y1="2942.43" x2="2207.57" y2="2857.57" stroke="#0E5484" stroke-width="9"/>
+<text x="2428.75" y="2900" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(0 2428.75 2900)">100</text>
+<line x1="1125" y1="100" x2="1125" y2="-100" stroke="#0E5484" stroke-width="9"/>
+<line x1="1167.43" y1="57.57" x2="1082.57" y2="142.43" stroke="#0E5484" stroke-width="9"/>
+<line x1="1167.43" y1="-142.43" x2="1082.57" y2="-57.57" stroke="#0E5484" stroke-width="9"/>
+<text x="1125" y="278.75" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 1125 278.75)">200</text>
 </g>
 <g><polygon points="7875,-737.5 7762.5,-377.5 7875,-456.25 7987.5,-377.5" fill="#333333" transform="rotate(0 7875 -512.5)"/><text x="7875" y="-841.5" font-size="130" fill="#333333" text-anchor="middle" dominant-baseline="central">N</text></g>
 <g><rect x="-5750" y="9725" width="500" height="70" fill="#333333"/><rect x="-5250" y="9725" width="500" height="70" fill="none" stroke="#333333" stroke-width="9"/><text x="-5750" y="9895" font-size="100" fill="#333333" text-anchor="start" dominant-baseline="central">0</text><text x="-4750" y="9895" font-size="100" fill="#333333" text-anchor="middle" dominant-baseline="central">1 m</text></g>
