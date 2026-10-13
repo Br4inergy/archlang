@@ -19,6 +19,17 @@ the pure core (`src/lsp.ts`); this server is a thin LSP adapter over them.
 - `src/extension.ts` — the client: launches the server over IPC for
   `language === "arch"`.
 
+- `src/markdown.ts` — the Markdown-preview plugin: a markdown-it fence rule for `arch`
+  fences (pure, compile injected). `extension.ts` exposes it as `extendMarkdownIt` on the
+  object `activate` returns, which is what `contributes.markdown.markdownItPlugins` makes
+  VS Code call. `activate` is async: it `import()`s the ESM-only core (its exports map has
+  only an `import` condition, so `require` cannot reach it) before returning. The Markdown
+  preview activates the extension too, so the language server starts only once an `arch`
+  document is open. Every SVG id is prefixed per fence so two plans on one page do not share
+  patterns. Styles: `markdown-preview.css`. Tests: `test/markdown.test.ts`.
+- `dist/core.mjs` — the core, bundled ONCE by `esbuild.mjs`; `dist/extension.js` and
+  `dist/server.js` leave it external and load it by `import()`.
+
 ## Build & run
 
 ```bash
@@ -34,3 +45,14 @@ errors/warnings appear inline (squiggles + Problems panel).
 > Packaging note: `contributes.languages`/`grammars` reference the grammar and
 > language-configuration in `../`. For `vsce package`, copy those two files into
 > this folder (or adjust the paths) so they're included in the `.vsix`.
+
+## Open VSX (owner step)
+
+Not yet published there. Once the owner has created a namespace and a token, publish the
+packaged `.vsix` (built in the PRIMARY checkout). ovsx reads the token from the `OVSX_PAT`
+environment variable (set it in the shell, so it is never in argv),
+never from a file in the repo; `ovsx` is pinned to 1.2.0 (the npm latest on 2026-10-13):
+
+```bash
+npx ovsx@1.2.0 publish archlang-<version>.vsix
+```

@@ -86,7 +86,7 @@ you observed. Do NOT push anything — this command only verifies.
   2. Verify INSIDE the `.vsix` before uploading: `Identity Version`/`Publisher` in
      `extension.vsixmanifest`; `extension/package.json`'s version and core range;
      `ARCHLANG_CORE_VERSION` in `dist/server.js`; the release's new keywords/error codes present in
-     the bundle. Search the bundle with a literal matcher, never a regex.
+     `dist/core.mjs` (the core is bundled there once, not in `dist/server.js`). Search it with a literal matcher, never a regex.
   3. Upload the HIGHEST un-uploaded `.vsix` (`.vsix` files are gitignored and several can pile up).
   4. The gallery lags an upload by minutes; a disagreeing probe means wait and re-probe.
 - **MCPB bundle / Smithery (human step; no credential in CI).** `release.yml` builds

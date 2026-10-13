@@ -12,6 +12,14 @@ are documented here. The format is based on
 > republished**. See [CONTRIBUTING.md → Releasing](../../CONTRIBUTING.md#releasing) for
 > the checklist that keeps the two in sync.
 
+## [Unreleased]
+
+### Added
+
+- **Floor plans in the Markdown preview.** A fenced block tagged `arch` (or `archlang`) renders
+  as the compiled plan in VS Code's built-in Markdown preview; a plan with an error shows its
+  diagnostic and source instead.
+
 ## [0.30.0] - 2026-10-09
 
 ### Changed
