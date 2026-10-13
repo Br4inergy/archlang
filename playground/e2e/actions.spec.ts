@@ -248,11 +248,11 @@ test.describe("header actions", () => {
     await context.route(/^https:\/\/(claude\.ai|chatgpt\.com)\//, (route) =>
       route.fulfill({ contentType: "text/plain", body: "stub" }),
     );
-    // Hillside Villa, the default, is the largest bundled plan; no hash in the URL yet.
+    // Laneway House is the default; no hash in the URL yet.
     await page.goto("/");
     await waitForPlan(page);
     expect(await page.evaluate(() => location.hash)).toBe("");
-    const villa = readFileSync(new URL("../../examples/hillside-villa.arch", import.meta.url), "utf8").replace(
+    const defaultPlan = readFileSync(new URL("../../examples/laneway-house.arch", import.meta.url), "utf8").replace(
       /\r\n?/g,
       "\n",
     );
@@ -264,7 +264,7 @@ test.describe("header actions", () => {
     ]);
     await popup.waitForURL((u) => u.href.startsWith("https://claude.ai/new"));
     const q = new URL(popup.url()).searchParams.get("q") ?? "";
-    expect(await planInPrompt(q)).toBe(villa);
+    expect(await planInPrompt(q)).toBe(defaultPlan);
   });
 
   test("a plan too long for a chat URL copies the full prompt and opens the host empty", async ({ page, context }) => {

@@ -60,26 +60,21 @@ import materials from "../../examples/materials.arch?raw";
 //
 // Group order and item order are the menu's order, and the labels are the <select>'s
 // values as well as its text: the Playwright specs select by label, so a label is a
-// small public surface. Reorder deliberately, if at all.
+// small public surface. Reorder deliberately, if at all. The FIRST row is the plan a first
+// visit opens, so it must be lint-clean (`arch lint --json` returns no diagnostics).
 // ───────────────────────────────────────────────────────────────────────────────
 const EXAMPLE_ROWS = [
   [
-    "hillside-villa",
-    "Hillside Villa",
-    "Showpiece",
-    "A two-storey villa with an attached garage on one A2 sheet — the whole language in a single plan.",
+    "laneway-house",
+    "Laneway House",
+    "Start here",
+    "A 49 m² one-bedroom cottage where nothing is positioned by hand: every opening and fixture resolves against a wall or a room.",
   ],
   [
     "one-room",
     "One room",
     "Start here",
     "The smallest complete plan: one room, one door, one window and a dimension chain.",
-  ],
-  [
-    "laneway-house",
-    "Laneway House",
-    "Start here",
-    "A 49 m² one-bedroom cottage where nothing is positioned by hand: every opening and fixture resolves against a wall or a room.",
   ],
   [
     "garden-loft",
@@ -98,6 +93,12 @@ const EXAMPLE_ROWS = [
     "Studio (1BR)",
     "Start here",
     "The canonical example: a compact studio flat that passes arch lint, with every room opening off a central hall.",
+  ],
+  [
+    "hillside-villa",
+    "Hillside Villa",
+    "Showpiece",
+    "A two-storey villa with an attached garage on one A2 sheet — the whole language in a single plan.",
   ],
   [
     "two-bed",
