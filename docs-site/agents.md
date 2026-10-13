@@ -165,6 +165,14 @@ Served at this site's root, so a tool can fetch them directly:
 
 Every top-level docs page also serves its raw markdown at `/<route>.md` (e.g. [`/cli.md`](/cli.md); the home page's copy is `/index.md`). The `/adr/…` pages have no raw copy.
 
+## Show a plan on a web page
+
+A page can compile a plan in the reader's browser, with no server. Import `compile` from the
+core's pinned jsDelivr `+esm` URL and set the SVG yourself; that form works in a Claude Code
+artifact. Or load `https://archlang.uk/arch-plan.js` and write
+`<arch-plan src="https://archlang.uk/examples/studio.arch"></arch-plan>`. Both are on
+[Embed a floor plan in a web page](/embed).
+
 ## Also
 
 - The same functions are exported from the library — `compile`, `describe`, `lint`, `validate`,

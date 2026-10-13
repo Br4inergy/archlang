@@ -88,6 +88,9 @@
 /relational.md
   Content-Type: text/markdown; charset=utf-8
 
+/embed.md
+  Content-Type: text/markdown; charset=utf-8
+
 # END GENERATED
 
 # The GBNF grammar has an extension no static host knows: Cloudflare sends no

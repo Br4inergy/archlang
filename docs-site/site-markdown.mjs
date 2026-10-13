@@ -11,6 +11,19 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+/**
+ * The core's version, written in a hand-written page as this token (the `/embed` page's pinned
+ * jsDelivr URL) so no page ever carries a typed version. Replaced from the repo-root
+ * `package.json` in BOTH renderings: here for the raw `/<route>.md` copy, and by
+ * `.vitepress/config.ts` (which imports this function) for the HTML page.
+ */
+export const VERSION_TOKEN = "%ARCHLANG_VERSION%";
+
+/** `text` with every {@link VERSION_TOKEN} replaced by `version`. */
+export function withVersion(text, version) {
+  return text.split(VERSION_TOKEN).join(version);
+}
+
 /** Markup → plain text: tags removed, the few entities the components use decoded. */
 function plain(html) {
   return html
@@ -45,7 +58,7 @@ function pull(src, re, what) {
 export function siteMarkdown(src, deps) {
   const { repo, compile, describe, encodePlanHash, levelSvgName, playground } = deps;
   const read = (...p) => readFileSync(join(repo, ...p), "utf8").replace(/\r\n/g, "\n");
-  const raw = read(src);
+  const raw = withVersion(read(src), JSON.parse(read("package.json")).version);
   let text = raw.replace(/^---\n[\s\S]*?\n---\n/, "").replace(/<script setup>[\s\S]*?<\/script>\n?/, "");
   const alias = {}; // `const hero = EXAMPLES["one-room"]` in the page's own script
   for (const m of raw.matchAll(/const (\w+) = EXAMPLES\["([^"]+)"\]/g)) alias[m[1]] = m[2];

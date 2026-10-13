@@ -275,6 +275,17 @@ function docsChecks() {
     ),
     missingMarkdownCheck(),
     ...docsExampleRoutes(syncSrc).map((p) => route(p, startsWith("<svg"))),
+    // The `<arch-plan>` element (/embed): a module script, so a browser needs a JavaScript type
+    // AND CORS to load it from another origin, and the sources it fetches by URL.
+    route(
+      "/arch-plan.js",
+      contentType("javascript"),
+      header("access-control-allow-origin", "*"),
+      contains('customElements.define("arch-plan"'),
+    ),
+    ...docsExampleRoutes(syncSrc).map((p) =>
+      route(p.replace(/\.svg$/, ".arch"), header("access-control-allow-origin", "*"), contains("plan ")),
+    ),
   ];
 }
 
