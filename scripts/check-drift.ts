@@ -13,6 +13,7 @@ import { execSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PLUGIN_MANIFEST, pluginSkillFiles } from "./gen-plugin.js";
+import { allOutputs } from "./gen-agent-manifests.js";
 import { README_SVGS, VIEW_SVGS, svgPath } from "./gen-example-svgs.js";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
@@ -51,18 +52,22 @@ const GENERATORS: readonly { script: string; artifacts: readonly string[] }[] = 
   // name added there is drift-gated here with no second edit (and cannot be forgotten).
   { script: "gen:example-svgs", artifacts: [...README_SVGS.map(svgPath), ...VIEW_SVGS.map((v) => v.dest)] },
   { script: "gen:plugin", artifacts: [...pluginSkillFiles().map((f) => f.dest), PLUGIN_MANIFEST] },
+  { script: "gen:agent-manifests", artifacts: allOutputs() },
 ];
 
 const ALL_ARTIFACTS = GENERATORS.flatMap((g) => g.artifacts);
 
-/** True when `git diff --quiet` reports the given paths are unchanged in the working tree. */
+/**
+ * True when the given paths are unchanged in the working tree. `status`, not `diff`: a generator
+ * re-creates a deleted artifact as an UNTRACKED file, which `diff` cannot see, so an artifact
+ * deleted from the repository would otherwise pass the gate.
+ */
 function isClean(paths: readonly string[]): boolean {
-  try {
-    execSync(`git diff --quiet -- ${paths.join(" ")}`, { cwd: ROOT, stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
+  const out = execSync(`git status --porcelain --untracked-files=all -- ${paths.join(" ")}`, {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  return out.trim() === "";
 }
 
 function main(): void {
