@@ -75,6 +75,7 @@ describe("eval — committed goldens still author correctly", () => {
       uses: [],
       room_type: "Room",
       area_m2: 10,
+      net_area_m2: 10,
       bbox: { x: 0, y: 0, w: 0, h: 0 },
       floor_polygon: [],
       adjacent: [],

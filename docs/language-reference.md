@@ -2049,10 +2049,12 @@ renders exactly as before.
 |--------|----------|
 | `NO.` | 1-based **source order**, zero-padded to a uniform width (`01`…`09`, `001`…`100`). |
 | `NAME` | The room's `label`, falling back to its `id` when unlabelled. |
-| `AREA (m²)` | The room rectangle's area to two decimals — the same number `describe()` reports as `rooms[].area_m2`. |
+| `AREA (CENTRELINE, m²)` | The room's area on wall centrelines, to two decimals — the same number `describe()` reports as `rooms[].area_m2`. |
+| `NET AREA (m²)` | The room's net internal area, the floor no wall stands on: its area less every wall band inside it, to two decimals — `describe()`'s `rooms[].net_area_m2`. `-` when that is omitted, and then the net TOTAL is `-` too. |
 
-A final **`TOTAL`** row closes the table with the same number as
-`describe().totals.floor_area_m2`, so the drawn table and the JSON can never disagree.
+A final **`TOTAL`** row closes the table with the same numbers as
+`describe().totals.floor_area_m2` and `.net_floor_area_m2`, so the drawn table and the JSON
+can never disagree.
 The keyword takes a subject — `rooms` or `openings` — and an unknown one is a parse error
 with a did-you-mean, never a silently ignored word. The two subjects compose: write both
 and both tables draw.

@@ -117,7 +117,7 @@ export const STATEMENT_GRAMMAR: Record<string, string> = {
     'level <int> ["Name"] [height <mm>] { … }   # ONE STOREY = one whole drawing. `height` is this storey\'s floor-to-floor and sits in the HEADER (a setting in the body is E_LEVEL_MIX); `heights.elevation` ACCUMULATES the storeys below, so it is NOT level × height. A plan is single-storey or ALL levels (a drawable statement beside them = E_LEVEL_MIX); settings/`component`/`import`/plan-global `let`/`set` stay OUTSIDE, applying to every level. Integers, unique, 0/negative legal, ASCENDING — lowest = page 1. Ids unique WITHIN a level (see `stair`). `arch compile` writes plan.L1.svg, plan.L2.svg … (`--level <n>` = one); `describe --json` adds `levels[]`. Plan-level only',
   strip: `strip <${STRIP_DIRS.join("|")}> at (x,y) gap <mm> [height|width <mm>] { room [id=<id>] size <main>[x<cross>] [label "…"] [uses …] … }   # a row/column of rooms laid end to end: each room's offset is the running sum of the previous extents + gap, and the shared cross dimension is the strip's height (right/left) or width (down/up). Pure sugar — expands to absolute rooms. Plan-level block only`,
   zone: 'zone <id> ["Label"] { … }   # a WING/DEPARTMENT grouping: pure metadata, ZERO geometry — every statement inside resolves as if the wrapper were deleted (same coordinates, same ids; a zone is NOT a scope), so the SVG is byte-identical. Membership is DECLARED, never inferred from position. Nests (`zone west { zone galleries { … } }` → path `west.galleries`, innermost wins) and is legal wherever a statement is, incl. inside `level`. `describe --json` adds `zones[]` (path/rooms/floor_area_m2; nested rooms roll UP, so summing zones double-counts) + `describe --zone <path>` to read one wing',
-  schedule: `schedule ${SCHEDULE_SUBJECTS.join("|")}   # DERIVED tables under the title block, either or both. \`rooms\`: NO. · NAME (label, else id) · AREA (m²) + TOTAL = \`describe --json\`'s \`schedule[]\`, grouped by \`zone\` with SUBTOTALs. \`openings\`: D01…/W01… tags + a DOOR & WINDOW SCHEDULE: room(s) · width · kind · hinged hand (EN/DIN: seen from the side it opens into; ANSI reverses inswing)`,
+  schedule: `schedule ${SCHEDULE_SUBJECTS.join("|")}   # DERIVED tables under the title block, either or both. \`rooms\`: NO. · NAME (label, else id) · AREA · NET AREA (m²) + TOTALs = \`describe --json\`'s \`schedule[]\`, grouped by \`zone\` with SUBTOTALs. \`openings\`: D01…/W01… tags + a DOOR & WINDOW SCHEDULE: room(s) · width · kind · hinged hand (EN/DIN: seen from the side it opens into; ANSI reverses inswing)`,
   legend:
     "legend   # draw the LEGEND table beside the schedule: a row per wall hatch material used and per placed fixture category that has a plan symbol, each with a real swatch. Fully derived",
   notes:
@@ -696,8 +696,8 @@ arch score plan.arch --brief brief.json --json  # satisfied/total — measures, 
 \`\`\`
 
 **Self-correction loop:** compile/validate → if \`ok\` is false, read each \`diagnostics[].fix\` (and
-\`line\`/\`col\`/\`span\`), edit the source, recompile. Then \`describe --json\` to confirm intent (room count,
-areas, adjacency) without rendering an image. **Before shipping, gate with \`arch validate --strict --json\`**
+\`line\`/\`col\`/\`span\`), edit the source, recompile. Then \`describe --json\` to confirm intent without rendering
+an image (floor area: \`net_area_m2\`; \`area_m2\` runs to wall centrelines). **Before shipping, gate with \`arch validate --strict --json\`**
 — lint flags furniture through a wall, a fixture blocking a doorway, a room you can't step into or
 reach, a walk too narrow (\`W_PATH_TOO_NARROW\`) or circuitous (\`W_CIRCUITOUS_PATH\`); none passes silently.
 

@@ -91,7 +91,7 @@ level <int> ["Name"] [height <mm>] { … }   # ONE STOREY = one whole drawing. `
 zone <id> ["Label"] { … }   # a WING/DEPARTMENT grouping: pure metadata, ZERO geometry — every statement inside resolves as if the wrapper were deleted (same coordinates, same ids; a zone is NOT a scope), so the SVG is byte-identical. Membership is DECLARED, never inferred from position. Nests (`zone west { zone galleries { … } }` → path `west.galleries`, innermost wins) and is legal wherever a statement is, incl. inside `level`. `describe --json` adds `zones[]` (path/rooms/floor_area_m2; nested rooms roll UP, so summing zones double-counts) + `describe --zone <path>` to read one wing
 place <component>(<args>) as <name> at (x,y) [rotate 0|90|180|270] [mirror x|y]   # instantiate a component as an ADDRESSABLE instance, authored in LOCAL coords from (0,0); `as`+`at` required. Ids inside become `<name>.<id>` (auto-ids restart per instance) and the plan addresses them dotted — `door on west.perimeter at 50%`, `furniture bed in west.main centered`, `describe --room west.main`. `mirror x` flips left↔right, `y` top↔bottom: a real reflection, so door swings mirror. `import "wing.arch" as wing` makes a WHOLE FILE a zero-arg component. Bare `<component>(<args>)` stays the old INLINE macro — caller's coords and id space, no namespace
 axes { x at <mm>, <mm>, … y at <mm>, <mm>, … }   # GB/T 50001 positioning axes (定位轴线): dash-dot datum lines with a labelled bubble. `x` are vertical (numbered 1,2,3… left-to-right), `y` horizontal (lettered A,B,C… BOTTOM-to-top, skipping I/O/Z). Positions are expressions; labels are DERIVED from sorted position, never authored. With `dims auto rooms|all` the middle chain measures the AXES instead of room boundaries. Plan-level block only
-schedule rooms|openings   # DERIVED tables under the title block, either or both. `rooms`: NO. · NAME (label, else id) · AREA (m²) + TOTAL = `describe --json`'s `schedule[]`, grouped by `zone` with SUBTOTALs. `openings`: D01…/W01… tags + a DOOR & WINDOW SCHEDULE: room(s) · width · kind · hinged hand (EN/DIN: seen from the side it opens into; ANSI reverses inswing)
+schedule rooms|openings   # DERIVED tables under the title block, either or both. `rooms`: NO. · NAME (label, else id) · AREA · NET AREA (m²) + TOTALs = `describe --json`'s `schedule[]`, grouped by `zone` with SUBTOTALs. `openings`: D01…/W01… tags + a DOOR & WINDOW SCHEDULE: room(s) · width · kind · hinged hand (EN/DIN: seen from the side it opens into; ANSI reverses inswing)
 legend   # draw the LEGEND table beside the schedule: a row per wall hatch material used and per placed fixture category that has a plan symbol, each with a real swatch. Fully derived
 site { street north|south|east|west [hemisphere north|south] [boundary (x,y) (x,y) (x,y) …] }   # `street`/`hemisphere` are semantics only and draw NOTHING; `boundary` is the LOT LINE and is the one part that draws (a dash-dot property line) and grows the page, adding `site.lot_area_m2` (exact shoelace) + `site.lot_bbox` (E_SITE_BOUNDARY_DEGENERATE, E_SITE_BOUNDARY_SELF_INTERSECT). `street` is a TRUE compass direction (read WITH `north`, not instead of it) and names five on `describe --json`'s `site`: `street`, `back` (opposite), `equator_side` (S north of the equator, N south of it), `sunrise_side` (E), `sunset_side` (W). An intent's `windows.facing` may assert those NAMES instead of a letter (no `site` = E_INTENT_NO_SITE). They are a DRAFTING HEURISTIC for an aspect, NOT daylight — there is no sun model. `street` required (E_SITE_NO_STREET), one block (E_SITE_DUP), plan-level only
 notes "…" ["…" …]   # a numbered NOTES table, wrapped to its column; repeats append. Drawing-only, like `legend`, `schedule openings` and title `number`/`revision`
@@ -161,8 +161,8 @@ arch score plan.arch --brief brief.json --json  # satisfied/total — measures, 
 ```
 
 **Self-correction loop:** compile/validate → if `ok` is false, read each `diagnostics[].fix` (and
-`line`/`col`/`span`), edit the source, recompile. Then `describe --json` to confirm intent (room count,
-areas, adjacency) without rendering an image. **Before shipping, gate with `arch validate --strict --json`**
+`line`/`col`/`span`), edit the source, recompile. Then `describe --json` to confirm intent without rendering
+an image (floor area: `net_area_m2`; `area_m2` runs to wall centrelines). **Before shipping, gate with `arch validate --strict --json`**
 — lint flags furniture through a wall, a fixture blocking a doorway, a room you can't step into or
 reach, a walk too narrow (`W_PATH_TOO_NARROW`) or circuitous (`W_CIRCUITOUS_PATH`); none passes silently.
 
@@ -333,8 +333,10 @@ owns that name, so the shell runs the wrong program.
    --ascii`) prints a zero-dependency ASCII floor plan you can read straight from stdout.
 6. **Verify intent:** `archlang describe plan.arch --json` returns the rooms (areas, adjacency), what each
    door connects, and totals. Confirm the room count, labels, and areas match what was asked.
-   Room areas (`area_m2`, and the `schedule rooms` table) are measured on wall centrelines, so they
-   exceed the floor area inside the walls; say so whenever you report an area to the user.
+   Each room reports two areas: `area_m2` on wall centrelines and `net_area_m2`, the floor no wall
+   stands on (the room less every wall band inside it, computed exactly, or absent when it cannot
+   be, and then so is the net total); `totals` sums both. Quote `net_area_m2` as floor area, and name
+   which figure you report.
 7. **Gate on soundness — don't ship a flagged plan.** `archlang validate plan.arch --strict --json`
    (parse + resolve + lint). `--strict` makes **every advisory warning fail** (exit `2`) — the gate a
    generation pipeline runs before it ships. Add `--graph g.json` to also assert the intended
@@ -750,7 +752,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 
 **`archlang context`** — print the full bundled agent context (spec + workflow + CLI + errors)
   - input: none → output: the full agent context (llms-full.txt), or one --section of it
-  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 112 KB of it (spec = the language, 30 KB; workflow = the agent loop, 24 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 35 KB) · `--json` structured result on stdout, messages on stderr
+  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 113 KB of it (spec = the language, 30 KB; workflow = the agent loop, 24 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 35 KB) · `--json` structured result on stdout, messages on stderr
   - example: `archlang context` — the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 
 **`archlang new`** (aliases: `init`) — scaffold a starter .arch

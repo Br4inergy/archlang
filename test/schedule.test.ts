@@ -53,6 +53,7 @@ const tableText = (src: string): string[] =>
 
 const roomsOf = (src: string): RRoom[] =>
   resolve(parse(src).plan!).ir.elements.filter((e): e is RRoom => e.kind === "room");
+const wallsOf = (src: string) => resolve(parse(src).plan!).ir.walls;
 
 // ---------------------------------------------------------------------------
 
@@ -192,17 +193,37 @@ describe("schedule — derived rows (numbering, names, areas)", () => {
   it("areas and the TOTAL are the same numbers describe() reports", () => {
     const src = fixture("schedule-sheet.arch");
     const summary = describePlan(src);
-    const sched = roomSchedule(roomsOf(src));
+    const sched = roomSchedule(roomsOf(src), undefined, wallsOf(src));
     expect(sched.rows.map((r) => r.area_m2)).toEqual(summary.rooms.map((r) => r.area_m2));
     expect(sched.total_m2).toBe(summary.totals.floor_area_m2);
+    // The NET column is describe()'s net area, room for room, and its TOTAL the net total.
+    expect(sched.rows.map((r) => r.net_area_m2)).toEqual(summary.rooms.map((r) => r.net_area_m2));
+    expect(sched.net_total_m2).toBe(summary.totals.net_floor_area_m2);
+    // A wall on the fixture's edges really is inset: the two columns are not one number.
+    expect(sched.net_total_m2).toBeLessThan(sched.total_m2);
   });
 
   it("draws the caption, headings, every row and a TOTAL row", () => {
     const text = tableText(fixture("schedule-sheet.arch"));
-    expect(text.slice(0, 4)).toEqual(["ROOM SCHEDULE", "NO.", "NAME", "AREA (m²)"]);
-    expect(text).toEqual(expect.arrayContaining(["01", "Living", "12.00", "02", "bath", "9.00", "TOTAL", "21.00"]));
-    // The TOTAL value is the plan total, not a re-derived sum.
-    expect(text[text.indexOf("TOTAL") + 1]).toBe("21.00");
+    // The owner's labels (agent-reach decision 2): "Area (centreline)" and "Net area".
+    expect(text.slice(0, 5)).toEqual(["ROOM SCHEDULE", "NO.", "NAME", "AREA (CENTRELINE, m²)", "NET AREA (m²)"]);
+    expect(text).toEqual(
+      expect.arrayContaining([
+        "01",
+        "Living",
+        "12.00",
+        "10.78",
+        "02",
+        "bath",
+        "9.00",
+        "7.98",
+        "TOTAL",
+        "21.00",
+        "18.76",
+      ]),
+    );
+    // The TOTAL values are the plan totals, not re-derived sums.
+    expect(text.slice(text.indexOf("TOTAL") + 1, text.indexOf("TOTAL") + 3)).toEqual(["21.00", "18.76"]);
   });
 
   it("shows areas to two decimals so the column reads as a column", () => {
@@ -505,9 +526,11 @@ describe("schedule — describe() facts", () => {
   it("appends `schedule` when the plan opts in, matching the drawn table", () => {
     const s = describePlan(fixture("schedule-sheet.arch"));
     expect(s.ok).toBe(true);
+    // Net, by hand: a 200 shell all round and the 100 partition between them —
+    // living (4000 − 100 − 50) × (3000 − 200) = 3850 × 2800, bath 2850 × 2800.
     expect(s.schedule).toEqual([
-      { no: "01", id: "living", name: "Living", area_m2: 12 },
-      { no: "02", id: "bath", name: "bath", area_m2: 9 },
+      { no: "01", id: "living", name: "Living", area_m2: 12, net_area_m2: 10.78 },
+      { no: "02", id: "bath", name: "bath", area_m2: 9, net_area_m2: 7.98 },
     ]);
   });
 
@@ -546,7 +569,7 @@ describe("sheet tables — the other backends draw them from the same nodes", ()
     expect(group).toContain(">LEGEND<");
     expect(group).toContain(">21.00<");
     // Escaped, and no CJK: the bundled PNG font carries no Han glyphs (as for the axes).
-    expect(svg).toContain(">AREA (m²)<");
+    expect(svg).toContain(">AREA (CENTRELINE, m²)<");
     expect(svg).not.toMatch(/[　-鿿]/);
   });
 });

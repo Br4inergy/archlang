@@ -947,6 +947,7 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
       ? roomSchedule(
           ir.elements.filter((e): e is RRoom => e.kind === "room"),
           ir.zones,
+          ir.walls,
         )
       : null;
   const legendData = ir.legend

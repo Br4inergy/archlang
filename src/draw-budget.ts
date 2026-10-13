@@ -32,6 +32,7 @@ import {
 } from "./sheet-tables.js";
 import { openingCount, TAG_PRIMITIVES } from "./opening-schedule.js";
 import { siteBoundaryNodes } from "./site.js";
+import { netAreaWorkUnits } from "./analyze/net-area.js";
 import { hatchesUsed } from "./hatches.js";
 import { groundMaterialsUsed } from "./elements/outdoor.js";
 import { DEFAULT_THEME } from "./theme.js";
@@ -104,8 +105,11 @@ export function storeyPassUnits(ir: ResolvedPlan, registry: Registry): number {
   }
   const rooms = ir.elements.filter((e): e is RRoom => e.kind === "room");
   if (ir.schedule) {
+    // Rows only (no walls passed, so no net area is measured here), then the net-area work
+    // the drawn table will do, charged as a count BEFORE any of it runs.
     const s = roomSchedule(rooms, ir.zones);
-    n += 16 + 4 * s.rows.length + 8 * s.groups.length;
+    n += 16 + 5 * s.rows.length + 9 * s.groups.length;
+    n += netAreaWorkUnits(rooms, ir.walls);
   }
   if (ir.legend) {
     const outdoors = ir.elements.filter((e): e is ROutdoor => e.kind === "outdoor");

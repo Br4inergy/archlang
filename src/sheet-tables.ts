@@ -32,6 +32,7 @@
 
 import type { Point } from "./ast.js";
 import type { Bounds } from "./geometry.js";
+import type { BandWall } from "./geometry/band.js";
 import type { HatchSpec } from "./hatches.js";
 import { groundSwatchFrame, hatchesUsed, patternId } from "./hatches.js";
 import type { ROutdoor, RFurniture, RRoom } from "./ir.js";
@@ -41,7 +42,7 @@ import type { RenderSizes, SceneNode } from "./scene.js";
 import type { Theme } from "./theme.js";
 import { FIXTURE_CATEGORIES, fixtureGlyph, hasFixtureGlyph } from "./elements/fixtures-glyphs.js";
 import { fmt2 } from "./num-format.js";
-import { roomAreaMm2 } from "./analyze.js";
+import { netAreaBands, roomAreaMm2, roomNetAreaMm2 } from "./analyze.js";
 import { openingCount, type OpeningRow } from "./opening-schedule.js";
 import { textWidth } from "./text-metrics.js";
 
@@ -65,6 +66,11 @@ export interface ScheduleRow {
   name: string;
   /** Floor area in m², rounded to 2dp — byte-identical to `describe().rooms[].area_m2`. */
   area_m2: number;
+  /**
+   * Net internal area in m², rounded to 2dp — byte-identical to `describe().rooms[].net_area_m2`,
+   * and absent exactly when that is (the drawn cell then reads `-`).
+   */
+  net_area_m2?: number;
   /**
    * Dotted path of the **innermost** `zone` the room was declared in, when the
    * plan declares zones. Absent for an unzoned room and for every plan that declares no
@@ -90,6 +96,8 @@ export interface ScheduleGroup {
   count: number;
   /** Sum of this group's rounded areas, rounded the same way {@link RoomSchedule.total_m2} is. */
   subtotal_m2: number;
+  /** Sum of this group's rounded NET areas, rounded the same way; absent when any row's is. */
+  net_subtotal_m2?: number;
 }
 
 /** The whole ROOM SCHEDULE as data: its rows plus the total that closes it. */
@@ -102,6 +110,11 @@ export interface RoomSchedule {
    */
   total_m2: number;
   /**
+   * Sum of the rows' rounded NET areas, re-rounded — `describe().totals.net_floor_area_m2`.
+   * Absent when any row's net area is, never a sum over a subset.
+   */
+  net_total_m2?: number;
+  /**
    * Zone groups, when the plan declares zones AND at least one room sits in one. Empty
    * otherwise — which is what keeps an unzoned plan's table (and its bytes) unchanged.
    */
@@ -109,9 +122,10 @@ export interface RoomSchedule {
 }
 
 /**
- * Derive the room schedule from the resolved rooms. Pure tallying: area is the room
- * rectangle in m², the same expression `describe()` uses, so the table and the semantic
- * summary are one number.
+ * Derive the room schedule from the resolved rooms. Pure tallying: area is the room's own
+ * area in m² and the net area that shape less what the bands of `walls` (the storey's walls)
+ * cover, the same two expressions `describe()` uses, so the table and the semantic summary
+ * are one set of numbers.
  *
  * **Without zones** the rows are the rooms in **source order** — unchanged, byte for byte.
  *
@@ -121,19 +135,33 @@ export interface RoomSchedule {
  * number labels), not in the source. A zone that owns no room directly gets no block — a
  * heading with nothing under it would be a lie about the drawing.
  */
-export function roomSchedule(rooms: readonly RRoom[], zones?: readonly ZoneRef[]): RoomSchedule {
+export function roomSchedule(
+  rooms: readonly RRoom[],
+  zones?: readonly ZoneRef[],
+  // Optional because this is public API that predates net area. Without the walls nothing
+  // is known about what stands on the floor, so no row carries `net_area_m2` and there is
+  // no net total — omitted, never assumed equal to `area_m2`. Every caller in this
+  // repository passes the storey's walls.
+  walls?: readonly BandWall[],
+): RoomSchedule {
   const grouped = groupRoomsByZone(rooms, zones);
   const ordered = grouped ? grouped.flatMap((g) => g.rooms) : rooms;
   const width = Math.max(2, String(ordered.length).length);
-  const rows: ScheduleRow[] = ordered.map((r, i) => ({
-    no: String(i + 1).padStart(width, "0"),
-    id: r.id,
-    name: r.label ?? r.id,
-    area_m2: r2(roomAreaMm2(r) / 1_000_000),
-    ...(r._zone !== undefined ? { zone: r._zone } : {}),
-  }));
+  const bands = walls ? netAreaBands(walls) : null;
+  const rows: ScheduleRow[] = ordered.map((r, i) => {
+    const net = bands ? roomNetAreaMm2(r, bands) : undefined;
+    return {
+      no: String(i + 1).padStart(width, "0"),
+      id: r.id,
+      name: r.label ?? r.id,
+      area_m2: r2(roomAreaMm2(r) / 1_000_000),
+      ...(net !== undefined ? { net_area_m2: r2(net / 1_000_000) } : {}),
+      ...(r._zone !== undefined ? { zone: r._zone } : {}),
+    };
+  });
   const total_m2 = r2(rows.reduce((s, r) => s + r.area_m2, 0));
-  if (!grouped) return { rows, total_m2, groups: [] };
+  const net = netSum(rows);
+  if (!grouped) return { rows, total_m2, ...net.total, groups: [] };
 
   const groups: ScheduleGroup[] = [];
   let at = 0;
@@ -144,10 +172,18 @@ export function roomSchedule(rooms: readonly RRoom[], zones?: readonly ZoneRef[]
       name: g.name,
       count: slice.length,
       subtotal_m2: r2(slice.reduce((s, r) => s + r.area_m2, 0)),
+      ...(netSum(slice).sum !== undefined ? { net_subtotal_m2: netSum(slice).sum } : {}),
     });
     at += g.rooms.length;
   }
-  return { rows, total_m2, groups };
+  return { rows, total_m2, ...net.total, groups };
+}
+
+/** The rounded sum of the rows' net areas, or none when any row's is omitted. */
+function netSum(rows: readonly ScheduleRow[]): { sum?: number; total: { net_total_m2?: number } } {
+  if (!rows.every((r) => r.net_area_m2 !== undefined)) return { total: {} };
+  const sum = r2(rows.reduce((s, r) => s + (r.net_area_m2 ?? 0), 0));
+  return { sum, total: { net_total_m2: sum } };
 }
 
 /** The zone facts the schedule needs — structurally `RZone` from the IR, restated here so
@@ -298,6 +334,7 @@ export interface ScheduleTableBox extends TableBox {
   cols: TableColumn[];
   rows: ScheduleRow[];
   total_m2: number;
+  net_total_m2?: number;
   /** Zone groups, in row order; empty for an unzoned plan (which draws the flat table). */
   groups: ScheduleGroup[];
 }
@@ -361,7 +398,21 @@ const ROW_H = 0.034;
 const FONT = 0.019;
 const COL_NO = 0.055;
 const COL_NAME = 0.2;
-const COL_AREA = 0.105;
+/**
+ * The two value columns are sized to their headings (0.8× the font): `AREA (CENTRELINE, m²)`
+ * is 21 characters, `NET AREA (m²)` 13. The labels are the owner's (agent-reach decision 2):
+ * one column says it runs to wall centrelines, the other that it is the floor inside them.
+ */
+const COL_AREA = 0.22;
+const COL_NET = 0.14;
+/**
+ * The AREA column's width when the table's cell padding was fixed (it was 0.105 before the
+ * centreline heading widened it). The padding stays 2% of NO. + NAME + this width, so
+ * widening a value column never moves the NO. and NAME cells.
+ */
+const PAD_AREA_W = 0.105;
+/** Index of the ROOM SCHEDULE's first value column (AREA); NET AREA follows it. */
+const AREA_COL = 2;
 const LEGEND_SWATCH = 0.05;
 const LEGEND_NAME = 0.22;
 /** DOOR & WINDOW SCHEDULE columns, every one a FIXED width: authored text (a room's name)
@@ -573,7 +624,7 @@ export function planTableRows(input: {
   legend?: boolean | undefined;
   rooms: readonly RRoom[];
   zones?: readonly ZoneRef[] | undefined;
-  walls: readonly { material: string; hatchScale: number; hatchAngle: number }[];
+  walls: readonly (BandWall & { material: string; hatchScale: number; hatchAngle: number })[];
   furniture: readonly RFurniture[];
   /**
    * The ground surfaces, whose materials add legend rows exactly as a wall's do.
@@ -595,7 +646,7 @@ export function planTableRows(input: {
   /** The plan's `notes`, which draw a table in the same band. */
   notes?: readonly string[] | undefined;
 }): number {
-  const schedule = input.schedule === "rooms" ? roomSchedule(input.rooms, input.zones) : null;
+  const schedule = input.schedule === "rooms" ? roomSchedule(input.rooms, input.zones, input.walls) : null;
   const legend = input.legend
     ? legendEntries(hatchesUsed(input.walls, groundMaterialsUsed(input.outdoor ?? [])), input.furniture)
     : null;
@@ -627,7 +678,8 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
     const cols: TableColumn[] = [
       { heading: "NO.", w: refDim * COL_NO, align: "middle" },
       { heading: "NAME", w: refDim * COL_NAME, align: "start" },
-      { heading: "AREA (m²)", w: refDim * COL_AREA, align: "end" },
+      { heading: "AREA (CENTRELINE, m²)", w: refDim * COL_AREA, align: "end" },
+      { heading: "NET AREA (m²)", w: refDim * COL_NET, align: "end" },
     ];
     const w = cols.reduce((s, c) => s + c.w, 0);
     // Rows: caption + column headings + one per room + the TOTAL that closes the table.
@@ -642,11 +694,14 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
       h,
       rowH,
       fs,
-      pad: w * 0.02,
+      // The padding the three-column table had (2% of NO. + NAME + the old AREA width), in
+      // the same float order, so the NO. and NAME cells keep their place (see PAD_AREA_W).
+      pad: [refDim * COL_NO, refDim * COL_NAME, refDim * PAD_AREA_W].reduce((s, c) => s + c, 0) * 0.02,
       caption: "ROOM SCHEDULE",
       cols,
       rows: sched.rows,
       total_m2: sched.total_m2,
+      ...(sched.net_total_m2 !== undefined ? { net_total_m2: sched.net_total_m2 } : {}),
       groups: sched.groups,
     };
     x += w + refDim * TABLE_GAP;
@@ -823,9 +878,19 @@ const BOLD = 600;
  * An area cell: always two decimal places, so the column reads as a column
  * (`12.00`, not `12`). Deterministic — the input is the row's already-`r2`-rounded
  * number, so fixing it to the same 2dp cannot drift (the idiom the in-plan area label
- * uses at 1dp). {@link fmt2} stays the formatter for every *geometric* number here.
+ * uses at 1dp). {@link fmt2} stays the formatter for every *geometric* number here. An
+ * omitted net area (see `analyze/net-area.ts`) draws `-`, the table's ASCII "no value"
+ * (the DOOR & WINDOW SCHEDULE's HAND column uses the same mark).
  */
-const areaCell = (m2: number): string => m2.toFixed(2);
+const areaCell = (m2: number | undefined): string => (m2 === undefined ? "-" : m2.toFixed(2));
+
+/**
+ * Left edge of the schedule's column `i`: `x0` plus the widths up to and including `i`, less
+ * column `i`'s own — the float order the table used for its one AREA column when that was the
+ * last, kept so the TOTAL and SUBTOTAL cells sit exactly on their column's data cells.
+ */
+const colLeft = (t: ScheduleTableBox, i: number): number =>
+  t.x0 + t.cols.slice(0, i + 1).reduce((s, c) => s + c.w, 0) - t.cols[i]!.w;
 
 /**
  * The ROOM SCHEDULE table's primitives.
@@ -850,8 +915,8 @@ function scheduleNodes(t: ScheduleTableBox, theme: Theme, sizes: RenderSizes, ou
   d.rule({ x: x0, y: y0 + rowH }, { x: x0 + w, y: y0 + rowH });
 
   // The TOTAL row is the last one; the merged caption row is the first. Column rules run
-  // between the two so neither merged cell is cut in half — except the rule bounding the
-  // AREA column, which carries the total's value and so runs to the frame.
+  // between the two so neither merged cell is cut in half — except the rules bounding the
+  // AREA and NET AREA columns, which carry the totals' values and so run to the frame.
   const totalTop = y0 + h - rowH;
   let cx = x0;
   t.cols.forEach((c, i) => {
@@ -859,15 +924,14 @@ function scheduleNodes(t: ScheduleTableBox, theme: Theme, sizes: RenderSizes, ou
       weight: BOLD,
       muted: true,
     });
-    const last = i === t.cols.length - 1;
-    if (i > 0) d.rule({ x: cx, y: y0 + rowH }, { x: cx, y: last ? y0 + h : totalTop }, true);
+    if (i > 0) d.rule({ x: cx, y: y0 + rowH }, { x: cx, y: i >= AREA_COL ? y0 + h : totalTop }, true);
     cx += c.w;
   });
   d.rule({ x: x0, y: y0 + rowH * 2 }, { x: x0 + w, y: y0 + rowH * 2 });
 
   t.rows.forEach((r, i) => {
     const y = rowMid(2 + i);
-    const cells = [r.no, r.name, areaCell(r.area_m2)];
+    const cells = [r.no, r.name, areaCell(r.area_m2), areaCell(r.net_area_m2)];
     let x = x0;
     t.cols.forEach((c, ci) => {
       d.text({ x: anchorX(x, c.w, pad, c.align), y }, cells[ci]!, fs, c.align);
@@ -876,18 +940,22 @@ function scheduleNodes(t: ScheduleTableBox, theme: Theme, sizes: RenderSizes, ou
     if (i > 0) d.rule({ x: x0, y: y0 + rowH * (2 + i) }, { x: x0 + w, y: y0 + rowH * (2 + i) }, true);
   });
 
-  // TOTAL closes the table: the label spans the NO. + NAME columns, the value sits under
-  // AREA. Same number as `describe().totals.floor_area_m2`.
+  // TOTAL closes the table: the label spans the NO. + NAME columns, the values sit under
+  // AREA and NET AREA. The same numbers as `describe().totals.floor_area_m2` and
+  // `.net_floor_area_m2`.
   d.rule({ x: x0, y: totalTop }, { x: x0 + w, y: totalTop });
-  const areaCol = t.cols[t.cols.length - 1]!;
   d.text({ x: x0 + pad, y: totalTop + rowH / 2 }, "TOTAL", fs, "start", { weight: BOLD });
-  d.text(
-    { x: anchorX(x0 + w - areaCol.w, areaCol.w, pad, areaCol.align), y: totalTop + rowH / 2 },
-    areaCell(t.total_m2),
-    fs,
-    areaCol.align,
-    { weight: BOLD },
-  );
+  const totals = [t.total_m2, t.net_total_m2];
+  totals.forEach((m2, k) => {
+    const col = t.cols[AREA_COL + k]!;
+    d.text(
+      { x: anchorX(colLeft(t, AREA_COL + k), col.w, pad, col.align), y: totalTop + rowH / 2 },
+      areaCell(m2),
+      fs,
+      col.align,
+      { weight: BOLD },
+    );
+  });
 }
 
 /**
@@ -920,8 +988,10 @@ function groupedScheduleNodes(t: ScheduleTableBox, theme: Theme, sizes: RenderSi
   }
   d.rule({ x: x0, y: rowTop(2) }, { x: x0 + w, y: rowTop(2) });
 
-  const areaCol = t.cols[t.cols.length - 1]!;
-  const areaX = anchorX(x0 + w - areaCol.w, areaCol.w, pad, areaCol.align);
+  const areaCol = t.cols[AREA_COL]!;
+  const areaX = anchorX(colLeft(t, AREA_COL), areaCol.w, pad, areaCol.align);
+  const netCol = t.cols[AREA_COL + 1]!;
+  const netX = anchorX(colLeft(t, AREA_COL + 1), netCol.w, pad, netCol.align);
 
   // One block per group: heading, its rows, its subtotal.
   let row = 2;
@@ -935,7 +1005,7 @@ function groupedScheduleNodes(t: ScheduleTableBox, theme: Theme, sizes: RenderSi
     for (let i = 0; i < g.count; i++) {
       const r = t.rows[firstRow + i]!;
       if (i > 0) d.rule({ x: x0, y: rowTop(row) }, { x: x0 + w, y: rowTop(row) }, true);
-      const cells = [r.no, r.name, areaCell(r.area_m2)];
+      const cells = [r.no, r.name, areaCell(r.area_m2), areaCell(r.net_area_m2)];
       let x = x0;
       t.cols.forEach((c, ci) => {
         d.text({ x: anchorX(x, c.w, pad, c.align), y: rowMid(row) }, cells[ci]!, fs, c.align);
@@ -957,15 +1027,17 @@ function groupedScheduleNodes(t: ScheduleTableBox, theme: Theme, sizes: RenderSi
     d.rule({ x: x0, y: dataBottom }, { x: x0 + w, y: dataBottom }, true);
     d.text({ x: x0 + pad, y: rowMid(row) }, "SUBTOTAL", fs, "start", { weight: BOLD, muted: true });
     d.text({ x: areaX, y: rowMid(row) }, areaCell(g.subtotal_m2), fs, areaCol.align, { weight: BOLD, muted: true });
+    d.text({ x: netX, y: rowMid(row) }, areaCell(g.net_subtotal_m2), fs, netCol.align, { weight: BOLD, muted: true });
     row++;
   }
 
-  // TOTAL closes the table — the same number as `describe().totals.floor_area_m2`, and
-  // the sum of the subtotals above it.
+  // TOTAL closes the table — the same numbers as `describe().totals.floor_area_m2` and
+  // `.net_floor_area_m2`, and the sums of the subtotals above them.
   const totalTop = y0 + h - rowH;
   d.rule({ x: x0, y: totalTop }, { x: x0 + w, y: totalTop });
   d.text({ x: x0 + pad, y: totalTop + rowH / 2 }, "TOTAL", fs, "start", { weight: BOLD });
   d.text({ x: areaX, y: totalTop + rowH / 2 }, areaCell(t.total_m2), fs, areaCol.align, { weight: BOLD });
+  d.text({ x: netX, y: totalTop + rowH / 2 }, areaCell(t.net_total_m2), fs, netCol.align, { weight: BOLD });
 }
 
 /** The LEGEND table's primitives — each row a real swatch beside its name. */

@@ -597,8 +597,13 @@ export function summaryFacts(
     s.rooms.map((r) => r.id),
   );
   for (const [k, r] of keyed(s.rooms, (r) => r.id)) {
-    const { bbox, floor_polygon, floor_circle, ...rest } = r;
+    const { bbox, floor_polygon, floor_circle, net_area_m2, ...rest } = r;
     inv(`rooms[${k}]`, rest);
+    // NET area is its own fact so a violation names it: an inset of the room by its walls'
+    // half-thicknesses, it is an area and must not move under any element of the group (a
+    // slab sweep along x on P₀ is one along y on a turned gP, so this is a real cross-check
+    // of `analyze/net-area.ts`, not a restatement of it).
+    inv(`rooms[${k}].net_area_m2`, net_area_m2);
     f.set(`rooms[${k}].bbox`, { kind: "rect", value: bbox });
     f.set(`rooms[${k}].floor_polygon`, { kind: "ring", value: floor_polygon });
     f.set(`rooms[${k}].floor_circle`, { kind: "circle", value: floor_circle ?? null });
@@ -669,7 +674,11 @@ export function summaryFacts(
   inv("fences", s.fences ?? null);
   inv("heights", s.heights ?? null);
   inv("access", s.access);
-  inv("totals", s.totals);
+  {
+    const { net_floor_area_m2, ...totals } = s.totals;
+    inv("totals", totals);
+    inv("totals.net_floor_area_m2", net_floor_area_m2);
+  }
   inv("input_graph", s.input_graph);
   inv("freedom", s.freedom);
   inv("schedule", s.schedule ?? null);
