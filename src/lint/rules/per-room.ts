@@ -25,6 +25,7 @@ import { fmt2 } from "../../num-format.js";
 import { mm, shortfall } from "../measure.js";
 import type { RRoom } from "../../ir.js";
 import type { LintContext, LintRule } from "../context.js";
+import { pasteFixture } from "../fixture-paste.js";
 
 /** Furniture categories that count as a plumbing fixture for a wet room — derived
  *  from the catalog's `zones` data (single source; membership drift-tested). */
@@ -52,23 +53,21 @@ const CAR_BAY_WIDTH_MM = 2700;
 const PARKED_CATEGORIES: ReadonlySet<string> = new Set(["car"]);
 
 /**
- * The `W_ROOM_NO_FIXTURE` remedy as one statement the author can paste: the fixture
- * categories are built in (no import), and the example is sized from the catalog footprint
- * (along × depth, so `anchor top` backs it onto the top edge the right way round). A room
- * that `anchor` cannot place in — a `polygon`/`circle` floor (E_PLACE_POLY) or a relational
- * room (E_PLACE_REF) — gets the `at (x,y) … in <room>` form instead.
+ * The `W_ROOM_NO_FIXTURE` remedy: the fixture categories are built in (no import), and the
+ * example is ONE statement placed from the room's own shape and checked clear of its walls,
+ * doors and furniture before it is quoted ({@link pasteFixture}). A room with no clear wall
+ * run gets the categories and the footprint instead of a statement that would trade this
+ * warning for another.
  */
-function noFixtureHint(r: RRoom, isWet: boolean): string {
+function noFixtureHint(ctx: LintContext, r: RRoom, isWet: boolean): string {
   const [cat, others] = isWet
     ? ["wc", "a `basin`, `shower` or `bathtub`"]
     : ["kitchen_sink", "a `counter`, `stove` or `fridge`"];
-  const fp = defaultFootprint(cat);
-  const size = fp ? ` size ${fmt2(fp.along)}x${fmt2(fp.depth)}` : "";
-  const stmt =
-    r.poly || r._rel !== undefined
-      ? `furniture ${cat} at (x,y)${size} in ${r.id}\` with (x,y) on its floor`
-      : `furniture ${cat} in ${r.id} anchor top flush${size}\``;
-  return `Place a built-in fixture in it (nothing to import) — e.g. \`${stmt}, or ${others}.`;
+  const fp = defaultFootprint(cat)!;
+  const stmt = pasteFixture(ctx, r, cat, fp.along, fp.depth);
+  return stmt !== null
+    ? `Place a built-in fixture in it (nothing to import) — e.g. \`${stmt}\`, or ${others}.`
+    : `Place a built-in fixture in it (nothing to import) — a \`${cat}\` (${fmt2(fp.along)} along a wall, ${fmt2(fp.depth)} deep), or ${others}; no wall of it has a run clear of its doors and furniture for one, so make room first.`;
 }
 
 export const perRoomRules: LintRule = {
@@ -154,7 +153,7 @@ export const perRoomRules: LintRule = {
             code: "W_ROOM_NO_FIXTURE",
             ...at(r),
             message: `${isWet ? "Bathroom" : "Kitchen"} "${labelOf(r)}" has no ${isWet ? "fixtures (WC, basin, shower…)" : "fixtures (sink, counter, stove…)"}.`,
-            hints: [noFixtureHint(r, isWet)],
+            hints: [noFixtureHint(ctx, r, isWet)],
           });
         }
       }

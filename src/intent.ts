@@ -1002,7 +1002,7 @@ export const INTENT_JSON_SCHEMA = {
       additionalProperties: false,
       required: ["requiredEdges", "source"],
       description:
-        "Interior-door adjacency the brief licenses. ADVISORY tier: each edge scores as a subscore but NEVER gates (a one-shot topology miss is what the loop tools — `arch fix`/`suggest`/`validate --graph` — address, not a hard fail). Assert only where the brief's words license it.",
+        "Interior-door adjacency the brief licenses. ADVISORY tier: each edge scores as a subscore but NEVER gates (a one-shot topology miss is what the loop tools — `archlang fix`/`suggest`/`validate --graph` — address, not a hard fail). Assert only where the brief's words license it.",
       properties: {
         requiredEdges: {
           type: "object",

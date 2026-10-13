@@ -578,15 +578,6 @@ function orientationVerdict(
   // only back onto a horizontal edge, so a corner often has one valid answer after all.
   const shape = backCandidateEdges({ w: fr.w, h: fr.h }, defaultFootprint(category));
   const targets = walled.filter((e) => shape.includes(e));
-  // Every walled edge ruled out by the aspect: no `rotate` is right, the SIZE is the wrong
-  // way round. Say that, with the swapped size, rather than ask for a rotation.
-  if (targets.length === 0)
-    return {
-      ambiguous: `has its back to the room, and its ${numStr(fr.w)}x${numStr(fr.h)} size runs its depth along the wall on its ${walled.join(
-        "/",
-      )} side — swap it to \`size ${numStr(fr.h)}x${numStr(fr.w)}\` (a fixture's depth runs away from its wall), then add the \`rotate\` that backs it onto that wall`,
-      problem: `has its back to the room (the wall is on its ${walled.join("/")} side)`,
-    };
   if (targets.length !== 1)
     return {
       ambiguous: `faces the room with no single wall to back onto (walls on its ${walled.join(

@@ -292,7 +292,7 @@ describe("a storey reached only by a stair is walked from the landing", () => {
     expect(narrow.map((d) => [d.level, d.message])).toEqual([
       [
         2,
-        'The walk from the entrance to "Box room" squeezes to 640 mm (60 mm below the 700 mm minimum) — the bottleneck is its door "db", 640 mm clear.',
+        'The walk from the entrance to "Box room" squeezes to 640 mm (60 mm below the 700 mm minimum) — the bottleneck is door "db", 640 mm clear.',
       ],
     ]);
     expect(level(src, 2).circulation?.rooms.find((r) => r.roomId === "box")?.bottleneckClearWidthMm).toBe(640);
