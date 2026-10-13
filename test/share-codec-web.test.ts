@@ -10,7 +10,10 @@ import { describe, expect, it } from "vitest";
 import { decodePlanHash, encodePlanHash } from "../src/cli/share-codec.mjs";
 import { decodePlanHashWeb, PlanHashTooLarge } from "../src/cli/share-codec.web.mjs";
 
-/** `DecompressionStream("deflate-raw")` arrived in Node 21.2; CI's Node 18/20 legs lack it. */
+/**
+ * `DecompressionStream("deflate-raw")` is missing from Node 18 (a CI leg) and from early Node 20
+ * releases; current Node 20 and later have it. Gate on the capability, not the version.
+ */
 const HAS_DEFLATE_RAW = (() => {
   if (typeof DecompressionStream === "undefined") return false;
   try {
