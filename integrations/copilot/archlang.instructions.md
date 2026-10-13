@@ -21,8 +21,10 @@ Commands:
 - `archlang lint`: architectural soundness warnings
 - `archlang preview`: render a PNG you can look at (zero-install where the optional binary is present)
 
-Task skills (one `SKILL.md` each, in the repository's `skills/` directory):
+Skills that go with this (install them separately):
 - `archlang`: Use when the user wants to create, edit, or inspect an architectural floor plan / building layout as code — e.g. "draw a 2-bedroom apartment", "add a bathroom to this plan", "make the bedroom 1 m wider", "lay out an office floor". ArchLang is a tiny text language that compiles a .arch file to a professional floor-plan drawing (SVG/PNG/PDF/DXF). Drive it entirely through the `archlang` CLI; do not hand-render.
+
+Task skills:
 - `archlang-brief-to-plan`: Use when the user gives a written brief for a new floor plan (rooms, areas, how rooms connect, a plot size) and wants the drawing, e.g. "design a two-bedroom flat of about 75 m²" or "lay out a small office with four rooms". Writes an ArchLang .arch file from the brief, checks it against the brief with the archlang CLI, and finishes it as a sheet. Not for changing an existing plan (archlang-edit-plan) or for exporting one (archlang-export).
 - `archlang-edit-plan`: Use when the user wants to change an existing ArchLang .arch floor plan, e.g. "make the bedroom 1 m wider", "add a bathroom next to the hall", "move the front door to the south wall", "merge the kitchen into the living room". Reads the plan's facts with the archlang CLI, makes the smallest edit that does the job, and re-verifies. Not for writing a plan from a brief (archlang-brief-to-plan).
 - `archlang-export`: Use when the user wants an ArchLang .arch floor plan delivered as files, e.g. "export this plan as PDF", "give me a DXF for CAD", "a PNG I can paste into a document", "one sheet per floor", "print it at 1:50 on A3". Covers SVG, PNG, PDF and DXF output, paper size and scale, multi-storey plans and batches, all through the archlang CLI. Not for writing or changing the plan itself.

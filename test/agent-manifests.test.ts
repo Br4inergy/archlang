@@ -10,7 +10,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  agentSkillFiles,
+  CURSOR_RULE,
+  PLUGIN_ROOT,
   allOutputs,
   CURSOR_MANIFEST,
   PORTABLE_MANIFEST,
@@ -135,20 +136,29 @@ describe("agent-directory manifests", () => {
 
   it("the Cursor manifest has the one field Cursor requires, and the name agrees across hosts", () => {
     const cursor = readJson(CURSOR_MANIFEST);
-    expect(typeof cursor.name).toBe("string");
+    // Cursor requires `name`, lowercase alphanumerics, hyphens and periods (kebab-case)
+    expect(cursor.name).toMatch(/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/);
+    expect(typeof cursor.description).toBe("string");
+    // rules/*.mdc are discovered from the plugin root: the generated rule is where Cursor looks
+    expect(CURSOR_RULE).toMatch(/\/rules\/[^/]+\.mdc$/);
     expect(cursor.name).toBe(readJson(PORTABLE_MANIFEST).name);
     // skills are found in the default root `skills/` directory; a `skills` key would only add to it
     expect(cursor).not.toHaveProperty("skills");
     expect(readJson(PORTABLE_MANIFEST)).not.toHaveProperty("skills");
   });
 
-  it("every skill a host reads exists and is byte-identical to skills/<name>/SKILL.md", () => {
-    const sources = readdirSync(resolve("skills")).sort();
+  it("the plugin root the manifests sit in holds every skill, byte-identical to skills/<name>/SKILL.md", () => {
+    const sources = readdirSync(resolve("skills"), { withFileTypes: true })
+      .filter((e) => e.isDirectory() && existsSync(resolve("skills", e.name, "SKILL.md")))
+      .map((e) => e.name)
+      .sort();
     expect(sources).toContain("archlang");
-    expect(readdirSync(resolve(".agents/skills")).sort()).toEqual(sources);
-    for (const { dest, src } of agentSkillFiles()) expect(read(dest), dest).toBe(read(src));
-    // the portable and Cursor manifests rely on the root skills/ directory: each skill has a name
-    for (const d of sources) expect(read(`skills/${d}/SKILL.md`)).toMatch(new RegExp(`^name:\\s*${d}\\s*$`, "m"));
+    expect(readdirSync(resolve(PLUGIN_ROOT, "skills")).sort()).toEqual(sources);
+    for (const d of sources) {
+      expect(read(`${PLUGIN_ROOT}/skills/${d}/SKILL.md`), d).toBe(read(`skills/${d}/SKILL.md`));
+      // the manifests rely on the plugin root's skills/ directory: each skill names itself
+      expect(read(`skills/${d}/SKILL.md`)).toMatch(new RegExp(`^name:\\s*${d}\\s*$`, "m"));
+    }
   });
 
   it("every generated file exists and is the generator's output", () => {
@@ -157,7 +167,7 @@ describe("agent-directory manifests", () => {
   });
 
   it("the Cursor rule and Copilot instructions carry their host's frontmatter and a generated header", () => {
-    const rule = read("integrations/cursor/archlang.mdc");
+    const rule = read(CURSOR_RULE);
     expect(rule).toMatch(/^---\ndescription: .+\nglobs: "\*\*\/\*\.arch"\nalwaysApply: false\n---\n<!-- GENERATED /);
     const path = read("integrations/copilot/archlang.instructions.md");
     expect(path).toMatch(/^---\napplyTo: "\*\*\/\*\.arch"\n---\n<!-- GENERATED /);
@@ -167,13 +177,10 @@ describe("agent-directory manifests", () => {
   it("no generated file names a version, a secret or a retired claim", () => {
     for (const f of allOutputs()) {
       const text = read(f);
-      // the skill copies are the skills' own text; versions and the like are policed in their own tests
-      if (f.startsWith(".agents/skills/")) continue;
       // the Agent Plugins schema URL carries the schema revision, which is not a release version
       expect(text.replaceAll(PORTABLE_SCHEMA_ID, ""), `${f} has a version`).not.toMatch(VERSION);
       for (const re of SECRETS) expect(text, `${f} ~ ${re}`).not.toMatch(re);
       for (const re of KILLED) expect(text, `${f} ~ ${re}`).not.toMatch(re);
     }
-    for (const { dest } of agentSkillFiles()) for (const re of SECRETS) expect(read(dest), dest).not.toMatch(re);
   });
 });

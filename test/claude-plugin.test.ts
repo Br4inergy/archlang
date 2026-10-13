@@ -3,8 +3,9 @@
  * rejects any plugin folder holding a file over 5 MiB, and the repo root carries an 11 MB font. Its
  * `skills/` are GENERATED copies (`npm run gen:plugin`) of the repo's `skills/*` (the umbrella skill
  * `skills/archlang` and the task skills) — the sources `npx skills add` reads — so the byte-equality
- * here is the drift gate's twin. `plugin.json` is the only plugin manifest, hand-written except for two derived fields
- * `gen:plugin` stamps and `check:drift` gates: `version` (the core's) and the exact MCP pin.
+ * here is the drift gate's twin. `.claude-plugin/plugin.json` is the Claude manifest, hand-written except for two derived fields
+ * `gen:plugin` stamps and `check:drift` gates: `version` (the core's) and the exact MCP pin. The other
+ * hosts' manifests and the Cursor rule (`gen:agent-manifests`) sit beside it, version-free.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -14,6 +15,14 @@ const read = (p: string) => JSON.parse(readFileSync(resolve(p), "utf8"));
 const PLUGIN = "plugins/archlang";
 const MAX_FILE = 5 * 1024 * 1024;
 const ICON = ".claude-plugin/icon.png";
+// the Claude manifest and icon, plus the version-free files `gen:agent-manifests` generates here
+const CLAUDE_PLUGIN_FILES = new Set([
+  ".claude-plugin/plugin.json",
+  ICON,
+  "plugin.json",
+  ".cursor-plugin/plugin.json",
+  "rules/archlang.mdc",
+]);
 
 function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
@@ -51,9 +60,7 @@ describe("plugin folder", () => {
     const root = resolve(PLUGIN);
     const files = walk(root);
     const rel = files.map((f) => f.slice(root.length + 1).replace(/\\/g, "/")).sort();
-    const stray = rel.filter(
-      (f) => f !== ".claude-plugin/plugin.json" && f !== ICON && !/^skills\/[^/]+\/SKILL\.md$/.test(f),
-    );
+    const stray = rel.filter((f) => !CLAUDE_PLUGIN_FILES.has(f) && !/^skills\/[^/]+\/SKILL\.md$/.test(f));
     expect(stray).toEqual([]);
     let total = 0;
     for (const f of files) {

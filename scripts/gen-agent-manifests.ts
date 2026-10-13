@@ -6,26 +6,24 @@
  * Host formats, each taken from the host's own published documentation on 2026-10-13
  * (the vendored schema is `test/fixtures/schemas/agent-plugin.schema.json`):
  *   - portable "Agent Plugins" 1.0.0 : https://agent-plugins.org/schemas/1.0.0/plugin.schema.json
- *     and https://developers.openai.com/codex/plugins/build (root `plugin.json`; skills are found
- *     in the root `skills/` directory, so the manifest has no `skills` field). The same file is what
- *     the Codex / ChatGPT plugin directory and Awesome Copilot read. Reference layout:
- *     https://github.com/remotion-dev/agent-plugin (root `plugin.json` + `skills/`).
+ *     and https://developers.openai.com/codex/plugins/build (`plugin.json` at the plugin root; skills
+ *     are found in that root's `skills/` directory, so the manifest has no `skills` field). The same
+ *     file is what the Codex / ChatGPT plugin directory and Awesome Copilot read. Reference layout:
+ *     https://github.com/remotion-dev/agent-plugin (`plugin.json` + `skills/`).
  *   - Cursor plugin                  : https://cursor.com/docs/plugins (`.cursor-plugin/plugin.json`,
- *     only `name` required, `skills/` discovered by default; rules are `.mdc` files).
- *   - Codex / Copilot project skills : https://learn.chatgpt.com/docs/build-skills (Codex scans
- *     `.agents/skills` from the working directory up to the repo root) and
- *     https://docs.github.com/en/copilot/concepts/agents/about-agent-skills (Copilot reads
- *     `.github/skills`, `.claude/skills` or `.agents/skills`), so one `.agents/skills` serves both.
+ *     only `name` required; `skills/` and `rules/*.mdc` are discovered from the plugin root).
  *   - Copilot custom instructions    : https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions
  *     (`.github/copilot-instructions.md`; `.github/instructions/NAME.instructions.md` with an
  *     `applyTo` glob) and https://raw.githubusercontent.com/github/awesome-copilot/main/CONTRIBUTING.md
  *     (skills/instructions/plugins contribution format).
- *   - Cursor rule                    : https://cursor.com/docs/plugins (`.mdc`).
+ * The plugin root is `plugins/archlang/` (the slim folder the Claude plugin already uses; the
+ * repository root carries an 11 MB font), which `gen:plugin` fills with `skills/`. There is no
+ * `mcp.json`: the MCP server would need a version pin, and no generated manifest names a version.
  * The instruction snippets are copy-in files (a user's own `.github/` or `.cursor/rules/`), so they
  * live under `integrations/`; the manifests and skills sit where the host auto-detects them.
  */
 
-import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildManifest } from "../src/manifest.js";
@@ -33,9 +31,10 @@ import { buildManifest } from "../src/manifest.js";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string): string => readFileSync(join(ROOT, p), "utf8");
 
-export const AGENT_SKILLS_DIR = ".agents/skills";
-export const PORTABLE_MANIFEST = "plugin.json";
-export const CURSOR_MANIFEST = ".cursor-plugin/plugin.json";
+export const PLUGIN_ROOT = "plugins/archlang";
+export const PORTABLE_MANIFEST = `${PLUGIN_ROOT}/plugin.json`;
+export const CURSOR_MANIFEST = `${PLUGIN_ROOT}/.cursor-plugin/plugin.json`;
+export const CURSOR_RULE = `${PLUGIN_ROOT}/rules/archlang.mdc`;
 export const PORTABLE_SCHEMA_ID = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json";
 
 const HEADER =
@@ -57,7 +56,7 @@ function frontmatter(src: string): Frontmatter {
 export function skillNames(): string[] {
   return readdirSync(join(ROOT, "skills"))
     .sort()
-    .filter((d) => statSync(join(ROOT, "skills", d)).isDirectory());
+    .filter((d) => existsSync(join(ROOT, "skills", d, "SKILL.md")));
 }
 
 /** These manifests carry the skills only (the MCP server is the Claude plugin's), so they say so. */
@@ -99,10 +98,10 @@ function intro(): string {
     if (!cmd) throw new Error(`gen-agent-manifests: CLI manifest has no \`${c}\` command`);
     return `- \`${m.invoke} ${c}\`: ${cmd.summary}`;
   });
-  const skills = skillNames().map((d) => {
-    const f = frontmatter(`skills/${d}/SKILL.md`);
-    return `- \`${f.name}\`: ${f.description}`;
-  });
+  const all = skillNames().map((d) => frontmatter(`skills/${d}/SKILL.md`));
+  const umbrella = all.filter((f) => f.name === "archlang");
+  const tasks = all.filter((f) => f.name !== "archlang");
+  const item = (f: Frontmatter) => `- \`${f.name}\`: ${f.description}`;
   return [
     "# ArchLang",
     "",
@@ -117,8 +116,11 @@ function intro(): string {
     "Commands:",
     ...lines,
     "",
-    "Task skills (one `SKILL.md` each, in the repository's `skills/` directory):",
-    ...skills,
+    "Skills that go with this (install them separately):",
+    ...umbrella.map(item),
+    "",
+    "Task skills:",
+    ...tasks.map(item),
     "",
   ].join("\n");
 }
@@ -140,28 +142,18 @@ export function textOutputs(): { dest: string; text: string }[] {
   return [
     { dest: PORTABLE_MANIFEST, text: portableManifest() },
     { dest: CURSOR_MANIFEST, text: cursorManifest() },
-    { dest: "integrations/cursor/archlang.mdc", text: cursorRule() },
+    { dest: CURSOR_RULE, text: cursorRule() },
     { dest: "integrations/copilot/copilot-instructions.md", text: copilotInstructions() },
     { dest: "integrations/copilot/archlang.instructions.md", text: copilotPathInstructions() },
   ];
 }
 
-/** Published path → source path, for the skill copies Codex and Copilot find in `.agents/skills`. */
-export function agentSkillFiles(): { dest: string; src: string }[] {
-  return skillNames().map((d) => ({ dest: `${AGENT_SKILLS_DIR}/${d}/SKILL.md`, src: `skills/${d}/SKILL.md` }));
-}
-
 /** Every file this generator writes. */
 export function allOutputs(): string[] {
-  return [...textOutputs().map((o) => o.dest), ...agentSkillFiles().map((f) => f.dest)];
+  return textOutputs().map((o) => o.dest);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  rmSync(join(ROOT, AGENT_SKILLS_DIR), { recursive: true, force: true });
-  for (const { dest, src } of agentSkillFiles()) {
-    mkdirSync(dirname(join(ROOT, dest)), { recursive: true });
-    writeFileSync(join(ROOT, dest), readFileSync(join(ROOT, src)));
-  }
   for (const { dest, text } of textOutputs()) {
     mkdirSync(dirname(join(ROOT, dest)), { recursive: true });
     writeFileSync(join(ROOT, dest), text);

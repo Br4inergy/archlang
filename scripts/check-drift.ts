@@ -58,16 +58,19 @@ const GENERATORS: readonly { script: string; artifacts: readonly string[] }[] = 
 const ALL_ARTIFACTS = GENERATORS.flatMap((g) => g.artifacts);
 
 /**
- * True when the given paths are unchanged in the working tree. `status`, not `diff`: a generator
- * re-creates a deleted artifact as an UNTRACKED file, which `diff` cannot see, so an artifact
- * deleted from the repository would otherwise pass the gate.
+ * True when the given paths are unchanged in the working tree AND none is untracked. A generator
+ * re-creates an artifact deleted from the repository as an UNTRACKED file, which `git diff` cannot
+ * see, so that is checked separately; a staged, in-sync file stays clean (regenerating cannot clear
+ * an index-vs-HEAD difference, so `git status` would be wrong here).
  */
 function isClean(paths: readonly string[]): boolean {
-  const out = execSync(`git status --porcelain --untracked-files=all -- ${paths.join(" ")}`, {
-    cwd: ROOT,
-    encoding: "utf8",
-  });
-  return out.trim() === "";
+  const list = paths.join(" ");
+  try {
+    execSync(`git diff --quiet -- ${list}`, { cwd: ROOT, stdio: "ignore" });
+  } catch {
+    return false;
+  }
+  return execSync(`git ls-files --others --exclude-standard -- ${list}`, { cwd: ROOT, encoding: "utf8" }).trim() === "";
 }
 
 function main(): void {
