@@ -34,7 +34,7 @@ function startClient(context: ExtensionContext): void {
  * once an `arch` document is open, not on a plain Markdown preview.
  */
 export async function activate(context: ExtensionContext) {
-  const core = (await import("@chanmeng666/archlang")) as unknown as { compile: CoreCompile };
+  // The language client is wired first, so a core that fails to load costs the preview only.
   const isArch = (languageId: string): boolean => languageId === "arch";
   if (workspace.textDocuments.some((d) => isArch(d.languageId))) startClient(context);
   context.subscriptions.push(
@@ -42,7 +42,17 @@ export async function activate(context: ExtensionContext) {
       if (isArch(d.languageId)) startClient(context);
     }),
   );
-  return { extendMarkdownIt: createExtendMarkdownIt(core.compile) };
+  let compile: CoreCompile;
+  try {
+    compile = ((await import("@chanmeng666/archlang")) as unknown as { compile: CoreCompile }).compile;
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    compile = () => ({
+      svg: "",
+      diagnostics: [{ severity: "error", code: "E_CORE_LOAD", message: `the ArchLang core failed to load: ${reason}` }],
+    });
+  }
+  return { extendMarkdownIt: createExtendMarkdownIt(compile) };
 }
 
 export function deactivate(): Thenable<void> | undefined {

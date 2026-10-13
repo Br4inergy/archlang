@@ -120,3 +120,15 @@ describe("markdown preview plugin on a real markdown-it", () => {
     });
   });
 });
+
+describe("namespacing touches attributes only", () => {
+  it("leaves a label reading url(#poche) untouched while the references are prefixed", () => {
+    const src = studio.replace(/label "[^"]*"/, 'label "see url(#poche)"');
+    expect(src).not.toBe(studio);
+    const html = render("arch", src);
+    expect(html).toContain("see url(#poche)");
+    expect(html).not.toContain("see url(#arch");
+    expect(html).toMatch(/url\(#arch\w*-poche\)/);
+    expect(html).toMatch(/\sid="arch\w*-poche"/);
+  });
+});

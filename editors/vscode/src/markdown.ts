@@ -39,6 +39,9 @@ function fenceLang(info: string): string {
   return info.trim().split(/\s+/, 1)[0]?.toLowerCase() ?? "";
 }
 
+/** Attributes whose value may hold a `url(#id)` paint or reference. */
+const URL_ATTRS = /^(?:style|fill|stroke|clip-path|mask|filter|marker-start|marker-mid|marker-end)$/;
+
 /**
  * Make every id in one SVG unique within the page. Every compiled plan carries the same
  * fixed ids (`poche`, `hatch-*`, the layer ids), and `url(#poche)` resolves to the FIRST
@@ -48,19 +51,29 @@ function fenceLang(info: string): string {
  * extension; the core is unchanged.
  */
 export function namespaceSvgIds(svg: string, prefix: string): string {
-  return svg
-    .replace(/(\sid=")([^"]*)"/g, (_m, a: string, id: string) => `${a}${prefix}${id}"`)
-    .replace(/url\((['"]?)#([^)'"]+)\1\)/g, (_m, q: string, id: string) => `url(${q}#${prefix}${id}${q})`)
-    .replace(/(\shref=")#([^"]*)"/g, (_m, a: string, id: string) => `${a}#${prefix}${id}"`)
-    .replace(
-      /(\saria-(?:labelledby|describedby)=")([^"]*)"/g,
-      (_m, a: string, ids: string) =>
-        `${a}${ids
-          .split(/\s+/)
-          .filter(Boolean)
-          .map((id) => prefix + id)
-          .join(" ")}"`,
-    );
+  // Only attribute values are rewritten, never element text: a room label that happens
+  // to read `url(#poche)` is escaped text content and must display unchanged.
+  return svg.replace(/(\s)([\w:-]+)="([^"]*)"/g, (m, sp: string, name: string, value: string) => {
+    if (name === "id") return `${sp}${name}="${prefix}${value}"`;
+    if (name === "href" || name === "xlink:href") {
+      return value.startsWith("#") ? `${sp}${name}="#${prefix}${value.slice(1)}"` : m;
+    }
+    if (name === "aria-labelledby" || name === "aria-describedby") {
+      const ids = value
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((id) => prefix + id);
+      return `${sp}${name}="${ids.join(" ")}"`;
+    }
+    if (URL_ATTRS.test(name)) {
+      const v = value.replace(
+        /url\((['"]?)#([^)'"]+)\1\)/g,
+        (_u, q: string, id: string) => `url(${q}#${prefix}${id}${q})`,
+      );
+      return `${sp}${name}="${v}"`;
+    }
+    return m;
+  });
 }
 
 /** The wrapper attributes VS Code's own fence renderer carries, for preview scroll sync. */

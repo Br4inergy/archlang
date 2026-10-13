@@ -1,6 +1,6 @@
 // Bundle the extension (client + LSP server) into self-contained CJS files with
 // esbuild, so the .vsix ships no node_modules. The zero-dep ArchLang core is bundled ONCE
-// into dist/core.js; the extension and server bundles load it by import(). `vscode` is provided by the host; the core's
+// into dist/core.mjs; the extension and server bundles load it by import(). `vscode` is provided by the host; the core's
 // OPTIONAL backends (resvg/pdfkit/clipper2) are marked external so esbuild leaves
 // their lazy `import()`s untouched — the language server never invokes them
 // (it only parses/resolves/diagnoses), so they are never loaded at runtime.
@@ -51,13 +51,15 @@ const common = {
   logLevel: "info",
 };
 
-// ONE copy of the core ships: it is bundled once, into dist/core.js, and the extension and
+// ONE copy of the core ships: it is bundled once, into dist/core.mjs, and the extension and
 // server bundles leave `@chanmeng666/archlang` external, resolved to that sibling file at
-// runtime (both load it with `import()`, which esbuild lowers to a require of ./core.js).
+// runtime. It is ESM (.mjs, so Node treats it as ESM beside the CJS bundles): both consumers
+// load it with `import()`, which esbuild keeps as a real dynamic import for an external path,
+// and named exports of an ESM module survive `import()` with no CJS export detection.
 const sharedCore = {
   name: "shared-core",
   setup(build) {
-    build.onResolve({ filter: /^@chanmeng666\/archlang$/ }, () => ({ path: "./core.js", external: true }));
+    build.onResolve({ filter: /^@chanmeng666\/archlang$/ }, () => ({ path: "./core.mjs", external: true }));
   },
 };
 
@@ -66,7 +68,8 @@ const builds = [
   { entryPoints: ["src/server.ts"], outfile: "dist/server.js", plugins: [sharedCore] },
   {
     stdin: { contents: 'export * from "@chanmeng666/archlang";', resolveDir: HERE, loader: "js" },
-    outfile: "dist/core.js",
+    outfile: "dist/core.mjs",
+    format: "esm",
   },
 ];
 
@@ -80,5 +83,5 @@ if (watch) {
 } else {
   await Promise.all(builds.map((b) => esbuild.build({ ...common, ...b })));
   // eslint-disable-next-line no-console
-  console.log(`esbuild: built dist/extension.js + dist/server.js + dist/core.js (core ${coreVersion})`);
+  console.log(`esbuild: built dist/extension.js + dist/server.js + dist/core.mjs (core ${coreVersion})`);
 }

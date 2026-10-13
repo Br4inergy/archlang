@@ -27,7 +27,7 @@ the pure core (`src/lsp.ts`); this server is a thin LSP adapter over them.
   preview activates the extension too, so the language server starts only once an `arch`
   document is open. Every SVG id is prefixed per fence so two plans on one page do not share
   patterns. Styles: `markdown-preview.css`. Tests: `test/markdown.test.ts`.
-- `dist/core.js` — the core, bundled ONCE by `esbuild.mjs`; `dist/extension.js` and
+- `dist/core.mjs` — the core, bundled ONCE by `esbuild.mjs`; `dist/extension.js` and
   `dist/server.js` leave it external and load it by `import()`.
 
 ## Build & run
