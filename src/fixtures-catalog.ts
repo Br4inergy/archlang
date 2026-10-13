@@ -42,6 +42,10 @@ export interface FixtureSpec {
    * carry the same value unless their `zones` differ (`sink` is wet as well as kitchen, so it
    * serves `basin`; `kitchen_sink` is kitchen only, so it does not), and a piece that serves a
    * zoned category carries that category's zones (`test/finish-furnish.test.ts`).
+   *
+   * A judgement call, stated so it is not mistaken for an oversight: `urinal` serves `wc` in
+   * every wet room, a dwelling `bath` included, so a bathroom holding a urinal and a basin is
+   * not reported as lacking a WC.
    */
   serves?: string;
   /**
@@ -479,6 +483,7 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // console table is not one either. Adding either would silently green a
   // `W_ROOM_NO_FIXTURE` a plan deserves.
   bidet: { requiresWall: true, clearanceMm: 450, footprint: { along: 400, depth: 700 }, zones: ["wet"] },
+  // `serves: "wc"` in every wet room, a dwelling bath included — a judgement call (see `serves`).
   urinal: { requiresWall: true, clearanceMm: 450, footprint: { along: 400, depth: 350 }, zones: ["wet"], serves: "wc" },
   laundry_sink: { requiresWall: true, clearanceMm: 600, footprint: { along: 600, depth: 500 }, zones: ["wet"] },
   laundry_tub: { requiresWall: true, clearanceMm: 600, footprint: { along: 600, depth: 500 }, zones: ["wet"] },

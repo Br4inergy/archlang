@@ -293,7 +293,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
     expect(fixtureSpec("kitchen_sink")?.serves).toBeUndefined();
   });
 
-  it("a piece declared `in` one room counts for that room only, even where its footprint overhangs the next", () => {
+  it("a piece declared `in` one room that overhangs the next by less than the wall band counts for its own room only", () => {
     // The bed is declared in r_bed and reaches 50 mm (one step of the plan's `grid 50`) past
     // the partition's centreline into r_bath.
     const src = FLAT.replace(
@@ -308,6 +308,24 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
     // The same piece with no `in` stands on both floors, so it counts for both.
     const loose = finish(src.replace(" size 1550x2000 in r_bed", " size 1550x2000"), { only: "furnish" });
     expect(partly(loose)).toEqual([["r_bath", "bath: `wc`, `basin`"]]);
+  });
+
+  it("a piece declared `in` one room but standing wholly in another counts for the room it stands in", () => {
+    // A copy-paste slip: the wc says `in r_bed` but stands in the bathroom.
+    const src = FLAT.replace("  door id=d_bed", "  furniture wc at (5000,200) size 400x700 in r_bed\n  door id=d_bed");
+    expect(errorsOf(src)).toEqual([]);
+    expect(codes(src, undefined).has("W_FIXTURE_WRONG_ROOM")).toBe(true);
+    const r = finish(src, { only: "furnish" });
+    // Nothing is written: not a second wc into r_bath, not a bed into r_bed.
+    expect(r.changes).toEqual([]);
+    expect(r.source).toBe(src);
+    expect(codes(r.source, undefined)).toEqual(codes(src, undefined));
+    // r_bath holds the wc and lacks its basin; r_bed holds nothing on its floor, and says why.
+    expect(partly(r)).toEqual([["r_bath", "bath: `basin`"]]);
+    expect(r.unresolved.map((u) => u.room)).toEqual(["r_bed", "r_bath"]);
+    expect(r.unresolved[0]!.reason).toBe(
+      '"r_bed" holds no piece on its floor — `wc` is declared `in r_bed` but stands in another room (`W_FIXTURE_WRONG_ROOM`); finish fills only empty rooms',
+    );
   });
 
   it("a partly furnished room larger than 100 m² is reported too, with the dwelling-room reason", () => {
@@ -326,7 +344,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
     expect(r.source).toBe(src);
     expect(r.unresolved).toEqual([expect.objectContaining({ stage: "furnish", room: "r" })]);
     expect(r.unresolved[0]!.reason).toBe(
-      '"r" is larger than 100 m² — the furnish table describes dwelling rooms, so the room was left as it is; it holds furniture but not every piece its use requires — living: `sofa` missing',
+      '"r" holds furniture but not every piece its use requires — living: `sofa` missing; it is larger than 100 m², which the furnish table does not cover; finish fills only empty dwelling rooms',
     );
   });
 

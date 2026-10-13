@@ -26,7 +26,7 @@
  */
 
 import type { FurnitureAnchor, PlanNode, Point, UseKind } from "./ast.js";
-import { type AnalyzeOptions, resolvePlan, roomAreaMm2, roomUses } from "./analyze.js";
+import { type AnalyzeOptions, ROOM_CONTAINMENT_SLACK_MM, resolvePlan, roomAreaMm2, roomUses } from "./analyze.js";
 import type { Span } from "./diagnostics.js";
 import { Data } from "./fix-apply.js";
 import type { FinishChange, FinishNote, FinishResult } from "./finish.js";
@@ -304,25 +304,31 @@ export function furnishStage(
    * A room that holds some furniture is never topped up (ADR 0025, decision 2): what it
    * lacks is reported. These notes follow every other note of the run, in room order.
    */
-  const partly = ({ room, missing }: PartlyFurnished, level?: number): void => {
+  const partly = (r: Reported, level?: number): void => {
+    const { room } = r;
     const name = room._idAuthored === true ? `"${room.id}"` : `the room "${room.label ?? room.id}"`;
     const where = level === undefined ? name : `${name} (level ${level})`;
-    const lacks = missing.map((m) => `${m.use}: ${m.categories.map((c) => `\`${c}\``).join(", ")}`).join("; ");
-    const holds = `holds furniture but not every piece its use requires — ${lacks} missing`;
+    const code = (words: readonly string[]): string => words.map((c) => `\`${c}\``).join(", ");
+    const what =
+      "strayed" in r
+        ? `holds no piece on its floor — ${code(r.strayed)} ${r.strayed.length === 1 ? "is" : "are"} declared \`in ${room.id}\` but ${r.strayed.length === 1 ? "stands" : "stand"} in another room (\`W_FIXTURE_WRONG_ROOM\`)`
+        : `holds furniture but not every piece its use requires — ${r.missing
+            .map((m) => `${m.use}: ${code(m.categories)}`)
+            .join("; ")} missing`;
     const reason =
-      roomAreaMm2(room) / 1e6 > MAX_ROOM_AREA_M2
-        ? `${where} is larger than ${MAX_ROOM_AREA_M2} m² — the furnish table describes dwelling rooms, so the room was left as it is; it ${holds}`
-        : room._instance !== undefined
-          ? `${where} ${holds}; it belongs to a placed component instance — furnish the component instead`
-          : `${where} ${holds}; finish fills only empty rooms`;
+      room._instance !== undefined
+        ? `${where} ${what}; it belongs to a placed component instance — furnish the component instead`
+        : roomAreaMm2(room) / 1e6 > MAX_ROOM_AREA_M2
+          ? `${where} ${what}; it is larger than ${MAX_ROOM_AREA_M2} m², which the furnish table does not cover; finish fills only empty dwelling rooms`
+          : `${where} ${what}; finish fills only empty rooms`;
     note(room, level === undefined ? reason : `${reason}, and the furnish stage handles single-storey plans only`);
   };
 
   if (resolved.levels.length > 0) {
-    const partial: Array<[PartlyFurnished, number]> = [];
+    const partial: Array<[Reported, number]> = [];
     for (const l of resolved.levels) {
       const fill = roomsByFill(l.ir);
-      for (const p of fill.partial) partial.push([p, l.level]);
+      for (const p of fill.reported) partial.push([p, l.level]);
       for (const room of fill.empty)
         note(
           room,
@@ -334,7 +340,7 @@ export function furnishStage(
   }
 
   const ir = resolved.ir;
-  const { empty: todo, partial } = roomsByFill(ir);
+  const { empty: todo, reported: partial } = roomsByFill(ir);
   /** Every note of the run: the stage's own, then the partly furnished rooms. Called once, at the return. */
   const reported = (): FinishNote[] => {
     for (const p of partial) partly(p);
@@ -616,58 +622,80 @@ const servedBy = (category: string): string[] => {
  * overlapping by more than 1 mm, the measure {@link rectsOverlap} uses: a piece against a
  * partition shares the wall band with the room on its far side, and is not in it.
  */
-function standsIn(f: RFurniture, floor: readonly Point[]): boolean {
-  const foot = rectRing({ x: f.at.x, y: f.at.y, w: f.size.w, h: f.size.h });
-  if (polygonsOverlap(foot, floor)) return true;
+function standsIn(foot: BBox, floor: readonly Point[]): boolean {
+  if (polygonsOverlap(rectRing(foot), floor)) return true;
   // A footprint whose every edge lies on the floor's boundary (a piece the size of the
-  // room) has no vertex or edge midpoint strictly inside the floor; its centre is.
-  const c = { x: f.at.x + f.size.w / 2, y: f.at.y + f.size.h / 2 };
+  // room) has no vertex or edge midpoint strictly inside the floor; its centre is. So does a
+  // footprint {@link beyondBand} shrank to a line or a point.
+  const c = { x: foot.x + foot.w / 2, y: foot.y + foot.h / 2 };
   return distToPolygonEdge(c, floor) > 1 && pointInPolygon(c.x, c.y, floor);
 }
 
-/** A room that holds furniture but not every piece its uses require. */
-interface PartlyFurnished {
-  room: RRoom;
-  /** Use by use, the table's words for the required pieces the room does not hold. */
-  missing: Array<{ use: UseKind; categories: string[] }>;
+const footOf = (f: RFurniture): BBox => ({ x: f.at.x, y: f.at.y, w: f.size.w, h: f.size.h });
+/**
+ * The footprint less the band a piece may hang into a neighbouring room before its `in`
+ * reads as wrong: {@link ROOM_CONTAINMENT_SLACK_MM} on every side, the band of
+ * `W_FIXTURE_WRONG_ROOM` (`rectInRoomBox`, which shrinks the same way — a piece smaller
+ * than twice the band shrinks to its centre).
+ */
+function beyondBand(f: RFurniture): BBox {
+  const m = Math.min(ROOM_CONTAINMENT_SLACK_MM, f.size.w / 2, f.size.h / 2);
+  return { x: f.at.x + m, y: f.at.y + m, w: f.size.w - 2 * m, h: f.size.h - 2 * m };
 }
+
+/** A room that is not empty, and why it is reported. */
+type Reported =
+  /** It holds furniture, but not every piece its uses require. */
+  | { room: RRoom; missing: Array<{ use: UseKind; categories: string[] }> }
+  /** Nothing stands on its floor; the pieces declared `in` it stand in another room. */
+  | { room: RRoom; strayed: string[] };
 
 /**
  * The rooms of one storey whose use has a row in the table, by what they hold: `empty`
- * (no piece; the stage furnishes it) and `partial` (some pieces, but not every required
- * one; reported, never topped up). A room holding every required piece is in neither.
+ * (no piece; the stage furnishes it) and `reported` (never topped up, and said why: a
+ * partly furnished room, or one whose only pieces are declared in it but stand elsewhere).
+ * A room holding every required piece is in neither.
  *
- * A piece declared `in <room>` belongs to that room only, wherever its footprint reaches; a
- * piece with no `in` (or one naming no room of this storey) belongs to every room its
- * footprint stands on.
+ * Which pieces a room holds is read off the room's shape. A piece stands in the room it is
+ * declared `in` when its footprint reaches that room's floor, and in any other room when it
+ * reaches that floor beyond the band {@link beyondBand} allows. A piece with no `in` (or one
+ * naming no room of this storey) stands in every room its footprint reaches. A room a piece
+ * is declared `in` is never empty, wherever the piece stands, as before this test existed.
  */
-function roomsByFill(ir: ResolvedPlan): { empty: RRoom[]; partial: PartlyFurnished[] } {
+function roomsByFill(ir: ResolvedPlan): { empty: RRoom[]; reported: Reported[] } {
   const furniture = ir.elements.filter((e): e is RFurniture => e.kind === "furniture");
   const rooms = new Set(ir.elements.filter((e) => e.kind === "room").map((e) => (e as RRoom).id));
   const empty: RRoom[] = [];
-  const partial: PartlyFurnished[] = [];
+  const reported: Reported[] = [];
   for (const e of ir.elements) {
     if (e.kind !== "room" || e._unplaced) continue;
     const uses = usesOf(e);
     if (uses.length === 0) continue;
     const floor = e.poly ?? rectRing({ x: e.at.x, y: e.at.y, w: e.size.w, h: e.size.h });
+    const declaredHere = (f: RFurniture): boolean => f.room === e.id;
     const held = furniture.filter((f) =>
-      f.room !== undefined && rooms.has(f.room) ? f.room === e.id : standsIn(f, floor),
+      f.room === undefined || !rooms.has(f.room)
+        ? standsIn(footOf(f), floor)
+        : declaredHere(f)
+          ? standsIn(footOf(f), floor)
+          : standsIn(beyondBand(f), floor),
     );
     if (held.length === 0) {
-      empty.push(e);
+      const strayed = furniture.filter(declaredHere);
+      if (strayed.length === 0) empty.push(e);
+      else reported.push({ room: e, strayed: [...new Set(strayed.map((f) => f.category))] });
       continue;
     }
     const families = new Set(held.flatMap((f) => servedBy(f.category)));
     const holds = (i: FurnishItem): boolean => [i.category, ...(i.or ?? [])].some((w) => families.has(familyOf(w)));
-    const missing: PartlyFurnished["missing"] = [];
+    const missing: Array<{ use: UseKind; categories: string[] }> = [];
     for (const use of uses) {
       const categories = (FURNISH_TABLE[use] ?? []).filter((i) => i.required && !holds(i)).map((i) => i.category);
       if (categories.length > 0) missing.push({ use, categories });
     }
-    if (missing.length > 0) partial.push({ room: e, missing });
+    if (missing.length > 0) reported.push({ room: e, missing });
   }
-  return { empty, partial };
+  return { empty, reported };
 }
 
 // ---------------------------------------------------------------------------

@@ -559,7 +559,9 @@ one wall. A use whose required pieces cannot be placed together is left out whol
 
 - **Fill only.** A room that holds any piece is not touched. Nothing authored is moved, resized
   or deleted. A room that holds some pieces but lacks one its use requires (a living room with
-  a lamp and no sofa) is named in `unresolved` with the missing pieces, and is not filled.
+  a lamp and no sofa) is named in `unresolved` with the missing pieces, and is not filled. A
+  piece that does the job counts: a `double_bed` for a `bed`, and a `urinal` for a `wc` in
+  any wet room, a dwelling bathroom included.
 - **Relative placement.** A services fixture is written `against wall <id> offset …`; a
   free-standing piece `in <room> anchor … flush size WxH rotate …`. Never `at (x,y)`.
 - **Never worse.** A room's pieces are kept only when the plan still compiles and raises no
