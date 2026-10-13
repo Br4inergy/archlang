@@ -38,8 +38,30 @@ test.describe("front door", () => {
     await page.goto("/");
     await waitForPlan(page);
     await expect(page.locator("#examples")).toHaveValue("Laneway House");
+    // #errors is the COMPILE sink; lint renders into #lintOutput (a clean plan shows the ".ok" verdict).
     await expect(page.locator("#errors")).toBeEmpty();
+    await expect(page.locator("#lintOutput .lintrow")).toHaveCount(0);
+    await expect(page.locator("#lintOutput .ok")).toHaveCount(1);
   });
+
+  for (const width of [1280, 1366]) {
+    test(`the toolbar stays on one row at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("/");
+      await waitForPlan(page);
+      // Every visible header item must start above the first cell's bottom edge: a Share
+      // control that wraps "⋯" or a cell onto a second row fails here, loudly.
+      const wrapped = await page.evaluate(() => {
+        const h = document.querySelector("header")!;
+        const items = [...h.children].filter(
+          (c) => getComputedStyle(c).display !== "none" && !c.classList.contains("spacer"),
+        );
+        const firstBottom = items[0]!.getBoundingClientRect().bottom;
+        return items.filter((c) => c.getBoundingClientRect().top >= firstBottom - 1).map((c) => c.className);
+      });
+      expect(wrapped, `header items on a second row at ${width}px`).toEqual([]);
+    });
+  }
 
   test("a link to the agents page sits beside Copy for LLM", async ({ page }) => {
     await page.goto("/");

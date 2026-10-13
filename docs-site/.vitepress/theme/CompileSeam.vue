@@ -255,6 +255,7 @@ onBeforeUnmount(() => {
               <button
                 type="button"
                 class="install__copy"
+                aria-live="polite"
                 :aria-label="`Copy ${l.label} command`"
                 @click="copyCmd(l.cmd)"
               >

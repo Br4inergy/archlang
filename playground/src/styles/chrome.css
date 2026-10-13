@@ -558,8 +558,9 @@ main {
   }
   .tb-nav-more {
     display: block;
-    /* The agents link joined the Share cell; this gutter and the cell padding below are
-       what keep "⋯" on the one row at 1440 and 1280. */
+    /* The agents link joined the Share cell; this gutter keeps "⋯" on the one row at 1280
+       (the cell padding below does the same work at 1440–1599; under 1440 the tighter
+       7px rule further down takes over). */
     margin-right: 4px;
   }
   .tb-cell {
