@@ -20,6 +20,7 @@ const CLAUDE_PLUGIN_FILES = new Set([
   ".claude-plugin/plugin.json",
   ICON,
   "plugin.json",
+  "mcp.json",
   ".cursor-plugin/plugin.json",
   "rules/archlang.mdc",
 ]);

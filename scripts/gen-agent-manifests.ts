@@ -17,8 +17,9 @@
  *     `applyTo` glob) and https://raw.githubusercontent.com/github/awesome-copilot/main/CONTRIBUTING.md
  *     (skills/instructions/plugins contribution format).
  * The plugin root is `plugins/archlang/` (the slim folder the Claude plugin already uses; the
- * repository root carries an 11 MB font), which `gen:plugin` fills with `skills/`. There is no
- * `mcp.json`: the MCP server would need a version pin, and no generated manifest names a version.
+ * repository root carries an 11 MB font), which `gen:plugin` fills with `skills/`. `mcp.json` there
+ * (portable Agent Plugins MCP file, https://agent-plugins.org/schemas/1.0.0/mcp.schema.json) starts the
+ * MCP server unpinned, like the README's recommended command, so it names no version.
  * The instruction snippets are copy-in files (a user's own `.github/` or `.cursor/rules/`), so they
  * live under `integrations/`; the manifests and skills sit where the host auto-detects them.
  */
@@ -34,6 +35,8 @@ const read = (p: string): string => readFileSync(join(ROOT, p), "utf8");
 export const PLUGIN_ROOT = "plugins/archlang";
 export const PORTABLE_MANIFEST = `${PLUGIN_ROOT}/plugin.json`;
 export const CURSOR_MANIFEST = `${PLUGIN_ROOT}/.cursor-plugin/plugin.json`;
+export const MCP_MANIFEST = `${PLUGIN_ROOT}/mcp.json`;
+export const MCP_SCHEMA_ID = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json";
 export const CURSOR_RULE = `${PLUGIN_ROOT}/rules/archlang.mdc`;
 export const PORTABLE_SCHEMA_ID = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json";
 
@@ -85,6 +88,15 @@ export function portableManifest(): string {
   return json({ $schema: PORTABLE_SCHEMA_ID, name, description, author, homepage, repository, license, keywords });
 }
 
+/** `mcp.json`: the MCP server, started by its package name with no version. */
+export function mcpManifest(): string {
+  const { name } = JSON.parse(read("packages/mcp/package.json"));
+  return json({
+    $schema: MCP_SCHEMA_ID,
+    mcpServers: { archlang: { type: "stdio", command: "npx", args: ["-y", name] } },
+  });
+}
+
 /** `.cursor-plugin/plugin.json`: only `name` is required; `skills/` is discovered by default. */
 export function cursorManifest(): string {
   const { name, description, author, homepage, repository, license, keywords } = identity();
@@ -116,7 +128,7 @@ function intro(): string {
     "Commands:",
     ...lines,
     "",
-    "Skills that go with this (install them separately):",
+    "Skills for these tasks (the ArchLang plugin ships them; otherwise copy `skills/<name>/` from the ArchLang repository):",
     ...umbrella.map(item),
     "",
     "Task skills:",
@@ -141,6 +153,7 @@ export function copilotPathInstructions(): string {
 export function textOutputs(): { dest: string; text: string }[] {
   return [
     { dest: PORTABLE_MANIFEST, text: portableManifest() },
+    { dest: MCP_MANIFEST, text: mcpManifest() },
     { dest: CURSOR_MANIFEST, text: cursorManifest() },
     { dest: CURSOR_RULE, text: cursorRule() },
     { dest: "integrations/copilot/copilot-instructions.md", text: copilotInstructions() },

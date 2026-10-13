@@ -21,7 +21,7 @@ Commands:
 - `archlang lint`: architectural soundness warnings
 - `archlang preview`: render a PNG you can look at (zero-install where the optional binary is present)
 
-Skills that go with this (install them separately):
+Skills for these tasks (the ArchLang plugin ships them; otherwise copy `skills/<name>/` from the ArchLang repository):
 - `archlang`: Use when the user wants to create, edit, or inspect an architectural floor plan / building layout as code — e.g. "draw a 2-bedroom apartment", "add a bathroom to this plan", "make the bedroom 1 m wider", "lay out an office floor". ArchLang is a tiny text language that compiles a .arch file to a professional floor-plan drawing (SVG/PNG/PDF/DXF). Drive it entirely through the `archlang` CLI; do not hand-render.
 
 Task skills:

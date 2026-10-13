@@ -15,8 +15,8 @@ covered in [`overview.md`](overview.md) and is not repeated here.
 | Host | Plugin files (under `plugins/archlang/`) | Copy-in files |
 |---|---|---|
 | Codex and ChatGPT | `plugin.json`, `skills/` | none |
-| GitHub Copilot (CLI) | `plugin.json`, `skills/` | `integrations/copilot/*` |
-| Cursor | `.cursor-plugin/plugin.json`, `skills/`, `rules/archlang.mdc` | none |
+| GitHub Copilot (CLI) | `plugin.json`, `mcp.json`, `skills/` | `integrations/copilot/*` |
+| Cursor | `.cursor-plugin/plugin.json`, `mcp.json`, `skills/`, `rules/archlang.mdc` | none |
 | Any Agent Plugins client | `plugin.json`, `skills/` | none |
 
 ## What the files are
@@ -26,14 +26,16 @@ covered in [`overview.md`](overview.md) and is not repeated here.
   are found in the plugin root's `skills/` directory, so there is no `skills` field.
 - `.cursor-plugin/plugin.json`: the Cursor plugin manifest. Cursor requires only `name`; it discovers
   `skills/` and `rules/*.mdc` from the plugin root.
+- `mcp.json`: the MCP server (see below).
 - `rules/archlang.mdc`: a Cursor rule scoped to `**/*.arch`.
 - `integrations/copilot/copilot-instructions.md` and `integrations/copilot/archlang.instructions.md`:
   Copilot custom instructions (repository-wide, and path-specific with `applyTo: "**/*.arch"`), for a
   user to copy into their own project.
 
-There is no `mcp.json`. An MCP server entry would need a version pin, and no generated manifest names a
-version, so the manifests carry skills only. The MCP server is installed separately
-(`npx -y @chanmeng666/archlang-mcp`) or through the Claude Code plugin.
+`mcp.json` declares the MCP server as a stdio server run with `npx -y @chanmeng666/archlang-mcp`, the
+unpinned command the README recommends, so it names no version. Copilot CLI gives the portable
+`plugin.json` precedence over the Claude manifest, and this file is how Copilot (and Cursor) users get the
+server as well as the skills. It is not part of the OpenAI directory ZIP described below.
 
 ## How a user installs them
 

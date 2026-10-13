@@ -11,6 +11,8 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CURSOR_RULE,
+  MCP_MANIFEST,
+  MCP_SCHEMA_ID,
   PLUGIN_ROOT,
   allOutputs,
   CURSOR_MANIFEST,
@@ -134,6 +136,24 @@ describe("agent-directory manifests", () => {
     expect(missing.join("\n")).toMatch(/missing required `name`/);
   });
 
+  it("mcp.json meets the vendored Agent Plugins MCP schema and pins no version", () => {
+    const schema = readJson("test/fixtures/schemas/agent-plugin-mcp.schema.json");
+    expect(schema.$id).toBe(MCP_SCHEMA_ID);
+    const mcp = readJson(MCP_MANIFEST);
+    // structural checks by hand: the schema uses $ref/oneOf, beyond the small validator above
+    expect(schema.required).toEqual(["$schema", "mcpServers"]);
+    expect(Object.keys(mcp).sort()).toEqual(["$schema", "mcpServers"]);
+    expect(mcp.$schema).toBe(MCP_SCHEMA_ID);
+    const server = mcp.mcpServers.archlang;
+    const stdio = schema.$defs.stdioServer;
+    expect(stdio.required).toEqual(["type", "command"]);
+    for (const k of Object.keys(server)) expect(Object.keys(stdio.properties), k).toContain(k);
+    expect(server.type).toBe(stdio.properties.type.const);
+    expect(server.command).toBe("npx");
+    expect(server.args).toEqual(["-y", readJson("packages/mcp/package.json").name]);
+    for (const a of server.args) expect(a).not.toMatch(/@[^/]*$|@latest/);
+  });
+
   it("the Cursor manifest has the one field Cursor requires, and the name agrees across hosts", () => {
     const cursor = readJson(CURSOR_MANIFEST);
     // Cursor requires `name`, lowercase alphanumerics, hyphens and periods (kebab-case)
@@ -178,7 +198,9 @@ describe("agent-directory manifests", () => {
     for (const f of allOutputs()) {
       const text = read(f);
       // the Agent Plugins schema URL carries the schema revision, which is not a release version
-      expect(text.replaceAll(PORTABLE_SCHEMA_ID, ""), `${f} has a version`).not.toMatch(VERSION);
+      expect(text.replaceAll(PORTABLE_SCHEMA_ID, "").replaceAll(MCP_SCHEMA_ID, ""), `${f} has a version`).not.toMatch(
+        VERSION,
+      );
       for (const re of SECRETS) expect(text, `${f} ~ ${re}`).not.toMatch(re);
       for (const re of KILLED) expect(text, `${f} ~ ${re}`).not.toMatch(re);
     }
