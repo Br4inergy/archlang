@@ -7,4 +7,9 @@ import resources from "virtual:archlang-resources";
 import viewerHtml from "virtual:archlang-viewer";
 import { makeWorker } from "./app.js";
 
-export default makeWorker({ resources, viewerHtml, version: __WORKER_VERSION__ });
+export default makeWorker({
+  resources,
+  viewerHtml,
+  version: __WORKER_VERSION__,
+  renderVersion: __RENDER_VERSION__,
+});

@@ -11,7 +11,8 @@
 // test/lockstep.test.ts pins against copy-resources.mjs), and the core is THIS checkout's
 // ../../dist (run `npm run build` at the root first), aliased by name so a stale core in
 // node_modules can never be bundled by accident.
-import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
@@ -23,6 +24,7 @@ const PKG = join(HERE, "..");
 const REPO = join(PKG, "..", "..");
 const DIST = join(PKG, "dist");
 const pkg = JSON.parse(readFileSync(join(PKG, "package.json"), "utf8"));
+const corePkg = JSON.parse(readFileSync(join(REPO, "package.json"), "utf8"));
 
 const coreEntry = join(REPO, "dist", "index.js");
 const linkEntry = join(REPO, "dist", "cli", "link.js");
@@ -30,6 +32,26 @@ if (!existsSync(coreEntry) || !existsSync(linkEntry)) {
   console.error("mcp-worker build: ../../dist is missing — run `npm run build` at the repo root first");
   process.exit(1);
 }
+
+/**
+ * What decides a drawing's bytes: the core's version plus a hash of the core's built library
+ * code (every `dist/*.js` but the CLI), so a core change merged without a version bump still
+ * changes it. It keys the Worker's edge cache and names the pinned image path (src/app.ts).
+ */
+function renderVersion() {
+  const dist = join(REPO, "dist");
+  const files = readdirSync(dist)
+    .filter((f) => f.endsWith(".js") && f !== "cli.js")
+    .sort();
+  const h = createHash("sha256");
+  for (const f of files)
+    h.update(f)
+      .update("\0")
+      .update(readFileSync(join(dist, f)))
+      .update("\0");
+  return `${corePkg.version}-${h.digest("hex").slice(0, 8)}`;
+}
+const RENDER_VERSION = renderVersion();
 
 const serverSrc = readFileSync(join(REPO, "packages", "mcp", "src", "server.ts"), "utf8");
 const paths = resourcePaths(serverSrc);
@@ -124,7 +146,7 @@ await build({
     "@chanmeng666/archlang": coreEntry,
   },
   nodePaths,
-  define: { __WORKER_VERSION__: JSON.stringify(pkg.version) },
+  define: { __WORKER_VERSION__: JSON.stringify(pkg.version), __RENDER_VERSION__: JSON.stringify(RENDER_VERSION) },
   plugins: [
     optionalStub,
     nodeBuiltins,
@@ -144,3 +166,4 @@ console.log(
 );
 console.log(`  dist/viewer.html  ${size(join(DIST, "viewer.html"))}`);
 console.log(`  dist/worker.js    ${size(join(DIST, "worker.js"))}`);
+console.log(`  render version    ${RENDER_VERSION}`);

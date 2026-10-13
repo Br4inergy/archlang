@@ -9,7 +9,7 @@
 import { RESOURCE_MIME_TYPE, RESOURCE_URI_META_KEY, registerAppResource } from "@modelcontextprotocol/ext-apps/server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { INSTRUCTIONS, type ResourceName, registerResources, registerTools } from "../../mcp/src/tools.js";
-import { SOURCE_CAP_BYTES } from "./limits.js";
+import { MCP_PER_PERIOD, RATE_PERIOD_SECONDS, SOURCE_CAP_BYTES, SVG_PER_PERIOD } from "./limits.js";
 
 /** What the Worker serves that it cannot read at run time (it has no filesystem): bundled at build. */
 export interface HostedAssets {
@@ -19,6 +19,12 @@ export interface HostedAssets {
   viewerHtml: string;
   /** This Worker's version, for the MCP handshake. */
   version: string;
+  /**
+   * What decides the bytes of a drawing: the core's version plus a hash of the bundled core
+   * (`1.42.1-3fa9c2d1`). It keys the edge cache and names the one immutable image path,
+   * `/v/<renderVersion>/svg/<payload>`, so a core change can never serve an old drawing.
+   */
+  renderVersion: string;
 }
 
 /** The MCP App the `compile` tool's results open in (spec: `ui://` scheme, one HTML page). */
@@ -28,7 +34,7 @@ export const VIEWER_URI = "ui://archlang/viewer";
 export const PNG_HOSTED =
   'format "png" is unavailable on the hosted server, which has no image renderer: use format "svg", or GET /svg/<payload> on this server for an image URL.';
 
-/** The `read_me` tool's text: what this server is, how to use it, and what it keeps (nothing). */
+/** The `read_me` tool's text: what this server is, how to use it, and what it keeps. */
 export function readMe(origin: string): string {
   return [
     "# ArchLang, hosted",
@@ -40,11 +46,11 @@ export function readMe(origin: string): string {
     "## This server",
     "",
     `- The same tools as the npm server (\`npx -y @chanmeng666/archlang-mcp\`), over Streamable HTTP at ${origin}/mcp. No sign-in, no sessions: every request stands alone.`,
-    `- A source larger than ${SOURCE_CAP_BYTES / 1024} KB is refused with \`E_INPUT_TOO_LARGE\` before it is compiled. The CLI and the npm server have no such cap.`,
+    `- Any tool argument (a source, \`plan_json\`, an intent) larger than ${SOURCE_CAP_BYTES / 1024} KB is refused with \`E_INPUT_TOO_LARGE\` before anything is compiled, and an address that sends more than ${MCP_PER_PERIOD} requests to /mcp (or ${SVG_PER_PERIOD} new images) in ${RATE_PERIOD_SECONDS} s gets \`E_RATE_LIMITED\`. The CLI and the npm server have neither limit.`,
     '- `compile` with format "png" is not available here; format "svg" is.',
-    `- An image URL for a plan: call \`link\`, take the text after \`#z=\` in its \`embed\` URL, and GET ${origin}/svg/<that text>. It answers \`image/svg+xml\`, the same bytes \`compile\` returns, cached for a year (the URL is the plan, so it never changes). Unlike a playground link, whose plan stays in the \`#\` fragment and never reaches a server, an /svg/ URL sends the plan to this server in its path.`,
+    `- An image URL for a plan: call \`link\`, take the text after \`#z=\` in its \`embed\` URL, and GET ${origin}/svg/<that text>. It answers \`image/svg+xml\`, the same bytes \`compile\` returns, fresh for five minutes: when the compiler changes, the drawing at that URL follows it. Its \`Content-Location\` names the pinned copy, \`/v/<render version>/svg/<payload>\`, which never changes and may be cached for good; once this server runs a newer compiler, a pinned URL redirects to the unpinned one. Unlike a playground link, whose plan stays in the \`#\` fragment and never reaches a server, an /svg/ URL sends the plan to this server in its path.`,
     `- Hosts that support MCP Apps show \`compile\` results in a viewer (pan and zoom, plus the lint findings); every other host gets the same result as text.`,
-    "- The server stores nothing and logs no source. Each call is counted by method and tool name only.",
+    "- The server keeps no source and no request body, and logs neither. It stores only the rendered SVG of each /svg/ URL, in Cloudflare's edge cache. Each MCP call is counted by its method and tool name, from fixed lists; nothing else is recorded.",
   ].join("\n");
 }
 

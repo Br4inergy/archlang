@@ -414,13 +414,23 @@ async function mcpChecks() {
       ...route(
         svgPath,
         contentType("image/svg+xml"),
-        header("cache-control", "immutable"),
+        // Unpinned: the compiler is not in the URL, so it must stay revalidatable, never immutable.
+        header("cache-control", "max-age=300"),
+        header("etag", '"'),
         isSvg(),
-        (body, _res, ctx) => {
+        async (body, res, ctx) => {
           const want = compile(studio, { noCache: true }).svg;
           if (body !== want)
             throw new Error(`body (${body.length} chars) is not compile()'s SVG (${want.length} chars)`);
-          ctx.notes.push(`studio.arch, ${body.length} chars = compile()`);
+          // The pinned copy it names is the immutable one, with the same bytes.
+          const pinned = res.headers.get("content-location");
+          if (!pinned?.startsWith("/v/"))
+            throw new Error(`content-location is ${JSON.stringify(pinned)}, expected /v/…`);
+          const { res: pres, body: pbody } = await fetchOk(new URL(pinned, ctx.base).href);
+          if (!(pres.headers.get("cache-control") ?? "").includes("immutable"))
+            throw new Error(`the pinned copy is not immutable: ${pres.headers.get("cache-control")}`);
+          if (pbody !== want) throw new Error("the pinned copy's bytes are not compile()'s SVG");
+          ctx.notes.push(`studio.arch, ${body.length} chars = compile(); pinned ${pinned.split("/")[2]} immutable`);
         },
       ),
       name: "/svg/<studio.arch payload>",

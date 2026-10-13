@@ -2,31 +2,47 @@
  * The hosted ArchLang MCP Worker's request handler (docs/adr/0026-hosted-mcp-worker.md);
  * `worker.ts` is the entry that hands it the assets bundled at build time.
  *
- *   POST /mcp          stateless Streamable-HTTP MCP: no sign-in, no sessions, JSON responses
- *   GET  /svg/<payload> the plan in a `#z=` payload, compiled to `image/svg+xml`, cached a year
- *   GET  /             the `read_me` text
+ *   POST /mcp                   stateless Streamable-HTTP MCP: no sign-in, no sessions, JSON replies
+ *   GET  /svg/<payload>         a `#z=` payload compiled to `image/svg+xml`, fresh for five minutes
+ *   GET  /v/<render>/svg/<p>    the same drawing pinned to one compiler: the only immutable path
+ *   GET  /                      the `read_me` text
  *
- * Bounded by BYTES, checked before any compile work: a body over {@link BODY_CAP_BYTES} or a
- * source over {@link SOURCE_CAP_BYTES} is refused with `E_INPUT_TOO_LARGE`, as data. `compile()`'s
- * own budgets stay counts; a Worker that runs out of CPU anyway fails with the platform's 5xx,
- * which is never presented as a diagnostic.
+ * Bounded before any compile work, by counts, never by a clock: a body over
+ * {@link BODY_CAP_BYTES} or any tool argument over {@link SOURCE_CAP_BYTES} gets
+ * `E_INPUT_TOO_LARGE`, and an address over its request rate gets `E_RATE_LIMITED`, both as data.
+ * `compile()`'s own budgets stay counts; a Worker that runs out of CPU anyway fails with the
+ * platform's 5xx, which is never presented as a diagnostic.
  *
  * Nothing logs a body or a source. Each MCP message writes one Analytics Engine data point holding
- * its method and tool name; there is no other telemetry and no cookie.
+ * its method and tool name, each from a fixed list; there is no other telemetry and no cookie.
  */
-import { compile, type Diagnostic, diagnosticToJson, inputTooLarge } from "@chanmeng666/archlang";
+import { compile, type Diagnostic, diagnosticToJson, inputTooLarge, rateLimited } from "@chanmeng666/archlang";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { decodePlanHashWeb, PlanHashTooLarge } from "../../../src/cli/share-codec.web.mjs";
-import { BODY_CAP_BYTES, PAYLOAD_CAP_CHARS, SOURCE_CAP_BYTES } from "./limits.js";
+import {
+  BODY_CAP_BYTES,
+  MCP_PER_PERIOD,
+  PAYLOAD_CAP_CHARS,
+  RATE_PERIOD_SECONDS,
+  SOURCE_CAP_BYTES,
+  SVG_PER_PERIOD,
+} from "./limits.js";
 import { createHostedServer, type HostedAssets, readMe } from "./server.js";
 
-/** Deterministic responses: the URL is the plan, so the bytes behind it never change. */
+/** The pinned image path `/v/<render version>/svg/<payload>`: one compiler, so its bytes never change. */
 export const IMMUTABLE = "public, max-age=31536000, immutable";
+/**
+ * The unpinned `/svg/<payload>`: the plan is in the URL but the compiler is not, and a release can
+ * move a drawing, so downstream caches (browsers, image proxies) revalidate after five minutes.
+ */
+export const FRESH = "public, max-age=300, stale-while-revalidate=86400";
 
 const CORS: Record<string, string> = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, HEAD, POST, OPTIONS",
-  "access-control-allow-headers": "content-type, accept, mcp-protocol-version, mcp-session-id, last-event-id",
+  "access-control-allow-headers":
+    "content-type, accept, if-none-match, mcp-protocol-version, mcp-session-id, last-event-id",
+  "access-control-expose-headers": "etag, content-location",
   "access-control-max-age": "86400",
 };
 
@@ -45,19 +61,70 @@ const jsonResponse = (body: unknown, status: number, extra: Record<string, strin
 /** The `{ ok:false, diagnostics }` envelope every tool result uses, around one diagnostic. */
 const envelope = (d: Diagnostic) => ({ ok: false, diagnostics: [diagnosticToJson("", d)] });
 
+/** The caller's address, for the rate limiters only: it is never stored or logged. */
+const addressOf = (req: Request): string => req.headers.get("cf-connecting-ip") ?? "unknown";
+
+/** `true` when `limiter` (absent in local dev) lets this address through. */
+async function allowed(limiter: RateLimit | undefined, req: Request): Promise<boolean> {
+  if (!limiter) return true;
+  try {
+    return (await limiter.limit({ key: addressOf(req) })).success;
+  } catch {
+    return true; // a limiter fault never takes the service down
+  }
+}
+
 // ---------------------------------------------------------------------------
-// telemetry: method + tool name, nothing else
+// telemetry: method + tool name, from fixed lists, nothing else
 // ---------------------------------------------------------------------------
 
-/** A name worth counting, or a fixed bucket: a client-chosen string never reaches the dataset. */
-const safeName = (v: unknown, shape: RegExp): string => (typeof v === "string" && shape.test(v) ? v : "(other)");
+/** The MCP methods a client sends (requests and notifications), as the 2025-06-18 schema names them. */
+export const KNOWN_METHODS: ReadonlySet<string> = new Set([
+  "initialize",
+  "ping",
+  "tools/list",
+  "tools/call",
+  "resources/list",
+  "resources/read",
+  "resources/templates/list",
+  "resources/subscribe",
+  "resources/unsubscribe",
+  "prompts/list",
+  "prompts/get",
+  "completion/complete",
+  "logging/setLevel",
+  "notifications/initialized",
+  "notifications/cancelled",
+  "notifications/progress",
+  "notifications/roots/list_changed",
+]);
+
+/** The tools this server registers; a test holds this list to its own `tools/list`. */
+export const KNOWN_TOOLS: ReadonlySet<string> = new Set([
+  "compile",
+  "describe",
+  "lint",
+  "validate",
+  "score",
+  "repair",
+  "fix",
+  "finish",
+  "suggest",
+  "complete",
+  "link",
+  "read_me",
+]);
+
+/** A listed name, or the fixed bucket: a client-chosen string never reaches the dataset. */
+const listed = (v: unknown, known: ReadonlySet<string>): string =>
+  typeof v === "string" && known.has(v) ? v : "(other)";
 
 function count(env: Env, messages: unknown[]): void {
   if (!env.ANALYTICS) return;
   for (const m of messages) {
     const msg = (m ?? {}) as { method?: unknown; params?: { name?: unknown } };
-    const method = msg.method === undefined ? "(response)" : safeName(msg.method, /^[a-z][a-zA-Z/_]{0,63}$/);
-    const tool = method === "tools/call" ? safeName(msg.params?.name, /^[a-z][a-z_]{0,31}$/) : "";
+    const method = msg.method === undefined ? "(response)" : listed(msg.method, KNOWN_METHODS);
+    const tool = method === "tools/call" ? listed(msg.params?.name, KNOWN_TOOLS) : "";
     try {
       env.ANALYTICS.writeDataPoint({ blobs: [method, tool], indexes: [method] });
     } catch {
@@ -70,10 +137,13 @@ function count(env: Env, messages: unknown[]): void {
 // /mcp
 // ---------------------------------------------------------------------------
 
-/** Read at most `cap` bytes of the body; `undefined` once it is longer (reading stops there). */
-async function readCapped(req: Request, cap: number): Promise<string | undefined> {
+/**
+ * Read at most `cap` bytes of the body: the text, or the number of bytes read when it stopped
+ * (more than `cap`; `exact` false), or the declared length when that alone is over.
+ */
+async function readCapped(req: Request, cap: number): Promise<string | { bytes: number; exact: boolean }> {
   const declared = Number(req.headers.get("content-length") ?? "0");
-  if (declared > cap) return undefined;
+  if (declared > cap) return { bytes: declared, exact: true };
   if (!req.body) return "";
   const reader = req.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -84,7 +154,7 @@ async function readCapped(req: Request, cap: number): Promise<string | undefined
     total += value.byteLength;
     if (total > cap) {
       await reader.cancel().catch(() => {});
-      return undefined;
+      return { bytes: total, exact: false };
     }
     chunks.push(value);
   }
@@ -97,17 +167,18 @@ async function readCapped(req: Request, cap: number): Promise<string | undefined
   return new TextDecoder().decode(all);
 }
 
-/** The diagnostic a `tools/call` earns for an argument over the cap, else `undefined`. */
+/**
+ * The diagnostic a `tools/call` earns for an argument over the cap, else `undefined`. EVERY
+ * argument is measured — a source, `plan_json`, an intent, a brief, a graph, a profile name —
+ * a string by its UTF-8 bytes, anything else by its JSON.
+ */
 export function oversizeArgument(message: unknown): Diagnostic | undefined {
   const m = (message ?? {}) as { method?: unknown; params?: { arguments?: Record<string, unknown> } };
   if (m.method !== "tools/call") return undefined;
-  const args = m.params?.arguments ?? {};
-  if (typeof args.source === "string") {
-    const d = inputTooLarge(args.source, SOURCE_CAP_BYTES, "source");
-    if (d) return d;
-  }
-  if (args.plan_json !== undefined) {
-    const d = inputTooLarge(JSON.stringify(args.plan_json) ?? "", SOURCE_CAP_BYTES, "plan_json");
+  for (const [name, value] of Object.entries(m.params?.arguments ?? {})) {
+    if (value === undefined || typeof value === "number" || typeof value === "boolean") continue;
+    const text = typeof value === "string" ? value : (JSON.stringify(value) ?? "");
+    const d = inputTooLarge(text, SOURCE_CAP_BYTES, name);
     if (d) return d;
   }
   return undefined;
@@ -116,7 +187,8 @@ export function oversizeArgument(message: unknown): Diagnostic | undefined {
 /**
  * Answer every over-cap `tools/call` in the body without starting the server: a normal tool result
  * (`isError`) whose text is the usual `{ ok:false, diagnostics }` envelope, so a model reads it as
- * it reads any failed compile. A batch with one over-cap call is refused whole.
+ * it reads any failed compile. A batch with one over-cap call is refused whole; a body of
+ * notifications only (nothing to answer) gets 202 and no body, as Streamable HTTP specifies.
  */
 function refuseOversize(parsed: unknown): Response | undefined {
   const messages = Array.isArray(parsed) ? parsed : [parsed];
@@ -140,6 +212,7 @@ function refuseOversize(parsed: unknown): Response | undefined {
       };
     })
     .filter((r) => r !== undefined);
+  if (replies.length === 0) return new Response(null, { status: 202, headers: CORS });
   return jsonResponse(Array.isArray(parsed) ? replies : replies[0], 200);
 }
 
@@ -156,13 +229,20 @@ async function handleMcp(req: Request, env: Env, origin: string, assets: HostedA
       { allow: "POST, OPTIONS" },
     );
 
+  if (!(await allowed(env.RATE_MCP, req))) {
+    const d = rateLimited("/mcp", MCP_PER_PERIOD, RATE_PERIOD_SECONDS);
+    return jsonResponse(
+      { jsonrpc: "2.0", id: null, error: { code: -32000, message: d.message, data: envelope(d) } },
+      429,
+      {
+        "retry-after": String(RATE_PERIOD_SECONDS),
+      },
+    );
+  }
+
   const body = await readCapped(req, BODY_CAP_BYTES);
-  if (body === undefined) {
-    const d: Diagnostic = {
-      severity: "error",
-      code: "E_INPUT_TOO_LARGE",
-      message: `request body is over ${BODY_CAP_BYTES} bytes; this host compiles at most ${SOURCE_CAP_BYTES} bytes of source`,
-    };
+  if (typeof body !== "string") {
+    const d = inputTooLarge(body.bytes, BODY_CAP_BYTES, "request body", body.exact) as Diagnostic;
     return jsonResponse(
       { jsonrpc: "2.0", id: null, error: { code: -32600, message: d.message, data: envelope(d) } },
       413,
@@ -196,55 +276,90 @@ async function handleMcp(req: Request, env: Env, origin: string, assets: HostedA
 }
 
 // ---------------------------------------------------------------------------
-// /svg/<payload>
+// /svg/<payload> and /v/<render version>/svg/<payload>
 // ---------------------------------------------------------------------------
 
-const SVG_HEADERS: Record<string, string> = {
+const SVG_BASE: Record<string, string> = {
   "content-type": "image/svg+xml; charset=utf-8",
-  "cache-control": IMMUTABLE,
   "x-content-type-options": "nosniff",
   // The drawing needs nothing external; nothing in it may run or load.
   "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:",
   ...CORS,
 };
 
-async function handleSvg(req: Request, url: URL, ctx: ExecutionContext): Promise<Response> {
+/** A strong validator for one drawing: the compiler that drew it and the plan it drew. */
+async function etagOf(renderVersion: string, payload: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${renderVersion}\n${payload}`));
+  const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `"${hex.slice(0, 32)}"`;
+}
+
+/** The two image paths, parsed: the payload, and the render version a pinned path names. */
+export function parseSvgPath(pathname: string): { payload: string; pinned?: string } | undefined {
+  const pin = /^\/v\/([^/]+)\/svg\/(.*)$/.exec(pathname);
+  const raw = pin ? pin[2]! : pathname.startsWith("/svg/") ? pathname.slice("/svg/".length) : undefined;
+  if (raw === undefined) return undefined;
+  const payload = raw.endsWith(".svg") ? raw.slice(0, -".svg".length) : raw;
+  return pin ? { payload, pinned: decodeURIComponent(pin[1]!) } : { payload };
+}
+
+async function handleSvg(
+  req: Request,
+  url: URL,
+  env: Env,
+  ctx: ExecutionContext,
+  assets: HostedAssets,
+  path: { payload: string; pinned?: string },
+): Promise<Response> {
   if (req.method !== "GET" && req.method !== "HEAD")
     return jsonResponse({ ok: false, error: "use GET" }, 405, { allow: "GET, HEAD" });
   const head = req.method === "HEAD";
   const bodyless = (res: Response) => (head ? new Response(null, res) : res);
+  const { payload, pinned } = path;
+  const rv = assets.renderVersion;
 
-  // The path alone is the key: a query string cannot change the plan, so it cannot split the cache.
-  const key = new Request(new URL(url.pathname, url.origin).toString(), { method: "GET" });
-  const cache = typeof caches !== "undefined" ? caches.default : undefined;
-  const hit = await cache?.match(key);
-  if (hit) return bodyless(hit);
+  // A pinned URL from an older compiler: those bytes are no longer drawn here, so send the reader
+  // to the unpinned URL, briefly cacheable, rather than present new bytes under an old pin.
+  if (pinned !== undefined && pinned !== rv)
+    return new Response(null, {
+      status: 302,
+      headers: { location: `/svg/${payload}`, "cache-control": "public, max-age=300", ...CORS },
+    });
 
-  let payload = url.pathname.slice("/svg/".length);
-  if (payload.endsWith(".svg")) payload = payload.slice(0, -".svg".length);
-  if (payload.length > PAYLOAD_CAP_CHARS) {
-    const d: Diagnostic = {
-      severity: "error",
-      code: "E_INPUT_TOO_LARGE",
-      message: `payload is ${payload.length} characters; a source of at most ${SOURCE_CAP_BYTES} bytes fits in ${PAYLOAD_CAP_CHARS}`,
-    };
-    return jsonResponse(envelope(d), 413);
-  }
+  const oversize = inputTooLarge(payload.length, PAYLOAD_CAP_CHARS, "payload");
+  if (oversize) return jsonResponse(envelope(oversize), 413);
   if (!/^[A-Za-z0-9_-]+$/.test(payload))
     return jsonResponse({ ok: false, error: "not a #z= payload: expected base64url after /svg/" }, 400);
+
+  const pinnedPath = `/v/${encodeURIComponent(rv)}/svg/${payload}`;
+  const etag = await etagOf(rv, payload);
+  const headers = {
+    ...SVG_BASE,
+    "cache-control": pinned === undefined ? FRESH : IMMUTABLE,
+    etag,
+    ...(pinned === undefined ? { "content-location": pinnedPath } : {}),
+  };
+  if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers });
+
+  // The edge-cache key is the PINNED path, whichever route asked: a new compiler is a new key, so
+  // a deploy can never serve a drawing the previous compiler made.
+  const key = new Request(new URL(pinnedPath, url.origin).toString(), { method: "GET" });
+  const cache = typeof caches !== "undefined" ? caches.default : undefined;
+  const hit = await cache?.match(key);
+  if (hit) return bodyless(new Response(hit.body, { status: 200, headers }));
+
+  // A miss compiles: that is what the per-address limit meters.
+  if (!(await allowed(env.RATE_SVG, req))) {
+    const d = rateLimited("/svg/", SVG_PER_PERIOD, RATE_PERIOD_SECONDS);
+    return jsonResponse(envelope(d), 429, { "retry-after": String(RATE_PERIOD_SECONDS) });
+  }
 
   let source: string;
   try {
     source = await decodePlanHashWeb(payload, { maxBytes: SOURCE_CAP_BYTES });
   } catch (e) {
-    if (e instanceof PlanHashTooLarge) {
-      const d: Diagnostic = {
-        severity: "error",
-        code: "E_INPUT_TOO_LARGE",
-        message: `source is over ${SOURCE_CAP_BYTES} bytes; this host compiles at most ${SOURCE_CAP_BYTES}`,
-      };
-      return jsonResponse(envelope(d), 413);
-    }
+    if (e instanceof PlanHashTooLarge)
+      return jsonResponse(envelope(inputTooLarge(SOURCE_CAP_BYTES + 1, SOURCE_CAP_BYTES, "source", false)!), 413);
     return jsonResponse({ ok: false, error: "not a #z= payload: it does not inflate (deflate-raw)" }, 400);
   }
 
@@ -252,9 +367,10 @@ async function handleSvg(req: Request, url: URL, ctx: ExecutionContext): Promise
   if (diagnostics.some((d) => d.severity === "error"))
     return jsonResponse({ ok: false, diagnostics: diagnostics.map((d) => diagnosticToJson(source, d)) }, 422);
 
-  const res = new Response(svg, { status: 200, headers: SVG_HEADERS });
-  if (cache) ctx.waitUntil(cache.put(key, res.clone()));
-  return bodyless(res);
+  // Stored under the pinned key with the pinned (immutable) lifetime; each route sets its own
+  // headers on the way out.
+  if (cache) ctx.waitUntil(cache.put(key, new Response(svg, { headers: { ...SVG_BASE, "cache-control": IMMUTABLE } })));
+  return bodyless(new Response(svg, { status: 200, headers }));
 }
 
 // ---------------------------------------------------------------------------
@@ -275,7 +391,7 @@ export function makeWorker(assets: HostedAssets) {
       const ms = performance.now() - t0;
       const headers = new Headers(res.headers);
       headers.set("x-archlang-handler-ms", ms.toFixed(3));
-      return new Response(req.method === "HEAD" ? null : body, { status: res.status, headers });
+      return new Response(req.method === "HEAD" || res.status === 304 ? null : body, { status: res.status, headers });
     },
   };
 }
@@ -284,7 +400,8 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, assets: Host
   const url = new URL(req.url);
   try {
     if (url.pathname === "/mcp") return await handleMcp(req, env, url.origin, assets);
-    if (url.pathname.startsWith("/svg/")) return await handleSvg(req, url, ctx);
+    const svg = parseSvgPath(url.pathname);
+    if (svg) return await handleSvg(req, url, env, ctx, assets, svg);
     if (url.pathname === "/" && (req.method === "GET" || req.method === "HEAD"))
       return new Response(req.method === "HEAD" ? null : readMe(url.origin), {
         headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-cache", ...CORS },
