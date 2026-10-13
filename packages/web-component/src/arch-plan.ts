@@ -112,6 +112,7 @@ export class ArchPlanElement extends Base {
   #root: ShadowRoot;
   #observer: MutationObserver | undefined;
   #run = 0;
+  #queued = false;
   #done: Promise<void> = Promise.resolve();
 
   constructor() {
@@ -144,15 +145,25 @@ export class ArchPlanElement extends Base {
     if (previous !== next && this.isConnected) this.#schedule();
   }
 
+  /**
+   * Ask for a render; every request made in the same task becomes ONE render. On upgrade (the
+   * module runs after the page is parsed) the browser calls `attributeChangedCallback` once per
+   * attribute already present and then `connectedCallback`, back to back: without this, an
+   * element with `src`, `level` and `theme` would fetch and compile its plan four times.
+   */
   #schedule(): void {
-    const run = ++this.#run;
-    this.#done = this.#render(run);
+    if (this.#queued) return;
+    this.#queued = true;
+    this.#done = Promise.resolve().then(() => {
+      this.#queued = false;
+      return this.#render(++this.#run);
+    });
   }
 
   async #render(run: number): Promise<void> {
     let result: ArchPlanResult | null;
     try {
-      result = await this.#produce();
+      result = await this.#produce(run);
     } catch (e) {
       result = fail(`arch-plan: ${message(e)}`);
     }
@@ -180,8 +191,8 @@ export class ArchPlanElement extends Base {
     this.dispatchEvent(new CustomEvent("render", { detail }));
   }
 
-  /** The source to compile and its result; `null` when there is nothing to draw yet. */
-  async #produce(): Promise<ArchPlanResult | null> {
+  /** The source to compile and its result; `null` when there is nothing to draw (yet, or any more). */
+  async #produce(run: number): Promise<ArchPlanResult | null> {
     const src = this.getAttribute("src");
     let source: string;
     if (src !== null) {
@@ -193,8 +204,12 @@ export class ArchPlanElement extends Base {
       }
       if (!response.ok) return fail(`arch-plan: could not fetch ${src} (HTTP ${response.status})`);
       source = await response.text();
+      if (run !== this.#run) return null; // overtaken while fetching: skip the compile
     } else {
-      source = this.textContent ?? "";
+      // The text starts right after the opening tag, so markup that puts the plan on the next line
+      // (or inside a `<script type="text/plain">` there) would count a line or two that are not
+      // the plan's in every diagnostic's `line`. Leading blank lines go; the first line's indent stays.
+      source = (this.textContent ?? "").replace(/^\s*\n/, "");
       if (source.trim() === "") return null;
     }
     return renderPlan(source, { level: this.getAttribute("level"), theme: this.getAttribute("theme") });

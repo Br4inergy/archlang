@@ -68,6 +68,7 @@ var ArchPlanElement = class extends Base {
   #root;
   #observer;
   #run = 0;
+  #queued = false;
   #done = Promise.resolve();
   constructor() {
     super();
@@ -92,14 +93,24 @@ var ArchPlanElement = class extends Base {
   attributeChangedCallback(_name, previous, next) {
     if (previous !== next && this.isConnected) this.#schedule();
   }
+  /**
+   * Ask for a render; every request made in the same task becomes ONE render. On upgrade (the
+   * module runs after the page is parsed) the browser calls `attributeChangedCallback` once per
+   * attribute already present and then `connectedCallback`, back to back: without this, an
+   * element with `src`, `level` and `theme` would fetch and compile its plan four times.
+   */
   #schedule() {
-    const run = ++this.#run;
-    this.#done = this.#render(run);
+    if (this.#queued) return;
+    this.#queued = true;
+    this.#done = Promise.resolve().then(() => {
+      this.#queued = false;
+      return this.#render(++this.#run);
+    });
   }
   async #render(run) {
     let result;
     try {
-      result = await this.#produce();
+      result = await this.#produce(run);
     } catch (e) {
       result = fail(`arch-plan: ${message(e)}`);
     }
@@ -126,8 +137,8 @@ var ArchPlanElement = class extends Base {
     const detail = { ok: result.ok, problems: result.ok ? [] : result.problems };
     this.dispatchEvent(new CustomEvent("render", { detail }));
   }
-  /** The source to compile and its result; `null` when there is nothing to draw yet. */
-  async #produce() {
+  /** The source to compile and its result; `null` when there is nothing to draw (yet, or any more). */
+  async #produce(run) {
     const src = this.getAttribute("src");
     let source;
     if (src !== null) {
@@ -139,8 +150,9 @@ var ArchPlanElement = class extends Base {
       }
       if (!response.ok) return fail(`arch-plan: could not fetch ${src} (HTTP ${response.status})`);
       source = await response.text();
+      if (run !== this.#run) return null;
     } else {
-      source = this.textContent ?? "";
+      source = (this.textContent ?? "").replace(/^\s*\n/, "");
       if (source.trim() === "") return null;
     }
     return renderPlan(source, { level: this.getAttribute("level"), theme: this.getAttribute("theme") });
