@@ -89,7 +89,9 @@ table literal. Record the measured tree and the patch in the baseline's header.
 - **A missing optional dependency skips visibly locally and fails under `CI`.** A suite must never
   go green having asserted nothing.
 - **`@prod`** only for a case that purely navigates, reads and asserts (no downloads, clipboard,
-  forms, persisted state or typing). Follow each spec file's stated tagging rule.
+  forms, persisted state or typing). Follow each spec file's stated tagging rule. A `@prod` case
+  that depends on a third party (the real jsDelivr core in `docs-site/e2e/arch-plan.spec.ts`) also
+  skips unless `E2E_PROD=1`, which the nightly e2e-prod job sets; run it by hand after a release.
 - **Docs are scanned too**: every tracked `.md` by `docs-table-pipes`; published pages by
   `docs-fences`; the `DOCS` list in `docs-flags.test.ts` for `arch …` flags. Publishing a page means
   adding it to `sync-docs.mjs`'s `PAGES`, which also enrols it in the smoke test and the docs E2E.

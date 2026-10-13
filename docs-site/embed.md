@@ -30,8 +30,8 @@ each diagnostic with its code and `line:col`, so the page always shows something
 also gives you `describe`, `lint` and the rest of the [library API](/agents#also).
 
 Use this form in a Claude Code artifact and on any other page that can load ES modules from
-jsDelivr. An artifact may load scripts from a few CDNs, `cdn.jsdelivr.net` among them, and
-`archlang.uk` is not one of them, so the element below cannot be loaded there.
+jsDelivr. A Claude Code artifact may load scripts from a few CDNs, `cdn.jsdelivr.net` among them,
+and `archlang.uk` is not one of them, so the element below cannot be loaded there.
 
 ## The `<arch-plan>` element
 
@@ -43,10 +43,21 @@ One script tag, then one element per drawing:
 <arch-plan src="https://archlang.uk/examples/studio.arch"></arch-plan>
 ```
 
-`/arch-plan.js` is the element alone, a few KB. On its first render it imports the compiler from
-the pinned jsDelivr URL above, once for every element on the page. Each element compiles its plan
-and draws the SVG into its own shadow root. Every plan on the [examples page](/examples) is served
-as source at `/examples/<name>.arch`, next to its drawing at `/examples/<name>.svg`.
+Each element compiles its plan and draws the SVG into its own shadow root. Every plan on the
+[examples page](/examples) is served as source at `/examples/<name>.arch`, next to its drawing at
+`/examples/<name>.svg`.
+
+The site serves the element in two builds. Load one of them, not both:
+
+| File | Size | The compiler |
+| --- | --- | --- |
+| `/arch-plan.js` | a few KB | Slim: imported from the pinned jsDelivr URL above on the first render, once per page and shared by every element. |
+| `/arch-plan.standalone.js` | about 700 KB | Standalone: inlined, built from the same source as this site. No CDN dependency. |
+
+The slim build depends on jsDelivr at run time. If jsDelivr cannot be reached, or the page's
+Content-Security-Policy does not allow `cdn.jsdelivr.net` in `script-src`, every element shows
+`arch-plan: could not load the ArchLang compiler (…)` instead of a drawing. Use the standalone
+build when that matters: it needs nothing but `archlang.uk`.
 
 | Attribute | What it does |
 | --- | --- |
@@ -67,8 +78,12 @@ plan "Two storeys" {
 </arch-plan>
 ```
 
+Until the module has loaded, the browser shows inline source as plain text. Hide it until then
+with one rule in the page's CSS: `arch-plan:not(:defined) { visibility: hidden; }`.
+
 A plan with errors draws a `<pre>` instead, one line per error as `CODE line:col message`, for
-example `E_PARSE 3:1 Expected a value but found "}"`. A failed fetch, an unknown theme or a
+example `E_PARSE 3:1 Expected a value but found "}"`. For inline source, lines count from the
+plan's first non-blank line, not from the opening tag. A failed fetch, an unknown theme or a
 missing storey are reported in the same `<pre>`; the element never throws. Changing an attribute
 or the inline text redraws it. After each render the element dispatches a `render` event whose
 `detail` is `{ ok, problems }`, and the drawing and the error list are styleable from the page as

@@ -11,7 +11,9 @@
  *                `test/served-file.test.ts` hold the committed copy to this output.
  * - `standalone` (`dist/arch-plan.standalone.js`): the core inlined from the repo's built
  *                `dist/index.js` (`npm run build` at the root first) — no second origin, for a
- *                page that must not load from jsDelivr. Not committed anywhere.
+ *                page that must not load from jsDelivr. The docs build also writes it to
+ *                `docs-site/public/arch-plan.standalone.js` (`--standalone-to`, gitignored, built
+ *                from the tree being deployed like the gallery SVGs). Never committed.
  *
  * `buildArchPlan()` is pure apart from reading the sources, so the generator, the package
  * build and the drift test all call this one function and cannot disagree.
@@ -99,6 +101,17 @@ export async function buildArchPlan(variant: Variant): Promise<string> {
 }
 
 async function main(): Promise<void> {
+  // `--standalone-to <file>`: the docs build's one output, relative to the caller's directory.
+  const at = process.argv.indexOf("--standalone-to");
+  if (at >= 0) {
+    const target = process.argv[at + 1];
+    if (!target) throw new Error("--standalone-to needs a file path");
+    const text = await buildArchPlan("standalone");
+    mkdirSync(dirname(resolve(target)), { recursive: true });
+    writeFileSync(resolve(target), text);
+    process.stdout.write(`  standalone → ${target}  (${Buffer.byteLength(text)} bytes)\n`);
+    return;
+  }
   const dist = join(PKG, "dist");
   mkdirSync(dist, { recursive: true });
   for (const [variant, file] of [

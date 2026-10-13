@@ -13,6 +13,13 @@ this package adds the element and nothing else.
 
 Full usage (attributes, inline source, errors, styling): <https://archlang.uk/embed>.
 
+**The default build depends on the core at run time.** `dist/arch-plan.js` and the site's
+`/arch-plan.js` import `@chanmeng666/archlang` on the first render: through your bundler, or from
+the pinned jsDelivr `+esm` URL. When that import fails (jsDelivr unreachable, a CSP without
+`cdn.jsdelivr.net`, a version not yet on npm), every element shows
+`arch-plan: could not load the ArchLang compiler (…)`. The standalone build has no such
+dependency.
+
 ## Builds
 
 `npm run build` (after `npm run build` at the repo root) writes:
@@ -22,10 +29,12 @@ Full usage (attributes, inline source, errors, styling): <https://archlang.uk/em
 | `dist/arch-plan.js` | imported as the bare `@chanmeng666/archlang`, on the first render | a bundler; the package's default export |
 | `dist/arch-plan.standalone.js` | inlined (about 700 KB) | a page that must not load a second origin |
 
-The docs site serves a third build at `https://archlang.uk/arch-plan.js`: the element alone,
+The docs site serves two builds. `https://archlang.uk/arch-plan.js` is the element alone,
 importing the core from its pinned jsDelivr `+esm` URL. It is generated into
 `docs-site/public/arch-plan.js` by `npm run gen:arch-plan` at the repo root and held to the
 build output by `check:drift` and `test/served-file.test.ts`; never edit it by hand.
+`https://archlang.uk/arch-plan.standalone.js` is the standalone build, written by the docs build
+(`npm -w docs-site run standalone`) from the tree being deployed; it is gitignored.
 
 ## Publishing (maintainer)
 

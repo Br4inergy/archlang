@@ -41,6 +41,10 @@
       a {
         color: #0b57d0;
       }
+      /* Inline source is plain text until the module upgrades the element. */
+      arch-plan:not(:defined) {
+        visibility: hidden;
+      }
       arch-plan {
         border: 1px solid #d9dce2;
         border-radius: 4px;

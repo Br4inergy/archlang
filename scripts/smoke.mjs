@@ -283,6 +283,8 @@ function docsChecks() {
       header("access-control-allow-origin", "*"),
       contains('customElements.define("arch-plan"'),
     ),
+    // The standalone build (core inlined), written by the docs build rather than committed.
+    route("/arch-plan.standalone.js", contentType("javascript"), contains('customElements.define("arch-plan"')),
     ...docsExampleRoutes(syncSrc).map((p) =>
       route(p.replace(/\.svg$/, ".arch"), header("access-control-allow-origin", "*"), contains("plan ")),
     ),

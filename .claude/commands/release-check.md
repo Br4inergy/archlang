@@ -41,6 +41,13 @@ you observed. Do NOT push anything — this command only verifies.
      plugin installed from `main` can fail to launch its server for those few minutes; accepted.
      Confirm `npm view @chanmeng666/archlang-mcp version` equals the pin once the tag run finishes.
    - Same range pin for `editors/vscode` (`editors/vscode/test/lockstep.test.ts`).
+   - The served `<arch-plan>` (`docs-site/public/arch-plan.js`) names the core version in its
+     jsDelivr URL: after the version bump run `npm run gen:arch-plan` (or `npm run gen:all`) and
+     commit it with the plugin manifest; `check:drift` fails on a stale one.
+   - `packages/web-component`'s peer range on the core is a caret range
+     (`packages/web-component/test/peer-range.test.ts`). A core MAJOR (2.0) fails that test on
+     purpose: check that `compile`, `diagnosticToJson` and `THEMES` still exist with the same
+     shapes, then move the range.
    - `packages/font-cjk`: `release.yml` publishes it before the core and refuses a version/pin
      mismatch with the core's exact `optionalDependencies` pin.
 
@@ -69,6 +76,20 @@ you observed. Do NOT push anything — this command only verifies.
    tell the two apart.
 
 ## After the tag (human / external steps)
+
+- **Tag straight after the bump merges, then prove the embed URL.** Pushing `main` deploys
+  `https://archlang.uk/arch-plan.js` and the `/embed` recipe, both pinned to the new version, but
+  npm only has it once the tag's `release.yml` finishes. Until then every embed shows
+  `arch-plan: could not load the ArchLang compiler` (jsDelivr 404s, cached about 30 s). When the
+  publish is done:
+
+  ```bash
+  curl -sI https://cdn.jsdelivr.net/npm/@chanmeng666/archlang@<version>/+esm   # expect 200
+  ```
+
+  then open `https://archlang.uk/arch-plan-demo.html` and check that both plans draw and the third
+  element shows its `E_PARSE` box, or run its `@prod` case:
+  `E2E_PROD=1 E2E_BASE_URL=https://archlang.uk npx playwright test -c docs-site arch-plan --grep @prod`.
 
 - **Release is tokenless OIDC.** The tag runs `.github/workflows/release.yml` (npm with provenance,
   then the MCP registry via github-oidc); re-runs are idempotent. Never add an npm token; an auth
