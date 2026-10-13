@@ -930,39 +930,47 @@
  * `NET AREA (m²)` heading, one cell per room and the subtotal and TOTAL cells are added.
  * Every cell the table drew before is byte-identical, and a legend, door & window schedule or
  * notes table to its right shifts right by the column's width. No page size moved.
+ *
+ * Then the AREA column took the owner's label, `AREA (CENTRELINE, m²)` (decision 2 names the
+ * columns "Area (centreline)" and "Net area"), and widened to hold it. The same twelve
+ * whole-surface rows were re-measured again, and ONLY them: run against the tables above,
+ * the heading change fails exactly the rows of the schedule plans that the net column moved
+ * (the identical set, checked), and every `SEMANTIC_BASELINE` row holds, so `describe()` and
+ * `lint()` did not move. In the drawing the NO. and NAME cells keep their place; the AREA
+ * cells, TOTAL and SUBTOTALs move right by the column's growth, and NET AREA with them.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
 export const BASELINE: [string, string][] = [
   ["accessible", "a3c542aed970a327102f2d13479e1dc8aa906980a3b6889047be1092881e2871"],
-  ["aquarium", "944099f3c43fd943822d4796b71618716f5c0416cf46cfa9f648a594a6658c5b"],
+  ["aquarium", "198f16d7238c456e6d9b27c6fb5380f07f353f66ab57fd002e5cf7700d91b985"],
   ["attached", "f1b122904c1242d9ef7088c5eed12c765dc63f4dbc2af2a75ab8f23f398feac2"],
-  ["bungalow", "305d71fb79d001f1c7df716aa629ec82890d79ddd27294d509aa324d4b782448"],
-  ["clinic", "c3d6b41f062e159a5c85588fcfffe56981ba1309c34f9d885f1ec759fb4934d3"],
-  ["courtyard-house", "058b4cca089219efaa16c09106da47913f7c37d4b13f78060d958ca5eb49e2b9"],
-  ["furnished-flat", "5022c83f78694ffbd62e0f16daf188b3317f8696f26242933bf543ba65d531fc"],
+  ["bungalow", "d76e52dd1b75a347c84afba5350175032513776572f268839ee550883b564ae9"],
+  ["clinic", "5d1f3ac0f05d759faa0cb55fcc1059e4e140fef7004974606eda28d2957d9174"],
+  ["courtyard-house", "3d43b0dddae961c405f3bf81dc584ad1b4a0c9b6eaca2661cf54a50aa00eb340"],
+  ["furnished-flat", "8812151f95e82fafcb3d21a23dede24e71944d9962e1b33c046727869f04d947"],
   ["gallery-l", "ef97490e9b951d76396df52427ba6673b0cce29489dfdf4232dc4d0876fe691d"],
-  ["garden-house", "425920bea493a87b9b29de591a129d224fc0f9f99211ad7cc2d4966ace6076c5"], // re-measured, see header
+  ["garden-house", "0532109ebf9869b2ebddfa229823f6c08f8aa50572af0da44e50fa80e7bbd749"], // re-measured, see header
   ["garden-loft", "7161ddddda40ba6f520128b2196fdbba997e5f3b82674dbf2ee09495d763dc1d"],
   ["hexagon-pavilion", "c4d8a3642f20772cdf998ae4cf2a71ef876d2e29f0cfe4df0891b16c82ab3613"],
-  ["hillside-villa", "22025b175f93ba0a7b2ea6b15116db66a6c34b9f79632fd3f2c5ed137f5e8871"], // re-measured, see header
+  ["hillside-villa", "24255493a2b78d72bbbbcf69c31d29f5aa29c6c04aa8afb30f06c1a99186dc37"], // re-measured, see header
   ["imports", "4b0151513963a656e52ac84c6fd80eb35c9820ae101921420cb8d5c9c13c0b70"],
   ["laneway-house", "62b3fdb835ccc7eb565f982ed7930d99cfced87bbf4ae9d6bb5410e4945d255c"],
-  ["library", "2dda0a6ccbb0a647d1a0dc35d8925ea6e44b63311f58389260e84b9c6213bdf3"],
-  ["materials", "06cc51b5d1203a85c72552664a24c2287254122ad61afe862ac6b47d6408512c"],
+  ["library", "b1afe29423122d4d161d5ba51c8d4af703f47efd8299fdfb265df1d8f8e402fd"],
+  ["materials", "5c88643a4f8a051126f18c0c493a8637008c52e196bc3ecceadb9856abf591fa"],
   ["museum-wing", "00ac6744ffaa76596229248fd62ca5a41c9a5d70315c41ffa0fd6fc844ce2201"],
-  ["museum-wings", "fcc9d87666c3fb6c3892434e228047c09dc717649ff88f621d3419e1d5347e5f"], // re-measured, see header
+  ["museum-wings", "cbbe528f80d7e433c839e0bc24069d57fee4a28b6c6361c6b8f7c82be0a99e71"], // re-measured, see header
   ["museum", "3fb053254be030885f9ccf7bb7b73d3c37f8e8273705b287417473000f6ca526"],
   ["one-room", "9519d5c396d8644e840a1520e6d84f75a8306d1309abebcbd61aa59560fda364"],
   ["parametric", "0300b6e01a4a0f10827b84dfaa21c9a89a4bfa15c008ce01ab6900118b6bc60a"],
   ["relational", "32c6a6e02ff16dcbdb146aa87e5e8176e38cbb5d00f972a2cd8849619c13db93"],
-  ["sheet-notes", "37a5ff67a0bfcc40801095409f7b8b4c5a56edc327ea59c41d11cbb08f61e2c1"], // re-measured, see header
+  ["sheet-notes", "f4ab64ec80be43d25a5949c971b07b00696f8fc2ab3927af72442ab70e8f551f"], // re-measured, see header
   ["studio", "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f"],
   ["terrace-row", "392d8940246551ac543bf2d661dd2b8f9c0160070b44062e57b666cad747ac82"], // re-measured, see header
   ["themed", "419afa87c1e188f69426e652cd3dfb295a543bd0ee19de5f282a5380e78f2891"],
   ["tiny-house", "9ae05d9d02ad75b46fee1c66267a5cff9833d4f79b10d9f63e8dd4f2867950f1"],
   ["townhouse", "c770f839284471a12920a18f570b282c81f331d435e42d02a5ecee448009932c"], // re-measured, see header
-  ["transit-hall", "fbdaf4d8cd6c9b4acf4a148a4ae6819e262ea118e37e89bd32d8b88d7215b390"],
+  ["transit-hall", "82e5125b88a008eb4831e84156d5981fe031c9496178006d2a1adcb4738f4762"],
   ["two-bed", "83db33c0b0b8322c06643658b574cfd5fc0e320d7ddbe22c815cf0d7a3ae94f4"],
   ["two-storey", "811bc40e41e54a485e1ca53eb7de32dc48c2d4096ed8792f2504c99eb0be5c6a"], // re-measured, see header
 ];

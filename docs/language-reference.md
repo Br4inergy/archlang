@@ -2049,7 +2049,7 @@ renders exactly as before.
 |--------|----------|
 | `NO.` | 1-based **source order**, zero-padded to a uniform width (`01`…`09`, `001`…`100`). |
 | `NAME` | The room's `label`, falling back to its `id` when unlabelled. |
-| `AREA (m²)` | The room's area on wall centrelines, to two decimals — the same number `describe()` reports as `rooms[].area_m2`. |
+| `AREA (CENTRELINE, m²)` | The room's area on wall centrelines, to two decimals — the same number `describe()` reports as `rooms[].area_m2`. |
 | `NET AREA (m²)` | The room's net internal area: its shape inset by half of each bounding wall's thickness, to two decimals — `describe()`'s `rooms[].net_area_m2`. |
 
 A final **`TOTAL`** row closes the table with the same numbers as

@@ -93,8 +93,10 @@ thickness never uses an angle.
   `floor_area_m2` sums theirs.
 - `describe().schedule[].net_area_m2` on a `schedule rooms` plan.
 - The drawn ROOM SCHEDULE's NET AREA column, with its subtotals and TOTAL. The centreline
-  column keeps its heading, `AREA (m²)`; the new one reads `NET AREA (m²)`. The new column is
-  appended, and every cell the table drew before keeps its bytes.
+  column is labelled `AREA (CENTRELINE, m²)` and the new one `NET AREA (m²)`, the owner's
+  "Area (centreline)" and "Net area" in the table's capitals with the unit kept. The AREA
+  column widens to hold its label: the NO. and NAME cells keep their place, and the AREA cells
+  and totals move right with the column's right edge.
 
 `lint()` does not read net area. The minimum-area rules stay on `area_m2`, so no diagnostic
 moves. Zones, the caption and Plan JSON are unchanged.
@@ -106,8 +108,9 @@ moves. Zones, the caption and Plan JSON are unchanged.
   table's header (`test/byte-identity-baseline.ts`, "EVERY row re-measured, once"). A hybrid
   run of the law tests, with `describe()` from the tree before the change, reproduces every
   old summary row and every old drawing row except the plans that set `schedule rooms`. Those
-  move only by the new column.
-- Every `schedule rooms` sheet is wider by one column. A legend, door & window schedule or
+  move only in the room schedule (and any table beside it).
+- Every `schedule rooms` sheet's room schedule is wider: by the NET AREA column, and by what
+  the AREA column grew to hold `AREA (CENTRELINE, m²)`. A legend, door & window schedule or
   notes table to its right moves right by that width. No page size in the corpus moved.
 - `area_m2` remains the centreline figure, so `dataset/dedup.ts` and `eval/fidelity.ts` read
   the same numbers as before.

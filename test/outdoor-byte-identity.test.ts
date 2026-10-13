@@ -196,12 +196,13 @@ import { type CompilerApi, semanticDigestWith } from "./byte-identity-digest.js"
 // reproduces every old SUMMARY row and every old whole-surface row but `aquarium`'s, which
 // set `schedule rooms` and gain the NET AREA column; with compile() too from that tree
 // they reproduce as well. The account is in ./byte-identity-baseline.ts ("EVERY row
-// re-measured, once").
+// re-measured, once"). Those schedule rows were re-measured once more, alone, when the
+// AREA column took the label `AREA (CENTRELINE, m²)`; SEMANTIC_BASELINE did not move.
 const BASELINE: [string, string][] = [
   ["laneway-house", "fe584e22b63295a27537b93db681c7fb5ab1968caa27761cb97191e331d964d2"],
   ["studio", "fe06b9554615b4722732d13e7976991b7469d03387e8846ad83f54f83f3cbde7"],
   ["gallery-l", "7ab8ddd688e0a9fabb909fbfd910879a5e247ae4ae846412350951cd49dea6f0"],
-  ["aquarium", "dd68e90548fa0cbde92f1ee00314b17e2a4a618fd1a3f9a207275e184029fec1"],
+  ["aquarium", "ffc9ad57c049a31cca62c75b970559ad3aeb64ca95bba1d6207d799537149a7c"],
 ];
 
 /** The SUMMARY half of the same law — see the header. Re-measured once, for `aquarium`, because its rooms were wrong. */

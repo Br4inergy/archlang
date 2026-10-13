@@ -205,10 +205,25 @@ describe("schedule — derived rows (numbering, names, areas)", () => {
 
   it("draws the caption, headings, every row and a TOTAL row", () => {
     const text = tableText(fixture("schedule-sheet.arch"));
-    expect(text.slice(0, 4)).toEqual(["ROOM SCHEDULE", "NO.", "NAME", "AREA (m²)"]);
-    expect(text).toEqual(expect.arrayContaining(["01", "Living", "12.00", "02", "bath", "9.00", "TOTAL", "21.00"]));
-    // The TOTAL value is the plan total, not a re-derived sum.
-    expect(text[text.indexOf("TOTAL") + 1]).toBe("21.00");
+    // The owner's labels (agent-reach decision 2): "Area (centreline)" and "Net area".
+    expect(text.slice(0, 5)).toEqual(["ROOM SCHEDULE", "NO.", "NAME", "AREA (CENTRELINE, m²)", "NET AREA (m²)"]);
+    expect(text).toEqual(
+      expect.arrayContaining([
+        "01",
+        "Living",
+        "12.00",
+        "10.78",
+        "02",
+        "bath",
+        "9.00",
+        "7.98",
+        "TOTAL",
+        "21.00",
+        "18.76",
+      ]),
+    );
+    // The TOTAL values are the plan totals, not re-derived sums.
+    expect(text.slice(text.indexOf("TOTAL") + 1, text.indexOf("TOTAL") + 3)).toEqual(["21.00", "18.76"]);
   });
 
   it("shows areas to two decimals so the column reads as a column", () => {
@@ -554,7 +569,7 @@ describe("sheet tables — the other backends draw them from the same nodes", ()
     expect(group).toContain(">LEGEND<");
     expect(group).toContain(">21.00<");
     // Escaped, and no CJK: the bundled PNG font carries no Han glyphs (as for the axes).
-    expect(svg).toContain(">AREA (m²)<");
+    expect(svg).toContain(">AREA (CENTRELINE, m²)<");
     expect(svg).not.toMatch(/[　-鿿]/);
   });
 });

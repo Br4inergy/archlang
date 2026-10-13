@@ -161,17 +161,18 @@ const ROOT = join(HERE, "..");
 // reproduces every old SUMMARY row and every old whole-surface row but `bungalow` and `furnished-flat`'s, which
 // set `schedule rooms` and gain the NET AREA column; with compile() too from that tree
 // they reproduce as well. The account is in ./byte-identity-baseline.ts ("EVERY row
-// re-measured, once").
+// re-measured, once"). Those schedule rows were re-measured once more, alone, when the
+// AREA column took the label `AREA (CENTRELINE, m²)`; SEMANTIC_BASELINE did not move.
 const BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f",
   "laneway-house.arch": "62b3fdb835ccc7eb565f982ed7930d99cfced87bbf4ae9d6bb5410e4945d255c",
-  "bungalow.arch": "305d71fb79d001f1c7df716aa629ec82890d79ddd27294d509aa324d4b782448",
+  "bungalow.arch": "d76e52dd1b75a347c84afba5350175032513776572f268839ee550883b564ae9",
   // Re-measured for the `overhead` flag. Its SOURCE gained two statements —
   // a `range_hood` over the stove and a `mirror` over the basin, the two correct drawings
   // the missing flag had kept out of the flagship — so this plan is a different building
   // and both its digests move. See the SEMANTIC_BASELINE note for the proof that the CODE
   // is innocent: the pre-`overhead` source reproduces the OLD hexes exactly under the NEW compiler.
-  "furnished-flat.arch": "5022c83f78694ffbd62e0f16daf188b3317f8696f26242933bf543ba65d531fc",
+  "furnished-flat.arch": "8812151f95e82fafcb3d21a23dede24e71944d9962e1b33c046727869f04d947",
   "two-bed.arch": "83db33c0b0b8322c06643658b574cfd5fc0e320d7ddbe22c815cf0d7a3ae94f4",
 };
 

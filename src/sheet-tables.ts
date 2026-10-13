@@ -380,9 +380,19 @@ const ROW_H = 0.034;
 const FONT = 0.019;
 const COL_NO = 0.055;
 const COL_NAME = 0.2;
-const COL_AREA = 0.105;
-/** NET AREA is wider than AREA: its heading, `NET AREA (m²)`, is 13 characters at 0.8× the font. */
+/**
+ * The two value columns are sized to their headings (0.8× the font): `AREA (CENTRELINE, m²)`
+ * is 21 characters, `NET AREA (m²)` 13. The labels are the owner's (agent-reach decision 2):
+ * one column says it runs to wall centrelines, the other that it is the floor inside them.
+ */
+const COL_AREA = 0.22;
 const COL_NET = 0.14;
+/**
+ * The AREA column's width when the table's cell padding was fixed (it was 0.105 before the
+ * centreline heading widened it). The padding stays 2% of NO. + NAME + this width, so
+ * widening a value column never moves the NO. and NAME cells.
+ */
+const PAD_AREA_W = 0.105;
 /** Index of the ROOM SCHEDULE's first value column (AREA); NET AREA follows it. */
 const AREA_COL = 2;
 const LEGEND_SWATCH = 0.05;
@@ -650,7 +660,7 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
     const cols: TableColumn[] = [
       { heading: "NO.", w: refDim * COL_NO, align: "middle" },
       { heading: "NAME", w: refDim * COL_NAME, align: "start" },
-      { heading: "AREA (m²)", w: refDim * COL_AREA, align: "end" },
+      { heading: "AREA (CENTRELINE, m²)", w: refDim * COL_AREA, align: "end" },
       { heading: "NET AREA (m²)", w: refDim * COL_NET, align: "end" },
     ];
     const w = cols.reduce((s, c) => s + c.w, 0);
@@ -666,9 +676,9 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
       h,
       rowH,
       fs,
-      // The padding the three-column table had (2% of NO. + NAME + AREA), so every cell it
-      // drew keeps its place now NET AREA is appended.
-      pad: cols.slice(0, AREA_COL + 1).reduce((s, c) => s + c.w, 0) * 0.02,
+      // The padding the three-column table had (2% of NO. + NAME + the old AREA width), in
+      // the same float order, so the NO. and NAME cells keep their place (see PAD_AREA_W).
+      pad: [refDim * COL_NO, refDim * COL_NAME, refDim * PAD_AREA_W].reduce((s, c) => s + c, 0) * 0.02,
       caption: "ROOM SCHEDULE",
       cols,
       rows: sched.rows,
@@ -857,7 +867,7 @@ const areaCell = (m2: number): string => m2.toFixed(2);
 /**
  * Left edge of the schedule's column `i`: `x0` plus the widths up to and including `i`, less
  * column `i`'s own — the float order the table used for its one AREA column when that was the
- * last, so the AREA cells keep their bytes now NET AREA follows it.
+ * last, kept so the TOTAL and SUBTOTAL cells sit exactly on their column's data cells.
  */
 const colLeft = (t: ScheduleTableBox, i: number): number =>
   t.x0 + t.cols.slice(0, i + 1).reduce((s, c) => s + c.w, 0) - t.cols[i]!.w;
