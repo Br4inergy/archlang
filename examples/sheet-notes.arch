@@ -1,12 +1,19 @@
 # An issued sheet — the SHEET-ANNOTATION example.
 #
 # A drawing that leaves the office carries more than the plan: a drawing number and a
-# revision in the title block, and the general notes every contractor reads first. Both
-# are opt-in sheet statements, and both are presentation only — `describe()` and `lint()`
-# learn nothing from them:
+# revision in the title block, the general notes every contractor reads first, and a tag
+# on every door and window keyed to a schedule. All three are opt-in sheet statements, and
+# all three are presentation only — `describe()` and `lint()` learn nothing from them:
 #
 #   title { … number "A-101" revision "B" }   two more title-block rows
 #   notes "…"                                 the NOTES table, numbered in source order
+#   schedule openings                         D01…/W01… tags + the DOOR & WINDOW SCHEDULE
+#
+# The schedule is DERIVED, never typed: the rooms each opening serves (the same answer as
+# `describe --json`'s `doors[].between` / `windows[].room`), its width, its kind and, for a
+# hinged leaf, its HAND — read off the drawn leaf from the side it opens into, so it does
+# not depend on which way the wall was written. A tag sits beside its opening: a window's
+# inside the room, a door's past the hinge jamb, clear of the swing and out of the doorway.
 plan "Sheet Notes Flat" {
   units mm
   grid 50
@@ -15,9 +22,11 @@ plan "Sheet Notes Flat" {
   north up
   dims auto all
   schedule rooms
+  schedule openings
   notes "All dimensions in millimetres. Do not scale from this drawing."
   notes "Check every dimension on site before work starts."
   notes "Room areas are taken to wall centrelines."
+  notes "Door hand is read from the side the door opens into."
 
   title { project "Sheet Notes Flat" drawn_by "ArchLang" date "2026-10-13" number "A-101" revision "B" }
 
@@ -32,6 +41,8 @@ plan "Sheet Notes Flat" {
   room id=r_study  at (5000,3000) size 4000x3000 label "Study" uses office
 
   # ---- doors -------------------------------------------------------------------
+  # The front door opens IN, so its tag cannot sit outside (the dimension chains live
+  # there): it goes on the swing side, behind the hinge, where the leaf never reaches.
   door id=d_front on shell at 2500 width 1000 hinge left swing in
   door id=d_bed on w_mid at 1500 width 900 hinge right swing out
   door id=d_study sliding on w_mid at 4500 width 900

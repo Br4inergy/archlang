@@ -96,7 +96,8 @@ const EXAMPLES = [
   // length and would slip past a snapshot while moving pixels here.
   "furnished-flat.arch",
   // The issued-sheet example: the only golden with the title block's `number`/`revision`
-  // rows and a NOTES table, so it is where either would show a drift first.
+  // rows, a NOTES table, the door/window tags and the DOOR & WINDOW SCHEDULE, so it is
+  // where a tag that drifted onto a swing or a table that lost a column would show.
   "sheet-notes.arch",
 ];
 

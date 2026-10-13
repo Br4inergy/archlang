@@ -16,6 +16,7 @@ import type { Bounds } from "./geometry.js";
 import type { SceneNode } from "./scene.js";
 import type { LegendEntry, RoomSchedule, SheetTables } from "./sheet-tables.js";
 import { layoutSheetTables, tableRowsHeight, translateSheetTables } from "./sheet-tables.js";
+import type { OpeningRow } from "./opening-schedule.js";
 
 /**
  * Chrome geometry as fractions of the drawing's reference dimension. Named (rather
@@ -102,6 +103,8 @@ export interface ChromeInput {
   schedule?: RoomSchedule | null;
   /** Derived legend rows when the plan set `legend`. */
   legend?: readonly LegendEntry[] | null;
+  /** DOOR & WINDOW SCHEDULE rows when the plan set `schedule openings`. */
+  openings?: readonly OpeningRow[] | null;
   /** The plan's `notes`, when it wrote any. */
   notes?: readonly string[] | null;
   /** Which storey this page draws, for a multi-storey plan (see {@link titleRows}). */
@@ -242,6 +245,7 @@ export function layoutChrome(input: ChromeInput): ChromeLayout {
     top: bandBottom + gap,
     schedule: input.schedule ?? null,
     legend: input.legend ?? null,
+    openings: input.openings ?? null,
     notes: input.notes ?? null,
   });
 

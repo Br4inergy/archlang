@@ -144,9 +144,9 @@ const EXAMPLE_ROWS = [
   ],
   [
     "sheet-notes",
-    "Issued Sheet (notes)",
+    "Issued Sheet (tags + notes)",
     "Homes",
-    "A small flat issued on A3 with a drawing number and revision in its title block and a numbered table of general notes.",
+    "A small flat issued on A3 with a drawing number, general notes and a tag on every door and window, keyed to a schedule.",
   ],
   [
     "garden-house",

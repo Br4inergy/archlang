@@ -792,6 +792,10 @@
  * block's `number`/`revision`). Its two rows were measured with this file's own digest
  * bodies on the branch that added it, when the example first existed; no other row moved
  * (the law suites and a per-payload sweep of the whole corpus, before against after, agree).
+ * The next commit on that branch extended the example with `schedule openings` (tags + the
+ * DOOR & WINDOW SCHEDULE), a fourth note and two comments, and re-measured only its
+ * whole-surface row: the SUMMARY row (`a26a55ae…`) is byte-identical before and after, so
+ * `describe()` and `lint()` did not move and the change is in the drawing alone.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -818,7 +822,7 @@ export const BASELINE: [string, string][] = [
   ["one-room", "006f9e2008584250fa6aa645769f01ad4ad3dcc5053d76c1c4fa963c6dbc3283"],
   ["parametric", "b8055080fe56197849ab4624be16eed46510ac467de6218df59f093979e8235c"],
   ["relational", "776f94d7f8a94ebf78b752697fa433cf49a05b1e4309430e8725a71e15780354"],
-  ["sheet-notes", "786f0550ba6d245c3c4b421dc8be1ac8b28ef6d802bec0c3513fdbb3a81aa7ec"], // added with the example, see header
+  ["sheet-notes", "7f4dba53c859885fa74d2177bcaf7b175c3e813ec9bb2f123564885f3e158f8f"], // added with the example, see header
   ["studio", "daacc21fb471e0d7d29c88191b838607a07b3f73e82a0508d42a8cbd8184bef3"],
   ["terrace-row", "5c7a1b1380f8ca14f6927a1fefa481ffba57deb85deee79fc83930863bbab898"], // re-measured, see header
   ["themed", "b6ba97d9000126e4355dd8c4a853c19fb8aa8790be0603dedf3e10fb1620cccf"],

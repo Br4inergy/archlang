@@ -437,8 +437,15 @@ const POSITIVE: Snippet[] = [
   },
   {
     keyword: "schedule",
-    note: "`rooms` is the only subject",
+    note: "`rooms` subject",
     src: plan(`  paper A3\n  room id=r1 at (0,0) size 4000x3000 label "Hall"\n  schedule rooms`),
+  },
+  {
+    keyword: "schedule",
+    note: "`openings` subject, beside `rooms` (the two compose)",
+    src: plan(
+      `  paper A3\n  schedule rooms\n  schedule openings\n  wall id=w1 exterior thickness 200 { (0,0) (4000,0) (4000,3000) (0,3000) close }\n  room id=r1 at (0,0) size 4000x3000 label "Hall"\n  door on w1 at 1000 width 900\n  window on w1 at 5000 width 1200`,
+    ),
   },
   {
     keyword: "notes",

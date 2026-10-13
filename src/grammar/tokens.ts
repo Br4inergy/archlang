@@ -176,7 +176,7 @@ export const KEYWORDS = {
     "bottom-right",
     "auto",
     // `dims auto <mode>` selectors (AUTO_DIMS_MODES) and the `schedule <subject>` subject
-    // (SCHEDULE_SUBJECTS, whose one value `rooms` is the same word). Values following a
+    // (SCHEDULE_SUBJECTS: `rooms`, the same word, and `openings`). Values following a
     // keyword, so they sit here beside `auto` itself rather than in `attribute`. They are
     // the reason `test/closed-vocabularies.test.ts` exists: both sets live in
     // `src/ast.ts` as the parser's accept-list AND the spec's grammar line, and without a
@@ -184,6 +184,7 @@ export const KEYWORDS = {
     // own mode word as an identifier in every renderer.
     "overall",
     "rooms",
+    "openings",
     "walls",
     "all",
     "cw",

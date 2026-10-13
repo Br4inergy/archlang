@@ -726,10 +726,11 @@ class Parser {
 
   /**
    * `schedule <subject>` — opt into a sheet schedule table. The subject is required and
-   * closed (`SCHEDULE_SUBJECTS`, currently just `rooms`) so the surface can grow without
+   * closed (`SCHEDULE_SUBJECTS`: `rooms`, `openings`) so the surface can grow without
    * a respelling; an unknown word fails with the available list plus a `closest()`
    * did-you-mean, spanned on the OFFENDING WORD rather than the keyword. Repeating the
-   * statement is idempotent (declarative), never a duplicate error.
+   * statement is idempotent (declarative), never a duplicate error, and each subject is
+   * its own flag, so `schedule rooms` and `schedule openings` compose.
    */
   private parseScheduleSetting(plan: PlanNode): void {
     this.next();
@@ -743,7 +744,8 @@ class Parser {
         st,
       );
     }
-    plan.schedule = subject as ScheduleSubject;
+    if ((subject as ScheduleSubject) === "openings") plan.openingSchedule = true;
+    else plan.schedule = "rooms";
   }
 
   /**

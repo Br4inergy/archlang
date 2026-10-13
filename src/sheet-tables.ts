@@ -1,6 +1,7 @@
 /**
- * **Sheet tables** — the ROOM SCHEDULE and the derived LEGEND, and beside them the
- * authored NOTES (`notes "…"`), drawn only when the plan writes it.
+ * **Sheet tables** — the ROOM SCHEDULE and the derived LEGEND, and beside them the DOOR &
+ * WINDOW SCHEDULE (`schedule openings`, rows from `opening-schedule.ts`) and the authored
+ * NOTES (`notes "…"`), each drawn only when the plan writes it.
  *
  * A professional floor-plan sheet is not just the drawing: it carries tabular blocks in
  * the margin that let a reader audit the plan without measuring it. GB/T 50104 sheets
@@ -41,6 +42,7 @@ import type { Theme } from "./theme.js";
 import { FIXTURE_CATEGORIES, fixtureGlyph, hasFixtureGlyph } from "./elements/fixtures-glyphs.js";
 import { fmt2 } from "./num-format.js";
 import { roomAreaMm2 } from "./analyze.js";
+import { openingCount, type OpeningRow } from "./opening-schedule.js";
 import { textWidth } from "./text-metrics.js";
 
 /** Round to 2 decimals, deterministically — the same rounding `describe()` applies. */
@@ -306,6 +308,12 @@ export interface LegendTableBox extends TableBox {
   swatchW: number;
 }
 
+/** The DOOR & WINDOW SCHEDULE (`schedule openings`): one row per tagged opening. */
+export interface OpeningTableBox extends TableBox {
+  cols: TableColumn[];
+  rows: OpeningRow[];
+}
+
 /** The NOTES table (`notes "…"`): a number column and the note text, one drawn line per row. */
 export interface NotesTableBox extends TableBox {
   /** Width of the number column (`1.`, `2.`, …). */
@@ -318,9 +326,11 @@ export interface NotesTableBox extends TableBox {
 /** The laid-out sheet tables, plus the box they occupy (what the margins must contain). */
 export interface SheetTables {
   schedule: ScheduleTableBox | null;
+  /** Present only when the plan wrote `schedule openings`, so an existing layout's object
+   *  (and the bytes drawn from it) is unchanged. */
+  openings?: OpeningTableBox;
   legend: LegendTableBox | null;
-  /** Present only when the plan wrote `notes`, so an existing layout's object (and the
-   *  bytes drawn from it) is unchanged. */
+  /** Present only when the plan wrote `notes`. */
   notes?: NotesTableBox;
   /** Left-most x any table starts at (both share it — they sit in one row). */
   left: number;
@@ -339,6 +349,8 @@ export interface SheetTablesInput {
   top: number;
   schedule?: RoomSchedule | null;
   legend?: readonly LegendEntry[] | null;
+  /** The DOOR & WINDOW SCHEDULE rows when the plan set `schedule openings`. */
+  openings?: readonly OpeningRow[] | null;
   /** The plan's `notes`, when it wrote any. */
   notes?: readonly string[] | null;
 }
@@ -352,6 +364,12 @@ const COL_NAME = 0.2;
 const COL_AREA = 0.105;
 const LEGEND_SWATCH = 0.05;
 const LEGEND_NAME = 0.22;
+/** DOOR & WINDOW SCHEDULE columns; ROOM(S) is a minimum, widened to its longest cell. */
+const COL_TAG = 0.055;
+const COL_ROOMS = 0.16;
+const COL_WIDTH = 0.07;
+const COL_TYPE = 0.08;
+const COL_HAND = 0.06;
 /** NOTES: the number column, and the minimum width of the text column (widened to fit). */
 const NOTES_NO = 0.035;
 const NOTES_TEXT = 0.2;
@@ -372,6 +390,8 @@ const TABLE_GAP = 0.03;
  */
 export const scheduleRowCount = (s: RoomSchedule): number => 3 + s.rows.length + 2 * s.groups.length;
 export const legendRowCount = (entries: number): number => 1 + entries;
+/** The DOOR & WINDOW SCHEDULE: caption, column headings, one row per tagged opening. */
+export const openingRowCount = (openings: number): number => 2 + openings;
 /** The NOTES table's drawn lines: a note written with `\n` draws one line per part. */
 const noteLines = (notes: readonly string[]): string[][] => notes.map((s) => s.split("\n"));
 /** The NOTES table: caption plus one row per drawn line. */
@@ -381,8 +401,8 @@ export const notesRowCount = (notes: readonly string[]): number =>
 /**
  * How deep the table ROW is, for the tables a plan actually opted into: the tallest of
  * them, or `0` when it opted into none (which is what keeps an opted-out plan's margins,
- * and therefore its bytes, unchanged). `extraRows` is the NOTES table's (`0` when it is not
- * drawn).
+ * and therefore its bytes, unchanged). `extraRows` is the taller of the DOOR & WINDOW
+ * SCHEDULE and NOTES tables (`0` when neither is drawn).
  */
 export function tableBandRows(
   schedule: RoomSchedule | null,
@@ -420,16 +440,23 @@ export function planTableRows(input: {
    * declared paper while `sheet.fits` says `true`), and a lawn adds a row.
    */
   outdoor?: readonly ROutdoor[];
-  /** The plan's `notes`, which draw a table in the same band — optional for the same reason
-   *  `outdoor` is, and as binding: the fit rule must reserve the row. */
+  /**
+   * `schedule openings`, and the storey's elements it tabulates (only doors and windows are
+   * counted). Optional for the same reason `outdoor` is, and as binding: the table is a row
+   * of the band, so the fit rule must reserve it.
+   */
+  openingSchedule?: boolean | undefined;
+  elements?: readonly { kind: string }[];
+  /** The plan's `notes`, which draw a table in the same band. */
   notes?: readonly string[] | undefined;
 }): number {
   const schedule = input.schedule === "rooms" ? roomSchedule(input.rooms, input.zones) : null;
   const legend = input.legend
     ? legendEntries(hatchesUsed(input.walls, groundMaterialsUsed(input.outdoor ?? [])), input.furniture)
     : null;
+  const openings = input.openingSchedule ? openingRowCount(openingCount(input.elements ?? [])) : 0;
   const notes = input.notes && input.notes.length > 0 ? notesRowCount(input.notes) : 0;
-  return tableBandRows(schedule, legend, notes);
+  return tableBandRows(schedule, legend, Math.max(openings, notes));
 }
 
 /**
@@ -441,8 +468,9 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
   const { bounds: b, refDim, top } = input;
   const sched = input.schedule ?? null;
   const legendRows = input.legend ?? null;
+  const openingData = input.openings ?? null;
   const notesData = input.notes && input.notes.length > 0 ? input.notes : null;
-  if (!sched && !legendRows && !notesData) return null;
+  if (!sched && !legendRows && !openingData && !notesData) return null;
 
   const rowH = refDim * ROW_H;
   const fs = refDim * FONT;
@@ -480,6 +508,36 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
     bottom = Math.max(bottom, top + h);
   }
 
+  // The DOOR & WINDOW SCHEDULE sits between the room schedule and the legend: the two
+  // schedules read together. Absent → `x` is untouched, so the legend lands where it always did.
+  let openings: OpeningTableBox | undefined;
+  if (openingData) {
+    const roomsW = openingData.reduce((m, r) => Math.max(m, textWidth(r.rooms, fs)), 0) + fs;
+    const cols: TableColumn[] = [
+      { heading: "TAG", w: refDim * COL_TAG, align: "middle" },
+      { heading: "ROOM(S)", w: Math.max(refDim * COL_ROOMS, roomsW), align: "start" },
+      { heading: "WIDTH", w: refDim * COL_WIDTH, align: "end" },
+      { heading: "TYPE", w: refDim * COL_TYPE, align: "start" },
+      { heading: "HAND", w: refDim * COL_HAND, align: "start" },
+    ];
+    const w = cols.reduce((s, c) => s + c.w, 0);
+    const h = tableRowsHeight(refDim, openingRowCount(openingData.length));
+    openings = {
+      x0: x,
+      y0: top,
+      w,
+      h,
+      rowH,
+      fs,
+      pad: w * 0.02,
+      caption: "DOOR & WINDOW SCHEDULE",
+      cols,
+      rows: [...openingData],
+    };
+    x += w + refDim * TABLE_GAP;
+    bottom = Math.max(bottom, top + h);
+  }
+
   let legend: LegendTableBox | null = null;
   if (legendRows) {
     const swatchW = refDim * LEGEND_SWATCH;
@@ -505,7 +563,7 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
   // note is never cut; the drawn lines are the notes in source order, numbered.
   let notes: NotesTableBox | undefined;
   if (notesData) {
-    // The schedule leaves a gap after itself; the legend does not, so add one after it.
+    // The schedules leave a gap after themselves; the legend does not, so add one after it.
     if (legend) x += refDim * TABLE_GAP;
     const lines = noteLines(notesData).flatMap((parts, i) =>
       parts.map((text, k) => ({ no: k === 0 ? `${i + 1}.` : "", text })),
@@ -525,6 +583,7 @@ export function layoutSheetTables(input: SheetTablesInput): SheetTables | null {
 
   return {
     schedule,
+    ...(openings ? { openings } : {}),
     legend,
     ...(notes ? { notes } : {}),
     left: b.minX,
@@ -544,6 +603,7 @@ export function translateSheetTables(t: SheetTables, dx: number, dy: number): Sh
   const move = <T extends { x0: number; y0: number }>(box: T): T => ({ ...box, x0: box.x0 + dx, y0: box.y0 + dy });
   return {
     schedule: t.schedule ? move(t.schedule) : null,
+    ...(t.openings ? { openings: move(t.openings) } : {}),
     legend: t.legend ? move(t.legend) : null,
     ...(t.notes ? { notes: move(t.notes) } : {}),
     left: t.left + dx,
@@ -820,6 +880,39 @@ function legendNodes(t: LegendTableBox, theme: Theme, sizes: RenderSizes, out: S
   });
 }
 
+/**
+ * The DOOR & WINDOW SCHEDULE's primitives: frame, caption, column headings, then one row per
+ * tagged opening. Column rules run from the headings to the frame (no merged row below them).
+ * At most `13 + 6 × rows` primitives — the drawing budget's count.
+ */
+function openingTableNodes(t: OpeningTableBox, theme: Theme, sizes: RenderSizes, out: SceneNode[]): void {
+  const d = drawer(theme, sizes, out);
+  const { x0, y0, w, h, rowH, fs, pad } = t;
+  d.frame(x0, y0, w, h);
+  const rowMid = (i: number): number => y0 + rowH * (i + 0.5);
+  d.text({ x: x0 + pad, y: rowMid(0) }, t.caption, fs, "start", { weight: BOLD });
+  d.rule({ x: x0, y: y0 + rowH }, { x: x0 + w, y: y0 + rowH });
+  let cx = x0;
+  t.cols.forEach((c, i) => {
+    d.text({ x: anchorX(cx, c.w, pad, c.align), y: rowMid(1) }, c.heading, fs * 0.8, c.align, {
+      weight: BOLD,
+      muted: true,
+    });
+    if (i > 0) d.rule({ x: cx, y: y0 + rowH }, { x: cx, y: y0 + h }, true);
+    cx += c.w;
+  });
+  d.rule({ x: x0, y: y0 + rowH * 2 }, { x: x0 + w, y: y0 + rowH * 2 });
+  t.rows.forEach((r, i) => {
+    const cells = [r.tag, r.rooms, r.width, r.type, r.hand];
+    let x = x0;
+    t.cols.forEach((c, ci) => {
+      d.text({ x: anchorX(x, c.w, pad, c.align), y: rowMid(2 + i) }, cells[ci]!, fs, c.align);
+      x += c.w;
+    });
+    if (i > 0) d.rule({ x: x0, y: y0 + rowH * (2 + i) }, { x: x0 + w, y: y0 + rowH * (2 + i) }, true);
+  });
+}
+
 /** The NOTES table's primitives: frame, caption, a rule, then each line's number and text.
  *  At most `3 + 2 × lines`. */
 function notesNodes(t: NotesTableBox, theme: Theme, sizes: RenderSizes, out: SceneNode[]): void {
@@ -843,6 +936,7 @@ function notesNodes(t: NotesTableBox, theme: Theme, sizes: RenderSizes, out: Sce
 export function sheetTableNodes(t: SheetTables, theme: Theme, sizes: RenderSizes): SceneNode[] {
   const out: SceneNode[] = [];
   if (t.schedule) scheduleNodes(t.schedule, theme, sizes, out);
+  if (t.openings) openingTableNodes(t.openings, theme, sizes, out);
   if (t.legend) legendNodes(t.legend, theme, sizes, out);
   if (t.notes) notesNodes(t.notes, theme, sizes, out);
   return out;

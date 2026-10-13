@@ -23,6 +23,7 @@ import type { RFurniture, ROutdoor, RRoom, ResolvedElement, ResolvedPlan } from 
 import type { Registry } from "./registry.js";
 import { autoDimCount } from "./scene-build.js";
 import { legendEntries, notesRowCount, roomSchedule } from "./sheet-tables.js";
+import { openingCount, TAG_PRIMITIVES } from "./opening-schedule.js";
 import { siteBoundaryNodes } from "./site.js";
 import { hatchesUsed } from "./hatches.js";
 import { groundMaterialsUsed } from "./elements/outdoor.js";
@@ -79,7 +80,8 @@ const AXIS_PRIMITIVES = 3;
  * What one storey's plan-wide passes draw, beyond its elements: the `dims auto` chains (each a
  * `dim`, estimated as the `dim` kind is), the axis bubbles, the lot line and the margin
  * tables (`sheet-tables.ts`: a flat schedule is 11 + 4 per room, a grouped one adds 7 per
- * zone; a legend row is a rule, a swatch and a name, a fixture's swatch its glyph; the NOTES).
+ * zone; a legend row is a rule, a swatch and a name, a fixture's swatch its glyph; the
+ * opening tags and their schedule; the NOTES).
  */
 export function storeyPassUnits(ir: ResolvedPlan, registry: Registry): number {
   let n = 0;
@@ -104,6 +106,11 @@ export function storeyPassUnits(ir: ResolvedPlan, registry: Registry): number {
     const entries = legendEntries(hatchesUsed(ir.walls, groundMaterialsUsed(outdoors)), furniture);
     n += 4;
     for (const e of entries) n += e.kind === "fixture" ? 4 + DEFAULT_DRAW_COST : 5;
+  }
+  if (ir.openingSchedule) {
+    // A tag per door/window (`TAG_PRIMITIVES`), and the table: 13 + 6 per row.
+    const openings = openingCount(ir.elements);
+    n += TAG_PRIMITIVES * openings + 13 + 6 * openings;
   }
   // The NOTES table: frame, caption and rule, then a number and a text per drawn line.
   if (ir.notes) n += 3 + 2 * notesRowCount(ir.notes);

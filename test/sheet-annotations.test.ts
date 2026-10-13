@@ -1,12 +1,20 @@
 /**
- * The issued-sheet statements: `notes "…"` and the title block's `number`/`revision` fields.
+ * The issued-sheet statements: `notes "…"`, the title block's `number`/`revision` fields, and
+ * `schedule openings` (door/window tags + the DOOR & WINDOW SCHEDULE).
  *
- * What carries the weight — **the byte-identity law, both halves.** A plan that writes none
- * of the forms is untouched — pinned for the whole corpus by the existing law tables
- * (`byte-identity-baseline.ts`, `while-byte-identity-baseline.ts`), which this branch only
- * ADDED rows to. And a plan that writes them changes its DRAWING only: `describe()`,
- * `lint()` and `compile().diagnostics` are byte-identical to the same source with every new
- * statement removed (`examples/sheet-notes.arch` below), which is what "draws only" means.
+ * What carries the weight:
+ *
+ * 1. **The byte-identity law, both halves.** A plan that writes none of the forms is
+ *    untouched — pinned for the whole corpus by the existing law tables
+ *    (`byte-identity-baseline.ts`, `while-byte-identity-baseline.ts`), which this branch only
+ *    ADDED rows to. And a plan that writes them changes its DRAWING only: `describe()`,
+ *    `lint()` and `compile().diagnostics` are byte-identical to the same source with every
+ *    new statement removed (`examples/sheet-notes.arch` below), which is what "draws only"
+ *    means.
+ * 2. **The tags are derived from the shape.** A tag sits off a wall face with floor on it,
+ *    beside a door's jamb and outside its leaf's quarter-disc, never in front of the doorway.
+ * 3. **The schedule is derived from the plan**: rooms by the same derivation as
+ *    `describe().doors[].between` / `windows[].room`, the hand read off the drawn leaf.
  */
 
 import { readFileSync } from "node:fs";
@@ -17,6 +25,9 @@ import { compile, describe as describePlan, lint } from "../src/index.js";
 import { format } from "../src/format.js";
 import { parse } from "../src/parser.js";
 import { resolve } from "../src/ir.js";
+import type { RDoor, ResolvedElement } from "../src/ir.js";
+import { doorHand, openingRows } from "../src/opening-schedule.js";
+import { doorSwing, segmentDirAt } from "../src/geometry.js";
 import { planFromJson, planToJson } from "../src/plan-json.js";
 import { drawBudgetDiagnostic, storeyPassUnits } from "../src/draw-budget.js";
 import { BUILTIN_REGISTRY } from "../src/registry.js";
@@ -30,6 +41,7 @@ const sceneOf = (src: string): Scene => {
   expect(errors).toEqual([]);
   return scene!;
 };
+const elementsOf = (src: string): ResolvedElement[] => resolve(parse(src).plan!).ir.elements;
 const texts = (nodes: readonly SceneNode[]): string[] =>
   nodes.flatMap((n) => (n.prim.t === "text" ? [n.prim.value] : []));
 
@@ -45,7 +57,7 @@ const box = (body: string): string =>
   `plan "P" {\n  units mm\n  paper A3\n  wall id=w exterior thickness 200 { (0,0) (6000,0) (6000,4000) (0,4000) close }\n` +
   `  room id=r at (0,0) size 6000x4000 label "Hall"\n${body}}\n`;
 
-describe("parsing — the two forms", () => {
+describe("parsing — the three forms", () => {
   it("`notes` takes one or more strings and repeats append, in source order", () => {
     const p = parse(box(`  notes "a" "b"\n  notes "c"\n`)).plan!;
     expect(p.notes).toEqual(["a", "b", "c"]);
@@ -61,13 +73,30 @@ describe("parsing — the two forms", () => {
     expect(p.title).toMatchObject({ project: "X", number: "A-101", revision: "B" });
   });
 
+  it("`schedule rooms` and `schedule openings` compose; neither overwrites the other", () => {
+    const p = parse(box(`  schedule openings\n  schedule rooms\n`)).plan!;
+    expect(p.schedule).toBe("rooms");
+    expect(p.openingSchedule).toBe(true);
+    const q = parse(box(`  schedule rooms\n`)).plan!;
+    expect(q.openingSchedule).toBeUndefined();
+  });
+
+  it("an unknown subject still fails, naming both subjects", () => {
+    const out = parse(box(`  schedule doors\n`));
+    const d = out.diagnostics.find((x) => x.code === "E_PARSE")!;
+    expect(d.message).toMatch(/available: rooms, openings/);
+  });
+
   it("the formatter is a fixed point and keeps every note, number and revision", () => {
-    const src = box(`  notes "One \\"quoted\\" {brace}" "Two"\n  title { project "X" number "A-1" revision "C" }\n`);
+    const src = box(
+      `  schedule openings\n  notes "One \\"quoted\\" {brace}" "Two"\n  title { project "X" number "A-1" revision "C" }\n`,
+    );
     const once = format(src);
     expect(format(once)).toBe(once);
     const p = parse(once).plan!;
     expect(p.notes).toEqual(['One "quoted" {brace}', "Two"]);
     expect(p.title).toMatchObject({ number: "A-1", revision: "C" });
+    expect(p.openingSchedule).toBe(true);
   });
 });
 
@@ -124,6 +153,31 @@ describe("what the sheet draws", () => {
     expect(texts(s.nodes)).toEqual(expect.arrayContaining(["NOTES", "1.", "First", "2.", "Second", "wraps"]));
   });
 
+  it("the DOOR & WINDOW SCHEDULE rows are the example's openings, derived", () => {
+    expect(openingRows(elementsOf(EXAMPLE)).map(({ id: _id, ...r }) => r)).toEqual([
+      { tag: "D01", kind: "door", rooms: "exterior / Living Room", width: "1000", type: "hinged", hand: "left" },
+      { tag: "D02", kind: "door", rooms: "Living Room / Bedroom", width: "900", type: "hinged", hand: "left" },
+      { tag: "D03", kind: "door", rooms: "Living Room / Study", width: "900", type: "sliding", hand: "-" },
+      { tag: "W01", kind: "window", rooms: "Living Room", width: "1800", type: "window", hand: "-" },
+      { tag: "W02", kind: "window", rooms: "Bedroom", width: "1400", type: "window", hand: "-" },
+      { tag: "W03", kind: "window", rooms: "Study", width: "1400", type: "window", hand: "-" },
+    ]);
+  });
+
+  it("the rooms column is describe()'s own answer, room id for room id", () => {
+    const d = describePlan(EXAMPLE);
+    const name = new Map(d.rooms.map((r) => [r.id, r.label ?? r.id]));
+    const rows = openingRows(elementsOf(EXAMPLE));
+    for (const door of d.doors) {
+      const row = rows.find((r) => r.id === door.id)!;
+      expect(row.rooms).toBe(door.between.map((id) => name.get(id) ?? id).join(" / "));
+    }
+    for (const w of d.windows) {
+      const row = rows.find((r) => r.id === w.id)!;
+      expect(row.rooms).toBe(w.room === null ? "-" : name.get(w.room));
+    }
+  });
+
   it("the sheet fit reserves the new rows: the example's A3 page is not grown", () => {
     const s = sceneOf(EXAMPLE);
     expect(s.sheet?.grown).toBe(false);
@@ -131,8 +185,108 @@ describe("what the sheet draws", () => {
   });
 });
 
+describe("tags — placed from the opening's own shape", () => {
+  const tagNodes = (src: string): { tag: string; at: { x: number; y: number }; frame: SceneNode }[] => {
+    const nodes = sceneOf(src).nodes;
+    const out: { tag: string; at: { x: number; y: number }; frame: SceneNode }[] = [];
+    nodes.forEach((n, i) => {
+      // A tag's text follows its frame (a circle, or a box); a table's TAG cell follows text.
+      const prev = nodes[i - 1];
+      const framed = prev !== undefined && (prev.prim.t === "circle" || prev.prim.t === "polygon");
+      if (n.layer === "annotations" && n.prim.t === "text" && /^[DW]\d\d$/.test(n.prim.value) && framed)
+        out.push({ tag: n.prim.value, at: n.prim.at, frame: prev });
+    });
+    return out;
+  };
+
+  it("every door and window gets exactly one tag, a frame then its text", () => {
+    const tags = tagNodes(EXAMPLE);
+    expect(tags.map((t) => t.tag)).toEqual(["D01", "D02", "D03", "W01", "W02", "W03"]);
+    for (const t of tags.filter((x) => x.tag.startsWith("D"))) expect(t.frame.prim.t).toBe("circle");
+    for (const t of tags.filter((x) => x.tag.startsWith("W"))) expect(t.frame.prim.t).toBe("polygon");
+  });
+
+  it("a door tag sits past a jamb (never in front of the doorway) and outside its leaf's quarter-disc", () => {
+    const els = elementsOf(EXAMPLE);
+    const doors = els.filter((e): e is RDoor => e.kind === "door");
+    const tags = tagNodes(EXAMPLE).filter((t) => t.tag.startsWith("D"));
+    doors.forEach((d, i) => {
+      const c = tags[i]!.frame.prim as { t: "circle"; center: { x: number; y: number }; r: number };
+      const dir = segmentDirAt(d.host!, d.at);
+      const along = (c.center.x - d.at.x) * dir.x + (c.center.y - d.at.y) * dir.y;
+      // The whole circle lies beyond a jamb, so it is clear of the passage.
+      expect(Math.abs(along) - c.r).toBeGreaterThan(d.width / 2);
+      const s = doorSwing(d);
+      if (s) {
+        // Outside the disc of radius `width` about the hinge, or behind the hinge.
+        const hx = c.center.x - s.hinge.x;
+        const hy = c.center.y - s.hinge.y;
+        const toFar = { x: s.farJamb.x - s.hinge.x, y: s.farJamb.y - s.hinge.y };
+        const behind = hx * toFar.x + hy * toFar.y < 0;
+        expect(behind || Math.hypot(hx, hy) - c.r > d.width).toBe(true);
+      }
+    });
+  });
+
+  it("a window tag sits on the face with floor — inside the building, away from the dims", () => {
+    for (const t of tagNodes(EXAMPLE).filter((x) => x.tag.startsWith("W"))) {
+      expect(t.at.x).toBeGreaterThan(0);
+      expect(t.at.x).toBeLessThan(9000);
+      expect(t.at.y).toBeGreaterThan(0);
+      expect(t.at.y).toBeLessThan(6000);
+    }
+    // The exterior front door swings IN, so its tag is inside too (the free face is outside).
+    const d01 = tagNodes(EXAMPLE).find((t) => t.tag === "D01")!;
+    expect(d01.at.y).toBeGreaterThan(0);
+  });
+});
+
+describe("hand — read off the drawn leaf, not the traversal word", () => {
+  const door = (wall: string, hinge: string, swing: string): RDoor =>
+    elementsOf(
+      `plan "H" {\n  units mm\n  wall id=w partition thickness 100 { ${wall} }\n` +
+        `  room id=a at (0,0) size 4000x2000\n  room id=b at (0,2000) size 4000x2000\n` +
+        `  door id=d at (2000,2000) width 900 wall w hinge ${hinge} swing ${swing}\n}\n`,
+    ).find((e): e is RDoor => e.kind === "door")!;
+
+  it("reversing the wall's points with the hinge word flipped draws the same door, and reads the same hand", () => {
+    const fwd = door("(0,2000) (4000,2000)", "left", "in");
+    const rev = door("(4000,2000) (0,2000)", "right", "out");
+    expect(doorSwing(fwd)).toEqual(doorSwing(rev));
+    expect(doorHand(fwd)).toBe(doorHand(rev));
+  });
+
+  it("the other hinge is the other hand", () => {
+    expect(doorHand(door("(0,2000) (4000,2000)", "left", "in"))).not.toBe(
+      doorHand(door("(0,2000) (4000,2000)", "right", "in")),
+    );
+  });
+
+  it("a mirrored `place` swaps the hand; a quarter-turn does not", () => {
+    const placed = (frame: string): string =>
+      openingRows(
+        elementsOf(
+          `plan "M" {\n  units mm\n  component c() {\n` +
+            `    wall id=w partition thickness 100 { (0,2000) (4000,2000) }\n` +
+            `    room id=a at (0,0) size 4000x2000\n    room id=b at (0,2000) size 4000x2000\n` +
+            `    door id=d at (2000,2000) width 900 wall w hinge left swing in\n  }\n` +
+            `  place c() as u at (0,0)${frame}\n}\n`,
+        ),
+      )[0]!.hand;
+    const base = placed("");
+    expect(base).toMatch(/^(left|right)$/);
+    expect(placed(" rotate 90")).toBe(base);
+    expect(placed(" mirror x")).not.toBe(base);
+  });
+
+  it("a non-hinged door has no hand", () => {
+    const els = elementsOf(box(`  door sliding on w at 1000 width 900\n`));
+    expect(openingRows(els)[0]!.hand).toBe("-");
+  });
+});
+
 describe("budgets and round-trips", () => {
-  it("the drawing budget counts at least what the NOTES and title rows draw", () => {
+  it("the drawing budget counts at least what the tags and tables draw", () => {
     const src = EXAMPLE;
     const ir = resolve(parse(src).plan!).ir;
     const withForms = storeyPassUnits(ir, BUILTIN_REGISTRY);

@@ -34,6 +34,7 @@ import { textWidth } from "./text-metrics.js";
 import type { LabelGroup } from "./label-placement.js";
 import { relocateLabels, wrapLabels } from "./label-placement.js";
 import { legendEntries, roomSchedule, sheetTableNodes } from "./sheet-tables.js";
+import { openingRows, openingTagNodes } from "./opening-schedule.js";
 import { circulationOverlayNodes } from "./overlays/circulation.js";
 import { captionForPlan } from "./describe.js";
 import type { RoomBox } from "./analyze.js";
@@ -829,6 +830,11 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
   // with no `boundary`, so every existing drawing is byte-identical.
   if (ir.siteBoundary) nodes.push(...siteBoundaryNodes(ir.siteBoundary, theme, sizes));
 
+  // `schedule openings` — a tag beside every door and window (`opening-schedule.ts`), placed
+  // from each opening's own wall. Before the label pass, so a room name moves off a tag
+  // rather than sitting on it; nothing is emitted without the opt-in.
+  if (ir.openingSchedule) nodes.push(...openingTagNodes(ir.elements, theme, sizes));
+
   // Obstacle-aware area labels (`src/label-placement.ts`). It has to run HERE — after the
   // walls are lowered and after `dims auto` has emitted its numbers — because a dimension
   // value is not an element and no element could ever see one. Purely a translation of
@@ -873,6 +879,7 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
     scale: ir.scale,
     schedule: scheduleData,
     legend: legendData,
+    ...(ir.openingSchedule ? { openings: openingRows(ir.elements) } : {}),
     ...(ir.notes ? { notes: ir.notes } : {}),
     // Multi-storey: stamp the page with its storey, so a drawing SET is readable (a plan
     // with no `level` block passes nothing and its chrome is byte-identical).
