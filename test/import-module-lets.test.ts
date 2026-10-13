@@ -358,7 +358,7 @@ const BASELINE: [string, string][] = [
   ["examples/aquarium.arch", "9b8e70c3cd7838abbb883062d3abd06dfb54ec7336f523bb4369ad917301cbb4"],
   ["examples/attached.arch", "591f4199087b7f7fcab65af3cab3f12dbe062456954e7ef0f02969a974d34b93"],
   ["examples/bungalow.arch", "1fc9881f7b2e3bf0015b0a978fd3858f22a7ea72d60de472bf083a716ca71ef2"],
-  ["examples/classroom-block.arch", "d0fdd3758a0ccf77a9edbd5b7d1d7f03d07745b104759e3150477ea5da9721ca"], // first measurement, added with the example
+  ["examples/classroom-block.arch", "c0cfdc6c5c2494158390a01b390821758138b280a99d4dfb64860971e9ae03a6"], // first measurement, added with the example
   ["examples/clinic.arch", "fac5d9fab49df93fe8cbff6cc0bf26b9e84b1a32c26128e155d0eeb5da99feb1"],
   ["examples/corner-cafe.arch", "2fe716112a6b8ea668f0ad1c076981da170d8fecdac98f0c39357e8d1b9234fa"], // first measurement, added with the example
   ["examples/courtyard-house.arch", "464e42474edfc5d02502ccd9d14d314cd2943687b2a07fb928096235d82d4ecc"],
@@ -383,7 +383,7 @@ const BASELINE: [string, string][] = [
   ["examples/museum.arch", "e84e5b6d863c6fd71c0e7e39810277879c6d3a3774fe6808b2c7927546acbdf3"],
   ["examples/one-room.arch", "e12596f5401f097b5cf431fda952e96fc6523d7ca6a97c1518ffe6dd64e72cbe"],
   ["examples/parametric.arch", "982d09bc2018a495ca4c50d1cf5a99dcbb92f235b86f9cb722c4e931c839e921"],
-  ["examples/practice-office.arch", "fc2603d751b6b2efed7ff5ad3ac35ca54e5b8eb90ee5a472eee7ed9589ed2ad8"], // first measurement, added with the example
+  ["examples/practice-office.arch", "52037baf27780aa75cd44358c2c6a12b040fb9a8dd93f7ff5921e3b83627f0f9"], // first measurement, added with the example
   ["examples/relational.arch", "e152e9a813406d1188e87584acdb63bb4c4a48438006e33420db2c760bc8f9ec"],
   // ADDED with the new example (the issued-sheet statements), then re-measured once when the
   // thickness call-out change met it (drawing only): the same row, with the same digest body,
