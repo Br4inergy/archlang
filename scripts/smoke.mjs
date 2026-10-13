@@ -54,11 +54,12 @@ function tupleTable(syncSrc, name) {
 
 /**
  * The raw-markdown routes the docs site publishes at `/<route>.md`: every `PAGES` row
- * writes both the bannered page and `public/<dest>`. Parsed, so a new doc page is
+ * writes both the bannered page and `public/<dest>`, and every `SITE_PAGES` row (the
+ * hand-written pages) writes `public/<dest>`. Parsed, so a new doc page is
  * smoke-tested the day it is added.
  */
 function docsPageRoutes(syncSrc) {
-  return tupleTable(syncSrc, "PAGES").map(([, dest]) => `/${dest}`);
+  return [...tupleTable(syncSrc, "PAGES"), ...tupleTable(syncSrc, "SITE_PAGES")].map(([, dest]) => `/${dest}`);
 }
 
 /**

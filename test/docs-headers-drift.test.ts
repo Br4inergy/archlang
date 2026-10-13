@@ -1,0 +1,31 @@
+/**
+ * The `.md` Content-Type rules in `docs-site/public/_headers` are GENERATED from the
+ * PAGES + SITE_PAGES tables (`npm run gen:docs-headers`). This regenerates them in memory
+ * and fails on any difference, and pins the property the generator exists for: no glob,
+ * so a missing `/x.md` (a 404 HTML page) can never be labelled `text/markdown`.
+ */
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { markdownRoutes, renderHeaders } from "../scripts/gen-docs-headers.js";
+
+const HEADERS = "docs-site/public/_headers";
+const routes = markdownRoutes(readFileSync("docs-site/sync-docs.mjs", "utf8"));
+const headers = readFileSync(HEADERS, "utf8").replace(/\r\n/g, "\n");
+
+describe("docs-site/public/_headers", () => {
+  it("equals the generator output (run `npm run gen:docs-headers`)", () => {
+    expect(headers).toBe(renderHeaders(headers, routes));
+  });
+
+  it("labels /guide.md, /agents.md and every PAGES route text/markdown", () => {
+    for (const r of ["guide.md", "agents.md", "spec.md", "index.md"]) expect(routes).toContain(r);
+    for (const r of routes) {
+      expect(headers).toContain(`/${r}\n  Content-Type: text/markdown; charset=utf-8`);
+    }
+  });
+
+  it("has no `.md` glob rule that would also label a missing page", () => {
+    expect(headers).not.toMatch(/^\/\*\.md\s*$/m);
+    expect(headers).not.toMatch(/^\/\*\s*$\n(?:\s+.*\n)*?\s+Content-Type:\s*text\/markdown/m);
+  });
+});

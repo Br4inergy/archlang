@@ -48,6 +48,8 @@ const GENERATORS: readonly { script: string; artifacts: readonly string[] }[] = 
   // name added there is drift-gated here with no second edit (and cannot be forgotten).
   { script: "gen:example-svgs", artifacts: [...README_SVGS.map(svgPath), ...VIEW_SVGS.map((v) => v.dest)] },
   { script: "gen:plugin", artifacts: [...pluginSkillFiles().map((f) => f.dest), PLUGIN_MANIFEST] },
+  // The per-route `.md` Content-Type rules, derived from the PAGES + SITE_PAGES tables in docs-site/sync-docs.mjs.
+  { script: "gen:docs-headers", artifacts: ["docs-site/public/_headers"] },
 ];
 
 const ALL_ARTIFACTS = GENERATORS.flatMap((g) => g.artifacts);

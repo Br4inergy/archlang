@@ -54,4 +54,12 @@ public/intent.md
 public/errors.md
 public/spec.md
 
+# The hand-written pages' raw copies (SITE_PAGES in sync-docs.mjs), served at /<route>.md.
+public/index.md
+public/guide.md
+public/agents.md
+public/examples.md
+public/gallery.md
+public/relational.md
+
 node_modules/
