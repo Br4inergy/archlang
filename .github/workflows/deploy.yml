@@ -199,3 +199,16 @@ jobs:
       - name: Smoke check (initialize, tools/list, one /svg/ URL = compile())
         if: steps.changed.outputs.run == 'true'
         run: node scripts/smoke.mjs --site mcp --base ${{ steps.deploy.outputs.url }}
+
+      - name: Explain a deploy refused for its CPU limit (owner step)
+        # `limits.cpu_ms` in packages/mcp-worker/wrangler.jsonc needs Workers Paid (the Standard
+        # usage model). On a Free account wrangler refuses it; that is an account setting to change,
+        # not a code fix.
+        if: failure() && steps.deploy.outcome == 'failure'
+        working-directory: packages/mcp-worker
+        run: |
+          if grep -qiE 'limits|cpu_ms|usage model' deploy.log 2>/dev/null; then
+            echo "::error::wrangler refused limits.cpu_ms: the account must be on Workers Paid. Owner step: upgrade the Cloudflare account to Workers Paid, then re-run this workflow (ADR 0026, 'Owner steps')."
+          else
+            echo "deploy failed for a reason other than limits.cpu_ms; see the Deploy step's log."
+          fi
