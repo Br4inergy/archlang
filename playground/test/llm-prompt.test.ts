@@ -95,9 +95,9 @@ describe("Open in Claude / ChatGPT", () => {
   it("gives a padding-safe decode recipe for the hash form the link actually uses", () => {
     // Python's base64 decoder ignores surplus "=" but rejects missing ones, so "==" always
     // suffices for unpadded base64url; wbits -15 is raw DEFLATE (no zlib header).
-    expect(buildChatPrompt(SHARE)).toContain("zlib.decompress(base64.urlsafe_b64decode(z+'=='),-15)");
+    expect(buildChatPrompt(SHARE)).toContain("zlib.decompress(base64.urlsafe_b64decode(z+'=='),-15).decode()");
     const legacy = buildChatPrompt("https://playground.archlang.uk/#src=cGxhbiAiWCIge30");
-    expect(legacy).toContain("base64.urlsafe_b64decode(s+'==')");
+    expect(legacy).toContain("base64.urlsafe_b64decode(s+'==').decode()");
     expect(legacy).not.toContain("zlib");
   });
 
@@ -130,16 +130,17 @@ describe("Open in Claude / ChatGPT", () => {
   it.skipIf(!supportsDeflateRaw)(
     "gives every bundled example a prefilled link with at least 80 characters to spare",
     async () => {
-      // HEADROOM: deflate output is implementation-dependent (Firefox's vanilla zlib was
-      // measured ~35 characters longer than Node/Chromium on Hillside Villa), and a plan
-      // edit or a longer origin grows the URL too. What the cap pays for, all after
+      // HEADROOM: deflate output is implementation-dependent — on Hillside Villa, vanilla
+      // zlib builds (pako, zlib-ng) were measured 26–35 characters longer than Node/Chromium;
+      // Firefox and Safari were not measured — and a plan edit or a longer origin grows the
+      // URL too. What the cap pays for, all after
       // encodeURIComponent: the host base (24, `https://claude.ai/new?q=`), the prompt
       // prefix, the encoded origin (39, every `:` and `/` costs 3), `#z=` (7), the newline
       // and recipe line, and the payload itself.
       //
-      // 80, not 100: the line must open with its ask ("ArchLang floor plan:"), and that
-      // cost the 100. 80 still covers the ~35 characters Firefox's vanilla zlib was
-      // measured to add over Node/Chromium on Hillside Villa, with room to spare.
+      // 80, not 100: the line must open with its ask ("ArchLang floor plan:") and keep its
+      // `.decode()`, and that cost the 100. 80 still covers the 26–35 characters vanilla
+      // zlib (pako, zlib-ng) was measured to add on Hillside Villa, with room to spare.
       const HEADROOM = 80;
       expect(Object.keys(EXAMPLES).length).toBeGreaterThan(20);
       for (const [label, source] of Object.entries(EXAMPLES)) {

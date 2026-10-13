@@ -219,6 +219,10 @@ test.describe("header actions", () => {
 
     const editor = page.locator(".cm-content");
     await editor.click();
+    // A selection move between setEditorSource's insert and the typed "x" closes the undo
+    // group: CodeMirror merges adjacent typing under 500 ms apart into one step, and one
+    // Ctrl+Z would then undo the whole plan, not just the "x".
+    await page.keyboard.press("ArrowLeft");
     await page.keyboard.press("ControlOrMeta+End");
     await page.keyboard.type("x");
     // Stale at once: no ready mark, and the href is the bare host, never the old plan.
