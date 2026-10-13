@@ -27,6 +27,7 @@
  * It also states the `npx` fallback in its own setup section rather than in the task skills' line.
  */
 
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -71,33 +72,45 @@ for (const c of manifest.commands) {
   flagsOf.set(c.name, flags);
   for (const a of c.aliases ?? []) flagsOf.set(a, flags);
 }
-// `help [<cmd>]` is the CLI's own meta command (`src/cli.ts`), not a manifest entry: global flags only.
-flagsOf.set("help", new Set(globals));
-
 /** Every way an invocation can name the CLI: the global bin, its alias, or the scoped package via npx. */
 const CLI = /^(?:archlang|arch|npx (?:-y )?@chanmeng666\/archlang)(?=\s)/;
 
-/** Every `archlang …`, `arch …` or `npx [-y] @chanmeng666/archlang …` invocation written in code. */
-function invocations(body: string): string[] {
-  // A fenced line's trailing `# comment` is prose, not part of the invocation.
-  const code = [...body.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].flatMap((m) =>
-    m[1]!.split("\n").map((line) => line.replace(/\s+#\s.*$/, "")),
-  );
-  for (const m of body.replace(/```[\s\S]*?```/g, "").matchAll(/`([^`\n]+)`/g)) code.push(m[1]!);
-  return code.map((c) => c.trim()).filter((c) => CLI.test(c));
-}
+/** Flag tokens (`--long`, `-x`) written anywhere in a piece of prose. */
+const flagTokens = (text: string): string[] => text.match(/(?<![\w-])--?[a-zA-Z][\w-]*/g) ?? [];
 
 /**
- * What is wrong with one invocation, or nothing. `<cmd>` is the documented placeholder for any
- * command; `lint|validate` names two commands at once, and each must take every flag written.
+ * Every `archlang …`, `arch …` or `npx [-y] @chanmeng666/archlang …` invocation written in code.
+ * A fenced line's trailing `# comment` is prose, but a flag it names is still checked: its tokens
+ * are appended to the invocation, so they must belong to the command on that line. In an inline
+ * code span `lint|validate` names two commands and is split in two; in a fence `|` is a pipe.
  */
+function invocations(body: string): string[] {
+  const out: string[] = [];
+  for (const fence of body.matchAll(/```[^\n]*\n([\s\S]*?)```/g)) {
+    for (const line of fence[1]!.split("\n")) {
+      const [code = "", ...comment] = line.split(/\s+#\s/);
+      const c = code.trim();
+      if (CLI.test(c)) out.push([c, ...flagTokens(comment.join(" # "))].join(" "));
+    }
+  }
+  for (const m of body.replace(/```[\s\S]*?```/g, "").matchAll(/`([^`\n]+)`/g)) {
+    const c = m[1]!.trim();
+    if (!CLI.test(c)) continue;
+    const words = c.split(/\s+/);
+    const at = CLI.exec(c)![0].split(" ").length;
+    const alt = words[at] ?? "";
+    if (/^[a-z-]+(\|[a-z-]+)+$/.test(alt)) {
+      for (const one of alt.split("|")) out.push([...words.slice(0, at), one, ...words.slice(at + 1)].join(" "));
+    } else out.push(c);
+  }
+  return out;
+}
+
+/** What is wrong with one invocation, or nothing. `<cmd>` is the documented placeholder for any command. */
 function faults(invocation: string): string[] {
   const words = invocation.replace(CLI, "arch").split(/\s+/);
   const cmd = words[1]!;
   if (cmd === "<cmd>") return [];
-  if (/^[a-z-]+(\|[a-z-]+)+$/.test(cmd)) {
-    return cmd.split("|").flatMap((one) => faults(["arch", one, ...words.slice(2)].join(" ")));
-  }
   if (cmd.startsWith("-")) return globals.has(cmd) ? [] : [`\`${cmd}\` is not a global flag`];
   const flags = flagsOf.get(cmd);
   if (!flags) return [`\`${cmd}\` is not an arch command`];
@@ -113,10 +126,13 @@ describe("the invocation check itself", () => {
     expect(faults("arch <cmd> --help")).toEqual([]);
     expect(faults("archlang finish plan.arch --reissue -o issued.arch")).toEqual([]);
     expect(faults("npx -y @chanmeng666/archlang finish plan.arch --reissue")).toEqual([]);
-    expect(faults("archlang help finish")).toEqual([]);
-    expect(faults("archlang lint|validate --code W_X")).toEqual([]);
+    expect(invocations("Run `archlang lint|validate --code W_X`.")).toEqual([
+      "archlang lint --code W_X",
+      "archlang validate --code W_X",
+    ]);
+    // A fenced comment's prose is ignored; a flag it names is not.
     expect(invocations("```bash\narchlang compile p.arch -f txt   # also `preview --ascii`\n```")).toEqual([
-      "archlang compile p.arch -f txt",
+      "archlang compile p.arch -f txt --ascii",
     ]);
   });
 
@@ -129,10 +145,19 @@ describe("the invocation check itself", () => {
     expect(faults("npx -y @chanmeng666/archlang furnish plan.arch")).toEqual(["`furnish` is not an arch command"]);
     expect(invocations("Run `archlang fix plan.arch --write` now.")).toEqual(["archlang fix plan.arch --write"]);
     expect(invocations("Run `npx -y @chanmeng666/archlang spec`.")).toEqual(["npx -y @chanmeng666/archlang spec"]);
-    // An alternation checks every command it names; a fenced comment never hides the invocation.
-    expect(faults("archlang lint|finish --code W_X")).toEqual(["`--code` is not a flag of `arch finish`"]);
-    expect(faults("archlang lint|furnish p.arch")).toEqual(["`furnish` is not an arch command"]);
-    expect(faults("archlang help --write")).toEqual(["`--write` is not a flag of `arch help`"]);
+    // An inline alternation checks every command it names; in a fence `|` is a pipe, not an alternation.
+    expect(invocations("`archlang lint|finish --code W_X`").flatMap(faults)).toEqual([
+      "`--code` is not a flag of `arch finish`",
+    ]);
+    expect(invocations("`archlang lint|furnish p.arch`").flatMap(faults)).toEqual(["`furnish` is not an arch command"]);
+    expect(invocations("```bash\narchlang lint|validate p.arch\n```").flatMap(faults)).toEqual([
+      "`lint|validate` is not an arch command",
+    ]);
+    // A bogus flag in a fenced comment fails; `help` is not a manifest command.
+    expect(invocations("```bash\narchlang fix p.arch   # not --write\n```").flatMap(faults)).toEqual([
+      "`--write` is not a flag of `arch fix`",
+    ]);
+    expect(faults("archlang help finish")).toEqual(["`help` is not an arch command"]);
   });
 });
 
@@ -146,6 +171,17 @@ describe("skills/", () => {
   it("is the only home of a skill: the repo root holds no SKILL.md", () => {
     // A root SKILL.md makes the `skills` CLI install the whole repository as one skill.
     expect(readdirSync(".").filter((f) => f.toLowerCase() === "skill.md")).toEqual([]);
+  });
+
+  it("confines every tracked SKILL.md to skills/<name>/ or plugins/archlang/skills/<name>/", () => {
+    // The `skills` CLI walks the root's children, so a SKILL.md anywhere else (a `.claude/skills`
+    // dev skill, say) would ship to every user who runs `npx skills add`.
+    const tracked = execFileSync("git", ["ls-files", "-z", "--", "*SKILL.md"], { encoding: "utf8" })
+      .split("\0")
+      .filter(Boolean);
+    expect(tracked.length).toBeGreaterThan(0);
+    const allowed = /^(?:skills|plugins\/archlang\/skills)\/[a-z0-9]+(?:-[a-z0-9]+)*\/SKILL\.md$/;
+    expect(tracked.filter((f) => !allowed.test(f))).toEqual([]);
   });
 
   it("lists every task skill, skill for skill, in the umbrella skill and the docs agents page", () => {
