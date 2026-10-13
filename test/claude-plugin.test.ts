@@ -1,9 +1,9 @@
 /**
  * The Claude Code plugin is a slim, self-contained folder, `plugins/archlang/`: the plugin directory
  * rejects any plugin folder holding a file over 5 MiB, and the repo root carries an 11 MB font. Its
- * `skills/` are GENERATED copies (`npm run gen:plugin`) of the root `SKILL.md` (the umbrella skill)
- * and `skills/*` — the sources `npx skills add` reads — so the byte-equality here is the drift gate's
- * twin. `plugin.json` is the only plugin manifest, hand-written except for two derived fields
+ * `skills/` are GENERATED copies (`npm run gen:plugin`) of the repo's `skills/*` (the umbrella skill
+ * `skills/archlang` and the task skills) — the sources `npx skills add` reads — so the byte-equality
+ * here is the drift gate's twin. `plugin.json` is the only plugin manifest, hand-written except for two derived fields
  * `gen:plugin` stamps and `check:drift` gates: `version` (the core's) and the exact MCP pin.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -24,27 +24,27 @@ function walk(dir: string): string[] {
 describe("plugin folder", () => {
   const plugin = read(`${PLUGIN}/.claude-plugin/plugin.json`);
   const market = read(".claude-plugin/marketplace.json");
-  const rootSkillName = /^name:\s*(\S+)/m.exec(readFileSync(resolve("SKILL.md"), "utf8"))?.[1];
+  const umbrellaName = /^name:\s*(\S+)/m.exec(readFileSync(resolve("skills/archlang/SKILL.md"), "utf8"))?.[1];
 
   it("is the only plugin manifest, named after the umbrella skill", () => {
     expect(existsSync(resolve(".claude-plugin/plugin.json"))).toBe(false);
-    expect(rootSkillName).toBe("archlang");
-    expect(plugin.name).toBe(rootSkillName);
+    expect(umbrellaName).toBe("archlang");
+    expect(plugin.name).toBe(umbrellaName);
     // the default skills/<name>/SKILL.md scan finds all five; a `skills` key would only add to it
     expect(plugin).not.toHaveProperty("skills");
   });
 
   it("ships the umbrella skill and every task skill, byte-identical to its source", () => {
-    const task = readdirSync(resolve("skills")).sort();
-    expect(task.length).toBeGreaterThan(0);
-    expect(task).not.toContain("archlang");
-    expect(readdirSync(resolve(PLUGIN, "skills")).sort()).toEqual(["archlang", ...task].sort());
-    const same = (dest: string, src: string) =>
-      expect(readFileSync(resolve(PLUGIN, "skills", dest, "SKILL.md"), "utf8"), dest).toBe(
-        readFileSync(resolve(src), "utf8"),
+    // One source directory, copied whole: the umbrella skill sits beside the task skills.
+    const skills = readdirSync(resolve("skills")).sort();
+    expect(skills).toContain("archlang");
+    expect(skills.length).toBeGreaterThan(1);
+    expect(readdirSync(resolve(PLUGIN, "skills")).sort()).toEqual(skills);
+    for (const d of skills) {
+      expect(readFileSync(resolve(PLUGIN, "skills", d, "SKILL.md"), "utf8"), d).toBe(
+        readFileSync(resolve("skills", d, "SKILL.md"), "utf8"),
       );
-    same("archlang", "SKILL.md");
-    for (const d of task) same(d, `skills/${d}/SKILL.md`);
+    }
   });
 
   it("holds only the manifest and the skills, none over 5 MiB, and stays small", () => {

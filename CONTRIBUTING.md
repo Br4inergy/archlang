@@ -291,7 +291,7 @@ the `GENERATORS` table in `scripts/check-drift.ts` — this table mirrors it:
 | `editors/archlang.tmLanguage.json`, `playground/src/arch-language.js`, `docs-site/.vitepress/theme/arch-highlight.js` | `gen:grammars` | `src/grammar/tokens.ts` |
 | `docs/error-codes.md` | `gen:errors` | `src/error-catalog.ts` |
 | `spec.llm.md` | `gen:spec` | `src/grammar/tokens.ts` + `examples/` |
-| `llms-full.txt` | `gen:llms` | `spec.llm.md` + `SKILL.md` + `src/manifest.ts` + `src/error-catalog.ts` |
+| `llms-full.txt` | `gen:llms` | `spec.llm.md` + `skills/archlang/SKILL.md` + `src/manifest.ts` + `src/error-catalog.ts` |
 | `src/context-size.ts` | `gen:llms` | the byte size of the rendered `llms-full.txt` and of each `--section` |
 | `docs/cli-reference.md` | `gen:cli` | `src/manifest.ts` (which states the sizes in `src/context-size.ts`) |
 | `grammars/archlang.gbnf` | `gen:gbnf` | `src/grammar/tokens.ts` |

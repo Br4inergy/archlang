@@ -1,5 +1,7 @@
 /**
- * The task skills under `skills/<name>/SKILL.md`, beside the root `SKILL.md` (`name: archlang`).
+ * The skills under `skills/<name>/SKILL.md`: the umbrella skill `archlang` and the task skills
+ * beside it. The repo root holds no `SKILL.md`: the `skills` CLI (`npx skills add`) stops at a root
+ * one and installs the whole repository as the one skill, so every skill lives here.
  *
  * Each is a short workflow an agent loads for one job. Two things about them can rot without
  * any build noticing, and this file is the gate for both:
@@ -18,7 +20,11 @@
  *    name `archlang` is another publisher's package.
  *
  * A skill carries no language reference of its own. It sends the agent to `archlang spec` and
- * `archlang <cmd> --help`, exactly as the root skill does, so there is one copy of the language.
+ * `archlang <cmd> --help`, exactly as the umbrella skill does, so there is one copy of the language.
+ *
+ * The umbrella skill is the long agent workflow (the `llms-full.txt` workflow section), so it is
+ * exempt, by name, from the two rules that make a task skill short: the line limit and `## Steps`.
+ * It also states the `npx` fallback in its own setup section rather than in the task skills' line.
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -31,6 +37,9 @@ const names = readdirSync(DIR)
   .filter((d) => statSync(join(DIR, d)).isDirectory())
   .sort();
 const read = (name: string): string => readFileSync(join(DIR, name, "SKILL.md"), "utf8");
+/** The umbrella skill: the full workflow, which lists the task skills. */
+const UMBRELLA = "archlang";
+const tasks = names.filter((n) => n !== UMBRELLA);
 
 /** The YAML frontmatter as flat `key: value` pairs (the skills use no nested or multi-line values). */
 function frontmatter(text: string): { fields: Map<string, string>; body: string } {
@@ -62,22 +71,33 @@ for (const c of manifest.commands) {
   flagsOf.set(c.name, flags);
   for (const a of c.aliases ?? []) flagsOf.set(a, flags);
 }
+// `help [<cmd>]` is the CLI's own meta command (`src/cli.ts`), not a manifest entry: global flags only.
+flagsOf.set("help", new Set(globals));
 
 /** Every way an invocation can name the CLI: the global bin, its alias, or the scoped package via npx. */
 const CLI = /^(?:archlang|arch|npx (?:-y )?@chanmeng666\/archlang)(?=\s)/;
 
 /** Every `archlang …`, `arch …` or `npx [-y] @chanmeng666/archlang …` invocation written in code. */
 function invocations(body: string): string[] {
-  const code = [...body.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].flatMap((m) => m[1]!.split("\n"));
+  // A fenced line's trailing `# comment` is prose, not part of the invocation.
+  const code = [...body.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].flatMap((m) =>
+    m[1]!.split("\n").map((line) => line.replace(/\s+#\s.*$/, "")),
+  );
   for (const m of body.replace(/```[\s\S]*?```/g, "").matchAll(/`([^`\n]+)`/g)) code.push(m[1]!);
   return code.map((c) => c.trim()).filter((c) => CLI.test(c));
 }
 
-/** What is wrong with one invocation, or nothing. `<cmd>` is the documented placeholder for any command. */
+/**
+ * What is wrong with one invocation, or nothing. `<cmd>` is the documented placeholder for any
+ * command; `lint|validate` names two commands at once, and each must take every flag written.
+ */
 function faults(invocation: string): string[] {
   const words = invocation.replace(CLI, "arch").split(/\s+/);
   const cmd = words[1]!;
   if (cmd === "<cmd>") return [];
+  if (/^[a-z-]+(\|[a-z-]+)+$/.test(cmd)) {
+    return cmd.split("|").flatMap((one) => faults(["arch", one, ...words.slice(2)].join(" ")));
+  }
   if (cmd.startsWith("-")) return globals.has(cmd) ? [] : [`\`${cmd}\` is not a global flag`];
   const flags = flagsOf.get(cmd);
   if (!flags) return [`\`${cmd}\` is not an arch command`];
@@ -93,6 +113,11 @@ describe("the invocation check itself", () => {
     expect(faults("arch <cmd> --help")).toEqual([]);
     expect(faults("archlang finish plan.arch --reissue -o issued.arch")).toEqual([]);
     expect(faults("npx -y @chanmeng666/archlang finish plan.arch --reissue")).toEqual([]);
+    expect(faults("archlang help finish")).toEqual([]);
+    expect(faults("archlang lint|validate --code W_X")).toEqual([]);
+    expect(invocations("```bash\narchlang compile p.arch -f txt   # also `preview --ascii`\n```")).toEqual([
+      "archlang compile p.arch -f txt",
+    ]);
   });
 
   it("catches an unknown command and an undeclared flag", () => {
@@ -104,25 +129,29 @@ describe("the invocation check itself", () => {
     expect(faults("npx -y @chanmeng666/archlang furnish plan.arch")).toEqual(["`furnish` is not an arch command"]);
     expect(invocations("Run `archlang fix plan.arch --write` now.")).toEqual(["archlang fix plan.arch --write"]);
     expect(invocations("Run `npx -y @chanmeng666/archlang spec`.")).toEqual(["npx -y @chanmeng666/archlang spec"]);
+    // An alternation checks every command it names; a fenced comment never hides the invocation.
+    expect(faults("archlang lint|finish --code W_X")).toEqual(["`--code` is not a flag of `arch finish`"]);
+    expect(faults("archlang lint|furnish p.arch")).toEqual(["`furnish` is not an arch command"]);
+    expect(faults("archlang help --write")).toEqual(["`--write` is not a flag of `arch help`"]);
   });
 });
 
 describe("skills/", () => {
-  it("holds a few task skills, each a directory with one SKILL.md", () => {
-    expect(names.length).toBeGreaterThanOrEqual(3);
+  it("holds the umbrella skill and a few task skills, each a directory with one SKILL.md", () => {
+    expect(names).toContain(UMBRELLA);
+    expect(tasks.length).toBeGreaterThanOrEqual(3);
     for (const name of names) expect(readdirSync(join(DIR, name))).toEqual(["SKILL.md"]);
   });
 
-  it("does not shadow the root skill's name", () => {
-    const root = frontmatter(readFileSync("SKILL.md", "utf8")).fields.get("name");
-    expect(root).toBe("archlang");
-    expect(names).not.toContain(root);
+  it("is the only home of a skill: the repo root holds no SKILL.md", () => {
+    // A root SKILL.md makes the `skills` CLI install the whole repository as one skill.
+    expect(readdirSync(".").filter((f) => f.toLowerCase() === "skill.md")).toEqual([]);
   });
 
-  it("is listed, skill for skill, by the root SKILL.md and the docs agents page", () => {
-    for (const file of ["SKILL.md", "docs-site/agents.md"]) {
+  it("lists every task skill, skill for skill, in the umbrella skill and the docs agents page", () => {
+    for (const file of [join(DIR, UMBRELLA, "SKILL.md"), "docs-site/agents.md"]) {
       const listed = [...readFileSync(file, "utf8").matchAll(/^- `(archlang-[a-z0-9-]+)`:/gm)].map((m) => m[1]).sort();
-      expect(listed, file).toEqual(names);
+      expect(listed, file).toEqual(tasks);
     }
   });
 });
@@ -144,9 +173,13 @@ describe.each(names)("skills/%s/SKILL.md", (name) => {
     expect([...fields.keys()].filter((k) => !known.has(k))).toEqual([]);
   });
 
-  it("is a short workflow: well under 500 lines, with steps", () => {
+  it.skipIf(name === UMBRELLA)("is a short workflow: well under 500 lines, with steps", () => {
     expect(read(name).split("\n").length).toBeLessThan(150);
     expect(body).toMatch(/^## Steps$/m);
+  });
+
+  it("stays under the specification's recommended 500 lines", () => {
+    expect(read(name).split("\n").length).toBeLessThan(500);
   });
 
   it("sends the agent to the CLI for the language instead of restating it", () => {
@@ -167,8 +200,9 @@ describe.each(names)("skills/%s/SKILL.md", (name) => {
     expect(found.filter((inv) => /^arch\s/.test(inv))).toEqual([]);
     expect(found.filter((inv) => /^npx @chanmeng666/.test(inv))).toEqual([]);
     // The fallback guard is about `archlang`: coreutils puts an `arch` on the path, so a guard
-    // that asks whether `arch` is there never fires.
-    expect(body).toContain("If `archlang` is not on the path, write `npx -y @chanmeng666/archlang`");
+    // that asks whether `arch` is there never fires. The umbrella skill states it in its setup.
+    if (name === UMBRELLA) expect(body).toContain("write `npx -y @chanmeng666/archlang <cmd>`");
+    else expect(body).toContain("If `archlang` is not on the path, write `npx -y @chanmeng666/archlang`");
     expect(body).not.toContain("If `arch` is not on the path");
   });
 });

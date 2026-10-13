@@ -20,7 +20,7 @@ reproducible.** Open source (MIT). Zero-dependency, and built so an
 ## Use it from your coding agent
 
 ```bash
-npx skills add ChanMeng666/archlang                      # the ArchLang skill, for any agent that reads skills
+npx skills add ChanMeng666/archlang                      # the ArchLang skills, for any agent that reads skills
 claude mcp add archlang -- npx -y @chanmeng666/archlang-mcp   # or the MCP server (Claude Code shown)
 /plugin marketplace add ChanMeng666/archlang                # or, inside Claude Code: the skills + MCP server as one plugin (plugins/archlang)
 /plugin install archlang@archlang
@@ -227,7 +227,7 @@ Reads are bounded, so a big plan can't flood a context window: `describe --selec
 what *gates* — the exit code always weighs every diagnostic. And because `archlang fix` rewrites your
 source, it prints the unified diff first and takes `--backup`.
 
-See [`SKILL.md`](../SKILL.md).
+See [`skills/archlang/SKILL.md`](../skills/archlang/SKILL.md).
 
 <details>
 <summary><b>Machine-native artifacts</b> — Plan JSON, a GBNF grammar, an intent schema, and an optional MCP server</summary>
@@ -704,7 +704,7 @@ compact editor that re-renders as you type) and `theme=blueprint|dark|mono|prese
 - **[📖 Docs site](https://archlang.uk)** — guide, reference, error catalog, ADRs, and a **live, editable** examples gallery. Every ` ```arch ` fence on a docs page is itself an editable plan.
 - **[⌨ CLI reference](https://archlang.uk/cli)** — every command, flag and exit code (generated from the manifest, so it can't fall behind).
 - **[spec.llm.md](../spec.llm.md)** — the **whole language in one page** for AI agents; also `archlang spec`.
-- **[SKILL.md](../SKILL.md)** — the agent Skill: the `spec → compile → fix → describe → validate` loop.
+- **[SKILL.md](../skills/archlang/SKILL.md)** — the agent Skill: the `spec → compile → fix → describe → validate` loop.
 - **[Language Reference](../docs/language-reference.md)** · **[Error catalog](../docs/error-codes.md)** · **[The intent contract](../docs/intent.md)** · **[ADRs](../docs/adr)**
 - **[AGENTS.md](../AGENTS.md)** — orientation for AI agents working *in* this repo.
 - **[Release notes](https://github.com/ChanMeng666/archlang/blob/main/CHANGELOG.md)** — every version, including what changes for code that embeds or parses the output. Installed, they are at `node_modules/@chanmeng666/archlang/CHANGELOG.md`; each tag's section is also its [GitHub Release](https://github.com/ChanMeng666/archlang/releases).

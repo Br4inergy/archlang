@@ -40,7 +40,7 @@ describe("src/context-size.ts", () => {
 });
 
 /** Hand-written pages that quote the bundle's size. */
-const PAGES = ["SKILL.md", "llms.txt", "docs-site/agents.md", "docs/overview.md"];
+const PAGES = ["skills/archlang/SKILL.md", "llms.txt", "docs-site/agents.md", "docs/overview.md"];
 
 /** Every `N KB` on a page, each judged against the size its phrasing names. */
 function claims(text: string): { said: string; kb: number; actual: number | null }[] {

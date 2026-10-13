@@ -5,7 +5,7 @@
  * full-context bundle an agent can ingest in one read (per the llmstxt.org
  * convention: `/llms.txt` is the map, `/llms-full.txt` the complete text). It
  * concatenates, from the single sources of truth: the language spec
- * (`spec.llm.md`), the agent workflow skill (`SKILL.md`), a compact CLI reference
+ * (`spec.llm.md`), the agent workflow skill ({@link SKILL_SOURCE}), a compact CLI reference
  * derived from the capability manifest (`src/manifest.ts`), and the full
  * diagnostic catalog (`src/error-catalog.ts`).
  *
@@ -28,11 +28,14 @@ import { buildManifest, CLI_NAME } from "../src/manifest.js";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..");
 
+/** The umbrella skill, the bundle's agent-workflow section. It sits beside the task skills under `skills/`. */
+export const SKILL_SOURCE = "skills/archlang/SKILL.md";
+
 /** Everything {@link renderLlmsFull} needs, passed in so the render stays pure. */
 export interface LlmsFullInputs {
   /** The generated `spec.llm.md` content. */
   spec: string;
-  /** The `SKILL.md` content (YAML frontmatter is stripped for the bundle). */
+  /** The {@link SKILL_SOURCE} content (YAML frontmatter is stripped for the bundle). */
   skill: string;
   /** The capability manifest (`buildManifest()`); its `version` is intentionally not emitted. */
   manifest: Manifest;
@@ -168,7 +171,7 @@ Contents:
 function readInputs(): LlmsFullInputs {
   return {
     spec: readFileSync(resolve(ROOT, "spec.llm.md"), "utf8"),
-    skill: readFileSync(resolve(ROOT, "SKILL.md"), "utf8"),
+    skill: readFileSync(resolve(ROOT, SKILL_SOURCE), "utf8"),
     // The version is not emitted into the bundle (kept stable across releases),
     // so any value works; use the shipped package version for consistency.
     manifest: buildManifest(JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8")).version ?? "0.0.0"),
@@ -227,7 +230,7 @@ function main(): void {
     return;
   }
   writeFileSync(resolve(ROOT, "llms-full.txt"), bundle);
-  process.stdout.write("✓ generated llms-full.txt from spec.llm.md + SKILL.md + manifest + error catalog\n");
+  process.stdout.write(`✓ generated llms-full.txt from spec.llm.md + ${SKILL_SOURCE} + manifest + error catalog\n`);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) main();

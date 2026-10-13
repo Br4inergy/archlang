@@ -2,9 +2,10 @@
  * Generate the Claude Code plugin's skill copies under `plugins/archlang/skills/`.
  *
  * The plugin lives in a slim subfolder (the repo root carries an 11 MB font the plugin directory
- * refuses). The sources of truth stay where `npx skills add` finds them: the root `SKILL.md`
- * (the umbrella `archlang` skill) and `skills/<name>/SKILL.md`. This copies them byte-for-byte
- * into the layout a plugin expects, `skills/<name>/SKILL.md`; `check:drift` gates the result.
+ * refuses). The sources of truth stay where `npx skills add` finds them, `skills/<name>/SKILL.md`
+ * (the umbrella `archlang` skill and the task skills beside it); the repo root holds no `SKILL.md`,
+ * because a root one makes the whole repository the skill. This copies them byte-for-byte into
+ * the same layout under the plugin; `check:drift` gates the result.
  * It also stamps two derived values into the hand-written manifest
  * `plugins/archlang/.claude-plugin/plugin.json` (the directory validator requires both): its
  * `version` (the core's, root `package.json`) and the `npx` pin of the MCP server
@@ -34,7 +35,7 @@ export function pluginManifest(): string {
 
 /** Published path → source path, for every skill the plugin ships. */
 export function pluginSkillFiles(): { dest: string; src: string }[] {
-  const out = [{ dest: `${PLUGIN_SKILLS_DIR}/archlang/SKILL.md`, src: "SKILL.md" }];
+  const out: { dest: string; src: string }[] = [];
   for (const d of readdirSync(join(ROOT, "skills")).sort()) {
     if (statSync(join(ROOT, "skills", d)).isDirectory()) {
       out.push({ dest: `${PLUGIN_SKILLS_DIR}/${d}/SKILL.md`, src: `skills/${d}/SKILL.md` });

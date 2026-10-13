@@ -6,7 +6,7 @@ it matches intent without ever looking at an image** — token-cheap and in any 
 
 > **CLI first — but there is an MCP server too.** A CLI costs nothing in an agent's context until it
 > is called; an MCP server's tool schemas sit in the context window permanently. So the CLI (plus a
-> filesystem [Skill](https://github.com/chanmeng666/archlang/blob/main/SKILL.md)) stays the
+> filesystem [Skill](https://github.com/chanmeng666/archlang/blob/main/skills/archlang/SKILL.md)) stays the
 > **primary** interface, and an agent with a shell should use it. But an MCP-native host that
 > *cannot* run a shell command needs a way to reach ArchLang at all, so an optional stdio shim —
 > **[`@chanmeng666/archlang-mcp`](https://www.npmjs.com/package/@chanmeng666/archlang-mcp)**, listed
@@ -17,15 +17,15 @@ it matches intent without ever looking at an image** — token-cheap and in any 
 ## Install into your coding agent
 
 ```bash
-npx skills add ChanMeng666/archlang                      # the ArchLang skill, for any agent that reads skills
+npx skills add ChanMeng666/archlang                      # the ArchLang skills, for any agent that reads skills
 claude mcp add archlang -- npx -y @chanmeng666/archlang-mcp   # or the MCP server (Claude Code shown)
 /plugin marketplace add ChanMeng666/archlang                # or, inside Claude Code: the skill + MCP server as one plugin
 /plugin install archlang@archlang
 ```
 
-`npx skills add ChanMeng666/archlang` installs the `archlang` skill: the full workflow, and the one
-to start from. The repository also holds four task skills, short checklists for one job each. Add
-`--full-depth` to that command to install them too; the Claude Code plugin loads all five.
+`npx skills add ChanMeng666/archlang` offers five skills (add `--yes` to install them all without
+asking). Start from `archlang`, the full workflow; the other four are task skills, short checklists
+for one job each. The Claude Code plugin loads all five.
 
 - `archlang-brief-to-plan`: write a new plan from a written brief and check it against the brief.
 - `archlang-edit-plan`: change an existing `.arch` with the smallest edit, then re-verify.
@@ -181,5 +181,5 @@ Any docs page also serves its raw markdown at `/<route>.md` (e.g. [`/cli.md`](/c
   `import { compile, describe, lint } from "@chanmeng666/archlang"`.
 - These power the live preview, **Describe**, **Lint** and **Intent** tabs in the
   [playground](https://playground.archlang.uk).
-- See [`SKILL.md`](https://github.com/chanmeng666/archlang/blob/main/SKILL.md) and
+- See [`SKILL.md`](https://github.com/chanmeng666/archlang/blob/main/skills/archlang/SKILL.md) and
   [`llms.txt`](https://github.com/chanmeng666/archlang/blob/main/llms.txt) in the repo.

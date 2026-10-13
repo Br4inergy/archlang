@@ -823,7 +823,7 @@ Checklist:
       `scripts/gen-gbnf.ts` (`grammars/archlang.gbnf`) so a constrained decoder cannot emit them; update `scripts/gen-llm-spec.ts` (`spec.llm.md`,
       `llms-full.txt`); `gen:errors` for `docs/error-codes.md`.
 - [ ] **Hand-written docs:** `docs/language-reference.md` ("Reassignment" and "Control flow"),
-      `docs/error-codes.md` examples, `docs/agents/architecture.md`, `SKILL.md`, and a migration
+      `docs/error-codes.md` examples, `docs/agents/architecture.md`, `skills/archlang/SKILL.md`, and a migration
       note in `CHANGELOG.md` ("Removed"): the before/after for a counted loop, the accumulator
       (`let total = 0; while … { total = total + x }`, which has no `for` twin and needs an
       `if`/`let` chain or a component parameter), and the `arch fix` command.

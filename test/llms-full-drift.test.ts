@@ -11,7 +11,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { renderLlmsFull } from "../scripts/gen-llms-full.js";
+import { renderLlmsFull, SKILL_SOURCE } from "../scripts/gen-llms-full.js";
 import { ERROR_CATALOG, ERROR_CODES } from "../src/error-catalog.js";
 import { buildManifest } from "../src/manifest.js";
 
@@ -19,7 +19,7 @@ function regenerate(): string {
   const version = JSON.parse(readFileSync(resolve("package.json"), "utf8")).version ?? "0.0.0";
   return renderLlmsFull({
     spec: readFileSync(resolve("spec.llm.md"), "utf8"),
-    skill: readFileSync(resolve("SKILL.md"), "utf8"),
+    skill: readFileSync(resolve(SKILL_SOURCE), "utf8"),
     manifest: buildManifest(version),
     errorCatalog: ERROR_CATALOG,
     errorCodes: ERROR_CODES,
