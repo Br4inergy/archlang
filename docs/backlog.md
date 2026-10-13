@@ -1946,6 +1946,267 @@ switch the rule off for two files that must keep it. A finding that CI never see
 If a future filesystem-mode scan is wanted as a gate, the answer is a per-finding fingerprint in
 `.gitleaksignore`, not a path in `.gitleaks.toml`.
 
+## Found by the fresh-agent audit (2026-10-13)
+
+A fresh agent was given a one-paragraph brief ("2-bedroom flat, about 65 m², open-plan
+kitchen-living, one bathroom, entrance hall, small balcony; a drawing I can send to a builder")
+and worked blind from the README and the site on core 1.42.1 and MCP 0.2.24. The audit and the
+programme that answers it are kept outside this repository, in the growth repo's
+`strategy/agent-reach-programme-2026-10.md`. Its cards A1 to A9, B1 to B7, C1 to C6 and D1 to D6
+cover: the `arch` command collision, the skill bundle, the MCP `instructions` and tool texts, the
+four lint `fix` texts, the `finish` skip of a partly furnished room, the dimension call-outs over
+openings, the docs-site loop, centreline versus net area, door tags, DXF units and layers, sheet
+notes, and the rest of the reach work. This section holds only what no card covers. Line numbers
+were checked against `main` when filed; the quoted commands and outputs are the audit's own and
+were not re-run when filing. Re-measure before building on one.
+
+### U.1 · The balcony door is treated as a place a walk arrives from — `todo`
+
+**Observed (audit finding 9).** On the audit's 65 m² plan, `circulation.rooms[r_live]` reports
+`entranceId: "d_balc"` and a 2.2 m walk from the street, measured from the balcony slab. The
+walk to the living room should start at the front door.
+
+**Hypothesis.** `levelIsGrounded` (`src/analyze.ts:657`) already discounts a door that opens
+onto an `outdoor balcony`, but the entrance list it reads, built at `src/analyze.ts:568-571`
+(`joins(e) && e.exterior`), keeps the balcony door, and the circulation seeds are built from
+that same list without the discount (`src/analyze/circulation.ts:1702,1742`). Which of the two
+places should drop the door is open; settle it first, because `entrances` also feeds
+`hasEntrance`.
+
+**Gate:** a plan whose only exterior door besides the front door opens onto a balcony reports
+the front door as `entranceId` for every room under `arch describe --json`; the circulation
+and `lint()` rows over the examples are byte-identical unless an example has such a door (list
+any that move, with the reason). **Size:** S.
+
+### U.2 · Metres compile silently — `todo`
+
+**Observed (audit finding 11, Appendix B).** `size 4x3` and `thickness 0.2` (metres written
+where millimetres are the unit) compile `ok:true` with no diagnostic. Only lint reaches the
+mistake, as "only 0 m²" and "0.9 mm wide". The spec states the unit as rule 1, and the audit
+rated this "Partially" fixable in one shot.
+
+**Hypothesis.** Nothing in the parse or evaluate stage sees a length below a plausible floor
+for its role, since `MODEL_RANGE_MM` (`src/num-format.ts`) bounds only the top of the range.
+The wall check at `src/elements/wall.ts:152` refuses only a non-positive thickness. Whether to
+add a warning at that point or a lint hint that names the unit is open; a warning on a legal
+tiny value (a hairline, a model in another scale) may be noise.
+
+**Gate:** a catalogued code with a `fix` that names millimetres, fired on the audit's two
+inputs and on no example (`arch lint --json` over `examples/`); the error-catalog example test
+and `gen:errors` stay green. **Size:** S.
+
+### U.3 · A misspelt furniture category passes `validate --strict` — `todo`
+
+**Observed (audit finding 11, Appendix B).** `furniture grand_pianno` passes `validate --strict`
+with no signal at all, although an unknown material or theme key gets `W_UNKNOWN_MATERIAL`,
+`W_UNKNOWN_STYLE_KEY` or `W_UNKNOWN_THEME_KEY` (`src/error-catalog.ts:835-850`).
+
+**Hypothesis.** Furniture is deliberately open: a category outside `FIXTURE_FAMILIES` falls
+back to a labelled rectangle (`src/elements/furniture.ts:347-348`), so a new name is legal and
+a typo is indistinguishable from one. A warning would need a nearest-name test against the
+catalogue (a fix of "did you mean `grand_piano`") and must stay quiet for a real custom name
+with a `label`. Decide that line before coding.
+
+**Gate:** `furniture grand_pianno` raises a catalogued warning with a nearest-category `fix`
+under `arch validate --strict --json`; no example gains a diagnostic. **Size:** S.
+
+### U.4 · A furniture `label` on a drawn symbol vanishes without a word — `todo` (needs a decision)
+
+**Observed (audit finding 11).** A `label` on a furniture item disappears from the drawing with
+no diagnostic.
+
+**Hypothesis, and why it is not a plain bug.** This is by design: a drawn symbol ignores its
+`label` (AGENTS.md, "New element"), and the labelled-rectangle fallback is "the ONLY path that
+renders a furniture `label` at all" (`src/elements/furniture.ts:347-348`). The gap is that the
+author is never told. Either an info-level diagnostic when a `label` is present on a drawn
+category, or a sentence in the spec, would close it. The spec has about 454 B of headroom and
+a new diagnostic moves `lint()` only for plans that write such a label.
+
+**Gate:** decision recorded in this entry first; then the chosen text is pinned by a test and
+`describe()`/`lint()` over the examples are byte-identical (verify that no example writes a
+label on a drawn symbol). **Size:** S.
+
+### U.5 · A parse error does not use what the spec already predicts — `todo`
+
+**Observed (audit finding 12, Appendix B).** `wall exterior id=w1 …` gives
+`E_PARSE Expected "thickness" but found "id"` plus a cascading `W_EMPTY_PLAN`. Spec rule 6 says
+`id=` comes first and names exactly this form as an error. The audit's agent could correct it
+only with that rule in context.
+
+**Hypothesis.** The wall parser (`src/elements/wall.ts:45-47`) eats the category word and then
+expects `thickness`; it never checks for a stray `id=`. The same shape exists for `furniture
+bed id=b1`, which rule 6 also lists. A targeted message ("`id=` goes before the category:
+`wall id=w1 exterior`") with a machine `fix` would close both. The `W_EMPTY_PLAN` that follows
+is a second symptom: it says nothing the parse error did not.
+
+**Gate:** both rule-6 forms return one `E_PARSE` whose `fix` is the reordered line under
+`arch compile - --json`; the cascade `W_EMPTY_PLAN` is suppressed when a parse error already
+explains it, or the entry says why not. **Size:** S.
+
+### U.6 · `uses balcony` does not point to `outdoor balcony` — `todo`
+
+**Observed (audit finding 12, Appendix B).** `room … uses balcony` returns an `E_PARSE` that
+lists the valid uses and gives no hint toward `outdoor balcony`.
+
+**Hypothesis.** The "Expected one or more room uses" message is built from `USE_KINDS` alone
+(`src/elements/room.ts:140-143`). A small map of near-miss words (`balcony`, `terrace`,
+`garden`) to the element that draws them would let the message name it.
+
+**Gate:** `uses balcony` yields a message that contains `outdoor balcony`, pinned by test;
+`arch compile --json` over the examples unchanged. **Size:** S.
+
+### U.7 · Two bedrooms are both typed `MasterRoom` in Plan JSON — `todo` (needs a decision)
+
+**Observed (audit finding 16).** Both bedrooms of the audit plan come out of the Plan JSON
+export typed `MasterRoom`.
+
+**Hypothesis.** `USE_TO_ROOM_TYPE` maps `bedroom` to `MasterRoom` and the mapping is
+documented as many-to-one (`src/plan-json.ts:90-97`; the inverse at `:144-150` folds
+`MasterRoom`, `ChildRoom`, `SecondRoom` and `GuestRoom` back to `bedroom`). The source has no
+way to say which bedroom is the master, so a consumer that reads the type reads an invented
+fact. Options: keep, and say so in the export's documentation; or take a name-based hint. A
+name-based guess would be a heuristic in a deterministic export and the entry leans against it.
+
+**Gate:** decision written here; if the export documents it, a test pins the sentence. If the
+mapping changes, every Plan JSON round-trip test and `--from-json` over the corpus stays
+identical on `describe()`. **Size:** S.
+
+### U.8 · `compile --json` returns a summary far heavier than a compile needs — `todo`
+
+**Observed (audit finding 14).** `compile --json` returns a 13.7 KB summary for a five-room
+plan; `arch context` is 107 KB (about 27k tokens); `spec.llm.md` is 29.5 KB with grammar lines
+up to about 5 KB each. (The stale "~50KB" figure for `context` is card A1, not this entry.)
+
+**Hypothesis.** The compile envelope carries the whole-plan `describe()` result beside the
+SVG (`src/cli/commands-render.ts:238-247` and `:303-312`), so an agent that only wants to know
+whether the compile worked pays for every room. `describe --select` already exists
+(`src/cli/commands-analyze.ts:240`), which suggests `compile --json` could omit the summary
+unless asked. The envelope is read by tools and tests; changing its default is a contract
+change and needs its own decision.
+
+**Gate:** `compile --json` on the audit plan is measured before and after with `wc -c`, the
+size is quoted, and every existing envelope test is updated deliberately. **Size:** S to M.
+
+### U.9 · No room shows its clear, face-to-face size — `todo`
+
+**Observed (audit, "What ArchLang lacks").** Dimension chains are axis, opening and overall; no
+room is annotated with its internal size. Bedroom 1 is drawn 12.6 m² and is 3450 × 3350 clear.
+
+**Hypothesis.** Card D1 adds the net area figure to `describe()` and the schedule; it does not
+draw a clear width and depth on the plan. This entry is the drawing half, an opt-in dims form.
+It is a drawing change, so it needs a byte-identity law and bounds that cover what it draws.
+
+**Gate:** an opt-in form draws clear sizes for rect rooms; plans not using it are
+byte-identical; `bounds()` and `drawCost` cover the text. **Size:** M. Wait for D1.
+
+### U.10 · The legend has one wall swatch and no wall types — `todo`
+
+**Observed (audit, "What ArchLang lacks").** The legend shows a single "poche" swatch. Exterior
+and partition walls are not told apart, and there are no build-up notes.
+
+**Hypothesis.** `wall <category>` already carries `exterior` or `interior` and a `material`
+(`src/elements/wall.ts:25`), so the data exists; the legend code does not read it. The legend
+generator was not located when filing; find it first. Adding a swatch per category used would
+move every sheet SVG, so it is a drawing change under the byte-identity rule.
+
+**Gate:** a plan with both wall categories lists both in the legend; `describe()` and `lint()`
+over the corpus unchanged; moved SVG rows re-pinned with the reason. **Size:** S to M.
+
+### U.11 · The scale bar is 0 to 1 m on a 10 m plan — `todo`
+
+**Observed (audit, "What ArchLang lacks").** The scale bar on the audit's 10.0 × 6.5 m sheet
+is only 0 to 1 m.
+
+**Hypothesis.** The length is `niceBarLength(refDim * SCALEBAR_TARGET_F)` over
+`NICE_LENGTHS = [500, 1000, 2000, 5000, …]` (`src/chrome-layout.ts:37,203`), so the target
+fraction is what makes a 1 m bar on a plan this size. Whether 1 m is wrong or just short is a
+taste call; the audit only noted it. Any change moves the sheet SVG for every plan with one.
+
+**Gate:** decision first; then re-pinned SVG rows with the reason, no `describe()` or
+`lint()` movement. **Size:** S.
+
+### U.12 · `finish` adds no worktop run to a kitchen — `todo`
+
+**Observed (audit, "What ArchLang lacks").** `finish` furnishes rooms but adds no kitchen
+worktop run, so a kitchen sheet shows appliances with nothing between them.
+
+**Hypothesis.** The furnish table has rows per use with `required` and `place: "wall"` items
+(`src/furnish.ts:69-102`) but no continuous-run item; a run is a different shape of placement
+from a single piece. ADR 0025 decision 2 (fill only empty rooms) still applies.
+
+**Gate:** on a bare kitchen, `arch finish --dry-run --json` lists the run and the result is
+lint-clean; byte-identity laws gain a row per example whose `finish` output moves. **Size:** M.
+
+### U.13 · The DXF is geometry only, beyond units and layers — `todo`
+
+**Observed (audit, "What ArchLang lacks").** The DXF has LINE, ARC and TEXT and no DIMENSION
+entities, blocks or hatches, so a CAD user gets no editable dimension and no door block.
+Units and layers are card D3 and are not repeated here.
+
+**Hypothesis.** The writer (`src/export/dxf.ts`) emits flat primitives, as `header` at `:230`
+suggests. DIMENSION and INSERT are larger than a header line and carry their own validity
+rules; a CAD round-trip (ezdxf or LibreCAD) is the only honest test.
+
+**Gate:** the DXF opens in ezdxf with the new entities and the SVG, `describe()` and `lint()`
+are unchanged; every DXF test updated with the reason. **Size:** M. Wait for D3.
+
+### U.14 · No `arch diff` verb, though `diffPlans` is exported — `todo`
+
+**Observed (engineering gap audit, row 26).** `diffPlans` is public (`src/index.ts:232`), and
+neither the CLI nor the MCP server exposes it, so a user cannot see what an edit changed.
+
+**Hypothesis.** The verb is a thin wrapper: read two sources, call `diffPlans`, print with
+`--json`. It lives under `src/cli/`, where Node APIs are allowed.
+
+**Gate:** `arch diff a.arch b.arch --json` prints the delta; a CLI test and the manifest
+drift gate (`gen:all`, `check:drift`) stay green. **Size:** S.
+
+### U.15 · No `arch doctor` — `todo`
+
+**Observed (engineering gap audit, row 25).** Nothing reports the optional dependencies
+(resvg, pdfkit), the CJK font, the installed version against npm latest, or the MCP shim
+version. The audit's agent met `--install` guidance that a local `npm i` had already made moot.
+
+**Hypothesis.** A read-only CLI verb. The network lookup of the latest version must be
+optional and off by default so the verb works offline.
+
+**Gate:** `arch doctor --json` reports each item on a clean install and on one without the
+optional dependencies. **Size:** S.
+
+### U.16 · `arch new` has one starter and cannot list templates — `todo`
+
+**Observed (engineering gap audit, row 10).** `arch new` writes the single `STARTER` string
+(`src/cli/commands-meta.ts:34`); there is no `--list` and no `--from <example>`.
+
+**Hypothesis.** Templates can be the authored examples, copied at run time, so no new plan is
+written by hand. The corpus holds mostly dwellings and museums; card D6 adds non-dwelling ones.
+
+**Gate:** `arch new --list --json` lists names; `arch new --from <example>` writes a file that
+compiles clean. **Size:** S.
+
+### U.17 · No report says how many diagnostics carry a machine fix — `todo`
+
+**Observed (engineering gap audit, row 24).** All 153 codes (101 errors, 52 warnings) carry a
+catalogue `fix` text; only about 30 produce a span edit (a grep estimate, not a measurement).
+No test prints the coverage, so the gap is not a number.
+
+**Hypothesis.** A test or script that walks the catalogue and the fix producers can print the
+count. The estimate is the first thing to replace.
+
+**Gate:** the script prints "N of M codes have a span edit" and a test fails if the count
+drops. **Size:** S.
+
+### U.18 · The playground PDF is raster and not to scale — `todo`
+
+**Observed (engineering gap audit, row 32).** The playground builds its PDF through jsPDF
+(`playground/src/actions.ts:206-216`), while the CLI writes a vector PDF at true scale.
+
+**Hypothesis.** The playground cannot load pdfkit; the core already produces the sheet SVG.
+Whether a vector path is worth the bundle is open.
+
+**Gate:** `npm run e2e:playground` covers the chosen behaviour; the playground bundle size
+before and after is quoted. **Size:** M.
+
 ## Registry listings (opened 2026-10-10)
 
 The state of each listing is the table in `docs/seo.md` § 8. These are what is still owed.
