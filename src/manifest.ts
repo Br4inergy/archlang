@@ -14,14 +14,10 @@ import { PNG_PREVIEW_WIDTH } from "./backends/png-defaults.js";
 import { CONTEXT_BUNDLE_KB } from "./context-size.js";
 import { KEYWORDS } from "./grammar/tokens.js";
 
-/**
- * The command name every help line, example and doc writes. `package.json` installs two bins,
- * `archlang` and `arch`, for the same `dist/cli.js`; `arch` stays as an alias, but coreutils ships
- * an `arch` on Linux, macOS and Git Bash, so a bare `arch context` there runs the wrong program.
- * Without a global install the call is `npx -y @chanmeng666/archlang <cmd>` (the unscoped npm name
- * `archlang` belongs to another publisher).
- */
-export const CLI_NAME = "archlang";
+// The command name lives in a leaf module so diagnostics can name it without importing this
+// file (which imports `lint.ts`); re-exported here for every existing importer.
+import { CLI_NAME } from "./command-name.js";
+export { CLI_NAME };
 
 /**
  * The export formats the CLI can emit — the single source for `-f` validation

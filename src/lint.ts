@@ -20,6 +20,7 @@ import { buildingRoomReach, DEFAULT_TOL, resolvePlan, storeyGrounded } from "./a
 import type { ResolvedLevel, ResolvedPlan } from "./ir.js";
 import type { Diagnostic, Span } from "./diagnostics.js";
 import { type BuildingContext, buildLintContext } from "./lint/context.js";
+import { MAX_ATTRIBUTION_MEASURES } from "./lint/rules/circulation-facts.js";
 import { ONCE_PER_PLACEMENT_CODES } from "./lint/rules/dims.js";
 import { LINT_RULES } from "./lint/rules/index.js";
 import { DEFAULT_RULESET, LINT_PROFILES, type LintOptions, type LintRuleset } from "./lint/ruleset.js";
@@ -189,12 +190,15 @@ function buildingContexts(levels: readonly ResolvedLevel[], tolMm: number): Map<
   const reach = verticalReach(inputs, grounded, roomReach);
   const runs = arrivalRuns(inputs, grounded, roomReach);
   const out = new Map<number, BuildingContext>();
+  // One re-measure budget for the whole building, not one per storey.
+  const attributionMeasures = { left: MAX_ATTRIBUTION_MEASURES, storeys: levels.length };
   for (const l of levels) {
     out.set(l.level, {
       multiStorey: true,
       verticalPeerIds: peerIds,
       arrivalRooms: reach.arrivalRooms.get(l.level) ?? [],
       arrivalShafts: runs.get(l.level) ?? [],
+      attributionMeasures,
     });
   }
   return out;

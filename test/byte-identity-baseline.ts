@@ -45,6 +45,11 @@
  *   1. the compiler changed — the SVG moves too, or a non-`span` field moves. Investigate.
  *   2. a shipped example's SOURCE BYTES moved above a diagnostic. The SVG is byte-identical
  *      and the ONLY delta is a uniform shift of every span by the byte count added.
+ *   3. a deliberate change to a diagnostic's TEXT — the `message`/`hints` an agent reads to
+ *      repair the plan, or a duplicate report of one defect withdrawn. Every storey's SVG,
+ *      `describe()` and `compile().diagnostics` are byte-identical, and putting the OLD
+ *      `lint()` back into the NEW payload reproduces the old hash; only the rows of plans that
+ *      raise a re-worded code move, each named with its reason in the commit and below.
  *
  * Check (2) by diffing the two `lint()` payloads field by field; if the shift is not uniform, it is case (1) wearing case
  * (2)'s clothes. Only `hillside-villa` was affected here, because it is the one example
@@ -799,6 +804,29 @@
  * commit (the review fixes: NOTES wrap to a fixed column, tags avoid neighbouring openings)
  * re-measured that whole-surface row once more — its first note now draws on two lines — and
  * the SUMMARY row held again (`a26a55ae…`). Still no other row moved.
+ *
+ * ## `hillside-villa`: both rows re-measured — `W_PATH_TOO_NARROW` names the door, once
+ *
+ * Case (3), a diagnostic-text change, in `lint()` only (`test/lint-fix-texts.test.ts`). When
+ * doors set a room's bottleneck, the message names every door on its widest door path that is
+ * exactly that narrow and the hint gives the `width` that clears the minimum for each; one
+ * bottleneck opening is reported once. Field by field, on level 2: the three "Ensuite" walks
+ * gain `— the bottleneck is door …` naming `d_en2_corr`, `d_en3_corr` and `d_enm` (the doors
+ * off the landing and the Master Suite; each 700 mm, 640 clear), and their hints become
+ * "Widen door … to `width 800`" (on `grid 100`); the route "Master Suite" → "Ensuite" (span
+ * 13174, 640 mm, through `d_enm`, already named) is withdrawn. "Bedroom 2"/"Bedroom 3" (640 mm
+ * behind 900 mm doors: furniture, so no door is named) and both `W_ROOM_NOT_EQUATOR_FACING`
+ * are byte-identical. `lint()` 8 → 7 diagnostics. Measured twice: first when the room's own
+ * widest connector was the test (`d_en2` and `d_en2_corr` both named), then again when the
+ * red team showed doors in series name the wrong door and the test became the widest door path
+ * from the entrance (one canonical path, so one door per en-suite), and a third time when every
+ * attribution became re-measured before it is quoted (the three named doors held; only their
+ * hints changed, "which lets the walk clear the 700 mm minimum"). Each time, hashing the NEW
+ * compile + `describe()` with the PREVIOUS `lint()` reproduced the previous rows (and
+ * `while-byte-identity-baseline.ts`'s). Swept over 282 corpus plans (every storey; SVG,
+ * `describe()`, diagnostics, both `lint()` profiles): no SVG, `describe()` or diagnostics
+ * payload moved, and every `lint()` move was a carded text, `arch repair` → `archlang repair`
+ * in a door hint, or a withdrawn duplicate `W_PATH_TOO_NARROW`; none other in this table.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -814,7 +842,7 @@ export const BASELINE: [string, string][] = [
   ["garden-house", "ade0cdc23758924a0dbc9fec12e549ea826bb874ce8ed94e7b8e2ce26bc25af7"], // re-measured, see header
   ["garden-loft", "bcbf52e5d8b7875906721d8367552e463d642428516530d733c8b9feb29c2f9f"],
   ["hexagon-pavilion", "22030edea2fcaddfdc5d94d776849a8065bd287196664967e3f415285b0458cc"],
-  ["hillside-villa", "42682351711edca91747acfeb3ecfb4a36c87e6e06d88c8f1889d044b1d5b6c4"], // re-measured, see header
+  ["hillside-villa", "d76d1903df60d8d2f64e2172724a1e3bc9beb00f6e711fa6339398466fb0fa35"], // re-measured, see header
   ["imports", "3490c17b19f31dfc3a82ce20a2218a4e8f48f0fd979a2c88f23e6a7ddfd75b00"],
   ["laneway-house", "f9c3b29a51508234ab6f8426be062f3087f482cfa2b124ba75fdab150b4d18bc"],
   ["library", "51d1c1a151192315fa19c2fa526ca9192ce84abdd9e6084c4dff4d30aed1c086"],
@@ -859,7 +887,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["garden-house", "89466ed2864b0161919158114a71bef855bb6ad9b50157992eed30290a943e3f"], // re-measured, see header
   ["garden-loft", "ad8935f435045684b7ed9975254dc2daf0357f4eb3735e514e319980ebecf793"],
   ["hexagon-pavilion", "9a3e3666e6e2b09d04a6239c984415ec92ffa487c8aa743fc8506f4bc0f97a61"],
-  ["hillside-villa", "a1a2580d09e7f798019f76a2896c74c2fa1a1d4c3354acd00189f541b5ed01e8"], // re-measured, see header
+  ["hillside-villa", "177115fac26d0d07b0711b5140526a53cb4296b69462f98d95ab6997b38e6524"], // re-measured, see header
   ["imports", "5c75030d46ecbfc8b1e80b40945d17bd13afb68a813a286b9ddfe23252452cbc"],
   ["laneway-house", "9a173beb7f213286b8e0c117d829d126166b93e118f91894ba278005254a5255"],
   ["library", "f81107388c6547af37b0938ecc06a1f3ab3acbe69916edb7b0c9c76a4c9f3477"],

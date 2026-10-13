@@ -20,10 +20,12 @@ import {
   roomAreaMm2,
 } from "../../analyze.js";
 import type { Diagnostic } from "../../diagnostics.js";
-import { zoneFixtureCategories } from "../../fixtures-catalog.js";
+import { defaultFootprint, zoneFixtureCategories } from "../../fixtures-catalog.js";
+import { fmt2 } from "../../num-format.js";
 import { mm, shortfall } from "../measure.js";
 import type { RRoom } from "../../ir.js";
 import type { LintContext, LintRule } from "../context.js";
+import { pasteFixture } from "../fixture-paste.js";
 
 /** Furniture categories that count as a plumbing fixture for a wet room — derived
  *  from the catalog's `zones` data (single source; membership drift-tested). */
@@ -49,6 +51,32 @@ const CAR_BAY_WIDTH_MM = 2700;
 
 /** Categories that occupy a parking bay. A bicycle or a motorcycle does not. */
 const PARKED_CATEGORIES: ReadonlySet<string> = new Set(["car"]);
+
+/**
+ * The `W_ROOM_NO_FIXTURE` remedy: the fixture categories are built in (no import), and the
+ * example is ONE statement placed from the room's own shape and checked clear of its walls,
+ * doors and furniture before it is quoted ({@link pasteFixture}). A room with no clear wall
+ * run gets the categories and the footprint instead of a statement that would trade this
+ * warning for another.
+ */
+function noFixtureHint(ctx: LintContext, r: RRoom, isWet: boolean): string {
+  const [cat, others] = isWet
+    ? ["wc", "a `basin`, `shower` or `bathtub`"]
+    : ["kitchen_sink", "a `counter`, `stove` or `fridge`"];
+  const fp = defaultFootprint(cat)!;
+  const paste = pasteFixture(ctx, r, cat, fp.along, fp.depth);
+  if ("stmt" in paste)
+    return `Place a built-in fixture in it (nothing to import) — e.g. \`${paste.stmt}\`, or ${others}.`;
+  const why =
+    paste.failure === "grid"
+      ? `the plan's \`grid ${fmt2(ctx.ir.grid)}\` snaps that footprint away, so use a finer grid`
+      : paste.failure === "grid-offset"
+        ? `the plan's \`grid ${fmt2(ctx.ir.grid)}\` snaps an \`at (x,y)\` placement off the wall face here, so use a finer grid or a rectangular room with \`anchor … flush\``
+        : paste.failure === "no-wall"
+          ? "it has no straight wall running square to the page for one to back onto, so give it one or place the fixture with `at (x,y)` and `rotate`"
+          : "no wall of it has a run clear of its doors and furniture for one, so make room first";
+  return `Place a built-in fixture in it (nothing to import) — a \`${cat}\` (${fmt2(fp.along)} along a wall, ${fmt2(fp.depth)} deep), or ${others}; ${why}.`;
+}
 
 export const perRoomRules: LintRule = {
   name: "per-room",
@@ -133,9 +161,7 @@ export const perRoomRules: LintRule = {
             code: "W_ROOM_NO_FIXTURE",
             ...at(r),
             message: `${isWet ? "Bathroom" : "Kitchen"} "${labelOf(r)}" has no ${isWet ? "fixtures (WC, basin, shower…)" : "fixtures (sink, counter, stove…)"}.`,
-            hints: [
-              `Add the expected fixtures — e.g. import \`lib/fixtures.arch\` and place a ${isWet ? "`wc`, `basin`, or `shower`" : "`kitchen_sink` and `counter`"}.`,
-            ],
+            hints: [noFixtureHint(ctx, r, isWet)],
           });
         }
       }

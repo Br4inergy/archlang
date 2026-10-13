@@ -11,7 +11,7 @@
  *
  * Gating mirrors judge v2: room count / existence / area / total-area / windows gate
  * (a real deliverable miss); adjacency and reachability score as subscores but never
- * gate — one-shot topology is what the LOOP tools (`arch fix`/`suggest`/`validate
+ * gate — one-shot topology is what the LOOP tools (`archlang fix`/`suggest`/`validate
  * --graph`) address, not one-shot generation. Whether a diagnostic feedback loop beats
  * equal-budget resampling is an open question; nothing here decides it.
  *
@@ -1002,7 +1002,7 @@ export const INTENT_JSON_SCHEMA = {
       additionalProperties: false,
       required: ["requiredEdges", "source"],
       description:
-        "Interior-door adjacency the brief licenses. ADVISORY tier: each edge scores as a subscore but NEVER gates (a one-shot topology miss is what the loop tools — `arch fix`/`suggest`/`validate --graph` — address, not a hard fail). Assert only where the brief's words license it.",
+        "Interior-door adjacency the brief licenses. ADVISORY tier: each edge scores as a subscore but NEVER gates (a one-shot topology miss is what the loop tools — `archlang fix`/`suggest`/`validate --graph` — address, not a hard fail). Assert only where the brief's words license it.",
       properties: {
         requiredEdges: {
           type: "object",

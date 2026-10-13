@@ -287,9 +287,13 @@ describe("a storey reached only by a stair is walked from the landing", () => {
     door id=db on hw at 3000 width 700 swing into box
     stair id=st at (200,1000) size 1000x3000 dir down`);
     const narrow = lint(src).filter((d) => d.code === "W_PATH_TOO_NARROW");
-    // A 700 mm door's modeled clear width is 640 mm (the 60 mm leaf allowance).
+    // A 700 mm door's modeled clear width is 640 mm (the 60 mm leaf allowance), and it is the
+    // box room's only way in, so the message names it.
     expect(narrow.map((d) => [d.level, d.message])).toEqual([
-      [2, 'The walk from the entrance to "Box room" squeezes to 640 mm (60 mm below the 700 mm minimum).'],
+      [
+        2,
+        'The walk from the entrance to "Box room" squeezes to 640 mm (60 mm below the 700 mm minimum) — the bottleneck is door "db", 640 mm clear.',
+      ],
     ]);
     expect(level(src, 2).circulation?.rooms.find((r) => r.roomId === "box")?.bottleneckClearWidthMm).toBe(640);
   });
