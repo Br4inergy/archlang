@@ -1,0 +1,28 @@
+// The hosted ArchLang MCP server — the ONE Worker in this repository with a `main` script
+// (docs/adr/0026-hosted-mcp-worker.md). The two site Workers (docs-site/, playground/) stay
+// static assets with no script; nothing here touches them.
+//
+// No `routes` and no `account_id` on purpose: the owner attaches `mcp.archlang.uk` by hand once
+// the workers.dev measurement is in, and CI supplies the account through CLOUDFLARE_ACCOUNT_ID.
+{
+  "name": "archlang-mcp",
+  // Bundled by scripts/build.mjs (the core, the MCP SDK, the viewer and the five resources in
+  // one module), so wrangler uploads it as-is.
+  "main": "dist/worker.js",
+  "no_bundle": true,
+  // dist/viewer.html is a build by-product kept for inspection; the Worker already inlines it.
+  "find_additional_modules": false,
+  // The newest date the pinned wrangler (4.108.0, workerd 1.20260706) runs locally, so
+  // `wrangler dev` and the deployed Worker execute under the same flags.
+  "compatibility_date": "2026-07-06",
+  // `link` mints share URLs with the same zlib encoder `archlang link` uses (node:zlib).
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  // One data point per MCP call: the method and the tool name, nothing else (src/worker.ts).
+  "analytics_engine_datasets": [{ "binding": "ANALYTICS", "dataset": "archlang_mcp" }],
+  // No Workers Logs and no source maps: a /svg/ URL path IS a plan, so request logging would
+  // record plans. The Worker itself logs nothing.
+  "observability": { "enabled": false },
+  "upload_source_maps": false
+}
