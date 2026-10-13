@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { b64urlToBytes, bytesToB64url, encodeSrc, srcFromHash } from "../src/share.js";
+import { supportsDeflateRaw } from "./helpers.js";
 
 const SRC = `plan "X" {\n  units mm\n  room at (0,0) size 4000x3000 label "Room ünïcode ✓"\n}`;
 
@@ -20,18 +21,8 @@ describe("share codec", () => {
   });
 
   it("encodes to the compressed #z= form when deflate-raw compression is available", async () => {
-    // Probe the ACTUAL capability encodeSrc uses: Node 18 has a global
-    // CompressionStream but no "deflate-raw" support (added in Node 21.2), in
-    // which case encodeSrc correctly falls back to the raw #src= form.
-    const supportsDeflateRaw = (() => {
-      if (typeof CompressionStream === "undefined") return false;
-      try {
-        new CompressionStream("deflate-raw");
-        return true;
-      } catch {
-        return false;
-      }
-    })();
+    // Probe the ACTUAL capability encodeSrc uses (`supportsDeflateRaw`, helpers.ts):
+    // without it encodeSrc correctly falls back to the raw #src= form.
     const hash = await encodeSrc(SRC);
     if (supportsDeflateRaw) expect(hash.startsWith("#z=")).toBe(true);
     else expect(hash.startsWith("#src=")).toBe(true);

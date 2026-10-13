@@ -294,6 +294,15 @@ export const EXAMPLES: Record<string, string> = Object.fromEntries(
   EXAMPLE_GROUPS.flatMap((g) => g.items.map((i) => [i.label, i.source])),
 );
 
+/** The `examples/` basename whose source is exactly `src`, if `src` is an unedited preset. */
+export function exampleNameFor(src: string): string | undefined {
+  // The editor holds `\n` line ends whatever the checkout's were, so compare on those.
+  const lf = (s: string) => s.replace(/\r\n?/g, "\n");
+  const want = lf(src);
+  for (const [name] of EXAMPLE_ROWS) if (lf(SOURCES[name] ?? "") === want) return name;
+  return undefined;
+}
+
 /** The preset a first, unshared, unsaved visit loads: the table's first row. */
 export const DEFAULT_EXAMPLE: string = EXAMPLE_ROWS[0][1];
 

@@ -27,6 +27,9 @@ body {
    controls — the drafting title block, not a strip of pills. */
 header {
   display: flex;
+  /* A fallback, not the layout: at ≥1280px the cells fit one row (the compaction
+     below sees to it); narrower, they wrap instead of scrolling the page sideways. */
+  flex-wrap: wrap;
   align-items: stretch;
   background: var(--src-bg);
   color: var(--src-fg);
@@ -534,12 +537,26 @@ main {
   }
 }
 
+/* <1440px: tighter cells and no "Playground" stamp (the page's H1 says it), so the
+   whole title block still fits one row at 1280px. */
+@media (max-width: 1439px) {
+  .tb-cell {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+  .tb-controls select,
+  .tb-controls button,
+  .tb-ai > summary {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .tb-brand .badge {
+    display: none;
+  }
+}
+
 /* <760px: title-block cells wrap; panes stack; the seam becomes a hairline. */
 @media (max-width: 760px) {
-  header {
-    flex-wrap: wrap;
-    align-items: stretch;
-  }
   .tb-cell {
     border-bottom: 1px solid var(--src-border);
   }
@@ -580,4 +597,78 @@ main {
 }
 .tb-check:hover {
   border-color: var(--plum-deep);
+}
+
+/* "Open in AI" disclosure — a header control that opens a small panel holding the
+   privacy note and the two chat-host links. The summary matches the buttons. */
+.tb-ai {
+  position: relative;
+}
+.tb-ai > summary {
+  list-style: none;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  line-height: 1.2;
+  padding: 5px 10px;
+  border: 1px solid var(--src-rule);
+  border-radius: 3px;
+  background: var(--src-surface);
+  color: var(--src-fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tb-ai > summary::-webkit-details-marker {
+  display: none;
+}
+.tb-ai > summary:hover {
+  border-color: var(--plum);
+  background: color-mix(in srgb, var(--plum) 8%, var(--src-surface));
+}
+.tb-ai > summary:focus-visible {
+  outline: 2px solid var(--plum-deep);
+  outline-offset: 1px;
+}
+.tb-ai-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: min(300px, calc(100vw - 32px));
+  padding: 8px;
+  background: var(--src-surface);
+  border: 1px solid var(--src-rule);
+  border-radius: 3px;
+  box-shadow: 0 8px 24px rgb(28 36 48 / 18%);
+}
+.tb-ai-note {
+  margin: 0 0 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--src-muted);
+  white-space: normal;
+}
+.tb-ai-panel a {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--src-fg);
+  text-decoration: none;
+  padding: 6px 8px;
+  border-radius: 2px;
+}
+.tb-ai-panel a:hover {
+  background: color-mix(in srgb, var(--plum) 8%, transparent);
+}
+.tb-ai-panel a:focus-visible {
+  outline: 2px solid var(--plum-deep);
+  outline-offset: 1px;
+}
+@media (max-width: 760px) {
+  .tb-ai-panel {
+    right: auto;
+    left: 0;
+  }
 }

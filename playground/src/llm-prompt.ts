@@ -84,3 +84,61 @@ export function buildLlmPrompt({ source, facts, diagnostics }: LlmPromptInput): 
     "Full language spec: run `npx @chanmeng666/archlang spec` or see https://archlang.uk/spec",
   ].join("\n");
 }
+
+/** The chat hosts the "Open in …" links target, each prefilled through its `q` parameter. */
+export const CHAT_HOSTS = {
+  claude: { name: "Claude", base: "https://claude.ai/new" },
+  chatgpt: { name: "ChatGPT", base: "https://chatgpt.com/" },
+} as const;
+export type ChatHost = keyof typeof CHAT_HOSTS;
+
+/** True when `s` names one of {@link CHAT_HOSTS} (the links carry it as `data-chat-host`). */
+export function isChatHost(s: string | undefined): s is ChatHost {
+  return s !== undefined && Object.hasOwn(CHAT_HOSTS, s);
+}
+
+/**
+ * The longest prefilled chat URL a link will carry. Past it the full Copy-for-LLM
+ * prompt is copied instead and the link opens the host empty.
+ *
+ * AN UNMEASURED GUESS: no limit was measured against claude.ai or chatgpt.com, nor
+ * against the proxies in front of them; neither host documents one. It is a round
+ * figure under common request-line limits. The plan already travels compressed (the
+ * share link's `#z=` IS the deflate-raw + base64url payload), so the one lever left is
+ * the prompt's own words, kept short enough that every bundled example — the largest
+ * being Hillside Villa, the plan a first visit loads — fits with 80 characters to
+ * spare for another zlib build (`playground/test/llm-prompt.test.ts` holds that).
+ */
+export const MAX_CHAT_URL = 8000;
+
+/**
+ * The short prompt the "Open in Claude / ChatGPT" links prefill: the plan's share
+ * link, then one clause saying what `z` is and a Python expression that decodes it.
+ * `#z=` is unpadded base64url of raw DEFLATE of the `.arch` UTF-8 (`encodeSrc`,
+ * `share.ts` — so zlib's `wbits` is -15); `#src=` (a browser without
+ * CompressionStream) is unpadded base64url of the UTF-8. Python ignores surplus "="
+ * but rejects missing ones, so a flat "==" restores any padding. Every character is
+ * paid for in the URL cap (a space costs 3): the spec pointer did not survive (the
+ * link's own domain leads to it). The expression keeps its `.decode()` — without it a
+ * reader gets a bytes repr, every non-ASCII character a hex escape.
+ */
+export function buildChatPrompt(shareUrl: string): string {
+  const recipe = /[#&]src=/.test(shareUrl)
+    ? "s=b64url(.arch): base64.urlsafe_b64decode(s+'==').decode()"
+    : "z=b64url(deflate-raw(.arch)): zlib.decompress(base64.urlsafe_b64decode(z+'=='),-15).decode()";
+  return [`ArchLang floor plan: ${shareUrl}`, recipe].join("\n");
+}
+
+/**
+ * The URL that opens `host` with `prompt` prefilled. When that URL would pass
+ * `max` characters, `fits` is false and `url` is the bare host: the caller copies
+ * the prompt for the user to paste. Carries no tracking parameter.
+ *
+ * UNVERIFIED: that `?q=` prefills (or, on ChatGPT, submits) the prompt has not been
+ * checked on either host; the e2e suite stubs both hosts and reads only the URL.
+ */
+export function chatHostUrl(host: ChatHost, prompt: string, max = MAX_CHAT_URL): { url: string; fits: boolean } {
+  const { base } = CHAT_HOSTS[host];
+  const url = `${base}?q=${encodeURIComponent(prompt)}`;
+  return url.length <= max ? { url, fits: true } : { url: base, fits: false };
+}

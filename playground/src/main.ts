@@ -14,12 +14,13 @@ import {
   type LintOptions,
   type RoomSummary,
 } from "archlang";
+import { isolateHistory } from "@codemirror/commands";
 import type { EditorView } from "@codemirror/view";
 import { createEditor } from "./editor-setup.js";
 import { createPreview } from "./preview.js";
 import { selectPage } from "./levels.js";
 import { mountLevelSwitcher } from "./level-switcher.js";
-import { mountActions } from "./actions.js";
+import { type ActionsHandle, mountActions } from "./actions.js";
 import { renderFacts } from "./facts-strip.js";
 import { renderDescribe } from "./describe-panel.js";
 import { renderLint } from "./lint-panel.js";
@@ -65,6 +66,7 @@ const formatBtn = document.getElementById("formatSrc") as HTMLButtonElement | nu
 const embedBtn = document.getElementById("embed");
 const repairBtn = document.getElementById("repair");
 const repairPanel = document.getElementById("repairPanel");
+const finishPanel = document.getElementById("finishPanel");
 const suggestBtn = document.getElementById("suggest");
 const suggestPanel = document.getElementById("suggestPanel");
 const intentEl = document.getElementById("intent")!;
@@ -187,7 +189,12 @@ function loadSource(src: string, refit = true) {
   // A wholesale document replacement is a new plan as far as the storey switcher is
   // concerned — its level numbers may mean nothing here. Back to the lowest storey.
   selectedLevel = null;
-  view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: src } });
+  // Its own undo step: one Ctrl+Z reverts exactly this replacement (Format, Repair,
+  // Finish, an applied fix), never merged with the typing just before or after it.
+  view.dispatch({
+    changes: { from: 0, to: view.state.doc.length, insert: src },
+    annotations: isolateHistory.of("full"),
+  });
   render(src, refit);
 }
 
@@ -344,7 +351,13 @@ function render(source: string, refit = false) {
 }
 
 let debounce: ReturnType<typeof setTimeout>;
+/** Set once the header actions mount; told of every document change. */
+let actions: ActionsHandle | undefined;
 const onDocChanged = (source: string) => {
+  // The Finish log describes the document it ran on; any later change (an edit, an
+  // undo, a new example) makes it stale. Finish re-shows it after its own edit.
+  if (finishPanel) finishPanel.hidden = true;
+  actions?.sourceChanged();
   clearTimeout(debounce);
   debounce = setTimeout(() => {
     render(source);
@@ -410,7 +423,7 @@ async function init() {
 
   // Header/panel action buttons: format, repair, embed, copy link, snapshots,
   // download, and the pane divider.
-  mountActions({
+  actions = mountActions({
     getSource: currentSource,
     loadSource,
     flash,
@@ -418,8 +431,14 @@ async function init() {
     getScene: () => lastScene,
     getLevel: () => activeLevel,
     onExportError,
+    showLintTab: () => document.getElementById("tab-lint")?.click(),
+    getThemeOverride: () => themeSelect.value,
     els: {
       formatBtn,
+      finishBtn: document.getElementById("finishSrc") as HTMLButtonElement | null,
+      finishPanel,
+      chatMenu: document.getElementById("chatMenu") as HTMLDetailsElement | null,
+      chatLinks: [...document.querySelectorAll<HTMLAnchorElement>("a[data-chat-host]")],
       repairBtn,
       repairPanel,
       embedBtn,
