@@ -18,13 +18,13 @@ be placed absolutely or **relative to one another** (`right-of` / `below` / …)
 classified by what they're for (`uses bedroom`), and furnished with fixtures that
 draw real plan symbols — placed by coordinate or snapped **`against`** a wall.
 Plans can `import` components from other modules, select named **themes**, and be
-formatted with `arch fmt`.
+formatted with `archlang fmt`.
 
-Beyond rendering, ArchLang **reads back** what you wrote: `arch describe` returns
+Beyond rendering, ArchLang **reads back** what you wrote: `archlang describe` returns
 the rooms, areas, adjacencies, a modelled **access graph** (what connects to what,
 and how far each room is from the entrance), and **human-circulation** facts (how
 far you walk to each room, the narrowest pinch on the way, and how circuitous the
-route is); `arch lint` flags habitability problems against advisory profiles. Both
+route is); `archlang lint` flags habitability problems against advisory profiles. Both
 are pure, text-only, and image-free — see [Analysis: describe & lint](analysis.md).
 
 This reference tracks the current language; for the exact version and per-release
@@ -160,7 +160,7 @@ It is a **plan-level setting that draws nothing** and changes no geometry: a pla
 `site` block renders byte-for-byte like the same plan without one. What it buys is a
 vocabulary. `street` is a *true compass* direction, so it is read **with** `north`, never
 instead of it, and it gives five directions a name — every one of them a compass letter,
-reported on `arch describe --json` under `site`:
+reported on `archlang describe --json` under `site`:
 
 | Name | Value | Reads `hemisphere`? |
 |------|-------|---------------------|
@@ -198,7 +198,7 @@ Rules, all of them refusals rather than defaults:
   because two axis lists append; two `street` values contradict.
 - **Plan level only**, and like `north`, an **imported** module's `site` is ignored — one
   drawing is issued at one orientation, so an imported wing cannot re-orient the building.
-- `arch fmt` prints it immediately after `north`, with both fields.
+- `archlang fmt` prints it immediately after `north`, with both fields.
 
 #### The lot line — `boundary` (v1.31)
 
@@ -252,7 +252,7 @@ plan "Flat 2B" {
 - `accDescr "<text>"` — a one-sentence description of the drawing.
 
 They exist for the accessible SVG (`compile(src, { accessible: true })` /
-`arch compile --accessible` — see [Compilation result](#compilation-result)): in that
+`archlang compile --accessible` — see [Compilation result](#compilation-result)): in that
 mode `accTitle` overrides the plan name in the SVG `<title>`, and `accDescr` overrides the
 auto-derived one-sentence caption (`describe().caption`, see [Analysis](analysis.md)) in the
 SVG `<desc>`. **They have no effect on the default (non-accessible) output** — it stays
@@ -262,7 +262,7 @@ byte-identical whether or not they are present; this is metadata only, never geo
   block is [`E_ACC_PLACEMENT`](error-codes.md).
 - Repeating either at plan level is [`W_DUP_ACC_METADATA`](error-codes.md) (a warning; the
   **last** value wins).
-- `arch fmt` prints and preserves both.
+- `archlang fmt` prints and preserves both.
 
 See [`examples/accessible.arch`](../examples/accessible.arch).
 
@@ -431,7 +431,7 @@ on — that a `let` names a value, substitutable wherever it is used — so it i
 version. It still parses, compiles and renders exactly as before. A
 reassignment inside a `while` body does not raise this on its own — see
 [Control flow](#control-flow) for that loop's own warning and, for the
-canonical counted-loop shape, a `for`-over-a-range rewrite `arch fix` can
+canonical counted-loop shape, a `for`-over-a-range rewrite `archlang fix` can
 prove sound (against this file's own expansion) and apply for you.
 
 ### Functions
@@ -522,7 +522,7 @@ furniture id=desk desk in west.main centered size 1600x800
 ```
 
 ```bash
-arch describe museum.arch --room west.main --json
+archlang describe museum.arch --room west.main --json
 ```
 
 A dotted name in a **declaration** position (`room id=west.main`, `let west.x`,
@@ -571,7 +571,7 @@ composed facade, and the positioning axes pick up instance openings.
 
 **An instance is implicitly a [zone](#zones--wings-and-departments-v122)**, named
 after the instance. Composing by wing therefore *gives* you the grouping:
-`describe().zones`, `arch describe --zone west` and the grouped room schedule all
+`describe().zones`, `archlang describe --zone west` and the grouped room schedule all
 work with no `zone` declaration. (An explicit `zone` around a `place` still nests
 — but note the zone path and the id namespace are separate: wrapping a `place` in
 `zone north` makes the zone `north.west` while the rooms stay `west.*`, because a
@@ -652,7 +652,7 @@ exactly as the same component written inline beside a `let W = 5000` would.
 
 **A diagnostic raised inside an imported body names its file.** Its `span` is
 measured in *that* module, so `Diagnostic.file` says which one, and
-`arch fix` **refuses** to apply a fix whose edits belong to another file — it
+`archlang fix` **refuses** to apply a fix whose edits belong to another file — it
 tells you where the real edit goes instead of splicing foreign byte offsets into
 the importer.
 
@@ -716,7 +716,7 @@ make progress, and `for x in a..b` covers every counted loop `while` is used
 for. It still parses, compiles and renders exactly as before — `compile()`
 never offers a fix for it. The canonical shape above — `let i = 0`
 immediately before `while i < COUNT { …; i = i + 1 }`, with no other
-reassignment in the body — has a fix **`arch fix` proves and applies**,
+reassignment in the body — has a fix **`archlang fix` proves and applies**,
 rewriting it to the equivalent, and equally shorter, range form:
 
 ```
@@ -731,15 +731,15 @@ calls a component reading or writing `i`, that never actually ran (inside a
 component this file never instantiates, or a dead `if` branch), or a loop
 already at `while`'s 10,000-iteration cap, is left as a warning with no fix.
 A proven fix at plan level is `machine-applicable`; one inside a `component`
-is `maybe-incorrect` and needs `arch fix --unsafe`, since the proof cannot
+is `maybe-incorrect` and needs `archlang fix --unsafe`, since the proof cannot
 see how an IMPORTER instantiates it. Anything that does not fit the shape at
 all (a decrementing counter, a second reassignment, a condition other than
 `<`) needs a hand rewrite.
 
-### Re-roll repetition into a loop — `arch reroll`
+### Re-roll repetition into a loop — `archlang reroll`
 
 Three units written out by hand, at x = 0, 4000, 8000, is exactly what a `for`
-loop already expresses — and `arch reroll` finds the repetition and offers the
+loop already expresses — and `archlang reroll` finds the repetition and offers the
 loop, proven equivalent (twin-compiled: no new diagnostic, byte-identical SVG on
 every storey, matching `describe()`/`lint()`) before it is ever suggested. It
 never rewrites silently (ADR 0005) — run it, review the suggestion, then apply.
@@ -750,7 +750,7 @@ room at (4000, 0) size 4000x5000 label "Studio"
 room at (8000, 0) size 4000x5000 label "Studio"
 ```
 
-`arch reroll plan.arch` offers:
+`archlang reroll plan.arch` offers:
 
 ```arch static
 for i in 0..3 {
@@ -765,15 +765,15 @@ arithmetic progression (`vals[0] + j*d === vals[j]`, not merely equal once
 rounded for display — everything else, including a label string, must match
 exactly, and no `#` comment may fall inside the run or trail its last
 statement) and none carries an explicit `id=` (an id can't be generated inside
-a loop). `arch reroll plan.arch --json` prints each candidate as
+a loop). `archlang reroll plan.arch --json` prints each candidate as
 `{ span, replacement, count, loopVar, tokensBefore, tokensAfter }`; `--write`
 applies every non-overlapping suggestion and re-verifies the COMBINED result's
 compiled SVG is byte-identical to the original before writing — `{ ok, wrote,
-target, applied, skipped }`, the same `wrote`/`target` names `arch fix` uses.
+target, applied, skipped }`, the same `wrote`/`target` names `archlang fix` uses.
 There is no `--dry-run`/`--backup`: every suggestion is already proven
 byte-for-byte equivalent before it is offered, so a failed re-verify simply
 writes nothing.
-See `arch help reroll`.
+See `archlang help reroll`.
 
 ## Built-in functions
 
@@ -981,8 +981,8 @@ See [Analysis](analysis.md) for the measured facts and their limits.
 
 One rule keeps its rectangle: the fixture-orientation warning `W_FIXTURE_BACK_TO_ROOM`
 does not fire inside a polygon room, because "which edge is the back?" has no answer where
-the room has no north/south/east/west sides. `arch repair` likewise declines to push a
-piece into a polygon room and says so in its `unresolved` list, and `arch suggest` offers
+the room has no north/south/east/west sides. `archlang repair` likewise declines to push a
+piece into a polygon room and says so in its `unresolved` list, and `archlang suggest` offers
 no door/window candidate *on* a polygon room rather than propose one on an edge the room
 does not have.
 
@@ -1377,7 +1377,7 @@ A piece of furniture or a built-in fixture. Every **catalogued** kind draws a re
 plan symbol — a WC with a cistern, a bed with a headboard, a wardrobe with its hanging
 rail and hangers — and ignores any `label`. Any other kind falls back to a schematic
 **labelled rectangle**, which is the escape hatch for something ArchLang has no
-symbol for. The catalogue is `arch manifest --json`'s `fixtureCategories`, and every
+symbol for. The catalogue is `archlang manifest --json`'s `fixtureCategories`, and every
 kind is documented with its symbol, footprint and facing in
 [Furniture & Fixtures](furniture.md).
 
@@ -2135,21 +2135,21 @@ storey, ascending — and `svg`/`scene`/`ast` keep meaning **page 1** (the lowes
 a level-unaware consumer still gets a complete drawing. On the CLI:
 
 ```bash
-arch compile house.arch                          # writes house.L1.svg, house.L2.svg …
-arch compile house.arch -o house.svg --json      # …and reports outputs[] + pages[]
-arch compile house.arch --json                   # check only: WRITES NOTHING (no -o), reports written:false
-arch compile house.arch --level 2 -o upper.svg   # just that storey, to the plain target
-arch compile house.arch --level 1 -o -           # `-o -` streams ONE drawing, so it needs --level
-arch describe house.arch --json                  # top-level facts = lowest storey, plus levels[]
-arch describe house.arch --level 2 --json        # read one storey (a display filter)
-arch preview house.arch --level 2 -o upper.png   # look at one storey
+archlang compile house.arch                          # writes house.L1.svg, house.L2.svg …
+archlang compile house.arch -o house.svg --json      # …and reports outputs[] + pages[]
+archlang compile house.arch --json                   # check only: WRITES NOTHING (no -o), reports written:false
+archlang compile house.arch --level 2 -o upper.svg   # just that storey, to the plain target
+archlang compile house.arch --level 1 -o -           # `-o -` streams ONE drawing, so it needs --level
+archlang describe house.arch --json                  # top-level facts = lowest storey, plus levels[]
+archlang describe house.arch --level 2 --json        # read one storey (a display filter)
+archlang preview house.arch --level 2 -o upper.png   # look at one storey
 ```
 
 Every format works per level (`-f svg|dxf|txt|pdf|png` each write `<stem>.L<level>.<ext>`);
 a multi-page PDF is deliberately not built — one file per storey is one drawing per sheet.
 `md` and `batch` render the lowest storey. Diagnostics aggregate across storeys and each
 carries a `level`, so `lint`/`validate` gate on the whole building while still saying which
-floor a warning is about; `arch repair` walks into every level and tags its changes the same
+floor a warning is about; `archlang repair` walks into every level and tags its changes the same
 way.
 
 ## Heights (the datum layer)
@@ -2186,7 +2186,7 @@ plan "Heights" {
 | cased-opening `head` | the host wall's own height | A leaf-less opening is drawn full height unless you say otherwise. This one is a **rule, not a constant**: in a 2200 mm parapet the default is 2200. |
 | maximum | `100000` | A cap so a typo is refused rather than accepted. Anything taller is `E_HEIGHT_RANGE`. |
 
-Read them from the compiler rather than copying them: `arch manifest --json` publishes them
+Read them from the compiler rather than copying them: `archlang manifest --json` publishes them
 under `datum`. **A plan that authors no height reports none** (see the gate below), so the
 manifest is the only place to learn what the compiler would have used.
 
@@ -2322,10 +2322,10 @@ the zone already declared; the first declaration's label wins.
 time:
 
 ```bash
-arch describe museum.arch --json                        # rooms + zones[]: every wing, its rooms, its area
-arch describe museum.arch --zone west --json            # just the west wing (nested zones roll up)
-arch describe museum.arch --zone west.galleries --json  # just the nested one, by its dotted path
-arch describe museum.arch --select zones --json         # the grouping alone
+archlang describe museum.arch --json                        # rooms + zones[]: every wing, its rooms, its area
+archlang describe museum.arch --zone west --json            # just the west wing (nested zones roll up)
+archlang describe museum.arch --zone west.galleries --json  # just the nested one, by its dotted path
+archlang describe museum.arch --select zones --json         # the grouping alone
 ```
 
 `--zone` is a **display filter** like `--room`/`--level`: `ok`, the diagnostics and the exit
@@ -2375,7 +2375,7 @@ See [`examples/themed.arch`](../examples/themed.arch).
 ## Analysis: `describe` & `lint`
 
 ArchLang doesn't just draw a plan — it can **read it back as facts**. Two pure
-functions (also surfaced as `arch describe` / `arch lint`) turn source into
+functions (also surfaced as `archlang describe` / `archlang lint`) turn source into
 machine-readable, image-free output:
 
 - **`describe(source)`** → a semantic summary: every room with its `uses`, area,
@@ -2390,8 +2390,8 @@ machine-readable, image-free output:
   `W_CIRCUITOUS_PATH`…). Pick a ruleset with `--profile`:
 
   ```
-  arch lint plan.arch --profile residential-basic        # default: ≥700 mm doors, ≥4 m² rooms
-  arch lint plan.arch --profile accessibility-advisory   # stricter: ≥850 mm doors, ≥5 m² rooms, swing clearance
+  archlang lint plan.arch --profile residential-basic        # default: ≥700 mm doors, ≥4 m² rooms
+  archlang lint plan.arch --profile accessibility-advisory   # stricter: ≥850 mm doors, ≥5 m² rooms, swing clearance
   ```
 
   Profiles are **advisory soundness checks, never a building-code guarantee.** The
@@ -2448,10 +2448,10 @@ The same model backs an **opt-in render overlay** (see
 [`overlays`](#compilation-result) below) — the entrance→room walks (each from the room's
 nearest entrance), their pinch markers, and key routes drawn on top of the plan.
 
-### Correcting a plan — `arch repair`
+### Correcting a plan — `archlang repair`
 
 Because lint reports rather than rearranges, ArchLang ships an **explicit,
-opt-in** source-to-source corrector: `arch repair plan.arch -o fixed.arch` emits new
+opt-in** source-to-source corrector: `archlang repair plan.arch -o fixed.arch` emits new
 `.arch` with furniture pushed out of walls, off doorway approaches and door swings,
 overlaps separated, and stray fixtures relocated into their room and snapped to a
 wall — plus a change log (see [ADR 0006](adr/0006-solver-as-explicit-transform.md)).
@@ -2480,10 +2480,10 @@ statement) — so a scripted collision can never read as a clean run. Every entr
 or note, carries the statement's byte `span`. A wall-anchored fixture is also an
 *obstacle*: a movable piece placed after it is separated off it.
 
-### Completing the drawing — `arch finish`
+### Completing the drawing — `archlang finish`
 
 A sound plan is not yet a complete drawing. Rooms may hold no furniture, and `paper`, `scale`,
-`dims auto`, `title`, `schedule rooms` and `legend` are all optional. `arch finish plan.arch`
+`dims auto`, `title`, `schedule rooms` and `legend` are all optional. `archlang finish plan.arch`
 adds what the plan lacks, as a second **explicit, opt-in** source-to-source transform.
 `compile` never does this on its own. It runs two stages, and `--only furnish` or
 `--only sheet` runs one:
@@ -2522,7 +2522,7 @@ it would have raised, and the rest are still written. `dims auto all` steps down
 `dims auto overall` first, for example when an opening on an angled or curved wall is on no
 chain (`W_OPENING_NOT_DIMENSIONED`), and is left out only when that is refused too. Nothing is
 changed only when no statement passes on its own. Running it twice changes nothing the second
-time. Like `arch fix` it
+time. Like `archlang fix` it
 rewrites the file in place, prints the diff on stderr, and takes `--dry-run`, `--backup` and
 `-o`. From the library: `finish(source, { reissue?, only?, world? })` returns
 `{ source, changes, unresolved, changed }`. A `furnish` change carries the `room` it was written
@@ -2616,11 +2616,11 @@ are pure serializers of the same `scene`:
 
 | Format | API | CLI | Dependency |
 |--------|-----|-----|------------|
-| SVG | `compile().svg` | `arch compile p.arch` | none (default) |
-| DXF | `toDxf(scene)` | `arch compile p.arch -f dxf` | none (zero-dep) |
-| TXT | `renderAscii(scene)` | `arch compile p.arch -f txt` | none (zero-dep ASCII plan) |
-| PDF | `toPdf(scene)` | `arch compile p.arch -f pdf` | optional `pdfkit` (vector, text selectable) |
-| PNG | `renderPng(scene)` | `arch compile p.arch -f png` | optional `@resvg/resvg-js` (deterministic raster) |
+| SVG | `compile().svg` | `archlang compile p.arch` | none (default) |
+| DXF | `toDxf(scene)` | `archlang compile p.arch -f dxf` | none (zero-dep) |
+| TXT | `renderAscii(scene)` | `archlang compile p.arch -f txt` | none (zero-dep ASCII plan) |
+| PDF | `toPdf(scene)` | `archlang compile p.arch -f pdf` | optional `pdfkit` (vector, text selectable) |
+| PNG | `renderPng(scene)` | `archlang compile p.arch -f png` | optional `@resvg/resvg-js` (deterministic raster) |
 
 The optional dependencies are lazily `import()`ed, so the core never requires
 them and a default install emits SVG, DXF and TXT with nothing extra. The PNG backend
@@ -2644,17 +2644,17 @@ The **TXT** backend draws the plan as an ASCII/Unicode grid — no image, no bin
 dependency. It exists so a text-only agent (or a terminal) can *see* the layout at a
 glance; tune it with `--cols <n>` and `--charset unicode|ascii`.
 
-For a quick **viewable** raster, `arch preview p.arch -o p.png` renders PNG at a
+For a quick **viewable** raster, `archlang preview p.arch -o p.png` renders PNG at a
 sensible on-screen width (~1600 px) instead of the high-resolution native size — and
 where the optional renderer is absent it reports the catalogued `E_PNG_DEPENDENCY`
 (with a `fix`), or fetches it with `--install`. Render many files at once with
-`arch batch …`, and embed plans in Markdown with `arch md doc.md` (renders each
-fenced `arch` block to an image link). `arch manifest --json` prints this whole CLI
+`archlang batch …`, and embed plans in Markdown with `archlang md doc.md` (renders each
+fenced `arch` block to an image link). `archlang manifest --json` prints this whole CLI
 surface — commands, flags, formats, lint profiles, error codes — as structured data.
 
-To read that surface rather than parse it: `arch help` lists every command,
-`arch <cmd> --help` prints one command's flags and worked examples, and
-`arch --version` prints the version. Help and the
+To read that surface rather than parse it: `archlang help` lists every command,
+`archlang <cmd> --help` prints one command's flags and worked examples, and
+`archlang --version` prints the version. Help and the
 [CLI reference](https://archlang.uk/cli) are both rendered from the
 manifest, so none of the three can disagree.
 
@@ -2687,7 +2687,7 @@ error[E_ROOM_SIZE]: room "bed" must have a positive size
 ```
 
 `offsetToLineCol(source, offset)` converts a byte offset to a 1-based
-`{ line, col }`. The `arch` CLI prints these frames for every diagnostic.
+`{ line, col }`. The `archlang` CLI prints these frames for every diagnostic.
 
 `compile(source, opts?)` options:
 
@@ -2701,14 +2701,14 @@ error[E_ROOM_SIZE]: room "bed" must have a positive size
 - `overlays` — opt-in diagnostic overlays drawn on top of the plan. Currently only
   `["circulation"]` (the entrance→room walks, bottleneck markers, and key routes from
   the [circulation](#circulation) model — [ADR 0008](adr/0008-circulation-as-facts.md));
-  also via `arch compile --overlay circulation`. Default output is **byte-identical**
+  also via `archlang compile --overlay circulation`. Default output is **byte-identical**
   without it, so shipped SVGs stay clean.
 - `accessible` — emit a self-describing SVG for assistive tech and machine consumers: the
   `<svg>` gains `role="img"` + `aria-labelledby` and a `<title>`/`<desc>` pair. The title is
   the plan name (or [`accTitle`](#accessible-metadata-acctitle-accdescr) when declared) and
   the description is a derived one-sentence caption (`describe().caption` — the same sentence,
   or [`accDescr`](#accessible-metadata-acctitle-accdescr) when declared). Also via
-  `arch compile --accessible`. **Default output is byte-identical** without it (see
+  `archlang compile --accessible`. **Default output is byte-identical** without it (see
   [ADR 0009](adr/0009-ai-first-context-and-distribution.md)). Pass an object,
   `{ idPrefix: "plan-7" }`, to name the `<title>`/`<desc>` ids `plan-7-title`/`plan-7-desc`
   instead of the fixed `arch-title`/`arch-desc` — which is what several plans inlined in one
@@ -2716,13 +2716,13 @@ error[E_ROOM_SIZE]: room "bed" must have a positive size
   title. `true` is exactly `{ idPrefix: "arch" }`. The prefix is reduced to
   `[A-Za-z0-9_-]` (an id with a space would split the `aria-labelledby` token list) and an
   empty result falls back to `arch`; it never fails a compile. Also via
-  `arch compile --accessible --acc-id-prefix plan-7`. **Together with `annotate` it also
+  `archlang compile --accessible --acc-id-prefix plan-7`. **Together with `annotate` it also
   makes each element a control** — see [Keyboard and screen-reader operability](#keyboard-and-screen-reader-operability-annotate--accessible).
 - `onError` — set to `"svg"` to render a **broken** plan as a deterministic, self-describing
   error-card SVG (severity, code, `line:col`, message, catalogued fix) instead of returning
   an empty `svg`. Errors, diagnostics, and exit codes are unchanged; **without this opt-in a
-  failing plan still produces no image** (`svg: ""`). Also via `--error-svg` on `arch compile`,
-  `arch preview`, and `arch md`. The card renderer is exported as `renderErrorSvg`
+  failing plan still produces no image** (`svg: ""`). Also via `--error-svg` on `archlang compile`,
+  `archlang preview`, and `archlang md`. The card renderer is exported as `renderErrorSvg`
   (see [ADR 0009](adr/0009-ai-first-context-and-distribution.md)).
 
 `annotate`, `overlays`, `accessible`, and `onError: "svg"` are the only options that change
@@ -2771,7 +2771,7 @@ With **both** options on, the compiler also stamps the attributes that turn each
 primary node into a control, so an embedder does not have to derive a name or choose a
 focusable node for itself:
 
-⚠ **This is a library-only combination.** `accessible` has a flag (`arch compile --accessible`)
+⚠ **This is a library-only combination.** `accessible` has a flag (`archlang compile --accessible`)
 and `annotate` has none, so the CLI stops at the `<title>`/`<desc>` pair and never emits a
 control. Call `compile(source, { annotate: true, accessible: true })` — see
 `docs/backlog.md` (§A.7).

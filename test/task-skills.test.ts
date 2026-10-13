@@ -8,12 +8,17 @@
  *    (https://agentskills.io/specification) requires `name` (1-64 chars, lowercase letters,
  *    digits and single hyphens, equal to the directory name) and `description` (1-1024 chars),
  *    and recommends a body under 500 lines.
- * 2. THE COMMANDS. A skill is a list of `arch` invocations. Every command it names must exist
+ * 2. THE COMMANDS. A skill is a list of `archlang` invocations. Every command it names must exist
  *    and every flag must be one that command declares in `src/manifest.ts`; an undeclared flag
  *    is a usage error (exit 3) for every agent that follows the skill.
  *
- * A skill carries no language reference of its own. It sends the agent to `arch spec` and
- * `arch <cmd> --help`, exactly as the root skill does, so there is one copy of the language.
+ * 3. THE COMMAND NAME. A skill writes `archlang <cmd>` (the global install) or
+ *    `npx -y @chanmeng666/archlang <cmd>`, never a bare `arch <cmd>`: coreutils ships an `arch`
+ *    on Linux, macOS and Git Bash, so a bare `arch` runs the wrong program, and the unscoped npm
+ *    name `archlang` is another publisher's package.
+ *
+ * A skill carries no language reference of its own. It sends the agent to `archlang spec` and
+ * `archlang <cmd> --help`, exactly as the root skill does, so there is one copy of the language.
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -58,16 +63,19 @@ for (const c of manifest.commands) {
   for (const a of c.aliases ?? []) flagsOf.set(a, flags);
 }
 
-/** Every `arch …` invocation written in code: inline code spans and fenced blocks. */
+/** Every way an invocation can name the CLI: the global bin, its alias, or the scoped package via npx. */
+const CLI = /^(?:archlang|arch|npx (?:-y )?@chanmeng666\/archlang)(?=\s)/;
+
+/** Every `archlang …`, `arch …` or `npx [-y] @chanmeng666/archlang …` invocation written in code. */
 function invocations(body: string): string[] {
   const code = [...body.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].flatMap((m) => m[1]!.split("\n"));
   for (const m of body.replace(/```[\s\S]*?```/g, "").matchAll(/`([^`\n]+)`/g)) code.push(m[1]!);
-  return code.map((c) => c.trim()).filter((c) => /^(arch|npx @chanmeng666\/archlang)\s/.test(c));
+  return code.map((c) => c.trim()).filter((c) => CLI.test(c));
 }
 
 /** What is wrong with one invocation, or nothing. `<cmd>` is the documented placeholder for any command. */
 function faults(invocation: string): string[] {
-  const words = invocation.replace(/^npx @chanmeng666\/archlang/, "arch").split(/\s+/);
+  const words = invocation.replace(CLI, "arch").split(/\s+/);
   const cmd = words[1]!;
   if (cmd === "<cmd>") return [];
   if (cmd.startsWith("-")) return globals.has(cmd) ? [] : [`\`${cmd}\` is not a global flag`];
@@ -83,12 +91,19 @@ describe("the invocation check itself", () => {
   it("accepts a real command with its real flags", () => {
     expect(faults("arch finish plan.arch --reissue -o issued.arch")).toEqual([]);
     expect(faults("arch <cmd> --help")).toEqual([]);
+    expect(faults("archlang finish plan.arch --reissue -o issued.arch")).toEqual([]);
+    expect(faults("npx -y @chanmeng666/archlang finish plan.arch --reissue")).toEqual([]);
   });
 
   it("catches an unknown command and an undeclared flag", () => {
     expect(faults("arch furnish plan.arch")).toEqual(["`furnish` is not an arch command"]);
     expect(faults("arch fix plan.arch --write")).toEqual(["`--write` is not a flag of `arch fix`"]);
     expect(invocations("Run `arch fix plan.arch --write` now.")).toEqual(["arch fix plan.arch --write"]);
+    // Every spelling of the command is checked, not only the alias.
+    expect(faults("archlang fix plan.arch --write")).toEqual(["`--write` is not a flag of `arch fix`"]);
+    expect(faults("npx -y @chanmeng666/archlang furnish plan.arch")).toEqual(["`furnish` is not an arch command"]);
+    expect(invocations("Run `archlang fix plan.arch --write` now.")).toEqual(["archlang fix plan.arch --write"]);
+    expect(invocations("Run `npx -y @chanmeng666/archlang spec`.")).toEqual(["npx -y @chanmeng666/archlang spec"]);
   });
 });
 
@@ -135,7 +150,7 @@ describe.each(names)("skills/%s/SKILL.md", (name) => {
   });
 
   it("sends the agent to the CLI for the language instead of restating it", () => {
-    expect(body).toContain("`arch spec`");
+    expect(body).toContain("`archlang spec`");
     expect(body).toContain("--help`");
     // No grammar of its own: a fenced ArchLang block would be a second copy of the language.
     expect(body).not.toMatch(/^```arch/m);
@@ -143,7 +158,17 @@ describe.each(names)("skills/%s/SKILL.md", (name) => {
 
   it("names only commands and flags the CLI declares", () => {
     const found = invocations(body);
-    expect(found.length, "the skill names no `arch` invocation at all").toBeGreaterThan(3);
+    expect(found.length, "the skill names no `archlang` invocation at all").toBeGreaterThan(3);
     expect(found.flatMap((inv) => faults(inv).map((f) => `${inv} — ${f}`))).toEqual([]);
+  });
+
+  it("writes the command as `archlang` or `npx -y @chanmeng666/archlang`, never a bare `arch`", () => {
+    const found = invocations(body);
+    expect(found.filter((inv) => /^arch\s/.test(inv))).toEqual([]);
+    expect(found.filter((inv) => /^npx @chanmeng666/.test(inv))).toEqual([]);
+    // The fallback guard is about `archlang`: coreutils puts an `arch` on the path, so a guard
+    // that asks whether `arch` is there never fires.
+    expect(body).toContain("If `archlang` is not on the path, write `npx -y @chanmeng666/archlang`");
+    expect(body).not.toContain("If `arch` is not on the path");
   });
 });

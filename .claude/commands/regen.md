@@ -8,8 +8,8 @@ Run every single-source generator and inspect exactly what moved.
 
 ## Steps
 
-1. **`npm run gen:all`** — runs all eight generators (`gen:grammars`, `gen:errors`, `gen:cli`,
-   `gen:spec`, `gen:llms`, `gen:gbnf`, `gen:plan-schema`, `gen:intent-schema`).
+1. **`npm run gen:all`** — runs the generators in order (`gen:grammars`, `gen:errors`, `gen:spec`,
+   `gen:llms`, `gen:cli`, `gen:gbnf`, `gen:plan-schema`, `gen:intent-schema`).
 
 2. **Show the diff** over the generated artifact set (the nine files these eight generators emit):
 
@@ -21,6 +21,7 @@ Run every single-source generator and inspect exactly what moved.
      docs/cli-reference.md \
      spec.llm.md \
      llms-full.txt \
+     src/context-size.ts \
      grammars/archlang.gbnf \
      schemas/plan.schema.json \
      schemas/intent.schema.json
@@ -40,6 +41,7 @@ Run every single-source generator and inspect exactly what moved.
    | `docs/cli-reference.md` | `src/manifest.ts` (every command, its exact flag set, its `examples[]`) |
    | `spec.llm.md` | `src/grammar/tokens.ts` + `examples/` |
    | `llms-full.txt` | `spec.llm.md` + `SKILL.md` + `src/manifest.ts` + `src/error-catalog.ts` |
+   | `src/context-size.ts` | the byte size of `llms-full.txt` and its sections (so `gen:cli` runs after `gen:llms`) |
    | `grammars/archlang.gbnf` | `src/grammar/tokens.ts` |
    | `schemas/plan.schema.json` | `PLAN_JSON_SCHEMA` |
    | `schemas/intent.schema.json` | `INTENT_JSON_SCHEMA` |

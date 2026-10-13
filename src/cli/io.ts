@@ -12,6 +12,7 @@ import { formatDiagnostic, EXPORT_FORMATS, planFromJson, buildManifest, ERROR_CA
 import type { Diagnostic, World, ExportFormat, ManifestCommand, ManifestFlag, ViewName } from "../index.js";
 import { VIEW_NAMES, isViewName } from "../index.js";
 import { closest } from "../expr.js";
+import { CLI_NAME } from "../manifest.js";
 import { findCommand, usageLine } from "./help.js";
 
 export type Format = ExportFormat;
@@ -143,7 +144,7 @@ export interface FlagSpec {
  *    entry here, and every entry here is documented by the manifest;
  *  - a flag with a manifest `arg` is a value-taking (non-`boolean`) kind, and vice-versa.
  *
- * So the parser, the help renderer, `arch manifest --json`, and `docs/cli-reference.md`
+ * So the parser, the help renderer, `archlang manifest --json`, and `docs/cli-reference.md`
  * all describe the same CLI — an undeclared flag can no longer be silently swallowed as
  * a positional (which is how `--jsn` used to become an input filename).
  */
@@ -213,7 +214,7 @@ export function allowedFlags(command: ManifestCommand): string[] {
 /**
  * Parse `argv` against {@link FLAG_KEYS}. When a `command` is given, a flag it does not
  * declare is rejected (collected into `unknownFlags`) rather than swallowed as a
- * positional; `--help`/`-h` short-circuits to `help: true` so `arch describe --help`
+ * positional; `--help`/`-h` short-circuits to `help: true` so `archlang describe --help`
  * prints help instead of failing on the missing input file.
  */
 export function parseArgs(argv: string[], command?: ManifestCommand): Args {
@@ -244,7 +245,7 @@ export function parseArgs(argv: string[], command?: ManifestCommand): Args {
   return res;
 }
 
-/** The package version (for `arch manifest`), read from the shipped package.json. */
+/** The package version (for `archlang manifest`), read from the shipped package.json. */
 function readVersion(): string {
   for (const rel of ["../package.json", "../../package.json"]) {
     const p = resolvePath(HERE, rel);
@@ -292,7 +293,7 @@ export function emitJson(obj: unknown): void {
  * `= help:` style — or `""` when the code is uncatalogued (or carries no fix), so a
  * bare `= fix:` line is never printed. JSON mode already carries this field
  * (`diagnosticToJson`); this is the human-mode parity so a reader of stderr does not
- * have to run `arch explain <CODE>` to learn the remedy.
+ * have to run `archlang explain <CODE>` to learn the remedy.
  */
 function catalogFixLine(d: Diagnostic): string {
   const fix = d.code ? ERROR_CATALOG[d.code]?.fix : undefined;
@@ -462,7 +463,7 @@ export function usageError(msg: string): number {
 export function usageErrorFor(command: string, msg: string): number {
   const code = usageError(msg);
   const c = findCommand(buildManifest(VERSION), command);
-  if (c) process.stderr.write(`usage: ${usageLine(c)}   (try \`arch ${c.name} --help\`)\n`);
+  if (c) process.stderr.write(`usage: ${usageLine(c)}   (try \`${CLI_NAME} ${c.name} --help\`)\n`);
   return code;
 }
 

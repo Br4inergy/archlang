@@ -15,13 +15,15 @@
  * the sources; CI asserts no drift.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { splitContext } from "../src/cli/commands-meta.js";
 import type { CatalogEntry } from "../src/error-catalog.js";
 import { ERROR_CATALOG, ERROR_CODES } from "../src/error-catalog.js";
 import type { Manifest, ManifestCommand, ManifestFlag } from "../src/manifest.js";
-import { buildManifest } from "../src/manifest.js";
+import { buildManifest, CLI_NAME } from "../src/manifest.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..");
@@ -57,13 +59,16 @@ function flagStr(f: ManifestFlag): string {
 
 /**
  * One command as a compact block: name, summary, input/output, key flags, and ONE
- * worked invocation. Only the first example ships: the bundle is already ~50KB and
- * goes into a system prompt, so it buys the "what does a real call look like" signal
+ * worked invocation. Only the first example ships: the bundle is already large
+ * (`src/context-size.ts`) and goes into a system prompt, so it buys the "what does a real call look like" signal
  * without paying for the full example set (that lives in `docs/cli-reference.md`).
  */
 function commandBlock(c: ManifestCommand): string {
   const aliases = c.aliases?.length ? ` (aliases: ${c.aliases.map((a) => `\`${a}\``).join(", ")})` : "";
-  const lines = [`**\`arch ${c.name}\`**${aliases} — ${c.summary}`, `  - input: ${c.input} → output: ${c.output}`];
+  const lines = [
+    `**\`${CLI_NAME} ${c.name}\`**${aliases} — ${c.summary}`,
+    `  - input: ${c.input} → output: ${c.output}`,
+  ];
   if (c.flags.length) lines.push(`  - flags: ${c.flags.map(flagStr).join(" · ")}`);
   const [first] = c.examples;
   if (!first) throw new Error(`command "${c.name}" has no example — every command must carry at least one`);
@@ -78,7 +83,11 @@ function cliReference(m: Manifest): string {
     .join(" · ");
   const formats = m.formats.map((f) => `\`${f.id}\`${f.zeroDep ? "" : ` (needs \`${f.optionalDep}\`)`}`).join(" · ");
   return [
-    `The \`arch\` CLI is the agent interface. ${m.description}`,
+    `The \`${CLI_NAME}\` CLI is the agent interface. ${m.description}`,
+    "",
+    `Without a global install (\`npm i -g @chanmeng666/archlang\`), write \`npx -y @chanmeng666/archlang <cmd>\`.`,
+    "The package also installs `arch` as an alias, but on Linux, macOS and Git Bash coreutils owns that",
+    "name, so never run a bare `arch`.",
     "",
     "Every command takes `--json` (structured result on stdout, messages on stderr) and reads source",
     "from a file or stdin (`-`). This CLI is the primary agent interface; an optional stdio MCP shim",
@@ -106,7 +115,7 @@ function diagnosticCatalog(catalog: Readonly<Record<string, CatalogEntry>>, code
   const errors = codes.filter((c) => catalog[c]?.severity === "error");
   const warnings = codes.filter((c) => catalog[c]?.severity === "warning");
   return [
-    `Every diagnostic carries a stable code and a \`fix\`. Look one up with \`arch explain <CODE>\`.`,
+    `Every diagnostic carries a stable code and a \`fix\`. Look one up with \`${CLI_NAME} explain <CODE>\`.`,
     `**${errors.length} errors** (abort rendering) · **${warnings.length} warnings** (advisory; \`validate --strict\` fails on them too).`,
     "",
     "### Errors",
@@ -139,7 +148,7 @@ reference, and every diagnostic code — sized to drop into a system prompt.
 
 ArchLang is built for agents: **deterministic** (same source → byte-identical output), **pure** (no
 runtime, no IO in the compiler), and **self-correcting** (every error carries a machine code and a
-\`fix\`). Author, render, and verify entirely through the \`arch\` CLI — never hand-render SVG.
+\`fix\`). Author, render, and verify entirely through the \`${CLI_NAME}\` CLI — never hand-render SVG.
 
 Contents:
 
@@ -168,8 +177,56 @@ function readInputs(): LlmsFullInputs {
   };
 }
 
+/** Kilobytes of 1,000 bytes, rounded: the unit every stated bundle size uses. */
+const kb = (text: string): number => Math.round(Buffer.byteLength(text, "utf8") / 1000);
+
+/**
+ * Render `src/context-size.ts` — the measured size of a rendered bundle and of each section
+ * `archlang context --section` hands back. Pure. The sections come from the CLI's own
+ * `splitContext`, so a size can only be stated for a slice the CLI really serves.
+ */
+export function renderContextSize(bundle: string): string {
+  const sections = splitContext(bundle);
+  if (sections === null) throw new Error("llms-full.txt does not split into its four sections");
+  const sizes = { total: kb(bundle), ...Object.fromEntries(Object.entries(sections).map(([n, s]) => [n, kb(s)])) };
+  const literal = Object.entries(sizes)
+    .map(([n, v]) => `${n}: ${v}`)
+    .join(", ");
+  return `// GENERATED by scripts/gen-llms-full.ts — do not edit by hand. Run \`npm run gen:llms\`.
+
+/**
+ * The size of \`llms-full.txt\` (what \`archlang context\` prints) and of each \`--section\` of it, in
+ * kilobytes of 1,000 bytes, rounded. Measured from the rendered bundle by the generator, so the help
+ * never states a size the file does not have; \`check:drift\` and \`test/context-size.test.ts\` fail
+ * when it goes stale.
+ */
+export const CONTEXT_BUNDLE_KB = { ${literal} } as const;
+`;
+}
+
+/**
+ * The bundle states its own size (the `context` command's help is in its CLI reference), and that
+ * size is imported from `src/context-size.ts` when this module loads. So a size that moved is
+ * written first and the bundle is rendered again by a fresh process that imports it. A rounded
+ * size with the same number of digits renders to the same byte length, so the second pass settles.
+ */
 function main(): void {
-  writeFileSync(resolve(ROOT, "llms-full.txt"), renderLlmsFull(readInputs()));
+  const bundle = renderLlmsFull(readInputs());
+  const sizePath = resolve(ROOT, "src/context-size.ts");
+  const size = renderContextSize(bundle);
+  const current = existsSync(sizePath) ? lf(readFileSync(sizePath, "utf8")) : "";
+  if (current !== size) {
+    const pass = Number(process.env.ARCHLANG_GEN_LLMS_PASS ?? "1");
+    if (pass >= 3) throw new Error("the bundle size did not settle after three passes");
+    writeFileSync(sizePath, size);
+    process.stdout.write("✓ measured the bundle into src/context-size.ts; rendering again with it\n");
+    execFileSync(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url)], {
+      stdio: "inherit",
+      env: { ...process.env, ARCHLANG_GEN_LLMS_PASS: String(pass + 1) },
+    });
+    return;
+  }
+  writeFileSync(resolve(ROOT, "llms-full.txt"), bundle);
   process.stdout.write("✓ generated llms-full.txt from spec.llm.md + SKILL.md + manifest + error catalog\n");
 }
 

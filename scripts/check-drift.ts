@@ -5,7 +5,8 @@
  * `npm run check:drift` (used by CI in place of the old per-generator steps).
  *
  * Generators run in the order the CLI declares them — `gen:spec` MUST precede
- * `gen:llms` because `llms-full.txt` is built from `spec.llm.md`.
+ * `gen:llms` because `llms-full.txt` is built from `spec.llm.md`, and `gen:llms` MUST precede
+ * `gen:cli` because the CLI reference states the bundle size `gen:llms` measures.
  */
 
 import { execSync } from "node:child_process";
@@ -19,7 +20,7 @@ const ROOT = resolve(HERE, "..");
 
 /**
  * Each generator with the exact files it writes (verified against every
- * `scripts/gen-*.ts` `writeFileSync`). Order is load-bearing: spec before llms.
+ * `scripts/gen-*.ts` `writeFileSync`). Order is load-bearing: spec, then llms, then cli.
  */
 const GENERATORS: readonly { script: string; artifacts: readonly string[] }[] = [
   {
@@ -31,9 +32,11 @@ const GENERATORS: readonly { script: string; artifacts: readonly string[] }[] = 
     ],
   },
   { script: "gen:errors", artifacts: ["docs/error-codes.md"] },
-  { script: "gen:cli", artifacts: ["docs/cli-reference.md"] },
   { script: "gen:spec", artifacts: ["spec.llm.md"] },
-  { script: "gen:llms", artifacts: ["llms-full.txt"] },
+  // `gen:llms` also measures the bundle into `src/context-size.ts`, which the manifest's
+  // `context` help states, so `gen:cli` (rendered from that manifest) runs after it.
+  { script: "gen:llms", artifacts: ["llms-full.txt", "src/context-size.ts"] },
+  { script: "gen:cli", artifacts: ["docs/cli-reference.md"] },
   { script: "gen:gbnf", artifacts: ["grammars/archlang.gbnf"] },
   { script: "gen:plan-schema", artifacts: ["schemas/plan.schema.json"] },
   { script: "gen:intent-schema", artifacts: ["schemas/intent.schema.json"] },

@@ -311,7 +311,7 @@ suite("docs-site/examples.md quotes figures the compiler agrees with", () => {
       const lintDiags = lint(src);
 
       for (const m of body.matchAll(
-        new RegExp(String.raw`\`arch lint\`(?: still)? raises (?:exactly )?${NUM} warnings?`, "g"),
+        new RegExp(String.raw`\`arch(?:lang)? lint\`(?: still)? raises (?:exactly )?${NUM} warnings?`, "g"),
       )) {
         say(sec, `\`arch lint\` raises ${m[1]} warnings`, countOf(m[1]!), lintDiags.length);
       }
@@ -319,11 +319,11 @@ suite("docs-site/examples.md quotes figures the compiler agrees with", () => {
       for (const _ of body.matchAll(/\blint-clean\b/g)) say(sec, "lint-clean", 0, lintDiags.length);
 
       const vd = validateDiags(src);
-      for (const _ of body.matchAll(/`arch validate` is clean/g)) {
+      for (const _ of body.matchAll(/`arch(?:lang)? validate` is clean/g)) {
         say(sec, "`arch validate` is clean (errors)", 0, vd.filter((d) => d.severity === "error").length);
       }
       for (const m of body.matchAll(
-        new RegExp(String.raw`\`arch validate --strict\` reports (?:exactly )?${NUM} warnings?`, "g"),
+        new RegExp(String.raw`\`arch(?:lang)? validate --strict\` reports (?:exactly )?${NUM} warnings?`, "g"),
       )) {
         say(
           sec,

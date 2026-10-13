@@ -9,11 +9,11 @@ Read this before you read the drawings:
   was picked for this page. The model is named under each brief so you know where the plan came
   from. The page does not rank the models or compare them.
 - **How each plan was made.** The agent received the brief and nothing else about the task. It
-  had the `arch` command line (`arch spec` prints the whole language, and each command has
+  had the `archlang` command line (`archlang spec` prints the whole language, and each command has
   `--help`), the repository's `examples/` folder, and a budget of 25 command-line calls. It
   delivered one `.arch` file.
 - **What happened after that.** Each delivered file was run once through
-  [`arch finish`](/cli), which furnishes rooms the author left empty and adds the sheet
+  [`archlang finish`](/cli), which furnishes rooms the author left empty and adds the sheet
   statements a plan lacks (paper size, scale, dimensions, title block, room schedule, legend).
   So some of the furniture and all of the sheet furniture you see may come from `finish`, not
   from the agent. `finish` deletes nothing, and it furnishes single-storey plans, so the

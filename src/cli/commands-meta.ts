@@ -10,6 +10,7 @@ import { resolve as resolvePath } from "node:path";
 import { buildManifest, ERROR_CATALOG, explain } from "../index.js";
 // The zero-dep levenshtein behind every "did you mean" hint the CLI prints.
 import { closest } from "../expr.js";
+import { CLI_NAME } from "../manifest.js";
 import { type Args, EXIT, HERE, VERSION, emitJson, ioError, usageError } from "./io.js";
 
 /** `manifest` — the whole CLI API surface as one structured document for agents. */
@@ -19,7 +20,7 @@ export function cmdManifest(args: Args): number {
     emitJson(m);
   } else {
     const lines = [
-      `arch ${m.version} — ${m.commands.length} commands`,
+      `${CLI_NAME} ${m.version} — ${m.commands.length} commands`,
       ...m.commands.map((c) => `  ${c.name}${c.aliases ? ` (${c.aliases.join(", ")})` : ""} — ${c.summary}`),
       `formats: ${m.formats.map((f) => f.id).join(", ")}`,
       `lint profiles: ${m.lint.profiles.join(", ")}`,
@@ -30,7 +31,7 @@ export function cmdManifest(args: Args): number {
   return EXIT.OK;
 }
 
-/** A minimal but complete starter plan for `arch new`. */
+/** A minimal but complete starter plan for `archlang new`. */
 const STARTER = `plan "New Plan" {
   units mm
   grid 50
@@ -89,10 +90,11 @@ function readContext(): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// Bounded context — `arch context --section <name>`.
+// Bounded context — `archlang context --section <name>`.
 //
-// `llms-full.txt` is ~50KB: an agent that only needs the diagnostic catalog used to
-// pay for the spec + workflow + CLI reference too. The bundle is a concatenation
+// `llms-full.txt` is large (its measured size is `CONTEXT_BUNDLE_KB`, `src/context-size.ts`):
+// an agent that only needs the diagnostic catalog used to pay for the spec + workflow + CLI
+// reference too. The bundle is a concatenation
 // (`scripts/gen-llms-full.ts` → `renderLlmsFull`), so the sections can be handed back
 // one at a time by splitting on the exact rule it joins with — no second copy of the
 // text, no parsing. `test/cli-context.test.ts` welds this splitter to that generator:
@@ -170,7 +172,7 @@ export function cmdContext(args: Args): number {
 
 export function cmdExplain(args: Args): number {
   const code = args._[0];
-  if (!code) return usageError("missing error code (e.g. arch explain E_ROOM_SIZE)");
+  if (!code) return usageError(`missing error code (e.g. ${CLI_NAME} explain E_ROOM_SIZE)`);
   const upper = code.toUpperCase();
   const entry = ERROR_CATALOG[upper];
   if (!entry) {

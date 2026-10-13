@@ -2207,6 +2207,22 @@ Whether a vector path is worth the bundle is open.
 **Gate:** `npm run e2e:playground` covers the chosen behaviour; the playground bundle size
 before and after is quoted. **Size:** M.
 
+### U.19 · A global install can fail on the `arch` alias bin where npm's prefix is `/usr` — `todo`
+
+**Observed (red-team of card A1; read from npm's source, not run on such a host).** The package
+installs two bins, `archlang` and `arch`. npm's `bin-links` (`lib/link-gently.js:55-87`) throws
+`EEXIST` when the global bin directory already holds a non-symlink of the same name and `--force`
+is off. Where npm's prefix is `/usr`, `/usr/bin/arch` (coreutils) is that file, so
+`npm i -g @chanmeng666/archlang` can fail outright. Where the prefix is `/usr/local`, the alias
+instead shadows coreutils `arch` for the user's other scripts. Both behaviours predate A1, which
+added `archlang`; the docs now lead with `npx -y @chanmeng666/archlang`.
+
+**Hypothesis.** Dropping the `arch` bin removes both, at the cost of breaking scripts that call
+it; that is a 2.0 decision for the owner.
+
+**Gate:** on a Linux host whose npm prefix is `/usr`, `npm i -g` of the packed tarball succeeds
+and `archlang --version` prints the version. **Size:** S.
+
 ## Registry listings (opened 2026-10-10)
 
 The state of each listing is the table in `docs/seo.md` § 8. These are what is still owed.

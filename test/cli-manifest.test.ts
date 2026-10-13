@@ -2,9 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildManifest, FINISH_STAGES, FINISH_STAGES_AVAILABLE, MANIFEST_COMMAND_NAMES } from "../src/index.js";
 import { FIXTURE_CATEGORIES } from "../src/elements/fixtures-glyphs.js";
+import { CLI_NAME } from "../src/manifest.js";
 
 /**
- * The capability manifest (`arch manifest`) is the agent's API-discovery channel,
+ * The capability manifest (`archlang manifest`) is the agent's API-discovery channel,
  * so it must not drift from the CLI it describes. These guards parse the actual
  * source so a new command (or fixture) can't ship without a manifest entry — the
  * same single-source discipline as the grammar/spec drift tests.
@@ -17,6 +18,30 @@ describe("manifest — no drift vs the CLI dispatch", () => {
     const dispatched = new Set<string>();
     for (const m of region.matchAll(/case "([a-z]+)":/g)) dispatched.add(m[1]!);
     expect([...dispatched].sort()).toEqual([...new Set(MANIFEST_COMMAND_NAMES)].sort());
+  });
+});
+
+/**
+ * The command name the help and every example write must be a bin the package installs.
+ * `archlang` is the canonical one; `arch` stays as an alias for existing scripts, though
+ * coreutils owns `arch` on Linux, macOS and Git Bash. Both must run the same CLI.
+ */
+describe("package.json bins", () => {
+  const bin = JSON.parse(readFileSync("package.json", "utf8")).bin as Record<string, string>;
+
+  it("installs CLI_NAME and the `arch` alias, both pointing at the one CLI", () => {
+    expect(CLI_NAME).toBe("archlang");
+    expect(Object.keys(bin).sort()).toEqual(["arch", "archlang"]);
+    expect(bin[CLI_NAME]).toBe("dist/cli.js");
+    expect(bin.arch).toBe(bin[CLI_NAME]);
+  });
+
+  it("the manifest JSON names the command to type in `invoke`, and keeps `name` for old readers", () => {
+    const m = buildManifest("9.9.9");
+    expect(m.invoke).toBe("archlang");
+    expect(m.invoke).toBe(CLI_NAME);
+    expect(bin[m.invoke]).toBe("dist/cli.js");
+    expect(m.name).toBe("arch");
   });
 });
 
@@ -76,13 +101,14 @@ describe("manifest — examples", () => {
     }
   });
 
-  it("addresses every example to its own command (`arch <name|alias> …`)", () => {
+  it("addresses every example to its own command (`archlang <name|alias> …`)", () => {
     for (const c of m.commands) {
       const verbs = [c.name, ...(c.aliases ?? [])];
       for (const e of c.examples) {
-        expect(e.cmd.startsWith("arch "), `example "${e.cmd}" must start with "arch "`).toBe(true);
+        // `archlang`, never the `arch` alias: coreutils owns `arch` on Linux, macOS and Git Bash.
+        expect(e.cmd.startsWith("archlang "), `example "${e.cmd}" must start with "archlang "`).toBe(true);
         const verb = e.cmd.split(/\s+/)[1];
-        expect(verbs, `example "${e.cmd}" is not addressed to \`arch ${c.name}\``).toContain(verb);
+        expect(verbs, `example "${e.cmd}" is not addressed to \`archlang ${c.name}\``).toContain(verb);
         expect(e.note.length, `example "${e.cmd}" has an empty note`).toBeGreaterThan(0);
       }
     }

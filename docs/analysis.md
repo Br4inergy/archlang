@@ -10,7 +10,7 @@ facts**. Two pure functions turn source into machine-readable, image-free output
   profile.
 
 Both are exported from the package (`import { describe, lint } from "@chanmeng666/archlang"`)
-and surfaced on the CLI as `arch describe` / `arch lint` (add `--json` for the
+and surfaced on the CLI as `archlang describe` / `archlang lint` (add `--json` for the
 structured form). They power the **Describe** and **Lint** tabs in the
 [playground](https://playground.archlang.uk). Neither renders anything, so a
 text-only agent can author a plan and **verify it matches intent without ever
@@ -24,7 +24,7 @@ looking at an image**.
 
 ## `describe` — the semantic summary
 
-`arch describe plan.arch --json` returns a `SceneSummary`. For
+`archlang describe plan.arch --json` returns a `SceneSummary`. For
 [`examples/studio.arch`](../examples/studio.arch) (abridged to the shapes that
 matter — run it yourself for the full object):
 
@@ -110,8 +110,8 @@ keeps only those rooms and the doors, windows, openings and furniture that touch
 (plan-level facts — `bbox`, `bbox_outer`, `totals`, `caption` — stay whole-plan).
 
 ```
-arch describe plan.arch --select rooms,totals --json
-arch describe plan.arch --room r_bath,r_hall --json
+archlang describe plan.arch --select rooms,totals --json
+archlang describe plan.arch --room r_bath,r_hall --json
 ```
 
 The **`caption`** is the same sentence the accessible SVG puts in its `<desc>`
@@ -150,7 +150,7 @@ to the edge" has no direction on a ring.
 
 Two rules keep the rectangle they are written about, and say so rather than guess:
 `W_FIXTURE_BACK_TO_ROOM` does not fire inside a polygon room (no north/south/east/west
-side to be the fixture's back), and `arch repair` declines to push a piece into one,
+side to be the fixture's back), and `archlang repair` declines to push a piece into one,
 reporting it in `unresolved`. `W_ROOM_OVERLAP`, by contrast, **was** generalised: it runs
 an exact ring-vs-ring intersection test, so a room tucked into an L's notch — overlapping
 boxes, disjoint floors — does not warn, while two floors that really do intersect still do.
@@ -296,7 +296,7 @@ entrance. For the studio:
 }
 ```
 
-(Re-read from `arch describe examples/studio.arch --json`. The excerpt had drifted before the
+(Re-read from `archlang describe examples/studio.arch --json`. The excerpt had drifted before the
 tie rules too: `r_bath` and the route were already 4600 mm / 740 mm / 2.27 and 5100 mm / 740 mm
 / 1.31. Of the figures shown, the tie rules moved only `r_living` — 4000 mm, 1.29 → 3700 mm,
 1.26 — and the route — 5100 mm, 1.31 → 5000 mm, 1.32.)
@@ -368,7 +368,7 @@ edges) and a [`void`](language-reference.md#void--a-hole-in-the-floor-v1-29) (ha
 and doors carve, as always.
 
 Two advisory lint rules read this model, and the same model backs the opt-in
-`arch compile --overlay circulation` render overlay (see
+`archlang compile --overlay circulation` render overlay (see
 [ADR 0008 — circulation as facts](adr/0008-circulation-as-facts.md)).
 
 ### Grid resolution — why `cellSizeMm` is worth reading
@@ -503,7 +503,7 @@ when the plan declares no zone, so an existing summary is unchanged.
   on, so the same zone id on two floors is two entries. Top-level `zones` is the lowest
   storey's, like every other top-level fact; `levels[i].zones` is that storey's.
 
-Read one wing with `arch describe museum.arch --zone west --json`: the rooms narrow to that
+Read one wing with `archlang describe museum.arch --zone west --json`: the rooms narrow to that
 zone's members (nested zones included) and so do the doors/windows/openings/furniture
 touching them, marked `filtered: true` + `selected_zones`. Whole-plan facts (`bbox`,
 `totals`, `caption`) stay whole-plan, and — as with every other narrowing flag — `ok`,
@@ -586,7 +586,7 @@ storey. So `describe()` keeps its contract and appends one:
 ]
 ```
 
-Read one storey with `arch describe house.arch --level 2 --json`: that level's facts become
+Read one storey with `archlang describe house.arch --level 2 --json`: that level's facts become
 the top-level ones and `levels[]` narrows to it, marked `filtered: true` +
 `selected_level: 2`. Like `--room`/`--select` it is a **display filter** — `ok`,
 `diagnostics` and the exit code always come from the whole building, so reading one floor
@@ -767,7 +767,7 @@ failed to resolve, `freedom` is present with all-zero counts and an empty `eleme
 
 ## Symmetry — the plan's group and its repeats
 
-`describe(src, { facts: ["symmetry"] })` — `arch describe plan.arch --facts symmetry --json`
+`describe(src, { facts: ["symmetry"] })` — `archlang describe plan.arch --facts symmetry --json`
 — adds `symmetry`: which rigid motions of the page map the plan onto itself, and which of
 its rooms repeat. It is **opt-in**: without `--facts` the key is absent and every summary is
 byte-identical to one written before it existed.
@@ -848,7 +848,7 @@ one component, alternately mirrored — and `--facts symmetry` reports that the 
 drawn, has **no** symmetry and **no** exact repeat:
 
 ```bash
-arch describe examples/terrace-row.arch --facts symmetry,syntax --json
+archlang describe examples/terrace-row.arch --facts symmetry,syntax --json
 ```
 
 ```json
@@ -876,7 +876,7 @@ than a silently missing key.
 
 ## Space syntax — integration on the access graph
 
-`describe(src, { facts: ["syntax"] })` — `arch describe plan.arch --facts syntax --json` —
+`describe(src, { facts: ["syntax"] })` — `archlang describe plan.arch --facts syntax --json` —
 adds `syntax`: the space-syntax measures of Hillier and Hanson (*The Social Logic of
 Space*, 1984), computed on the [access graph](#the-access-graph) above. Opt-in like
 `symmetry`.
@@ -926,7 +926,7 @@ is `0` and its `integration` is `null`: it is as integrated as a space can be.
 
 ## `lint` — architectural soundness
 
-`arch lint plan.arch --json` returns advisory `W_*` diagnostics, each with a byte
+`archlang lint plan.arch --json` returns advisory `W_*` diagnostics, each with a byte
 `span`, a `line`/`col`, and a `fix`. Warnings never block rendering — they flag
 *habitability*, not *validity*. The rules, grouped by what they watch:
 
@@ -942,7 +942,7 @@ is `0` and its `integration` is `null`: it is as integrated as a space can be.
 | Circulation quality | `W_ROOM_NO_CLEAR_PATH`, `W_PATH_TOO_NARROW`, `W_CIRCUITOUS_PATH` |
 
 Every code is documented — with cause, fix, and example — in the
-[error catalog](error-codes.md), or run `arch explain W_SWING_OBSTRUCTED`. (In human
+[error catalog](error-codes.md), or run `archlang explain W_SWING_OBSTRUCTED`. (In human
 mode each diagnostic already prints its catalogued `= fix:` line, so the lookup is
 usually unnecessary.)
 
@@ -956,8 +956,8 @@ the ground floor does not excuse a first floor whose only bathroom is an en-suit
 Narrow a noisy report with `--code` or `--severity` — on `lint` and on `validate`:
 
 ```
-arch lint plan.arch --code W_ROOM_UNREACHABLE,W_NO_ENTRANCE --json   # only these codes
-arch validate plan.arch --severity error --json                      # only the blocking errors
+archlang lint plan.arch --code W_ROOM_UNREACHABLE,W_NO_ENTRANCE --json   # only these codes
+archlang validate plan.arch --severity error --json                      # only the blocking errors
 ```
 
 > **A display filter never changes gating.** `--code` and `--severity` (like `describe`'s
@@ -977,8 +977,8 @@ A **profile** is a named bundle of thresholds, applied with `--profile` (CLI) or
 | `accessibility-advisory` | doors ≥ 850 mm, rooms ≥ 5 m², walk clear ≥ 900 mm, detour ≤ 3.0×, 150 mm swing clearance |
 
 ```
-arch lint plan.arch                                  # residential-basic
-arch lint plan.arch --profile accessibility-advisory
+archlang lint plan.arch                                  # residential-basic
+archlang lint plan.arch --profile accessibility-advisory
 ```
 
 The flagship studio is **clean under the default profile**, but the stricter profile
@@ -1016,10 +1016,10 @@ Together, `describe` and `lint` close the author → render → **verify** loop 
 agent with no eyes on the drawing — see
 [Use ArchLang from an agent](https://archlang.uk/agents):
 
-1. `arch compile` — render and get errors as data.
-2. `arch describe --json` — confirm the room count, labels, areas, and access match
+1. `archlang compile` — render and get errors as data.
+2. `archlang describe --json` — confirm the room count, labels, areas, and access match
    the brief.
-3. `arch lint --json` — clear the habitability warnings (each carries a `fix`).
+3. `archlang lint --json` — clear the habitability warnings (each carries a `fix`).
 
 ### Diagnostics as data, and seeing a failure
 
@@ -1040,13 +1040,13 @@ The two feedback channels an agent relies on are both public, structured API:
 
 - **The opt-in error card.** By default a plan that fails to compile produces **no image** —
   correct for a pipeline, but blind for an agent watching the drawing. `compile(src, { onError:
-  "svg" })` / `--error-svg` (on `arch compile`, `arch preview`, and `arch md`) instead renders
+  "svg" })` / `--error-svg` (on `archlang compile`, `archlang preview`, and `archlang md`) instead renders
   a deterministic, self-describing SVG card — severity, code, `line:col`, message, and the
   catalogued fix — so the failure is visible, not just returned. Errors, diagnostics, and exit
   codes are unchanged; without the opt-in the failing plan still yields no bytes. The renderer
   is exported as `renderErrorSvg`. See
   [ADR 0009](adr/0009-ai-first-context-and-distribution.md).
 
-For a full cold start, `arch context` (and the shipped `llms-full.txt`) bundle this loop —
+For a full cold start, `archlang context` (and the shipped `llms-full.txt`) bundle this loop —
 the language spec, the `SKILL.md` workflow, the CLI reference, and the whole error catalog — into
 one system-prompt-ready document.

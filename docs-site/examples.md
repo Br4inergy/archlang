@@ -13,15 +13,15 @@ going with the full editor.
 They are ordered as a tour rather than an inventory: a plan you can read in one screen
 first, then houses, then the large public buildings, then the drawings that exist to
 prove one language feature. Every figure quoted below comes from
-[`arch describe --json`](/analysis) on the file itself — and every warning from
-`arch lint` / `arch validate` on the same file — so the prose and the drawing cannot
+[`archlang describe --json`](/analysis) on the file itself — and every warning from
+`archlang lint` / `archlang validate` on the same file — so the prose and the drawing cannot
 disagree.
 
 Two things worth knowing before you start. A plan written as
 [`level` blocks](/reference#levels-a-multi-storey-building-v1-21) compiles to **one
 drawing per storey**, and a live widget shows **page 1** — the lowest storey, which is
 what `compile().svg` returns; the whole set is in `compile().pages`, and
-`arch describe --level 2 --json` reads a specific floor. And the playground's **theme
+`archlang describe --level 2 --json` reads a specific floor. And the playground's **theme
 selector restyles any plan** — blueprint, dark, mono, presentation — without touching a
 line of its source, because a theme changes inks and hatches, never geometry.
 
@@ -31,8 +31,8 @@ line of its source, because a theme changes inks and hatches, never geometry.
 
 The showpiece: a two-storey villa with an attached garage, drawn on one A2 sheet at
 1:50. The widget below shows **page 1 — the ground floor**, **11 rooms, 196.54 m²**
-(`arch describe --json`); the upper floor adds nine more rooms over 140.76 m²
-(`arch describe --level 2 --json`).
+(`archlang describe --json`); the upper floor adds nine more rooms over 140.76 m²
+(`archlang describe --level 2 --json`).
 
 It is the plan to read when you want to see how the surfaces above fit together rather
 than in isolation: `site { street north }` names the facades a plot orientation lint
@@ -46,7 +46,7 @@ eaves on the upper storey; and a `component` authored once — `ensuite() { … 
 `place`d three times: twice on the bedroom band, the second with `mirror x` so the pair
 face opposite ways, and once more inside the master suite.
 
-`arch lint` raises eight warnings on it, all on the upper floor. Two are left in on
+`archlang lint` raises eight warnings on it, all on the upper floor. Two are left in on
 purpose, as the honest cost of a real site: two bedrooms whose windows don't face the
 equator side. (The master en-suite, reached only through its bedroom, is not one: the
 other two en-suites also open off the landing.) The other six squeeze to
@@ -64,7 +64,7 @@ is reachable.
 The other half of the language, and the one every plan above leaves out: **everything
 outside the wall line**. A two-storey family house on a 22 × 22 m suburban lot, A2 at
 1:100 — **6 rooms and 136.5 m² of floor**, beside **220.7 m² of ground**
-(`arch describe --json`'s `totals.outdoor_area_m2`) and a **484 m² lot**
+(`archlang describe --json`'s `totals.outdoor_area_m2`) and a **484 m² lot**
 (`site.lot_area_m2`). Those are three different numbers and the release exists to keep
 them apart: a terrace is not floor area, so a ground surface appears in no `rooms[]`, no
 `schedule rooms` row and no access graph.
@@ -91,11 +91,11 @@ Which side that is is derived rather than written: the resolver asks which face 
 twenty-one outdoor fixture families furnish the garden, all at their catalogued
 footprints and none of them labelled.
 
-`arch lint` raises exactly one warning, left in and named in the source: an aspect
+`archlang lint` raises exactly one warning, left in and named in the source: an aspect
 heuristic — `W_ROOM_NOT_EQUATOR_FACING` on the one habitable room with no south window,
 Bedroom 2 on level 2. On a two-band plan one bedroom has to take the street aspect, and
 the two rooms people sleep in longest get the garden, so this is the case where the
-drafter overrules the rule. `arch validate` is clean; `arch validate --strict` reports
+drafter overrules the rule. `archlang validate` is clean; `archlang validate --strict` reports
 that one.
 
 <ArchLive :src="EXAMPLES['garden-house']" :rows="20" />
@@ -178,7 +178,7 @@ living space to the hall, real [fixture symbols](/furniture) (sink, counter, sto
 fridge, shower, basin, WC), and doors whose swings stay clear of the furniture. It is
 **lint-clean** under the default profile and import-free — a single file with no `import`
 and no World seam — which is why the test suite uses it as the plan that must always
-compile from nothing. Run `arch describe` / `arch lint` on it to see the
+compile from nothing. Run `archlang describe` / `archlang lint` on it to see the
 [analysis](/analysis) layer in action.
 
 <ArchLive :src="EXAMPLES['studio']" :rows="24" />
@@ -220,8 +220,8 @@ Two things to read in the source rather than the drawing. **Not one piece carrie
 [catalogued footprint](/furniture#the-symbol-catalogue) and derives the rotation from the
 wall, so the whole kitchen, bathroom and both beds are written without a hand-computed
 number. `offset` is where a piece's **centre** lands along the wall run, which is why a
-fitted run reads as a sequence of centres rather than corners. `arch validate` is clean;
-`arch validate --strict` reports exactly one warning, named in the source so it is not
+fitted run reads as a sequence of centres rather than corners. `archlang validate` is clean;
+`archlang validate --strict` reports exactly one warning, named in the source so it is not
 mistaken for rot — `W_PATH_TOO_NARROW` on the walk into the kitchen, which the nav grid
 measures at 400 mm through the 1200 mm opening, and which is left standing rather than
 nudged away.
@@ -234,11 +234,11 @@ A single-storey house — **8 rooms, 102 m², 6 doors, 7 windows** at `scale 1:1
 plot that fronts the street on the **south**, in the southern hemisphere, and the whole
 layout follows from that one declared fact. `site { street south hemisphere south }`
 ([site and orientation](/reference#site-and-orientation)) draws nothing; it names five
-directions on `arch describe --json --select site` — `street` (S), `back` (N),
+directions on `archlang describe --json --select site` — `street` (S), `back` (N),
 `equator_side` (N), `sunrise_side` (E), `sunset_side` (W). Here `back` and `equator_side`
 are the *same* side, which is why the house turns away from the road: the living room and
 both bedrooms take the north facade, and the service band — entry, hall, bath, laundry,
-kitchen — is stacked along the street. Delete Bedroom 2's north window and `arch lint`
+kitchen — is stacked along the street. Delete Bedroom 2's north window and `archlang lint`
 says so, through the one advisory rule that reads a site,
 `W_ROOM_NOT_EQUATOR_FACING`. These are **drafting heuristics for an aspect, not a daylight
 measurement**: there is no sun model, no latitude and no date anywhere in ArchLang.
@@ -269,7 +269,7 @@ The window on the courtyard's west wall has the gallery's floor to its west and 
 its east, so it looks **east**, not west; ArchLang answers by probing one wall thickness off
 each face of the window's own host segment and taking the side no room occupies, which is
 exact here and on a sloped facade alike. Read it back with
-`arch describe --json --select windows`.
+`archlang describe --json --select windows`.
 
 The wings are [`zone`s](/reference#zones-wings-and-departments-v1-22) — living 67.75 m²
 over 4 rooms, private 65.5 m² over 4, service 29.75 m² over 3. A zone has **zero
@@ -288,7 +288,7 @@ A 5.5 × 11 m terrace house written as three
 [`level` blocks](/reference#levels-a-multi-storey-building-v1-21), `paper A3 portrait` at
 `scale 1:50`. Each storey is **4 rooms and 55.64 m²** and becomes its own page — ground
 (Hall, Living, Cloakroom, Kitchen/Dining), first (Landing, Bedroom 1, Bathroom, Bedroom 2),
-second (Landing, Study, Shower room, Main bedroom). `arch compile` writes
+second (Landing, Study, Shower room, Main bedroom). `archlang compile` writes
 `townhouse.L1.svg`, `townhouse.L2.svg` and `townhouse.L3.svg`; the widget below shows page
 1. Everything outside the blocks — `units`, `grid`, `paper`, `scale`, `dims auto` — is
 stated once, because one building is issued on one sheet at one scale.
@@ -382,7 +382,7 @@ any zoom.
 The sheet is the other half. `schedule rooms` and `legend` fill the margin and are **fully
 derived**, nothing to configure: the legend lists one row per wall hatch material actually
 used and one per placed fixture category that has a plan symbol, and the schedule's rows and
-total are the same numbers `arch describe --json` reports. At the foot of the file,
+total are the same numbers `archlang describe --json` reports. At the foot of the file,
 `dim radius <wallId> segment <n>` and `dim diameter <roomId>` take both geometry and text
 from the element they name, so R8000 and the centre are never retyped.
 
@@ -423,7 +423,7 @@ an addressable instance of exactly 16.2 m².
 Three things follow. **Namespacing** — ids inside the component become
 `<instance>.<id>`, so the six rooms are `c1.main` … `c6.main` and the plan can address
 exactly one of them: `furniture … in c2.main` puts an ECG trolley in the second room and
-nowhere else, and `arch describe --room c2.main` reads it back. **Mirroring** — the north row
+nowhere else, and `archlang describe --room c2.main` reads it back. **Mirroring** — the north row
 is placed as drawn and the south row with `mirror y`, a real reflection about the instance's
 own origin, so the corridor wall lands on the corridor for both rows and all six doors face
 the same way; because a reflection moves the origin to the far edge, a mirrored 4500-deep
@@ -432,7 +432,7 @@ corridor wall only, an L rather than a box, so at 3600 centres no two partitions
 coincide. The rest of the wing is ordinary: a 2400 corridor with a `dim clear` proving
 2300 mm of it is actually clear floor, pocket doors on the consulting rooms so no leaf ever
 sweeps into a corridor patients queue in, and a sliding door wide enough for a trolley into
-treatment. The plan is clean under `arch lint --profile accessibility-advisory` as well as
+treatment. The plan is clean under `archlang lint --profile accessibility-advisory` as well as
 the default ruleset.
 
 <ArchLive :src="EXAMPLES['clinic']" :rows="30" />
@@ -525,7 +525,7 @@ row you see is exactly what the loop produced.
 
 **2 rooms, 24 m²** — the smallest plan that carries
 [`accTitle` and `accDescr`](/reference#accessible-metadata-acctitle-accdescr), which supply
-the SVG `<title>`/`<desc>` emitted by `arch compile --accessible`. They are **metadata
+the SVG `<title>`/`<desc>` emitted by `archlang compile --accessible`. They are **metadata
 only**: the default output is byte-identical without the flag. Omit them and the description
 is derived from [`describe()`](/analysis)'s caption instead.
 

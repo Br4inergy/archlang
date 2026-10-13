@@ -678,6 +678,7 @@ ${ENUMS_MARK}
 
 Every command takes \`--json\` (structured result on **stdout**, human messages on **stderr**) and
 reads source from a file or stdin (\`-\`). Exit codes: ${exitLines}.
+In a shell, every \`arch\` in this spec means \`archlang\` (or \`npx -y @chanmeng666/archlang\`): coreutils owns \`arch\` on Linux, macOS and Git Bash.
 
 ${cliLines}
 

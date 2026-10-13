@@ -126,7 +126,7 @@ const PAGE_META = [
   [
     "/cli",
     "CLI reference",
-    "Every arch command, flag, export format and exit code, generated from the same capability manifest the CLI itself serves, so this page cannot fall behind it.",
+    "Every archlang command, flag, export format and exit code, generated from the same capability manifest the CLI itself serves, so this page cannot fall behind it.",
   ],
   [
     "/furniture",
@@ -141,17 +141,17 @@ const PAGE_META = [
   [
     "/axonometric",
     "The axonometric view",
-    "arch compile --view iso draws the building instead of the plan: extruded walls with their openings cut. It is an illustration, so it measures nothing.",
+    "archlang compile --view iso draws the building instead of the plan: extruded walls with their openings cut. It is an illustration, so it measures nothing.",
   ],
   [
     "/intent",
     "The intent contract",
-    "Write a brief down as data, then check a plan against it. arch validate --intent reports code by code which expectations the drawing meets, with no image.",
+    "Write a brief down as data, then check a plan against it. archlang validate --intent reports code by code which expectations the drawing meets, with no image.",
   ],
   [
     "/errors",
     "Error and warning codes",
-    "Every ArchLang diagnostic code with its meaning and a worked example. Errors abort rendering, warnings do not, and arch explain prints any code from the CLI.",
+    "Every ArchLang diagnostic code with its meaning and a worked example. Errors abort rendering, warnings do not, and archlang explain prints any code from the CLI.",
   ],
   [
     "/spec",
@@ -281,12 +281,12 @@ const PAGE_META = [
   [
     "/adr/0024-finish-as-explicit-transform",
     "ADR 24 — finish is an explicit transform",
-    "arch finish adds the sheet statements a plan lacks (paper, scale, dimensions, title, schedule, legend) as an explicit source transform, never inside compile.",
+    "archlang finish adds the sheet statements a plan lacks (paper, scale, dimensions, title, schedule, legend) as an explicit source transform, never inside compile.",
   ],
   [
     "/adr/0025-furnish-as-explicit-transform",
     "ADR 25 — furnish is an explicit transform",
-    "arch finish furnishes the rooms a plan left empty, by room use, as an explicit source transform: fill-only, relative placement, never worse, never inside compile.",
+    "archlang finish furnishes the rooms a plan left empty, by room use, as an explicit source transform: fill-only, relative placement, never worse, never inside compile.",
   ],
 ] as const;
 
