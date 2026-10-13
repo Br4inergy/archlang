@@ -19,7 +19,7 @@ import { add, mul, normal, segmentsOfWall, sub, unit } from "./geometry.js";
 import { arcPointAt, diameterText, radiusText } from "./geometry/arc.js";
 import type { Point } from "./ast.js";
 import { hatchesUsed } from "./hatches.js";
-import { lowerWallSet } from "./wall-lowering.js";
+import { attachSceneWalls, lowerWallSet } from "./wall-lowering.js";
 import type { SideGeom } from "./facade.js";
 import { SIDES, cleanTicks, facadeAt, facadeOpenings, measureExtent, openingsBySide, sideGeoms } from "./facade.js";
 import { anchorChromeToSheet, dimReach, layoutChrome } from "./chrome-layout.js";
@@ -918,7 +918,7 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
     for (const pushed of circulationOverlayNodes(ir, theme, sizes)) nodes.push(pushed);
   }
 
-  return {
+  const scene: Scene = {
     width: sheet ? sheet.page.w : content.w,
     height: sheet ? sheet.page.h : content.h,
     bounds: b,
@@ -939,4 +939,8 @@ export function toScene(ir: ResolvedPlan, opts: CompileOptions = {}, runtime: Ru
     // for the desc. Off by default → the Scene is byte-identical. Never read by geometry.
     ...(opts.accessible ? { name: ir.accTitle ?? ir.name, caption: ir.accDescr ?? captionForPlan(ir) } : {}),
   };
+  // Export metadata for the DXF wall-layer split (`Scene.walls`): the very list the wall
+  // lowering above was handed, in its order, projected lazily. No backend draws it.
+  attachSceneWalls(scene, ir.walls);
+  return scene;
 }

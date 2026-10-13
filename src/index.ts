@@ -361,6 +361,8 @@ export type {
   RenderPass,
   RenderSizes,
   SceneSheet,
+  // `Scene.walls` — export metadata (the DXF wall-layer split), never drawn.
+  SceneWall,
   LineWeight,
   LineType,
 } from "./scene.js";

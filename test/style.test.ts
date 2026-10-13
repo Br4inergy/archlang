@@ -96,7 +96,14 @@ describe("AIA layers (T3.2)", () => {
   it("DXF declares AIA layers with colours and references them on entities", () => {
     const { scene } = compile(src, { noCache: true });
     const dxf = toDxf(scene!);
-    for (const lyr of ["A-WALL", "A-FLOR", "A-DOOR", "A-COLS"]) expect(dxf).toContain(lyr);
+    // Anchored on the LAYER record (`0 LAYER` / `2 <name>`), so a name cannot pass as a
+    // substring of a longer one. The plan's only wall is `exterior`, so walls declare and use
+    // A-WALL-EXTR; the pass default A-WALL is declared only when an entity still lands on it.
+    for (const lyr of ["A-WALL-EXTR", "A-WALL-INTR", "A-FLOR", "A-DOOR", "A-COLS"]) {
+      expect(dxf).toContain(`\n0\nLAYER\n2\n${lyr}\n`);
+    }
+    expect(dxf).not.toContain("\n0\nLAYER\n2\nA-WALL\n");
+    expect(dxf).toContain("\n8\nA-WALL-EXTR\n"); // an entity is on the exterior wall layer
     expect(dxf).toContain("\n8\nA-COLS\n"); // an entity is on the A-COLS layer
   });
 });
