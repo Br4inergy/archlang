@@ -38,7 +38,7 @@ import {
   rotateForBackEdge,
 } from "./fixture-orientation.js";
 import { canonicalFixture } from "./elements/fixtures-glyphs.js";
-import { defaultFootprint, frontClearanceMm, zoneFixtureCategories } from "./fixtures-catalog.js";
+import { defaultFootprint, fixtureSpec, frontClearanceMm, zoneFixtureCategories } from "./fixtures-catalog.js";
 import { doorSwing, normal, sectorIntersectsRect, segmentsOfWall, sub, unit, type WallSegment } from "./geometry.js";
 import { distToPolygonEdge, pointInPolygon, polygonsOverlap, rectRing } from "./geometry/polygon.js";
 import { type BBox, doorLandingRect, rectsOverlap } from "./geometry/rect.js";
@@ -300,35 +300,47 @@ export function furnishStage(
     });
   };
 
-  /** A room that holds some furniture is never topped up (ADR 0025, decision 2): what it lacks is reported. */
+  /**
+   * A room that holds some furniture is never topped up (ADR 0025, decision 2): what it
+   * lacks is reported. These notes follow every other note of the run, in room order.
+   */
   const partly = ({ room, missing }: PartlyFurnished, level?: number): void => {
     const name = room._idAuthored === true ? `"${room.id}"` : `the room "${room.label ?? room.id}"`;
+    const where = level === undefined ? name : `${name} (level ${level})`;
     const lacks = missing.map((m) => `${m.use}: ${m.categories.map((c) => `\`${c}\``).join(", ")}`).join("; ");
-    note(
-      room,
-      level === undefined
-        ? `${name} holds furniture but not every piece its use requires — ${lacks} missing; finish fills only empty rooms`
-        : `${name} (level ${level}) holds furniture but not every piece its use requires — ${lacks} missing; finish fills only empty rooms, and the furnish stage handles single-storey plans only`,
-    );
+    const holds = `holds furniture but not every piece its use requires — ${lacks} missing`;
+    const reason =
+      roomAreaMm2(room) / 1e6 > MAX_ROOM_AREA_M2
+        ? `${where} is larger than ${MAX_ROOM_AREA_M2} m² — the furnish table describes dwelling rooms, so the room was left as it is; it ${holds}`
+        : room._instance !== undefined
+          ? `${where} ${holds}; it belongs to a placed component instance — furnish the component instead`
+          : `${where} ${holds}; finish fills only empty rooms`;
+    note(room, level === undefined ? reason : `${reason}, and the furnish stage handles single-storey plans only`);
   };
 
   if (resolved.levels.length > 0) {
+    const partial: Array<[PartlyFurnished, number]> = [];
     for (const l of resolved.levels) {
-      const { empty, partial } = roomsByFill(l.ir);
-      for (const p of partial) partly(p, l.level);
-      for (const room of empty)
+      const fill = roomsByFill(l.ir);
+      for (const p of fill.partial) partial.push([p, l.level]);
+      for (const room of fill.empty)
         note(
           room,
           `"${room.id}" (level ${l.level}) was not furnished — the furnish stage handles single-storey plans only`,
         );
     }
+    for (const [p, level] of partial) partly(p, level);
     return none(unresolved);
   }
 
   const ir = resolved.ir;
   const { empty: todo, partial } = roomsByFill(ir);
-  for (const p of partial) partly(p);
-  if (todo.length === 0) return none(unresolved);
+  /** Every note of the run: the stage's own, then the partly furnished rooms. Called once, at the return. */
+  const reported = (): FinishNote[] => {
+    for (const p of partial) partly(p);
+    return unresolved;
+  };
+  if (todo.length === 0) return none(reported());
   const where = insertionPoint(source, plan);
   const walls = ir.walls;
   const segs = walls.flatMap((w) => segmentsOfWall(w));
@@ -516,12 +528,12 @@ export function furnishStage(
     leftOut(dropped);
   }
 
-  if (lines.length === 0) return none(unresolved, checks, todo.length);
+  if (lines.length === 0) return none(reported(), checks, todo.length);
   const text = where.wrap(lines);
   return {
     source: render([]),
     changes,
-    unresolved,
+    unresolved: reported(),
     changed: true,
     checks,
     rooms: todo.length,
@@ -587,21 +599,15 @@ function footprints(category: string, item: FurnishItem): ReadonlyArray<readonly
   return fp ? [[fp.along, fp.depth]] : (item.sizes ?? []);
 }
 
-/**
- * The families beside a required piece's own that do its job, for the partly furnished
- * room's note: a bedroom with a `double_bed` lacks no `bed`. Keyed and listed by family
- * name; every word of a listed family counts (`corner_sofa` with `sofa_l`). A piece's own
- * family always counts (`couch` for `sofa`, `toilet` for `wc`), as do its `or` words. A
- * bare `sink` is catalogued for a bathroom as well as a kitchen, and it is in the kitchen
- * sink's family.
- */
-const SERVED_BY: Readonly<Record<string, readonly string[]>> = {
-  bed: ["double_bed", "bunk_bed", "crib"],
-  sofa: ["sofa_l", "loveseat"],
-  dining_table: ["table"],
-  basin: ["kitchen_sink"],
-};
 const familyOf = (word: string): string => canonicalFixture(word) ?? word;
+/**
+ * The families a held piece does the job of: its own (`couch` is a `sofa`), and the one the
+ * catalogue says it serves (`double_bed` serves `bed`, a bare `sink` serves `basin`).
+ */
+const servedBy = (category: string): string[] => {
+  const serves = fixtureSpec(category)?.serves;
+  return serves === undefined ? [familyOf(category)] : [familyOf(category), familyOf(serves)];
+};
 
 /**
  * Does the piece stand on the room's floor? Its footprint is tested against the room's
@@ -630,9 +636,14 @@ interface PartlyFurnished {
  * The rooms of one storey whose use has a row in the table, by what they hold: `empty`
  * (no piece; the stage furnishes it) and `partial` (some pieces, but not every required
  * one; reported, never topped up). A room holding every required piece is in neither.
+ *
+ * A piece declared `in <room>` belongs to that room only, wherever its footprint reaches; a
+ * piece with no `in` (or one naming no room of this storey) belongs to every room its
+ * footprint stands on.
  */
 function roomsByFill(ir: ResolvedPlan): { empty: RRoom[]; partial: PartlyFurnished[] } {
   const furniture = ir.elements.filter((e): e is RFurniture => e.kind === "furniture");
+  const rooms = new Set(ir.elements.filter((e) => e.kind === "room").map((e) => (e as RRoom).id));
   const empty: RRoom[] = [];
   const partial: PartlyFurnished[] = [];
   for (const e of ir.elements) {
@@ -640,16 +651,15 @@ function roomsByFill(ir: ResolvedPlan): { empty: RRoom[]; partial: PartlyFurnish
     const uses = usesOf(e);
     if (uses.length === 0) continue;
     const floor = e.poly ?? rectRing({ x: e.at.x, y: e.at.y, w: e.size.w, h: e.size.h });
-    const held = furniture.filter((f) => f.room === e.id || standsIn(f, floor));
+    const held = furniture.filter((f) =>
+      f.room !== undefined && rooms.has(f.room) ? f.room === e.id : standsIn(f, floor),
+    );
     if (held.length === 0) {
       empty.push(e);
       continue;
     }
-    // The table describes dwelling rooms; a larger room is not measured against it.
-    if (roomAreaMm2(e) / 1e6 > MAX_ROOM_AREA_M2) continue;
-    const families = new Set(held.map((f) => familyOf(f.category)));
-    const holds = (i: FurnishItem): boolean =>
-      [i.category, ...(i.or ?? []), ...(SERVED_BY[i.category] ?? [])].some((w) => families.has(familyOf(w)));
+    const families = new Set(held.flatMap((f) => servedBy(f.category)));
+    const holds = (i: FurnishItem): boolean => [i.category, ...(i.or ?? [])].some((w) => families.has(familyOf(w)));
     const missing: PartlyFurnished["missing"] = [];
     for (const use of uses) {
       const categories = (FURNISH_TABLE[use] ?? []).filter((i) => i.required && !holds(i)).map((i) => i.category);

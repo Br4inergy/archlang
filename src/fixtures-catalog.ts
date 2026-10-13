@@ -35,6 +35,16 @@ export interface FixtureSpec {
    */
   zones?: readonly FixtureZone[];
   /**
+   * The canonical category whose job this piece does in a room, beside its own family's: a
+   * `double_bed` serves `bed`, a `urinal` serves `wc`, a bare `sink` serves `basin`. Read
+   * only by `finish`, to decide whether a room that holds furniture lacks a piece its use
+   * requires (`src/furnish.ts`). Nothing draws, measures or lints it. The words of a family
+   * carry the same value unless their `zones` differ (`sink` is wet as well as kitchen, so it
+   * serves `basin`; `kitchen_sink` is kitchen only, so it does not), and a piece that serves a
+   * zoned category carries that category's zones (`test/finish-furnish.test.ts`).
+   */
+  serves?: string;
+  /**
    * The drawn plan symbol is **rotation-symmetric** — it has no distinguishable
    * back, so which way the piece faces carries no meaning (a shower tray: outline,
    * both diagonals, a centre drain). Orientation reasoning skips these: they still
@@ -159,7 +169,13 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // Kitchen run — counters/appliances line a wall; leave standing/working room.
   kitchen_sink: { requiresWall: true, clearanceMm: 550, footprint: { along: 800, depth: 600 }, zones: ["kitchen"] },
   // A bare `sink` satisfies either room kind (a bathroom basin or the kitchen sink).
-  sink: { requiresWall: true, clearanceMm: 550, footprint: { along: 800, depth: 600 }, zones: ["wet", "kitchen"] },
+  sink: {
+    requiresWall: true,
+    clearanceMm: 550,
+    footprint: { along: 800, depth: 600 },
+    zones: ["wet", "kitchen"],
+    serves: "basin",
+  },
   counter: { requiresWall: true, clearanceMm: 550, footprint: { along: 600, depth: 600 }, zones: ["kitchen"] },
   worktop: { requiresWall: true, clearanceMm: 550, footprint: { along: 600, depth: 600 }, zones: ["kitchen"] },
   stove: { requiresWall: true, clearanceMm: 550, footprint: { along: 600, depth: 600 }, zones: ["kitchen"] },
@@ -214,7 +230,7 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // Bedroom. Footprints are the conventional single/double mattress, laid head-to-wall:
   // `along` runs with the wall (the bed's width), `depth` into the room (its length).
   bed: { requiresWall: false, directional: true, footprint: { along: 1500, depth: 2000 } },
-  double_bed: { requiresWall: false, directional: true, footprint: { along: 1800, depth: 2000 } },
+  double_bed: { requiresWall: false, directional: true, footprint: { along: 1800, depth: 2000 }, serves: "bed" },
   nightstand: { requiresWall: false, directional: true, footprint: { along: 450, depth: 400 } },
   bedside_table: { requiresWall: false, directional: true, footprint: { along: 450, depth: 400 } },
   // NO `clearanceMm`, deliberately, and it was measured rather than assumed. A 550 mm
@@ -241,7 +257,7 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   tv_unit: { requiresWall: false, directional: true, footprint: { along: 1500, depth: 450 } },
 
   // Dining & seating.
-  table: { requiresWall: false, symmetric: true },
+  table: { requiresWall: false, symmetric: true, serves: "dining_table" },
   dining_table: { requiresWall: false, symmetric: true },
   chair: { requiresWall: false },
   stool: { requiresWall: false, symmetric: true },
@@ -318,8 +334,8 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // NOT `directional`, for the same reason `sofa` is not: seating is arranged rather than
   // installed, and an L-sofa floated as a room divider is a normal plan. Its footprint is
   // the bounding rectangle of the L, chairs-included in the same spirit as `dining_table`.
-  sofa_l: { requiresWall: false, footprint: { along: 2600, depth: 1600 } },
-  corner_sofa: { requiresWall: false, footprint: { along: 2600, depth: 1600 } },
+  sofa_l: { requiresWall: false, footprint: { along: 2600, depth: 1600 }, serves: "sofa" },
+  corner_sofa: { requiresWall: false, footprint: { along: 2600, depth: 1600 }, serves: "sofa" },
   piano: { requiresWall: false },
   grand_piano: { requiresWall: false },
   sun_lounger: { requiresWall: false },
@@ -463,7 +479,7 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // console table is not one either. Adding either would silently green a
   // `W_ROOM_NO_FIXTURE` a plan deserves.
   bidet: { requiresWall: true, clearanceMm: 450, footprint: { along: 400, depth: 700 }, zones: ["wet"] },
-  urinal: { requiresWall: true, clearanceMm: 450, footprint: { along: 400, depth: 350 }, zones: ["wet"] },
+  urinal: { requiresWall: true, clearanceMm: 450, footprint: { along: 400, depth: 350 }, zones: ["wet"], serves: "wc" },
   laundry_sink: { requiresWall: true, clearanceMm: 600, footprint: { along: 600, depth: 500 }, zones: ["wet"] },
   laundry_tub: { requiresWall: true, clearanceMm: 600, footprint: { along: 600, depth: 500 }, zones: ["wet"] },
   water_heater: { requiresWall: true, footprint: { along: 600, depth: 600 } },
@@ -520,9 +536,9 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // for the size and not for a rotation.
 
   // Bedroom.
-  bunk_bed: { requiresWall: false, directional: true, footprint: { along: 1000, depth: 2000 } },
-  crib: { requiresWall: false, directional: true, footprint: { along: 700, depth: 1300 } },
-  cot: { requiresWall: false, directional: true, footprint: { along: 700, depth: 1300 } },
+  bunk_bed: { requiresWall: false, directional: true, footprint: { along: 1000, depth: 2000 }, serves: "bed" },
+  crib: { requiresWall: false, directional: true, footprint: { along: 700, depth: 1300 }, serves: "bed" },
+  cot: { requiresWall: false, directional: true, footprint: { along: 700, depth: 1300 }, serves: "bed" },
   dresser: { requiresWall: false, directional: true, clearanceMm: 600, footprint: { along: 1200, depth: 500 } },
   chest_of_drawers: {
     requiresWall: false,
@@ -543,8 +559,8 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   radiator: { requiresWall: false, directional: true, footprint: { along: 1000, depth: 100 } },
   sideboard: { requiresWall: false, directional: true, footprint: { along: 1600, depth: 450 } },
   buffet: { requiresWall: false, directional: true, footprint: { along: 1600, depth: 450 } },
-  loveseat: { requiresWall: false, footprint: { along: 1500, depth: 850 } },
-  sofa_2: { requiresWall: false, footprint: { along: 1500, depth: 850 } },
+  loveseat: { requiresWall: false, footprint: { along: 1500, depth: 850 }, serves: "sofa" },
+  sofa_2: { requiresWall: false, footprint: { along: 1500, depth: 850 }, serves: "sofa" },
   chaise: { requiresWall: false, footprint: { along: 1600, depth: 800 } },
   tv: { requiresWall: false, directional: true, footprint: { along: 1200, depth: 80 } },
   coat_rack: { requiresWall: false, symmetric: true, footprint: { along: 400, depth: 400 } },
@@ -554,7 +570,7 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // Symmetric for the reason `dining_table`, `island` and `outdoor_table` are: it is approached
   // and sat at from every side, so it has no back to find and no single frontal clearance.
   meeting_table: { requiresWall: false, symmetric: true, footprint: { along: 2400, depth: 1200 } },
-  reception_desk: { requiresWall: false, directional: true, footprint: { along: 2400, depth: 900 } },
+  reception_desk: { requiresWall: false, directional: true, footprint: { along: 2400, depth: 900 }, serves: "desk" },
   filing_cabinet: { requiresWall: false, directional: true, clearanceMm: 600, footprint: { along: 450, depth: 600 } },
   locker: { requiresWall: false, directional: true, footprint: { along: 1200, depth: 450 } },
   pool_table: { requiresWall: false, symmetric: true, footprint: { along: 2500, depth: 1400 } },
