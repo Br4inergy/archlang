@@ -324,8 +324,60 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
     expect(partly(r)).toEqual([["r_bath", "bath: `basin`"]]);
     expect(r.unresolved.map((u) => u.room)).toEqual(["r_bed", "r_bath"]);
     expect(r.unresolved[0]!.reason).toBe(
-      '"r_bed" holds no piece on its floor — `wc` is declared `in r_bed` but stands in another room (`W_FIXTURE_WRONG_ROOM`); finish fills only empty rooms',
+      '"r_bed" holds no piece on its floor — `wc` is declared `in r_bed` but stands outside it (`W_FIXTURE_WRONG_ROOM`); finish fills only empty rooms',
     );
+  });
+
+  it("the band's edge: a declared piece reaching 100 mm onto the next floor stays its own room's; 101 mm counts for both", () => {
+    // No `grid`, so the overhang is the one written. r_bath's floor starts at x = 4200.
+    const at = (w: number): string =>
+      FLAT.replace("  grid 50\n", "").replace(
+        "  door id=d_bed",
+        `  furniture bed at (2700,300) size ${w}x2000 in r_bed\n  door id=d_bed`,
+      );
+    for (const w of [1600, 1601]) expect(errorsOf(at(w)), `${w}`).toEqual([]);
+    // The edge is lint's: `W_FIXTURE_WRONG_ROOM` fires at 101 mm and not at 100.
+    expect(codes(at(1600), undefined).has("W_FIXTURE_WRONG_ROOM")).toBe(false);
+    expect(codes(at(1601), undefined).has("W_FIXTURE_WRONG_ROOM")).toBe(true);
+    const edge = finish(at(1600), { only: "furnish" }); // 100 mm over
+    expect(partly(edge)).toEqual([]);
+    expect(edge.changes.some((c) => c.room === "r_bath") || edge.unresolved.some((u) => u.room === "r_bath")).toBe(
+      true,
+    );
+    const past = finish(at(1601), { only: "furnish" }); // 101 mm over
+    expect(partly(past)).toEqual([["r_bath", "bath: `wc`, `basin`"]]);
+    expect(past.changes).toEqual([]);
+  });
+
+  it("a `urinal` serves the `wc` of a dwelling bathroom too: a judgement, pinned", () => {
+    const src = holding("bath", [
+      "urinal against wall w_bb offset 600 in r_bed",
+      "basin against wall w_bb offset 1600 in r_bed",
+    ]);
+    expect(errorsOf(src)).toEqual([]);
+    const r = finish(src, { only: "furnish" });
+    expect(partly(r)).toEqual([]);
+    expect(r.changes.some((c) => c.room === "r_bed")).toBe(false);
+  });
+
+  it("a room of a placed component is told to furnish the component, even when it is larger than 100 m²", () => {
+    const src = `plan "Big unit" {
+  units mm
+  component unit() {
+    wall id=w exterior thickness 200 { (0,0) (12000,0) (12000,10000) (0,10000) close }
+    room id=r at (0,0) size 12000x10000 label "Loft" uses living
+    furniture lamp at (300,300) size 400x400 in r
+  }
+  place unit() as u1 at (0,0)
+}
+`;
+    expect(errorsOf(src)).toEqual([]);
+    const r = finish(src, { only: "furnish" });
+    expect(r.source).toBe(src);
+    expect(partly(r)).toEqual([["u1.r", "living: `sofa`"]]);
+    expect(r.unresolved.map((u) => u.reason)).toEqual([
+      '"u1.r" holds furniture but not every piece its use requires — living: `sofa` missing; it belongs to a placed component instance — furnish the component instead',
+    ]);
   });
 
   it("a partly furnished room larger than 100 m² is reported too, with the dwelling-room reason", () => {

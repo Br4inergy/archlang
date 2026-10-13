@@ -311,10 +311,12 @@ export function furnishStage(
     const code = (words: readonly string[]): string => words.map((c) => `\`${c}\``).join(", ");
     const what =
       "strayed" in r
-        ? `holds no piece on its floor — ${code(r.strayed)} ${r.strayed.length === 1 ? "is" : "are"} declared \`in ${room.id}\` but ${r.strayed.length === 1 ? "stands" : "stand"} in another room (\`W_FIXTURE_WRONG_ROOM\`)`
+        ? `holds no piece on its floor — ${code(r.strayed)} ${r.strayed.length === 1 ? "is" : "are"} declared \`in ${room.id}\` but ${r.strayed.length === 1 ? "stands" : "stand"} outside it (\`W_FIXTURE_WRONG_ROOM\`)`
         : `holds furniture but not every piece its use requires — ${r.missing
             .map((m) => `${m.use}: ${code(m.categories)}`)
             .join("; ")} missing`;
+    // A room of a placed component is told to furnish the component, whatever its size: no
+    // statement in the plan body can name it, so that is the advice that applies first.
     const reason =
       room._instance !== undefined
         ? `${where} ${what}; it belongs to a placed component instance — furnish the component instead`
@@ -621,14 +623,17 @@ const servedBy = (category: string): string[] => {
  * bounding box, so a piece in the notch of an L is not the L's. "On" is interiors
  * overlapping by more than 1 mm, the measure {@link rectsOverlap} uses: a piece against a
  * partition shares the wall band with the room on its far side, and is not in it.
+ *
+ * `eps` is that 1 mm. {@link beyondBand}'s footprint passes 0: the band is already taken
+ * off, so any reach past it counts, exactly where `W_FIXTURE_WRONG_ROOM` starts to fire.
  */
-function standsIn(foot: BBox, floor: readonly Point[]): boolean {
-  if (polygonsOverlap(rectRing(foot), floor)) return true;
+function standsIn(foot: BBox, floor: readonly Point[], eps = 1): boolean {
+  if (polygonsOverlap(rectRing(foot), floor, eps)) return true;
   // A footprint whose every edge lies on the floor's boundary (a piece the size of the
   // room) has no vertex or edge midpoint strictly inside the floor; its centre is. So does a
   // footprint {@link beyondBand} shrank to a line or a point.
   const c = { x: foot.x + foot.w / 2, y: foot.y + foot.h / 2 };
-  return distToPolygonEdge(c, floor) > 1 && pointInPolygon(c.x, c.y, floor);
+  return distToPolygonEdge(c, floor) > eps && pointInPolygon(c.x, c.y, floor);
 }
 
 const footOf = (f: RFurniture): BBox => ({ x: f.at.x, y: f.at.y, w: f.size.w, h: f.size.h });
@@ -647,7 +652,7 @@ function beyondBand(f: RFurniture): BBox {
 type Reported =
   /** It holds furniture, but not every piece its uses require. */
   | { room: RRoom; missing: Array<{ use: UseKind; categories: string[] }> }
-  /** Nothing stands on its floor; the pieces declared `in` it stand in another room. */
+  /** Nothing stands on its floor; the pieces declared `in` it stand outside it. */
   | { room: RRoom; strayed: string[] };
 
 /**
@@ -678,7 +683,7 @@ function roomsByFill(ir: ResolvedPlan): { empty: RRoom[]; reported: Reported[] }
         ? standsIn(footOf(f), floor)
         : declaredHere(f)
           ? standsIn(footOf(f), floor)
-          : standsIn(beyondBand(f), floor),
+          : standsIn(beyondBand(f), floor, 0),
     );
     if (held.length === 0) {
       const strayed = furniture.filter(declaredHere);
