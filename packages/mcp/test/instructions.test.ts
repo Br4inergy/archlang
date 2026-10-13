@@ -10,7 +10,7 @@
  * The descriptions are held to behaviour: no ADR numbers, no repo file names, and no bare
  * `arch <cmd>` (coreutils owns `arch` on Linux, macOS and Git Bash).
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildManifest, MANIFEST_COMMAND_NAMES } from "@chanmeng666/archlang";
@@ -23,7 +23,9 @@ const rootPkg = JSON.parse(readFileSync(resolve(REPO, "package.json"), "utf8")) 
   name: string;
   bin: Record<string, string>;
 };
-const skill = readFileSync(resolve(REPO, "SKILL.md"), "utf8");
+/** Where the workflow skill the instructions condense lives. If SKILL.md moves (for example to
+ *  `skills/archlang/SKILL.md`), point this at the new path. */
+const SKILL_PATH = resolve(REPO, "SKILL.md");
 
 /** The single-word backticked names in the instructions that the CLI manifest knows. */
 const namedCommands = (): string[] => {
@@ -33,6 +35,8 @@ const namedCommands = (): string[] => {
 
 /** SKILL.md's "The loop" section: from its heading to the next `## ` heading. */
 const skillLoop = (): string => {
+  expect(existsSync(SKILL_PATH), `SKILL.md not found at ${SKILL_PATH}; if it moved, update SKILL_PATH`).toBe(true);
+  const skill = readFileSync(SKILL_PATH, "utf8");
   const start = skill.indexOf("\n## The loop");
   expect(start, "SKILL.md has no '## The loop' section").toBeGreaterThan(-1);
   const end = skill.indexOf("\n## ", start + 1);

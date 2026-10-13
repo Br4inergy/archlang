@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The Claude Code plugin is a slim subfolder, `plugins/archlang/`.** The plugin root used to be the repo root, whose 11 MB font the plugin directory rejects (5 MiB per file). `marketplace.json` now installs `./plugins/archlang`: the manifest plus the five skills, which `npm run gen:plugin` copies from the root `SKILL.md` and `skills/` (drift-gated). `npx skills add` is unchanged.
 
+- **`@chanmeng666/archlang-mcp` 0.2.25 sends `instructions` and describes its tools by behaviour.** At `initialize` the server sends the authoring loop (read `archlang://spec`, write `.arch`, `compile`/`fix`, `describe`, `validate` strict, `finish`) and the CLI spelling `archlang <cmd>` / `npx -y @chanmeng666/archlang <cmd>`; tool and resource descriptions no longer cite ADR numbers or repo file names. Release order: publish 0.2.25 only after the core release that ships the `archlang` bin (core 1.42.1 installs only `arch`).
+
 ## [1.42.1] - 2026-10-09
 
 ### Fixed — `arch finish` no longer leaves a plan bare when one sheet statement is refused

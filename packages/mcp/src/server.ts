@@ -132,16 +132,16 @@ function resolveSource(input: {
  * two cannot drift apart silently.
  */
 export const INSTRUCTIONS = [
-  "ArchLang compiles a small `.arch` text language to SVG floor plans. Before writing any `.arch`, read the " +
-    "`archlang://spec` resource: the whole language on one page (from a shell: `npx -y @chanmeng666/archlang spec`).",
+  "ArchLang compiles `.arch` text to SVG floor plans. Before writing any `.arch`, read the " +
+    "`archlang://spec` resource: the whole language (from a shell: `npx -y @chanmeng666/archlang spec`).",
   "The loop:",
   "1. Write the plan as `.arch` source.",
-  "2. `compile` it. Errors come back as diagnostics with byte spans and a fix; `fix` applies the " +
+  "2. `compile` it. Errors are diagnostics, usually with a byte span, often a fix; `fix` applies the " +
     "machine-applicable ones, edit the rest by hand.",
   "3. `describe` it; check rooms, areas and doors against the brief.",
-  "4. `validate` with strict:true (parse, resolve and `lint` in one pass); fix every warning, then back to 2.",
-  "5. `finish` once lint is clean, before export: it furnishes empty rooms and adds the missing sheet " +
-    "statements (paper, scale, dimensions, title, room schedule, legend).",
+  "4. `validate` with strict:true (parse, resolve, `lint`); fix every warning, then back to 2.",
+  "5. `finish` once lint is clean, before export: it furnishes empty rectangular rooms (single-storey plans) " +
+    "and adds the missing sheet statements (paper, scale, dimensions, title, room schedule, legend).",
   "With a shell, the CLI runs the same loop at no context cost: `archlang <cmd>`, " +
     "or `npx -y @chanmeng666/archlang <cmd>` without a global install.",
 ].join("\n");
@@ -155,7 +155,7 @@ export function createServer(): McpServer {
     {
       title: "Compile ArchLang → SVG or ASCII",
       description:
-        'Compile ArchLang `.arch` source (or a Plan-JSON object) to an SVG floor plan, or to a plain-text ASCII plan with format:"txt". Returns the output plus diagnostics; each diagnostic carries a byte span, line/col, an E_/W_ code and a fix, often one the `fix` tool can apply. Errors come back as data, never as exceptions: read `diagnostics` and correct the source. A multi-storey plan (`level <n> { … }`) returns the lowest storey in `output` and every storey in `pages[]` ({ level, name, output }); pass `level` to render just one.',
+        'Compile ArchLang `.arch` source (or a Plan-JSON object) to an SVG floor plan, or to a plain-text ASCII plan with format:"txt". Returns the output plus diagnostics; a diagnostic usually carries a byte span with line/col and an E_/W_ code, and often a fix, sometimes one the `fix` tool can apply. Errors come back as data, never as exceptions: read `diagnostics` and correct the source. A multi-storey plan (`level <n> { … }`) returns the lowest storey in `output` and every storey in `pages[]` ({ level, name, output }); pass `level` to render just one.',
       inputSchema: {
         source: z.string().optional().describe('ArchLang source (a `plan "…" { … }`). Provide this OR plan_json.'),
         plan_json: z
@@ -254,7 +254,7 @@ export function createServer(): McpServer {
     {
       title: "Validate (parse + resolve + lint)",
       description:
-        "Check a plan in one pass without rendering (parse, resolve and lint): the gate a plan passes before it ships. `strict:true` makes advisory warnings fail too. Optional `graph` checks the plan's interior-door adjacency against an intended room graph (`{ room: [neighbours] }`); a mismatch fails. Optional `intent` (a brief's expectations, shaped as the `archlang://intent-schema` resource describes) is checked against the plan: a missed gating assertion (room count, existence, area, total area, windows) fails, while adjacency and reachability are advisory and only score. A malformed intent returns `{ ok:false, intentErrors }` as data, never an exception. Returns { ok, diagnostics, graph?, intent? }.",
+        "Check a plan in one pass without returning a drawing (parse, resolve and lint): the gate a plan passes before it ships. `strict:true` makes advisory warnings fail too. Optional `graph` checks the plan's interior-door adjacency against an intended room graph (`{ room: [neighbours] }`); a mismatch fails. Optional `intent` (a brief's expectations, shaped as the `archlang://intent-schema` resource describes) is checked against the plan: a missed gating assertion (room count, existence, area, total area, windows) fails, while adjacency and reachability are advisory and only score. A malformed intent returns `{ ok:false, intentErrors }` as data, never an exception. Returns { ok, diagnostics, graph?, intent? }.",
       inputSchema: {
         source: z.string().describe("ArchLang source."),
         strict: z.boolean().optional().describe("Advisory warnings fail too."),
@@ -438,7 +438,7 @@ export function createServer(): McpServer {
     {
       title: "Suggest topology fixes (advisory)",
       description:
-        "Suggest the doors and windows a plan's room graph needs, as data; nothing is applied. For a room with no path back, a building with no entrance, a bath reachable only through a bedroom, or a windowless bedroom, it returns ready-to-paste `door`/`window` statements (attachment form, placed clear of furniture) with a rationale, for you to choose among and insert.",
+        "Suggest the doors and windows a plan's room graph needs, as data; nothing is applied. For a room with no path back, a building with no entrance, a bath reachable only through a bedroom, or a windowless bedroom, it returns ready-to-paste `door`/`window` statements with a rationale, for you to choose among and insert. Each names its wall by an authored id or a unique wall category, else by absolute `at (x, y)` coordinates. Door candidates avoid furniture in the door's approach; window candidates do not consider furniture.",
       inputSchema: { source: z.string().describe("ArchLang source.") },
     },
     async ({ source }) => json({ ok: true, suggestions: suggestTopology(source) }),
@@ -488,7 +488,7 @@ export function createServer(): McpServer {
       "grammar",
       "archlang://grammar",
       "ArchLang GBNF grammar",
-      "GBNF grammar for constrained decoding, so a model generates source that parses.",
+      "GBNF grammar that constrains generation to ArchLang's statement shapes; it is looser than the parser, which remains the authority.",
       "text/plain",
       readResource("archlang.gbnf", "grammars/archlang.gbnf"),
     ],
