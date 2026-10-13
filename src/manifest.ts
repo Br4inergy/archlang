@@ -1,7 +1,7 @@
 /**
- * CLI capability manifest — the whole `arch` API surface as one structured
+ * CLI capability manifest — the whole `archlang` API surface as one structured
  * document, so an AI agent can discover commands, flags, formats, elements, lint
- * profiles, error codes, and fixture categories in a single `arch manifest --json`
+ * profiles, error codes, and fixture categories in a single `archlang manifest --json`
  * call instead of parsing `--help`/`SKILL.md` prose.
  *
  * Pure: it assembles values that already exist as exports (`KEYWORDS`,
@@ -10,7 +10,17 @@
  * (`test/cli-manifest.test.ts`) keeps in sync with the CLI's command dispatch.
  */
 
+import { CONTEXT_BUNDLE_KB } from "./context-size.js";
 import { KEYWORDS } from "./grammar/tokens.js";
+
+/**
+ * The command name every help line, example and doc writes. `package.json` installs two bins,
+ * `archlang` and `arch`, for the same `dist/cli.js`; `arch` stays as an alias, but coreutils ships
+ * an `arch` on Linux, macOS and Git Bash, so a bare `arch context` there runs the wrong program.
+ * Without a global install the call is `npx -y @chanmeng666/archlang <cmd>` (the unscoped npm name
+ * `archlang` belongs to another publisher).
+ */
+export const CLI_NAME = "archlang";
 
 /**
  * The export formats the CLI can emit — the single source for `-f` validation
@@ -46,7 +56,7 @@ export interface ManifestFlag {
 }
 
 /**
- * A copy-pasteable invocation. `cmd` always starts with `arch ` and its verb is the
+ * A copy-pasteable invocation. `cmd` always starts with `archlang ` and its verb is the
  * command's `name` or one of its `aliases` (a test enforces both); `note` says what
  * the call does. Agent-oriented on purpose: prefer `--json`, stdin `-`, and `-o -`.
  */
@@ -303,8 +313,7 @@ const SEVERITY_FLAG: ManifestFlag = {
 const SECTION_FLAG: ManifestFlag = {
   flag: "--section",
   arg: "<spec|workflow|cli|errors>",
-  description:
-    "print only one section of the bundle instead of all ~50KB of it (spec = the language, workflow = the agent loop, cli = every command, errors = the diagnostic catalog)",
+  description: `print only one section of the bundle instead of all ${CONTEXT_BUNDLE_KB.total} KB of it (spec = the language, ${CONTEXT_BUNDLE_KB.spec} KB; workflow = the agent loop, ${CONTEXT_BUNDLE_KB.workflow} KB; cli = every command, ${CONTEXT_BUNDLE_KB.cli} KB; errors = the diagnostic catalog, ${CONTEXT_BUNDLE_KB.errors} KB)`,
 };
 
 /**
@@ -367,29 +376,29 @@ const COMMANDS: ManifestCommand[] = [
     output: "file (or stdout with -o -) — with --json and no -o nothing is written",
     examples: [
       {
-        cmd: "arch compile plan.arch -o plan.svg --json",
+        cmd: "archlang compile plan.arch -o plan.svg --json",
         note: "render to the named file; structured result on stdout",
       },
       {
-        cmd: "arch compile plan.arch --json",
+        cmd: "archlang compile plan.arch --json",
         note: "check it compiles and WRITE NOTHING (no -o names a file) — reports written:false, bytes, diagnostics, summary",
       },
-      { cmd: "arch compile plan.arch", note: "render SVG next to the input (plan.svg)" },
-      { cmd: "arch compile - -o - < plan.arch", note: "compile source from stdin straight to SVG on stdout" },
+      { cmd: "archlang compile plan.arch", note: "render SVG next to the input (plan.svg)" },
+      { cmd: "archlang compile - -o - < plan.arch", note: "compile source from stdin straight to SVG on stdout" },
       {
-        cmd: "arch compile plan.arch -f png -o plan.png --install --json",
+        cmd: "archlang compile plan.arch -f png -o plan.png --install --json",
         note: "rasterize to PNG, fetching the optional renderer if it is missing",
       },
       {
-        cmd: "arch compile house.arch -o house.svg --json",
+        cmd: "archlang compile house.arch -o house.svg --json",
         note: "a multi-storey plan writes one sheet per level (house.L1.svg, house.L2.svg …) and reports outputs[]",
       },
       {
-        cmd: "arch compile house.arch --level 2 -o upper.svg",
+        cmd: "archlang compile house.arch --level 2 -o upper.svg",
         note: "render just the upper storey of a multi-storey plan to one file",
       },
       {
-        cmd: "arch compile house.arch --view iso -o house-iso.svg",
+        cmd: "archlang compile house.arch --view iso -o house-iso.svg",
         note: "an illustrative isometric of the whole building (every storey in ONE drawing, so no per-level fan-out)",
       },
     ],
@@ -422,11 +431,11 @@ const COMMANDS: ManifestCommand[] = [
     output: "one file per input; --json gives a results[] array",
     examples: [
       {
-        cmd: "arch batch a.arch b.arch c.arch -o out/ --json",
+        cmd: "archlang batch a.arch b.arch c.arch -o out/ --json",
         note: "render design variants concurrently; one result row per input",
       },
       {
-        cmd: "arch batch plans/*.arch -f dxf -j 4 --json",
+        cmd: "archlang batch plans/*.arch -f dxf -j 4 --json",
         note: "export a whole directory to DXF, 4 renders at a time",
       },
     ],
@@ -457,11 +466,11 @@ const COMMANDS: ManifestCommand[] = [
     output: "out.md + one image per block",
     examples: [
       {
-        cmd: "arch md README.md -o README.out.md --json",
+        cmd: "archlang md README.md -o README.out.md --json",
         note: "render the fenced arch blocks to SVGs and rewrite them to image links",
       },
       {
-        cmd: "arch md doc.md -f png --error-svg --json",
+        cmd: "archlang md doc.md -f png --error-svg --json",
         note: "PNG images; a broken block still yields an error card",
       },
     ],
@@ -498,14 +507,20 @@ const COMMANDS: ManifestCommand[] = [
     input: "<file.arch|->",
     output: "PNG file (or ASCII text on stdout with --ascii)",
     examples: [
-      { cmd: "arch preview plan.arch --ascii --json", note: "a zero-dependency text plan an agent can read on stdout" },
-      { cmd: "arch preview plan.arch -o plan.png --json", note: "raster the plan so a vision model can look at it" },
       {
-        cmd: "arch preview house.arch --level 2 -o upper.png --json",
+        cmd: "archlang preview plan.arch --ascii --json",
+        note: "a zero-dependency text plan an agent can read on stdout",
+      },
+      {
+        cmd: "archlang preview plan.arch -o plan.png --json",
+        note: "raster the plan so a vision model can look at it",
+      },
+      {
+        cmd: "archlang preview house.arch --level 2 -o upper.png --json",
         note: "look at one storey of a multi-storey plan",
       },
       {
-        cmd: "arch preview house.arch --view axon -o house-axon.png --json",
+        cmd: "archlang preview house.arch --view axon -o house-axon.png --json",
         note: "raster an illustrative plan-oblique of the building so a vision model can look at it",
       },
     ],
@@ -518,7 +533,7 @@ const COMMANDS: ManifestCommand[] = [
     output: "file, rewritten on each save",
     examples: [
       {
-        cmd: "arch watch plan.arch -o plan.svg",
+        cmd: "archlang watch plan.arch -o plan.svg",
         note: "recompile on every save (interactive; agents should use compile)",
       },
     ],
@@ -540,17 +555,20 @@ const COMMANDS: ManifestCommand[] = [
     output:
       "diagnostics (plus a graph{} report with --graph and an intent{ ok, satisfied, total, subscores, violations } block with --intent)",
     examples: [
-      { cmd: "arch validate plan.arch --strict --json", note: "the ship gate: errors and advisory warnings both fail" },
       {
-        cmd: "arch validate plan.arch --intent brief.json --feedback --json",
+        cmd: "archlang validate plan.arch --strict --json",
+        note: "the ship gate: errors and advisory warnings both fail",
+      },
+      {
+        cmd: "archlang validate plan.arch --intent brief.json --feedback --json",
         note: "gate on a brief's intent contract and get per-violation correction prompts",
       },
       {
-        cmd: "arch validate plan.arch --graph rooms.json --json",
+        cmd: "archlang validate plan.arch --graph rooms.json --json",
         note: "check interior-door adjacency against an intended room graph",
       },
       {
-        cmd: "arch validate plan.arch --severity error --json",
+        cmd: "archlang validate plan.arch --severity error --json",
         note: "read only the blocking errors; `ok` and the exit code still weigh every diagnostic",
       },
     ],
@@ -575,28 +593,28 @@ const COMMANDS: ManifestCommand[] = [
     output: "facts (JSON or a summary), narrowed by --room/--zone/--select/--level",
     examples: [
       {
-        cmd: "arch describe plan.arch --json",
+        cmd: "archlang describe plan.arch --json",
         note: "rooms, areas, adjacency, door connections, caption, freedom — confirm the plan means what you intended",
       },
-      { cmd: "arch describe - --json < plan.arch", note: "describe source piped on stdin, no temp file" },
+      { cmd: "archlang describe - --json < plan.arch", note: "describe source piped on stdin, no temp file" },
       {
-        cmd: "arch describe plan.arch --select rooms,totals --json",
+        cmd: "archlang describe plan.arch --select rooms,totals --json",
         note: "just the rooms and the totals — keep a big plan's facts inside a bounded context",
       },
       {
-        cmd: "arch describe plan.arch --room kitchen,bath --json",
+        cmd: "archlang describe plan.arch --room kitchen,bath --json",
         note: "only those two rooms and the doors/windows/furniture that touch them",
       },
       {
-        cmd: "arch describe museum.arch --zone west --json",
+        cmd: "archlang describe museum.arch --zone west --json",
         note: "only the west wing's rooms and what touches them; `zones[]` reports every declared wing, its rooms and its area",
       },
       {
-        cmd: "arch describe house.arch --level 2 --json",
+        cmd: "archlang describe house.arch --level 2 --json",
         note: "the upper storey's rooms/areas/access as the top-level facts (`levels[]` carries every storey)",
       },
       {
-        cmd: "arch describe plan.arch --facts symmetry,syntax --json",
+        cmd: "archlang describe plan.arch --facts symmetry,syntax --json",
         note: "add the symmetry group per layer, repeated rooms, and space-syntax integration on the access graph",
       },
     ],
@@ -611,7 +629,7 @@ const COMMANDS: ManifestCommand[] = [
       "{ ok, satisfied, total, score, subscores, violations } (exit 0 on a successful measurement, even when assertions fail)",
     examples: [
       {
-        cmd: "arch score plan.arch --brief brief.json --json",
+        cmd: "archlang score plan.arch --brief brief.json --json",
         note: "continuous intent satisfaction as the refine-loop reward; always exits 0 on a measurement",
       },
     ],
@@ -630,13 +648,13 @@ const COMMANDS: ManifestCommand[] = [
     input: "<file.arch|->",
     output: "W_* warnings (narrowed by --code/--severity; `filtered`/`total_diagnostics` mark a filtered result)",
     examples: [
-      { cmd: "arch lint plan.arch --json", note: "architectural soundness warnings as data, each with a fix" },
+      { cmd: "archlang lint plan.arch --json", note: "architectural soundness warnings as data, each with a fix" },
       {
-        cmd: "arch lint plan.arch --profile accessibility-advisory --strict",
+        cmd: "archlang lint plan.arch --profile accessibility-advisory --strict",
         note: "gate on the accessibility ruleset (any warning exits 2)",
       },
       {
-        cmd: "arch lint plan.arch --code W_ROOM_UNREACHABLE,W_NO_ENTRANCE --json",
+        cmd: "archlang lint plan.arch --code W_ROOM_UNREACHABLE,W_NO_ENTRANCE --json",
         note: "read only the reachability warnings; the exit code still reflects every diagnostic",
       },
     ],
@@ -649,7 +667,7 @@ const COMMANDS: ManifestCommand[] = [
     output: "AST JSON (scripting nodes unexpanded)",
     examples: [
       {
-        cmd: "arch ast plan.arch --json",
+        cmd: "archlang ast plan.arch --json",
         note: "span-bearing parse tree with no resolve or render — locate a statement by byte offset",
       },
     ],
@@ -661,8 +679,8 @@ const COMMANDS: ManifestCommand[] = [
     input: "<file.arch|->",
     output: "{ items: [...] } completion items",
     examples: [
-      { cmd: "arch complete plan.arch --at 120 --json", note: "what may legally be written at byte offset 120" },
-      { cmd: "arch complete - --at 0 --json < plan.arch", note: "completions for source on stdin" },
+      { cmd: "archlang complete plan.arch --at 120 --json", note: "what may legally be written at byte offset 120" },
+      { cmd: "archlang complete - --at 0 --json < plan.arch", note: "completions for source on stdin" },
     ],
   },
   {
@@ -672,8 +690,8 @@ const COMMANDS: ManifestCommand[] = [
     input: "<file.arch|->",
     output: "formatted source (or in place with --write)",
     examples: [
-      { cmd: "arch fmt plan.arch --json", note: "canonical source plus a `changed` flag, nothing written" },
-      { cmd: "arch fmt plan.arch --write", note: "rewrite the file in canonical form" },
+      { cmd: "archlang fmt plan.arch --json", note: "canonical source plus a `changed` flag, nothing written" },
+      { cmd: "archlang fmt plan.arch --write", note: "rewrite the file in canonical form" },
     ],
   },
   {
@@ -691,10 +709,10 @@ const COMMANDS: ManifestCommand[] = [
     output: "corrected source + change log on stderr",
     examples: [
       {
-        cmd: "arch repair plan.arch --json",
+        cmd: "archlang repair plan.arch --json",
         note: "the geometric corrector: `source` + a `changes[]` log of every furniture move",
       },
-      { cmd: "arch repair plan.arch -o repaired.arch", note: "write the corrected source to a new file" },
+      { cmd: "archlang repair plan.arch -o repaired.arch", note: "write the corrected source to a new file" },
     ],
   },
   {
@@ -719,19 +737,19 @@ const COMMANDS: ManifestCommand[] = [
     output: "fixed source (to the input file or -o) + a unified diff and change log on stderr",
     examples: [
       {
-        cmd: "arch fix plan.arch --dry-run",
+        cmd: "archlang fix plan.arch --dry-run",
         note: "preview the exact unified diff `fix` would write, changing nothing on disk",
       },
       {
-        cmd: "arch fix plan.arch --dry-run --json",
+        cmd: "archlang fix plan.arch --dry-run --json",
         note: "the same preview as data: which fixes would be applied, plus the `diff` they produce",
       },
       {
-        cmd: "arch fix plan.arch --backup --json",
+        cmd: "archlang fix plan.arch --backup --json",
         note: "apply the machine-applicable fixes in place, keeping the original as plan.arch.bak",
       },
       {
-        cmd: "arch fix plan.arch -o fixed.arch --unsafe --json",
+        cmd: "archlang fix plan.arch -o fixed.arch --unsafe --json",
         note: "also apply the maybe-incorrect fixes, leaving the input untouched",
       },
     ],
@@ -768,19 +786,19 @@ const COMMANDS: ManifestCommand[] = [
     output: "finished source (to the input file or -o) + a unified diff and change log on stderr",
     examples: [
       {
-        cmd: "arch finish plan.arch --dry-run --json",
+        cmd: "archlang finish plan.arch --dry-run --json",
         note: "preview the furniture and sheet statements `finish` would add: `changes[]`, `unresolved[]` and the `diff`",
       },
       {
-        cmd: "arch finish plan.arch --backup",
+        cmd: "archlang finish plan.arch --backup",
         note: "complete the drawing in place once lint is clean, keeping the original as plan.arch.bak",
       },
       {
-        cmd: "arch finish plan.arch --only furnish --dry-run --json",
+        cmd: "archlang finish plan.arch --only furnish --dry-run --json",
         note: "preview only the furniture: one `furniture` statement per piece, and each room left empty with the reason",
       },
       {
-        cmd: "arch finish plan.arch --reissue -o issued.arch",
+        cmd: "archlang finish plan.arch --reissue -o issued.arch",
         note: "also replace a paper/scale the drawing does not fit, leaving the input untouched",
       },
     ],
@@ -803,12 +821,12 @@ const COMMANDS: ManifestCommand[] = [
     output: "suggestions (JSON or a summary), or the rewritten file with --write",
     examples: [
       {
-        cmd: "arch reroll plan.arch --json",
+        cmd: "archlang reroll plan.arch --json",
         note: "each candidate run as { span, replacement, count, loopVar, tokensBefore, tokensAfter }",
       },
       {
-        cmd: "arch reroll plan.arch --write --json",
-        note: "splice in every proven loop; { ok, wrote, target, applied, skipped } (wrote/target as in `arch fix`)",
+        cmd: "archlang reroll plan.arch --write --json",
+        note: "splice in every proven loop; { ok, wrote, target, applied, skipped } (wrote/target as in `archlang fix`)",
       },
     ],
   },
@@ -820,7 +838,7 @@ const COMMANDS: ManifestCommand[] = [
     output: "suggestions (JSON or a summary)",
     examples: [
       {
-        cmd: "arch suggest plan.arch --json",
+        cmd: "archlang suggest plan.arch --json",
         note: "ready-to-paste door/window statements for unreachable rooms, no entrance, or a windowless bedroom",
       },
     ],
@@ -833,7 +851,7 @@ const COMMANDS: ManifestCommand[] = [
     input: "none",
     output: "the manifest (JSON or a summary)",
     examples: [
-      { cmd: "arch manifest --json", note: "discover every command, flag, format, and error code in one call" },
+      { cmd: "archlang manifest --json", note: "discover every command, flag, format, and error code in one call" },
     ],
   },
   {
@@ -842,7 +860,7 @@ const COMMANDS: ManifestCommand[] = [
     flags: [JSON_FLAG],
     input: "none",
     output: "the spec",
-    examples: [{ cmd: "arch spec", note: "the whole language on one page — read this before authoring" }],
+    examples: [{ cmd: "archlang spec", note: "the whole language on one page — read this before authoring" }],
   },
   {
     name: "context",
@@ -851,10 +869,10 @@ const COMMANDS: ManifestCommand[] = [
     input: "none",
     output: "the full agent context (llms-full.txt), or one --section of it",
     examples: [
-      { cmd: "arch context", note: "the cold-start bundle: spec + workflow + CLI reference + every diagnostic" },
+      { cmd: "archlang context", note: "the cold-start bundle: spec + workflow + CLI reference + every diagnostic" },
       {
-        cmd: "arch context --section errors",
-        note: "just the diagnostic catalog — read one section instead of paying for the whole ~50KB bundle",
+        cmd: "archlang context --section errors",
+        note: `just the diagnostic catalog (${CONTEXT_BUNDLE_KB.errors} KB) — read one section instead of paying for the whole ${CONTEXT_BUNDLE_KB.total} KB bundle`,
       },
     ],
   },
@@ -876,8 +894,8 @@ const COMMANDS: ManifestCommand[] = [
     input: "none",
     output: "starter source",
     examples: [
-      { cmd: "arch new --json", note: "get the starter plan as a `template` string, writing nothing" },
-      { cmd: "arch new -o plan.arch", note: "scaffold a starter file to edit" },
+      { cmd: "archlang new --json", note: "get the starter plan as a `template` string, writing nothing" },
+      { cmd: "archlang new -o plan.arch", note: "scaffold a starter file to edit" },
     ],
   },
   {
@@ -887,7 +905,10 @@ const COMMANDS: ManifestCommand[] = [
     input: "<CODE>",
     output: "catalog entry",
     examples: [
-      { cmd: "arch explain E_ROOM_SIZE --json", note: "the catalog entry for a diagnostic code: cause, fix, example" },
+      {
+        cmd: "archlang explain E_ROOM_SIZE --json",
+        note: "the catalog entry for a diagnostic code: cause, fix, example",
+      },
     ],
   },
 ];

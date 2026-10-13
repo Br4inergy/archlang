@@ -2,17 +2,21 @@
 
 # CLI reference
 
-Every `arch` command, flag, format and exit code — generated from the same capability
-manifest that `arch manifest --json` serves, so this page cannot fall behind the CLI.
+Every `archlang` command, flag, format and exit code — generated from the same capability
+manifest that `archlang manifest --json` serves, so this page cannot fall behind the CLI.
 
 The CLI is ArchLang's **primary agent interface**. Every command takes `--json` (structured
 result on **stdout**, human messages on **stderr**), and every command that reads source
 accepts a file path or `-` for stdin.
 
 ```bash
-npx @chanmeng666/archlang help     # zero-install
-arch manifest --json               # this page, as data
+npx -y @chanmeng666/archlang help        # zero-install
+npm i -g @chanmeng666/archlang           # or install the archlang command
+archlang manifest --json                 # this page, as data
 ```
+
+`arch` is installed as an alias of `archlang`, but on Linux, macOS and Git Bash coreutils owns
+that name, so this page never uses it.
 
 ## Exit codes
 
@@ -44,7 +48,7 @@ arch manifest --json               # this page, as data
 
 ## Commands
 
-### `arch compile`
+### `archlang compile`
 
 render a plan to SVG/DXF/TXT/PDF/PNG
 
@@ -73,31 +77,31 @@ render a plan to SVG/DXF/TXT/PDF/PNG
 
 ```bash
 # render to the named file; structured result on stdout
-$ arch compile plan.arch -o plan.svg --json
+$ archlang compile plan.arch -o plan.svg --json
 
 # check it compiles and WRITE NOTHING (no -o names a file) — reports written:false, bytes, diagnostics, summary
-$ arch compile plan.arch --json
+$ archlang compile plan.arch --json
 
 # render SVG next to the input (plan.svg)
-$ arch compile plan.arch
+$ archlang compile plan.arch
 
 # compile source from stdin straight to SVG on stdout
-$ arch compile - -o - < plan.arch
+$ archlang compile - -o - < plan.arch
 
 # rasterize to PNG, fetching the optional renderer if it is missing
-$ arch compile plan.arch -f png -o plan.png --install --json
+$ archlang compile plan.arch -f png -o plan.png --install --json
 
 # a multi-storey plan writes one sheet per level (house.L1.svg, house.L2.svg …) and reports outputs[]
-$ arch compile house.arch -o house.svg --json
+$ archlang compile house.arch -o house.svg --json
 
 # render just the upper storey of a multi-storey plan to one file
-$ arch compile house.arch --level 2 -o upper.svg
+$ archlang compile house.arch --level 2 -o upper.svg
 
 # an illustrative isometric of the whole building (every storey in ONE drawing, so no per-level fan-out)
-$ arch compile house.arch --view iso -o house-iso.svg
+$ archlang compile house.arch --view iso -o house-iso.svg
 ```
 
-### `arch batch`
+### `archlang batch`
 
 render many .arch files in one call, concurrently
 
@@ -124,13 +128,13 @@ render many .arch files in one call, concurrently
 
 ```bash
 # render design variants concurrently; one result row per input
-$ arch batch a.arch b.arch c.arch -o out/ --json
+$ archlang batch a.arch b.arch c.arch -o out/ --json
 
 # export a whole directory to DXF, 4 renders at a time
-$ arch batch plans/*.arch -f dxf -j 4 --json
+$ archlang batch plans/*.arch -f dxf -j 4 --json
 ```
 
-### `arch md` _(alias: `markdown`)_
+### `archlang md` _(alias: `markdown`)_
 
 render every ```arch block in a Markdown file and rewrite to image links
 
@@ -154,13 +158,13 @@ render every ```arch block in a Markdown file and rewrite to image links
 
 ```bash
 # render the fenced arch blocks to SVGs and rewrite them to image links
-$ arch md README.md -o README.out.md --json
+$ archlang md README.md -o README.out.md --json
 
 # PNG images; a broken block still yields an error card
-$ arch md doc.md -f png --error-svg --json
+$ archlang md doc.md -f png --error-svg --json
 ```
 
-### `arch preview`
+### `archlang preview`
 
 render a PNG you can look at (zero-install where the optional binary is present)
 
@@ -186,19 +190,19 @@ render a PNG you can look at (zero-install where the optional binary is present)
 
 ```bash
 # a zero-dependency text plan an agent can read on stdout
-$ arch preview plan.arch --ascii --json
+$ archlang preview plan.arch --ascii --json
 
 # raster the plan so a vision model can look at it
-$ arch preview plan.arch -o plan.png --json
+$ archlang preview plan.arch -o plan.png --json
 
 # look at one storey of a multi-storey plan
-$ arch preview house.arch --level 2 -o upper.png --json
+$ archlang preview house.arch --level 2 -o upper.png --json
 
 # raster an illustrative plan-oblique of the building so a vision model can look at it
-$ arch preview house.arch --view axon -o house-axon.png --json
+$ archlang preview house.arch --view axon -o house-axon.png --json
 ```
 
-### `arch watch`
+### `archlang watch`
 
 recompile on save (interactive)
 
@@ -226,10 +230,10 @@ recompile on save (interactive)
 
 ```bash
 # recompile on every save (interactive; agents should use compile)
-$ arch watch plan.arch -o plan.svg
+$ archlang watch plan.arch -o plan.svg
 ```
 
-### `arch validate`
+### `archlang validate`
 
 parse + resolve + lint, no render (is it valid & sound?)
 
@@ -250,19 +254,19 @@ parse + resolve + lint, no render (is it valid & sound?)
 
 ```bash
 # the ship gate: errors and advisory warnings both fail
-$ arch validate plan.arch --strict --json
+$ archlang validate plan.arch --strict --json
 
 # gate on a brief's intent contract and get per-violation correction prompts
-$ arch validate plan.arch --intent brief.json --feedback --json
+$ archlang validate plan.arch --intent brief.json --feedback --json
 
 # check interior-door adjacency against an intended room graph
-$ arch validate plan.arch --graph rooms.json --json
+$ archlang validate plan.arch --graph rooms.json --json
 
 # read only the blocking errors; `ok` and the exit code still weigh every diagnostic
-$ arch validate plan.arch --severity error --json
+$ archlang validate plan.arch --severity error --json
 ```
 
-### `arch describe`
+### `archlang describe`
 
 semantic facts: rooms, areas, adjacency, what doors connect
 
@@ -282,28 +286,28 @@ semantic facts: rooms, areas, adjacency, what doors connect
 
 ```bash
 # rooms, areas, adjacency, door connections, caption, freedom — confirm the plan means what you intended
-$ arch describe plan.arch --json
+$ archlang describe plan.arch --json
 
 # describe source piped on stdin, no temp file
-$ arch describe - --json < plan.arch
+$ archlang describe - --json < plan.arch
 
 # just the rooms and the totals — keep a big plan's facts inside a bounded context
-$ arch describe plan.arch --select rooms,totals --json
+$ archlang describe plan.arch --select rooms,totals --json
 
 # only those two rooms and the doors/windows/furniture that touch them
-$ arch describe plan.arch --room kitchen,bath --json
+$ archlang describe plan.arch --room kitchen,bath --json
 
 # only the west wing's rooms and what touches them; `zones[]` reports every declared wing, its rooms and its area
-$ arch describe museum.arch --zone west --json
+$ archlang describe museum.arch --zone west --json
 
 # the upper storey's rooms/areas/access as the top-level facts (`levels[]` carries every storey)
-$ arch describe house.arch --level 2 --json
+$ archlang describe house.arch --level 2 --json
 
 # add the symmetry group per layer, repeated rooms, and space-syntax integration on the access graph
-$ arch describe plan.arch --facts symmetry,syntax --json
+$ archlang describe plan.arch --facts symmetry,syntax --json
 ```
 
-### `arch score`
+### `archlang score`
 
 continuous intent satisfaction (satisfied/total) as data — the refine-loop reward. Measures, never gates (validate --intent is the gate).
 
@@ -319,10 +323,10 @@ continuous intent satisfaction (satisfied/total) as data — the refine-loop rew
 
 ```bash
 # continuous intent satisfaction as the refine-loop reward; always exits 0 on a measurement
-$ arch score plan.arch --brief brief.json --json
+$ archlang score plan.arch --brief brief.json --json
 ```
 
-### `arch lint`
+### `archlang lint`
 
 architectural soundness warnings
 
@@ -341,16 +345,16 @@ architectural soundness warnings
 
 ```bash
 # architectural soundness warnings as data, each with a fix
-$ arch lint plan.arch --json
+$ archlang lint plan.arch --json
 
 # gate on the accessibility ruleset (any warning exits 2)
-$ arch lint plan.arch --profile accessibility-advisory --strict
+$ archlang lint plan.arch --profile accessibility-advisory --strict
 
 # read only the reachability warnings; the exit code still reflects every diagnostic
-$ arch lint plan.arch --code W_ROOM_UNREACHABLE,W_NO_ENTRANCE --json
+$ archlang lint plan.arch --code W_ROOM_UNREACHABLE,W_NO_ENTRANCE --json
 ```
 
-### `arch ast`
+### `archlang ast`
 
 parse only (no resolve/render) and print the span-bearing AST as JSON
 
@@ -365,10 +369,10 @@ parse only (no resolve/render) and print the span-bearing AST as JSON
 
 ```bash
 # span-bearing parse tree with no resolve or render — locate a statement by byte offset
-$ arch ast plan.arch --json
+$ archlang ast plan.arch --json
 ```
 
-### `arch complete`
+### `archlang complete`
 
 completion items in scope at a source byte offset (the LSP completion() core)
 
@@ -384,13 +388,13 @@ completion items in scope at a source byte offset (the LSP completion() core)
 
 ```bash
 # what may legally be written at byte offset 120
-$ arch complete plan.arch --at 120 --json
+$ archlang complete plan.arch --at 120 --json
 
 # completions for source on stdin
-$ arch complete - --at 0 --json < plan.arch
+$ archlang complete - --at 0 --json < plan.arch
 ```
 
-### `arch fmt`
+### `archlang fmt`
 
 canonical formatting
 
@@ -406,13 +410,13 @@ canonical formatting
 
 ```bash
 # canonical source plus a `changed` flag, nothing written
-$ arch fmt plan.arch --json
+$ archlang fmt plan.arch --json
 
 # rewrite the file in canonical form
-$ arch fmt plan.arch --write
+$ archlang fmt plan.arch --write
 ```
 
-### `arch repair`
+### `archlang repair`
 
 explicit source-to-source corrector (furniture out of walls) + change log
 
@@ -428,13 +432,13 @@ explicit source-to-source corrector (furniture out of walls) + change log
 
 ```bash
 # the geometric corrector: `source` + a `changes[]` log of every furniture move
-$ arch repair plan.arch --json
+$ archlang repair plan.arch --json
 
 # write the corrected source to a new file
-$ arch repair plan.arch -o repaired.arch
+$ archlang repair plan.arch -o repaired.arch
 ```
 
-### `arch fix`
+### `archlang fix`
 
 apply the machine-applicable fix suggestions on a plan's diagnostics (bounded fixpoint)
 
@@ -454,19 +458,19 @@ apply the machine-applicable fix suggestions on a plan's diagnostics (bounded fi
 
 ```bash
 # preview the exact unified diff `fix` would write, changing nothing on disk
-$ arch fix plan.arch --dry-run
+$ archlang fix plan.arch --dry-run
 
 # the same preview as data: which fixes would be applied, plus the `diff` they produce
-$ arch fix plan.arch --dry-run --json
+$ archlang fix plan.arch --dry-run --json
 
 # apply the machine-applicable fixes in place, keeping the original as plan.arch.bak
-$ arch fix plan.arch --backup --json
+$ archlang fix plan.arch --backup --json
 
 # also apply the maybe-incorrect fixes, leaving the input untouched
-$ arch fix plan.arch -o fixed.arch --unsafe --json
+$ archlang fix plan.arch -o fixed.arch --unsafe --json
 ```
 
-### `arch finish`
+### `archlang finish`
 
 furnish the rooms that hold no furniture, then add the sheet statements a plan lacks (paper, scale, dims auto, title, schedule rooms, legend); deletes nothing
 
@@ -486,19 +490,19 @@ furnish the rooms that hold no furniture, then add the sheet statements a plan l
 
 ```bash
 # preview the furniture and sheet statements `finish` would add: `changes[]`, `unresolved[]` and the `diff`
-$ arch finish plan.arch --dry-run --json
+$ archlang finish plan.arch --dry-run --json
 
 # complete the drawing in place once lint is clean, keeping the original as plan.arch.bak
-$ arch finish plan.arch --backup
+$ archlang finish plan.arch --backup
 
 # preview only the furniture: one `furniture` statement per piece, and each room left empty with the reason
-$ arch finish plan.arch --only furnish --dry-run --json
+$ archlang finish plan.arch --only furnish --dry-run --json
 
 # also replace a paper/scale the drawing does not fit, leaving the input untouched
-$ arch finish plan.arch --reissue -o issued.arch
+$ archlang finish plan.arch --reissue -o issued.arch
 ```
 
-### `arch reroll`
+### `archlang reroll`
 
 offer a proven-equivalent `for` loop for a repeated statement run
 
@@ -514,13 +518,13 @@ offer a proven-equivalent `for` loop for a repeated statement run
 
 ```bash
 # each candidate run as { span, replacement, count, loopVar, tokensBefore, tokensAfter }
-$ arch reroll plan.arch --json
+$ archlang reroll plan.arch --json
 
-# splice in every proven loop; { ok, wrote, target, applied, skipped } (wrote/target as in `arch fix`)
-$ arch reroll plan.arch --write --json
+# splice in every proven loop; { ok, wrote, target, applied, skipped } (wrote/target as in `archlang fix`)
+$ archlang reroll plan.arch --write --json
 ```
 
-### `arch suggest`
+### `archlang suggest`
 
 advisory topology suggestions as data (door/window statements that resolve reachability/window faults)
 
@@ -535,10 +539,10 @@ advisory topology suggestions as data (door/window statements that resolve reach
 
 ```bash
 # ready-to-paste door/window statements for unreachable rooms, no entrance, or a windowless bedroom
-$ arch suggest plan.arch --json
+$ archlang suggest plan.arch --json
 ```
 
-### `arch manifest` _(alias: `capabilities`)_
+### `archlang manifest` _(alias: `capabilities`)_
 
 this document: the whole CLI API as structured data
 
@@ -552,10 +556,10 @@ this document: the whole CLI API as structured data
 
 ```bash
 # discover every command, flag, format, and error code in one call
-$ arch manifest --json
+$ archlang manifest --json
 ```
 
-### `arch spec`
+### `archlang spec`
 
 print the one-prompt language spec (spec.llm.md)
 
@@ -569,10 +573,10 @@ print the one-prompt language spec (spec.llm.md)
 
 ```bash
 # the whole language on one page — read this before authoring
-$ arch spec
+$ archlang spec
 ```
 
-### `arch context`
+### `archlang context`
 
 print the full bundled agent context (spec + workflow + CLI + errors)
 
@@ -580,20 +584,20 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 
 | Flag | Does |
 | --- | --- |
-| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all ~50KB of it (spec = the language, workflow = the agent loop, cli = every command, errors = the diagnostic catalog) |
+| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 109 KB of it (spec = the language, 30 KB; workflow = the agent loop, 24 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 32 KB) |
 | `--json` | structured result on stdout, messages on stderr |
 
 **Examples**
 
 ```bash
 # the cold-start bundle: spec + workflow + CLI reference + every diagnostic
-$ arch context
+$ archlang context
 
-# just the diagnostic catalog — read one section instead of paying for the whole ~50KB bundle
-$ arch context --section errors
+# just the diagnostic catalog (32 KB) — read one section instead of paying for the whole 109 KB bundle
+$ archlang context --section errors
 ```
 
-### `arch new` _(alias: `init`)_
+### `archlang new` _(alias: `init`)_
 
 scaffold a starter .arch
 
@@ -610,13 +614,13 @@ scaffold a starter .arch
 
 ```bash
 # get the starter plan as a `template` string, writing nothing
-$ arch new --json
+$ archlang new --json
 
 # scaffold a starter file to edit
-$ arch new -o plan.arch
+$ archlang new -o plan.arch
 ```
 
-### `arch explain`
+### `archlang explain`
 
 look up an error code (cause / fix / example)
 
@@ -630,5 +634,5 @@ look up an error code (cause / fix / example)
 
 ```bash
 # the catalog entry for a diagnostic code: cause, fix, example
-$ arch explain E_ROOM_SIZE --json
+$ archlang explain E_ROOM_SIZE --json
 ```

@@ -1,8 +1,8 @@
 /**
  * `arch context --section` — bounded agent context.
  *
- * The whole bundle is ~50KB; an agent that only needs the diagnostic catalog should
- * not have to read the spec, the workflow, and the CLI reference to get it. The CLI
+ * The whole bundle is large (`src/context-size.ts` holds its measured size); an agent that
+ * only needs the diagnostic catalog should not have to read the spec, the workflow, and the CLI reference to get it. The CLI
  * hands back one section by splitting the shipped `llms-full.txt` on the exact rule
  * `renderLlmsFull()` joins its chunks with — so the important test here is the
  * COUPLING one: it runs the generator in memory and asserts the splitter still finds

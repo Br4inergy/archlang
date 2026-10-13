@@ -97,6 +97,7 @@ site { street north|south|east|west [hemisphere north|south] [boundary (x,y) (x,
 
 Every command takes `--json` (structured result on **stdout**, human messages on **stderr**) and
 reads source from a file or stdin (`-`). Exit codes: `0` ok · `1` internal / IO error · `2` user-source error (deterministic — fix it, don't blindly retry) · `3` bad usage.
+In a shell, `arch` below means `archlang` or `npx -y @chanmeng666/archlang`: coreutils owns `arch` on Linux/macOS.
 
 ```text
 arch compile  # render a plan to SVG/DXF/TXT/PDF/PNG

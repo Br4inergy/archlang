@@ -411,7 +411,7 @@ function parseDiagFilter(args: Args): DiagFilter | CheckError {
       if (!ERROR_CODES.includes(c)) {
         return {
           exit: usageError(
-            `unknown diagnostic code "${c}"${didYouMean(c, ERROR_CODES)} — see \`arch explain <CODE>\` or \`arch manifest --json\` for all ${ERROR_CODES.length}`,
+            `unknown diagnostic code "${c}"${didYouMean(c, ERROR_CODES)} — see \`archlang explain <CODE>\` or \`archlang manifest --json\` for all ${ERROR_CODES.length}`,
           ),
         };
       }

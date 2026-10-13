@@ -1,9 +1,9 @@
 /**
- * `arch --help` / `arch <cmd> --help`, rendered from the capability manifest.
+ * `archlang --help` / `archlang <cmd> --help`, rendered from the capability manifest.
  *
  * The old top-level help was a hand-maintained template literal in `src/cli.ts`: it
  * listed flags the CLI no longer had and missed flags it did, and there was no
- * per-command help at all (`arch compile --help` treated `--help` as a filename). These
+ * per-command help at all (`archlang compile --help` treated `--help` as a filename). These
  * renderers derive everything — usage lines, flag tables, examples, exit codes, formats
  * — from `buildManifest()`, so help cannot drift from the CLI it documents.
  *
@@ -11,7 +11,7 @@
  * memory, no fs and no clock.
  */
 
-import type { Manifest, ManifestCommand, ManifestFlag } from "../manifest.js";
+import { CLI_NAME, type Manifest, type ManifestCommand, type ManifestFlag } from "../manifest.js";
 
 /** Resolve a verb (or one of its aliases) to its manifest entry. */
 export function findCommand(m: Manifest, name: string): ManifestCommand | null {
@@ -59,9 +59,9 @@ function inputOperand(c: ManifestCommand): string {
   return c.input.replace(/\s*\(.*\)\s*$/, "").trim();
 }
 
-/** e.g. `arch compile <file.arch|-> [flags]` — synthesized from the manifest entry. */
+/** e.g. `archlang compile <file.arch|-> [flags]` — synthesized from the manifest entry. */
 export function usageLine(c: ManifestCommand): string {
-  return ["arch", c.name, inputOperand(c), c.flags.length > 0 ? "[flags]" : ""].filter(Boolean).join(" ");
+  return [CLI_NAME, c.name, inputOperand(c), c.flags.length > 0 ? "[flags]" : ""].filter(Boolean).join(" ");
 }
 
 /** `0 ok · 2 user-source error … · 3 bad usage` — from the manifest's exit-code table. */
@@ -110,13 +110,16 @@ export function renderTopHelp(m: Manifest): string {
   const gutter = Math.max(...rows.map(([verb]) => verb.length));
 
   const out: string[] = [
-    `arch v${m.version}`,
+    `${CLI_NAME} v${m.version}`,
     m.description,
     "",
     "Usage:",
-    "  arch <command> [input] [flags]",
-    "  arch <command> --help      flags and worked examples for one command",
-    "  arch --version             print the version",
+    `  ${CLI_NAME} <command> [input] [flags]`,
+    `  ${CLI_NAME} <command> --help      flags and worked examples for one command`,
+    `  ${CLI_NAME} --version             print the version`,
+    "",
+    "No global install: npx -y @chanmeng666/archlang <command>. `arch` is an alias of archlang,",
+    "but coreutils owns `arch` on Linux, macOS and Git Bash, so scripts should call archlang.",
     "",
     "Commands:",
   ];

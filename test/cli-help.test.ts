@@ -10,7 +10,7 @@ import { findCommand, renderCommandHelp, renderTopHelp, usageLine } from "../src
 /**
  * Help, `--version`, and flag strictness — the discoverability contract.
  *
- * `arch compile --help` once printed no help at all: `--help` fell through the
+ * `archlang compile --help` once printed no help at all: `--help` fell through the
  * parser's if/else chain into the positional bucket and was read as a filename. The same
  * fall-through silently accepted `--jsn` as an input file. Both are now usage errors, and
  * help is rendered from the manifest — which the drift guards below pin to the parse table.
@@ -115,8 +115,8 @@ describe("help renderers (pure)", () => {
   });
 
   it("synthesizes a usage line with the command's input operand", () => {
-    expect(usageLine(findCommand(m, "describe")!)).toBe("arch describe <file.arch|-> [flags]");
-    expect(usageLine(findCommand(m, "spec")!)).toBe("arch spec [flags]");
+    expect(usageLine(findCommand(m, "describe")!)).toBe("archlang describe <file.arch|-> [flags]");
+    expect(usageLine(findCommand(m, "spec")!)).toBe("archlang spec [flags]");
   });
 });
 
@@ -125,8 +125,8 @@ describe("CLI — help & version", () => {
     const r = run(["compile", "--help"]);
     expect(r.status).toBe(0);
     expect(r.stdout).toContain("Usage");
-    expect(r.stdout).toContain("arch compile");
-    expect(r.stdout).toContain("$ arch compile"); // an example line
+    expect(r.stdout).toContain("archlang compile");
+    expect(r.stdout).toContain("$ archlang compile"); // an example line
   }, 30000);
 
   it("`help lint` ≡ `lint --help`", () => {
@@ -141,7 +141,7 @@ describe("CLI — help & version", () => {
   it("`describe --help` works with NO input file (no 'missing input')", () => {
     const r = run(["describe", "--help"]);
     expect(r.status).toBe(0);
-    expect(r.stdout).toContain("arch describe");
+    expect(r.stdout).toContain("archlang describe");
     expect(r.stderr).not.toContain("missing input");
   }, 30000);
 
@@ -159,7 +159,7 @@ describe("CLI — help & version", () => {
     expect(r.stdout).toBe("");
   }, 30000);
 
-  it("`arch help` prints the top help on stdout, exit 0", () => {
+  it("`archlang help` prints the top help on stdout, exit 0", () => {
     const r = run(["help"]);
     expect(r.status).toBe(0);
     expect(r.stdout).toContain("Commands:");
@@ -179,7 +179,7 @@ describe("CLI — unknown command / unknown flag", () => {
     expect(r.status).toBe(3);
     expect(r.stderr).toContain('unknown flag "--jsn"');
     expect(r.stderr).toContain("--json"); // did-you-mean
-    expect(r.stderr).toContain("usage: arch lint");
+    expect(r.stderr).toContain("usage: archlang lint");
   }, 30000);
 
   it("rejects a real flag that this command does not take", () => {
@@ -221,7 +221,7 @@ describe("CLI — `-o -` conflicts with --json", () => {
     expect(r.status).toBe(3);
     expect(r.stderr).toContain("`-o -`");
     expect(r.stderr).toContain("--json");
-    expect(r.stderr).toContain("usage: arch compile");
+    expect(r.stderr).toContain("usage: archlang compile");
     // Nothing on stdout (there is no envelope to parse) and no silent `p.svg`.
     expect(r.stdout).toBe("");
     expect(readdirSync(dir)).toEqual(["p.arch"]);
@@ -247,7 +247,7 @@ describe("CLI — `-o -` conflicts with --json", () => {
     const { dir, file } = tmpWith("p.arch", VALID);
     const r = run(["preview", file, "-o", "-", "--json"]);
     expect(r.status).toBe(3);
-    expect(r.stderr).toContain("usage: arch preview");
+    expect(r.stderr).toContain("usage: archlang preview");
     expect(readdirSync(dir)).toEqual(["p.arch"]);
   }, 30000);
 
@@ -255,7 +255,7 @@ describe("CLI — `-o -` conflicts with --json", () => {
     const { dir, file } = tmpWith("doc.md", "# Doc\n\n```arch\n" + VALID + "\n```\n");
     const r = run(["md", file, "-o", "-", "--json"]);
     expect(r.status).toBe(3);
-    expect(r.stderr).toContain("usage: arch md");
+    expect(r.stderr).toContain("usage: archlang md");
     expect(readdirSync(dir)).toEqual(["doc.md"]);
   }, 30000);
 
@@ -264,7 +264,7 @@ describe("CLI — `-o -` conflicts with --json", () => {
     const r = run(["batch", file, "-o", "-", "--json"]);
     expect(r.status).toBe(3);
     expect(r.stderr).toContain("DIRECTORY");
-    expect(r.stderr).toContain("usage: arch batch");
+    expect(r.stderr).toContain("usage: archlang batch");
     // It used to drop the `-` and render alongside the input instead.
     expect(readdirSync(dir)).toEqual(["p.arch"]);
   }, 30000);

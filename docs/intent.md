@@ -4,7 +4,7 @@ ArchLang can read a plan back as [facts](analysis.md) — rooms, areas, adjacenc
 access. The **intent contract** goes one step further: it lets you write down *what a
 brief asked for* as data, then checks that data against those facts. A brief like
 "a two-bedroom flat, one bathroom about 6 m², around 55 m² total" becomes an
-`intent.json`; `arch validate --intent` measures a plan against it and tells you, code by
+`intent.json`; `archlang validate --intent` measures a plan against it and tells you, code by
 code, which expectations the drawing meets and which it misses — **without ever rendering
 an image**.
 
@@ -25,9 +25,9 @@ violations.
 
 Two entry points, a gate and a meter:
 
-- **`arch validate --intent intent.json`** is the **gate** — it fails (exit `2`) when any
+- **`archlang validate --intent intent.json`** is the **gate** — it fails (exit `2`) when any
   *gating* expectation is missed, the same way `--strict` gates on lint warnings.
-- **`arch score --brief intent.json`** is a **continuous meter** — it always succeeds
+- **`archlang score --brief intent.json`** is a **continuous meter** — it always succeeds
   (exit `0`) and reports a satisfaction fraction and per-dimension subscores, so you can
   watch a plan get closer to the brief across edits.
 
@@ -179,8 +179,8 @@ exit code):
 | `E_INTENT_UNREACHABLE` | `reachable` was asserted but some room, or a whole storey, is cut off |
 
 Adjacency and reachability are advisory on purpose. One-shot topology — which rooms open
-onto which — is exactly what v1.13's loop tools (`arch fix`, `arch suggest`,
-`arch validate --graph`) exist to repair after the fact, not something a single generation
+onto which — is exactly what v1.13's loop tools (`archlang fix`, `archlang suggest`,
+`archlang validate --graph`) exist to repair after the fact, not something a single generation
 pass is expected to nail. Whether iterating with those tools beats simply resampling the
 same generator under an equal token budget is a question this project has chosen to leave
 **permanently unmeasured** — no experiment answers it, and nothing here decides or claims
@@ -190,12 +190,12 @@ it either way. So these checks report and score the miss, but they do not fail t
 
 Author the intent JSON, then check a plan against it.
 
-**Gate — `arch validate --intent` (exit `2` on a gating miss).** Against
+**Gate — `archlang validate --intent` (exit `2` on a gating miss).** Against
 `examples/studio.arch` (four rooms, 42 m²) with an intent that over-asks — five rooms, a
 ~10 m² bathroom, a garage, ~80 m² total:
 
 ```jsonc
-// arch validate examples/studio.arch --intent wrong.json --json   → exit 2
+// archlang validate examples/studio.arch --intent wrong.json --json   → exit 2
 {
   "ok": false,
   "intent": {
@@ -251,12 +251,12 @@ subscore to zero, but `ok` stays true:
 }
 ```
 
-**Meter — `arch score --brief` (always exit `0`).** Where `validate --intent` is the gate,
+**Meter — `archlang score --brief` (always exit `0`).** Where `validate --intent` is the gate,
 `score` is the continuous reading — a satisfaction fraction and the same subscores, so you
 can watch a plan approach the brief as you edit. It reports; it never fails:
 
 ```jsonc
-// arch score examples/studio.arch --brief wrong.json --json   → exit 0
+// archlang score examples/studio.arch --brief wrong.json --json   → exit 0
 {
   "ok": false,
   "satisfied": 1,
