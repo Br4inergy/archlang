@@ -16,6 +16,7 @@ schemas/*.schema.json
 editors/archlang.tmLanguage.json
 playground/src/arch-language.js
 docs-site/.vitepress/theme/arch-highlight.js
+docs-site/public/arch-plan.js
 examples/**/*.svg
 plugins/archlang/skills/
 package-lock.json

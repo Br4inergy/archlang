@@ -1,0 +1,155 @@
+// <arch-plan>, the ArchLang web component. Built from packages/web-component/src/arch-plan.ts by `npm run gen:arch-plan`; do not edit.
+// Loads the ArchLang compiler 1.42.1 from https://cdn.jsdelivr.net/npm/@chanmeng666/archlang@1.42.1/+esm on the first render.
+// Usage: https://archlang.uk/embed
+
+// packages/web-component/src/arch-plan.ts
+var corePromise;
+function loadCore() {
+  corePromise ??= import("https://cdn.jsdelivr.net/npm/@chanmeng666/archlang@1.42.1/+esm").catch((e) => {
+    corePromise = void 0;
+    throw e;
+  });
+  return corePromise;
+}
+var STYLE = `:host{display:block;color-scheme:only light}
+:host([hidden]){display:none}
+.plan svg{display:block;max-width:100%;height:auto}
+pre{margin:0;padding:12px 14px;background:#fff5f5;color:#7a1414;border:1px solid #e6b8b8;border-radius:4px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}`;
+async function renderPlan(source, opts = {}) {
+  let core;
+  try {
+    core = await loadCore();
+  } catch (e) {
+    return fail(`arch-plan: could not load the ArchLang compiler (${message(e)})`);
+  }
+  try {
+    let theme;
+    if (opts.theme) {
+      theme = Object.hasOwn(core.THEMES, opts.theme) ? core.THEMES[opts.theme] : void 0;
+      if (!theme) {
+        return fail(`arch-plan: unknown theme "${opts.theme}" (known: ${Object.keys(core.THEMES).join(", ")})`);
+      }
+    }
+    const result = core.compile(source, theme ? { accessible: true, theme } : { accessible: true });
+    const errors = result.diagnostics.filter((d) => d.severity === "error");
+    if (errors.length > 0) {
+      return fail(
+        ...errors.map((d) => {
+          const j = core.diagnosticToJson(source, d);
+          const at = j.line !== void 0 ? ` ${j.line}:${j.col}` : "";
+          return `${j.code ?? "error"}${at} ${j.message}`;
+        })
+      );
+    }
+    if (opts.level === null || opts.level === void 0) return { ok: true, svg: result.svg };
+    const levels = (result.pages ?? []).map((p) => p.level);
+    const page = result.pages?.find((p) => String(p.level) === opts.level.trim());
+    if (!page) {
+      const has = levels.length > 0 ? `its levels are ${levels.join(", ")}` : "it declares no levels";
+      return fail(`arch-plan: level="${opts.level}" is not a storey of this plan (${has})`);
+    }
+    return { ok: true, svg: page.svg };
+  } catch (e) {
+    return fail(`arch-plan: ${message(e)}`);
+  }
+}
+function fail(...problems) {
+  return { ok: false, problems };
+}
+function message(e) {
+  return e instanceof Error ? e.message : String(e);
+}
+var Base = typeof HTMLElement === "undefined" ? class {
+} : HTMLElement;
+var ArchPlanElement = class extends Base {
+  static get observedAttributes() {
+    return ["src", "level", "theme"];
+  }
+  #root;
+  #observer;
+  #run = 0;
+  #done = Promise.resolve();
+  constructor() {
+    super();
+    this.#root = this.attachShadow({ mode: "open" });
+  }
+  /** Settles when the most recently requested render has been written to the shadow root. */
+  get updateComplete() {
+    return this.#done;
+  }
+  connectedCallback() {
+    if (!this.#observer && typeof MutationObserver !== "undefined") {
+      this.#observer = new MutationObserver(() => {
+        if (!this.hasAttribute("src")) this.#schedule();
+      });
+    }
+    this.#observer?.observe(this, { childList: true, characterData: true, subtree: true });
+    this.#schedule();
+  }
+  disconnectedCallback() {
+    this.#observer?.disconnect();
+  }
+  attributeChangedCallback(_name, previous, next) {
+    if (previous !== next && this.isConnected) this.#schedule();
+  }
+  #schedule() {
+    const run = ++this.#run;
+    this.#done = this.#render(run);
+  }
+  async #render(run) {
+    let result;
+    try {
+      result = await this.#produce();
+    } catch (e) {
+      result = fail(`arch-plan: ${message(e)}`);
+    }
+    if (run !== this.#run) return;
+    const style = document.createElement("style");
+    style.textContent = STYLE;
+    if (result === null) {
+      this.#root.replaceChildren(style);
+      return;
+    }
+    if (result.ok) {
+      const plan = document.createElement("div");
+      plan.className = "plan";
+      plan.setAttribute("part", "plan");
+      plan.innerHTML = result.svg;
+      this.#root.replaceChildren(style, plan);
+    } else {
+      const pre = document.createElement("pre");
+      pre.setAttribute("part", "diagnostics");
+      pre.setAttribute("role", "alert");
+      pre.textContent = result.problems.join("\n");
+      this.#root.replaceChildren(style, pre);
+    }
+    const detail = { ok: result.ok, problems: result.ok ? [] : result.problems };
+    this.dispatchEvent(new CustomEvent("render", { detail }));
+  }
+  /** The source to compile and its result; `null` when there is nothing to draw yet. */
+  async #produce() {
+    const src = this.getAttribute("src");
+    let source;
+    if (src !== null) {
+      let response;
+      try {
+        response = await fetch(src);
+      } catch (e) {
+        return fail(`arch-plan: could not fetch ${src} (${message(e)})`);
+      }
+      if (!response.ok) return fail(`arch-plan: could not fetch ${src} (HTTP ${response.status})`);
+      source = await response.text();
+    } else {
+      source = this.textContent ?? "";
+      if (source.trim() === "") return null;
+    }
+    return renderPlan(source, { level: this.getAttribute("level"), theme: this.getAttribute("theme") });
+  }
+};
+if (typeof customElements !== "undefined" && !customElements.get("arch-plan")) {
+  customElements.define("arch-plan", ArchPlanElement);
+}
+export {
+  ArchPlanElement,
+  renderPlan
+};
