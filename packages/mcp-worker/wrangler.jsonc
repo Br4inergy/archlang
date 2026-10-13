@@ -23,13 +23,16 @@
   "analytics_engine_datasets": [{ "binding": "ANALYTICS", "dataset": "archlang_mcp" }],
   // The spend bound (ADR 0026). CPU per request: the slowest measured call (finish on a 60 KB
   // synthetic plan, ~2.1 s wall-clock on a desktop) fits with room; past it the request fails with
-  // the platform's error instead of billing on. Not enforced in local dev.
+  // the platform's error instead of billing on. Not enforced in local dev. `limits` needs the
+  // Standard usage model, i.e. Workers PAID: the account must be on Paid BEFORE this reaches main,
+  // or deploy-mcp fails.
   "limits": { "cpu_ms": 5000 },
-  // Per-address request rates, keyed on CF-Connecting-IP (never stored or logged); the numbers are
-  // held to src/limits.ts by test. RATE_SVG meters only /svg/ cache misses (a hit compiles nothing).
+  // Per-address abuse guard, keyed on CF-Connecting-IP (never stored or logged), set HIGH because
+  // connector platforms share egress addresses across their users; held to src/limits.ts by test.
+  // RATE_SVG meters only /svg/ cache misses (a hit compiles nothing).
   "ratelimits": [
-    { "name": "RATE_MCP", "namespace_id": "2601", "simple": { "limit": 60, "period": 60 } },
-    { "name": "RATE_SVG", "namespace_id": "2602", "simple": { "limit": 300, "period": 60 } }
+    { "name": "RATE_MCP", "namespace_id": "2601", "simple": { "limit": 600, "period": 60 } },
+    { "name": "RATE_SVG", "namespace_id": "2602", "simple": { "limit": 3000, "period": 60 } }
   ],
   // No Workers Logs and no source maps: a /svg/ URL path IS a plan, so request logging would
   // record plans. The Worker itself logs nothing.

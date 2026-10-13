@@ -61,7 +61,12 @@ const jsonResponse = (body: unknown, status: number, extra: Record<string, strin
 /** The `{ ok:false, diagnostics }` envelope every tool result uses, around one diagnostic. */
 const envelope = (d: Diagnostic) => ({ ok: false, diagnostics: [diagnosticToJson("", d)] });
 
-/** The caller's address, for the rate limiters only: it is never stored or logged. */
+/**
+ * The caller's address, for the rate limiters only: it is never stored or logged. Many callers can
+ * share one address — a connector platform calls from its own cloud egress — so the per-address
+ * ceilings are set high, as an abuse guard; the spend bound is `limits.cpu_ms` plus the owner's
+ * billing alert (ADR 0026).
+ */
 const addressOf = (req: Request): string => req.headers.get("cf-connecting-ip") ?? "unknown";
 
 /** `true` when `limiter` (absent in local dev) lets this address through. */
@@ -118,6 +123,32 @@ export const KNOWN_TOOLS: ReadonlySet<string> = new Set([
 /** A listed name, or the fixed bucket: a client-chosen string never reaches the dataset. */
 const listed = (v: unknown, known: ReadonlySet<string>): string =>
   typeof v === "string" && known.has(v) ? v : "(other)";
+
+/** Why a request was refused before any work: the `tool` field of a `refused` data point. */
+export type Refusal =
+  | "rate-limited /mcp"
+  | "rate-limited /svg/"
+  | "too-large body"
+  | "too-large argument"
+  | "too-large payload";
+
+/** One data point for a refusal: method `refused`, tool the reason, both from fixed lists. */
+function countRefusal(env: Env, reason: Refusal): void {
+  try {
+    env.ANALYTICS?.writeDataPoint({ blobs: ["refused", reason], indexes: ["refused"] });
+  } catch {
+    /* telemetry never fails a request */
+  }
+}
+
+/** Drop an unread request body before answering early (an unread body can fail the response). */
+async function discardBody(req: Request): Promise<void> {
+  try {
+    await req.body?.cancel();
+  } catch {
+    /* already consumed or closed */
+  }
+}
 
 function count(env: Env, messages: unknown[]): void {
   if (!env.ANALYTICS) return;
@@ -177,11 +208,45 @@ export function oversizeArgument(message: unknown): Diagnostic | undefined {
   if (m.method !== "tools/call") return undefined;
   for (const [name, value] of Object.entries(m.params?.arguments ?? {})) {
     if (value === undefined || typeof value === "number" || typeof value === "boolean") continue;
-    const text = typeof value === "string" ? value : (JSON.stringify(value) ?? "");
+    if (typeof value === "string") {
+      const d = inputTooLarge(value, SOURCE_CAP_BYTES, name);
+      if (d) return d;
+      continue;
+    }
+    // Depth first, without recursion: a deeply nested argument would overflow JSON.stringify's
+    // stack. Too deep is refused as too large (it cannot be a reasonable plan, intent or graph).
+    if (tooDeep(value, MAX_ARGUMENT_DEPTH))
+      return {
+        ...inputTooLarge(SOURCE_CAP_BYTES + 1, SOURCE_CAP_BYTES, name, false)!,
+        message: `${name} is nested more than ${MAX_ARGUMENT_DEPTH} levels deep; this host accepts at most ${MAX_ARGUMENT_DEPTH}`,
+      };
+    let text: string;
+    try {
+      text = JSON.stringify(value) ?? "";
+    } catch {
+      return inputTooLarge(SOURCE_CAP_BYTES + 1, SOURCE_CAP_BYTES, name, false);
+    }
     const d = inputTooLarge(text, SOURCE_CAP_BYTES, name);
     if (d) return d;
   }
   return undefined;
+}
+
+/** The deepest nesting a tool argument may have; a real `plan_json` or intent is a handful of levels. */
+export const MAX_ARGUMENT_DEPTH = 64;
+
+/** Whether `value` nests deeper than `limit` arrays/objects, walked with an explicit stack. */
+export function tooDeep(value: unknown, limit: number): boolean {
+  const stack: Array<[unknown, number]> = [[value, 1]];
+  while (stack.length > 0) {
+    const [v, depth] = stack.pop()!;
+    if (v === null || typeof v !== "object") continue;
+    if (depth > limit) return true;
+    for (const child of Array.isArray(v) ? v : Object.values(v)) {
+      if (child !== null && typeof child === "object") stack.push([child, depth + 1]);
+    }
+  }
+  return false;
 }
 
 /**
@@ -230,6 +295,8 @@ async function handleMcp(req: Request, env: Env, origin: string, assets: HostedA
     );
 
   if (!(await allowed(env.RATE_MCP, req))) {
+    await discardBody(req);
+    countRefusal(env, "rate-limited /mcp");
     const d = rateLimited("/mcp", MCP_PER_PERIOD, RATE_PERIOD_SECONDS);
     return jsonResponse(
       { jsonrpc: "2.0", id: null, error: { code: -32000, message: d.message, data: envelope(d) } },
@@ -242,6 +309,8 @@ async function handleMcp(req: Request, env: Env, origin: string, assets: HostedA
 
   const body = await readCapped(req, BODY_CAP_BYTES);
   if (typeof body !== "string") {
+    await discardBody(req);
+    countRefusal(env, "too-large body");
     const d = inputTooLarge(body.bytes, BODY_CAP_BYTES, "request body", body.exact) as Diagnostic;
     return jsonResponse(
       { jsonrpc: "2.0", id: null, error: { code: -32600, message: d.message, data: envelope(d) } },
@@ -257,9 +326,12 @@ async function handleMcp(req: Request, env: Env, origin: string, assets: HostedA
       400,
     );
   }
-  count(env, Array.isArray(parsed) ? parsed : [parsed]);
   const refused = refuseOversize(parsed);
-  if (refused) return refused;
+  if (refused) {
+    countRefusal(env, "too-large argument");
+    return refused;
+  }
+  count(env, Array.isArray(parsed) ? parsed : [parsed]);
 
   const server = createHostedServer(origin, assets);
   const transport = new WebStandardStreamableHTTPServerTransport({
@@ -294,13 +366,36 @@ async function etagOf(renderVersion: string, payload: string): Promise<string> {
   return `"${hex.slice(0, 32)}"`;
 }
 
+/**
+ * RFC 9110 §13.1.2: `If-None-Match` uses the WEAK comparison and may be a list or `*`. An edge
+ * that recompresses turns a strong tag weak (`W/"…"`), and the 304 must still fire.
+ */
+export function matchesIfNoneMatch(header: string | null, etag: string): boolean {
+  if (header === null) return false;
+  const opaque = (t: string) => t.trim().replace(/^W\//, "");
+  if (header.trim() === "*") return true;
+  return header.split(",").some((t) => opaque(t) === opaque(etag));
+}
+
+/** Whether a path segment's `%` escapes decode (a malformed one, `%E0%A4%A`, would throw). */
+function wellFormedSegment(segment: string): boolean {
+  try {
+    decodeURIComponent(segment);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** The two image paths, parsed: the payload, and the render version a pinned path names. */
 export function parseSvgPath(pathname: string): { payload: string; pinned?: string } | undefined {
   const pin = /^\/v\/([^/]+)\/svg\/(.*)$/.exec(pathname);
   const raw = pin ? pin[2]! : pathname.startsWith("/svg/") ? pathname.slice("/svg/".length) : undefined;
   if (raw === undefined) return undefined;
   const payload = raw.endsWith(".svg") ? raw.slice(0, -".svg".length) : raw;
-  return pin ? { payload, pinned: decodeURIComponent(pin[1]!) } : { payload };
+  // The raw segment is compared with the encoded render version: decoding a malformed escape
+  // (`%E0%A4%A`) would throw, and a user's URL must never become a 500.
+  return pin ? { payload, pinned: pin[1]! } : { payload };
 }
 
 async function handleSvg(
@@ -320,14 +415,20 @@ async function handleSvg(
 
   // A pinned URL from an older compiler: those bytes are no longer drawn here, so send the reader
   // to the unpinned URL, briefly cacheable, rather than present new bytes under an old pin.
-  if (pinned !== undefined && pinned !== rv)
+  // A pin segment that is not even a well-formed escape names no render version at all.
+  if (pinned !== undefined && !wellFormedSegment(pinned))
+    return jsonResponse({ ok: false, error: "not a render version: /v/<render version>/svg/<payload>" }, 404);
+  if (pinned !== undefined && pinned !== encodeURIComponent(rv))
     return new Response(null, {
       status: 302,
       headers: { location: `/svg/${payload}`, "cache-control": "public, max-age=300", ...CORS },
     });
 
   const oversize = inputTooLarge(payload.length, PAYLOAD_CAP_CHARS, "payload");
-  if (oversize) return jsonResponse(envelope(oversize), 413);
+  if (oversize) {
+    countRefusal(env, "too-large payload");
+    return jsonResponse(envelope(oversize), 413);
+  }
   if (!/^[A-Za-z0-9_-]+$/.test(payload))
     return jsonResponse({ ok: false, error: "not a #z= payload: expected base64url after /svg/" }, 400);
 
@@ -339,7 +440,7 @@ async function handleSvg(
     etag,
     ...(pinned === undefined ? { "content-location": pinnedPath } : {}),
   };
-  if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers });
+  if (matchesIfNoneMatch(req.headers.get("if-none-match"), etag)) return new Response(null, { status: 304, headers });
 
   // The edge-cache key is the PINNED path, whichever route asked: a new compiler is a new key, so
   // a deploy can never serve a drawing the previous compiler made.
@@ -350,6 +451,7 @@ async function handleSvg(
 
   // A miss compiles: that is what the per-address limit meters.
   if (!(await allowed(env.RATE_SVG, req))) {
+    countRefusal(env, "rate-limited /svg/");
     const d = rateLimited("/svg/", SVG_PER_PERIOD, RATE_PERIOD_SECONDS);
     return jsonResponse(envelope(d), 429, { "retry-after": String(RATE_PERIOD_SECONDS) });
   }
@@ -358,8 +460,10 @@ async function handleSvg(
   try {
     source = await decodePlanHashWeb(payload, { maxBytes: SOURCE_CAP_BYTES });
   } catch (e) {
-    if (e instanceof PlanHashTooLarge)
+    if (e instanceof PlanHashTooLarge) {
+      countRefusal(env, "too-large payload");
       return jsonResponse(envelope(inputTooLarge(SOURCE_CAP_BYTES + 1, SOURCE_CAP_BYTES, "source", false)!), 413);
+    }
     return jsonResponse({ ok: false, error: "not a #z= payload: it does not inflate (deflate-raw)" }, 400);
   }
 

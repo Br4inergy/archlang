@@ -251,6 +251,22 @@ describe("the input cap: a Diagnostic envelope before any compile work, never a 
     expect(await res.text()).toBe("");
   });
 
+  it("a deeply nested argument is refused as too large, never a stack overflow (500)", async () => {
+    const deep = `${"[".repeat(120000)}${"]".repeat(120000)}`;
+    const body = `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"validate","arguments":{"source":${JSON.stringify(TINY)},"intent":${deep}}}}`;
+    expect(body.length).toBeLessThan(BODY_CAP_BYTES);
+    const res = await worker.fetch(new Request(`${ORIGIN}/mcp`, { method: "POST", headers: HEADERS, body }), env, ctx);
+    expect(res.status).toBe(200);
+    const out = toolText(((await res.json()) as Record<string, any>).result);
+    expect(out.diagnostics[0]).toMatchObject({ code: "E_INPUT_TOO_LARGE" });
+    expect(out.diagnostics[0].message).toMatch(/^intent is nested more than 64 levels deep/);
+    // A legitimate argument a few levels deep is untouched.
+    const ok = toolText(
+      await rpc("tools/call", { name: "validate", arguments: { source: TINY, graph: { a: ["b"], b: ["a"] } } }),
+    );
+    expect(ok.diagnostics.map((d: { code: string }) => d.code)).not.toContain("E_INPUT_TOO_LARGE");
+  });
+
   it("malformed JSON is a JSON-RPC parse error, not a 5xx", async () => {
     const res = await worker.fetch(
       new Request(`${ORIGIN}/mcp`, { method: "POST", headers: HEADERS, body: "{" }),
@@ -324,6 +340,21 @@ describe("telemetry: one data point per MCP message, method and tool name from f
       { blobs: ["tools/call", "(other)"], indexes: ["tools/call"] },
       { blobs: ["tools/call", "(other)"], indexes: ["tools/call"] },
       { blobs: ["(other)", ""], indexes: ["(other)"] },
+    ]);
+  });
+
+  it("a refusal writes one `refused` point with its reason, instead of the call's own", async () => {
+    points.length = 0;
+    await post({
+      jsonrpc: "2.0",
+      id: 8,
+      method: "tools/call",
+      params: { name: "lint", arguments: { source: "x".repeat(SOURCE_CAP_BYTES + 1) } },
+    });
+    await post({ jsonrpc: "2.0", id: 9, method: "ping", params: {} }, worker, { ...env, RATE_MCP: exhausted });
+    expect(points).toEqual([
+      { blobs: ["refused", "too-large argument"], indexes: ["refused"] },
+      { blobs: ["refused", "rate-limited /mcp"], indexes: ["refused"] },
     ]);
   });
 
@@ -445,6 +476,21 @@ describe.skipIf(!HAS_DEFLATE_RAW)("GET /svg/<payload> and the pinned /v/<render 
       code: "E_INPUT_TOO_LARGE",
       message: `source is more than ${SOURCE_CAP_BYTES} bytes; this host accepts at most ${SOURCE_CAP_BYTES}`,
     });
+  });
+
+  it("If-None-Match uses the weak comparison: W/ tags, lists and * all give 304", async () => {
+    const etag = (await get(`/svg/${P}`)).headers.get("etag")!;
+    for (const inm of [`W/${etag}`, `"zzz", ${etag}`, `"zzz",W/${etag}`, "*"]) {
+      const res = await get(`/svg/${P}`, { headers: { "if-none-match": inm } });
+      expect(res.status, inm).toBe(304);
+    }
+    expect((await get(`/svg/${P}`, { headers: { "if-none-match": '"zzz"' } })).status).toBe(200);
+  });
+
+  it("a malformed pin is a 404 with a JSON reason, never a 500", async () => {
+    const res = await get(`/v/%E0%A4%A/svg/${P}`);
+    expect(res.status).toBe(404);
+    expect(((await res.json()) as { ok: boolean }).ok).toBe(false);
   });
 
   it("garbage is 400", async () => {
