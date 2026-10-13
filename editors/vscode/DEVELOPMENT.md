@@ -19,6 +19,12 @@ the pure core (`src/lsp.ts`); this server is a thin LSP adapter over them.
 - `src/extension.ts` — the client: launches the server over IPC for
   `language === "arch"`.
 
+- `src/markdown.ts` — the Markdown-preview plugin: a markdown-it fence rule for `arch`
+  fences (pure, compile injected). `extension.ts` exposes it as `extendMarkdownIt` on the
+  object `activate` returns, which is what `contributes.markdown.markdownItPlugins` makes
+  VS Code call; it `require`s the core lazily, so esbuild inlines the same core into
+  `dist/extension.js`. Styles: `markdown-preview.css`. Tests: `test/markdown.test.ts`.
+
 ## Build & run
 
 ```bash
@@ -34,3 +40,13 @@ errors/warnings appear inline (squiggles + Problems panel).
 > Packaging note: `contributes.languages`/`grammars` reference the grammar and
 > language-configuration in `../`. For `vsce package`, copy those two files into
 > this folder (or adjust the paths) so they're included in the `.vsix`.
+
+## Open VSX (owner step)
+
+Not yet published there. Once the owner has created a namespace and a token, publish the
+packaged `.vsix` (built in the PRIMARY checkout) with the token read from the environment,
+never from a file in the repo:
+
+```bash
+npx ovsx publish archlang-<version>.vsix -p "$OVSX_PAT"
+```

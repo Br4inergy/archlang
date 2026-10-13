@@ -40,6 +40,12 @@
         "configuration": "./language-configuration.json"
       }
     ],
+    "markdown": {
+      "markdownItPlugins": true,
+      "previewStyles": [
+        "./markdown-preview.css"
+      ]
+    },
     "grammars": [
       {
         "language": "arch",

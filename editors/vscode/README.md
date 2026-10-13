@@ -13,6 +13,20 @@ Write floor plans as code. ArchLang is an open-source language that compiles `.a
 - **Signature help**: parameter hints for functions and components.
 - **Quick fixes**: apply a diagnostic's suggested fix with one action.
 
+## Floor plans in Markdown preview
+
+A fenced block tagged `arch` renders as the compiled floor plan in VS Code's built-in Markdown preview (`Ctrl+Shift+V`). If the plan has an error, the preview shows the error and your source instead.
+
+````
+```arch
+plan "Studio" {
+  units mm
+  wall exterior thickness 200 { (0, 0) (5000, 0) (5000, 4000) (0, 4000) close }
+  room id=r_living at (0, 0) size 5000x4000 label "Living" uses living
+}
+```
+````
+
 ## Install
 
 Search for "ArchLang" in the Extensions view, or run:
