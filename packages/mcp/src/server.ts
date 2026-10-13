@@ -33,6 +33,7 @@ import {
   suggestTopology,
   validateIntent,
 } from "@chanmeng666/archlang";
+import { planLinks } from "@chanmeng666/archlang/link";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -456,6 +457,17 @@ export function createServer(): McpServer {
       },
     },
     async ({ source, at }) => json({ ok: true, items: completion(source, at) }),
+  );
+
+  server.registerTool(
+    "link",
+    {
+      title: "Share link to the rendered plan",
+      description:
+        "Make two URLs that show a plan in the browser with nothing to install, for handing to a person. `playground` opens it in the hosted editor, rendered; `embed` draws it alone, for an iframe. The plan travels inside the URL, after the `#`, so it is never sent to a server and the URL carries nothing else. A plan that does not compile still gets links, and the page shows its diagnostics. `bytes` is the size of the compressed plan in the URL.",
+      inputSchema: { source: z.string().describe("ArchLang source.") },
+    },
+    async ({ source }) => json(planLinks(source)),
   );
 
   // Resources: the static context artifacts, read once at server start.

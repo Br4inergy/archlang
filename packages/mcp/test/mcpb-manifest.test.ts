@@ -46,7 +46,7 @@ describe("MCPB manifest generator", () => {
     const live = await registryTools();
     const m = buildManifest(pkg, serverJson, live);
     expect(m.tools.map((t) => t.name)).toEqual(live.map((t) => t.name));
-    expect(m.tools.length).toBe(10);
+    expect(m.tools.length).toBe(11);
     for (const t of m.tools) {
       expect(t.description.length).toBeGreaterThan(0);
       expect(t.description.length).toBeLessThanOrEqual(201);

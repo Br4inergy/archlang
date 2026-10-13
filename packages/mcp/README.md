@@ -55,6 +55,7 @@ structured JSON. `compile` also accepts `plan_json` (the Plan-JSON / RPLAN shape
 | `fix` | Apply the machine-applicable fixes on a plan's diagnostics (syntactic corrector; bounded fixpoint). `unsafe` widens to `maybe-incorrect`. |
 | `suggest` | Advisory door/window statements (each referencing its wall by a stable ref — an authored id or a unique category — or absolute coordinates, never a re-bindable positional id) to resolve unreachable rooms / windowless bedrooms — data, never applied. |
 | `complete` | LSP completion items in scope at a source byte offset. |
+| `link` | Two URLs that show the plan in a browser with nothing to install: `playground` (the hosted editor, rendered) and `embed` (the plan alone, for an iframe), plus `bytes`, the compressed plan's size. The plan rides in the URL fragment; a broken plan still links and the page shows its diagnostics. |
 
 ### What `compile`'s `accessible` does here — and what it does not
 
