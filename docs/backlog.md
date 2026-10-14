@@ -2406,8 +2406,9 @@ The plugin was submitted from `plugins/archlang/` on 2026-10-10 and is in review
 offered a "push updates" webhook, which was dismissed and is not set up. Whether the listing follows
 `main` without it, or needs a resubmission after each release, has not been observed; settle it at
 the first release after the listing is approved. The directory holds a pinned-`npx` server for a
-policy review, and may ask for a privacy-policy page, which the sites do not have. The OpenAI plugin directory
-needs a privacy-policy page and a terms page too; neither exists, and that blocks its submission.
+policy review, and may ask for a privacy-policy page. The OpenAI plugin directory
+needs a privacy-policy page and a terms page too; both now exist, at https://archlang.uk/privacy and
+https://archlang.uk/terms.
 
 ## Site chrome (found while fixing the nav overflow, 2026-09-20)
 

@@ -116,6 +116,16 @@ const PAGE_META = [
     "Eleven floor plans, each written by an AI agent from a one-paragraph brief: the brief as given, the ArchLang source the agent delivered, and the compiled drawing.",
   ],
   [
+    "/privacy",
+    "Privacy",
+    "What the ArchLang sites and the hosted MCP endpoint do with data: no cookies, no analytics script, no request logs, and just aggregate counts.",
+  ],
+  [
+    "/terms",
+    "Terms",
+    "The terms for ArchLang: the software is MIT-licensed, and the hosted MCP endpoint is provided as is, without uptime guarantees or warranty.",
+  ],
+  [
     "/relational",
     "Relational placement",
     "Place a room relative to another with right-of, left-of, above or below. ArchLang resolves the absolute coordinates by arithmetic, in dependency order.",

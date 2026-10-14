@@ -66,6 +66,8 @@ const SITE_PAGES = [
   ["docs-site/gallery.md", "gallery.md"],
   ["docs-site/relational.md", "relational.md"],
   ["docs-site/embed.md", "embed.md"],
+  ["docs-site/privacy.md", "privacy.md"],
+  ["docs-site/terms.md", "terms.md"],
 ];
 
 /**
