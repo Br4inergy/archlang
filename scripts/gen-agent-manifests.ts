@@ -27,11 +27,12 @@
  *     PNG/JPEG/WebP/SVG, square, 48 to 4096 px, at most 5 MiB).
  * The plugin root is `plugins/archlang/` (the slim folder the Claude plugin already uses; the
  * repository root carries an 11 MB font), which `gen:plugin` fills with `skills/`. `mcp.json` there
- * (portable Agent Plugins MCP file, https://agent-plugins.org/schemas/1.0.0/mcp.schema.json) declares
- * the hosted MCP server (Streamable HTTP, no sign-in, ADR 0026): the OpenAI directory takes a remote
- * HTTPS server and no longer accepts a skills-only package, and a URL names no version.
+ * (portable Agent Plugins MCP file, https://agent-plugins.org/schemas/1.0.0/mcp.schema.json) starts the
+ * MCP server unpinned, like the README's recommended command, so it names no version. The OpenAI
+ * directory takes a remote HTTPS server instead and no longer accepts a skills-only package, so the
+ * ZIP `npm run build:openai-plugin` assembles swaps in {@link hostedMcpManifest} (ADR 0026's server).
  * `assets/icon.png` is a byte copy of the Claude plugin's `.claude-plugin/icon.png` (1024 px square),
- * so the OpenAI listing icon sits inside the folder a ZIP of the portable files carries.
+ * so the OpenAI listing icon sits inside the plugin folder the ZIP is built from.
  * The instruction snippets are copy-in files (a user's own `.github/` or `.cursor/rules/`), so they
  * live under `integrations/`; the manifests and skills sit where the host auto-detects them.
  */
@@ -165,8 +166,21 @@ export function portableManifest(): string {
   });
 }
 
-/** `mcp.json`: the hosted MCP server over Streamable HTTP, no sign-in, so no version and no secret. */
+/** `mcp.json`: the MCP server, started by its package name with no version. */
 export function mcpManifest(): string {
+  const { name } = JSON.parse(read("packages/mcp/package.json"));
+  return json({
+    $schema: MCP_SCHEMA_ID,
+    mcpServers: { archlang: { type: "stdio", command: "npx", args: ["-y", name] } },
+  });
+}
+
+/**
+ * The OpenAI ZIP's `mcp.json` (`scripts/build-openai-plugin.ts`): the hosted server over Streamable
+ * HTTP, no sign-in, because the directory takes a remote HTTPS server and excludes a local one. The
+ * repository's `mcp.json` keeps the local server for the hosts that start it (PNG, offline use).
+ */
+export function hostedMcpManifest(): string {
   return json({
     $schema: MCP_SCHEMA_ID,
     mcpServers: { archlang: { type: "streamable-http", url: HOSTED_MCP_URL } },

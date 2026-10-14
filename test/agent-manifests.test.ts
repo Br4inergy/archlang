@@ -2,10 +2,11 @@
  * The agent-directory manifests (`npm run gen:agent-manifests`) are one skill source published in
  * each host's shape. `check:drift` proves they are reproducible; this proves they are well formed:
  * the portable manifest validates against the vendored Agent Plugins schema (never fetched at test
- * time), the OpenAI directory listing meets that directory's submission limits, `mcp.json` names the
- * hosted server, the Cursor manifest meets its one documented requirement, every skill a host will
- * look for exists and is byte-identical to its source, and no generated text file carries a version
- * number, a secret or a retired positioning claim.
+ * time), the OpenAI directory listing meets that directory's submission limits, `mcp.json` starts the
+ * local server while the OpenAI ZIP's names the hosted one, the Cursor manifest meets its one
+ * documented requirement, every skill a host will look for exists and is byte-identical to its
+ * source, and no generated text file carries a version number, a secret or a retired positioning
+ * claim.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -13,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import {
   CURSOR_RULE,
   HOSTED_MCP_URL,
+  hostedMcpManifest,
   ICON_SOURCE,
   MCP_MANIFEST,
   MCP_SCHEMA_ID,
@@ -149,12 +151,27 @@ describe("agent-directory manifests", () => {
     expect(missing.join("\n")).toMatch(/missing required `name`/);
   });
 
-  it("mcp.json declares exactly the hosted server, Streamable HTTP, per the vendored MCP schema", () => {
+  it("mcp.json meets the vendored Agent Plugins MCP schema and pins no version", () => {
     const schema = readJson("test/fixtures/schemas/agent-plugin-mcp.schema.json");
     expect(schema.$id).toBe(MCP_SCHEMA_ID);
     const mcp = readJson(MCP_MANIFEST);
     // structural checks by hand: the schema uses $ref/oneOf, beyond the small validator above
     expect(schema.required).toEqual(["$schema", "mcpServers"]);
+    expect(Object.keys(mcp).sort()).toEqual(["$schema", "mcpServers"]);
+    expect(mcp.$schema).toBe(MCP_SCHEMA_ID);
+    const server = mcp.mcpServers.archlang;
+    const stdio = schema.$defs.stdioServer;
+    expect(stdio.required).toEqual(["type", "command"]);
+    for (const k of Object.keys(server)) expect(Object.keys(stdio.properties), k).toContain(k);
+    expect(server.type).toBe(stdio.properties.type.const);
+    expect(server.command).toBe("npx");
+    expect(server.args).toEqual(["-y", readJson("packages/mcp/package.json").name]);
+    for (const a of server.args) expect(a).not.toMatch(/@[^/]*$|@latest/);
+  });
+
+  it("the OpenAI ZIP's mcp.json declares exactly the hosted server, Streamable HTTP, per the vendored schema", () => {
+    const schema = readJson("test/fixtures/schemas/agent-plugin-mcp.schema.json");
+    const mcp = JSON.parse(hostedMcpManifest());
     expect(Object.keys(mcp).sort()).toEqual(["$schema", "mcpServers"]);
     expect(mcp.$schema).toBe(MCP_SCHEMA_ID);
     // one server: the OpenAI portal connects one per plugin, and plugin-level review cases need one

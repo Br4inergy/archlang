@@ -2,8 +2,12 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
   "mcpServers": {
     "archlang": {
-      "type": "streamable-http",
-      "url": "https://mcp.archlang.uk/mcp"
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@chanmeng666/archlang-mcp"
+      ]
     }
   }
 }

@@ -14,7 +14,7 @@ covered in [`overview.md`](overview.md) and is not repeated here.
 
 | Host | Plugin files (under `plugins/archlang/`) | Copy-in files |
 |---|---|---|
-| Codex and ChatGPT | `plugin.json`, `mcp.json`, `skills/`, `assets/icon.png` | none |
+| Codex and ChatGPT | a ZIP built from `plugin.json`, `skills/`, `assets/icon.png` (below) | none |
 | GitHub Copilot (CLI) | `plugin.json`, `mcp.json`, `skills/` | `integrations/copilot/*` |
 | Cursor | `.cursor-plugin/plugin.json`, `mcp.json`, `skills/`, `rules/archlang.mdc` | none |
 | Any Agent Plugins client | `plugin.json`, `mcp.json`, `skills/` | none |
@@ -39,16 +39,13 @@ covered in [`overview.md`](overview.md) and is not repeated here.
   Copilot custom instructions (repository-wide, and path-specific with `applyTo: "**/*.arch"`), for a
   user to copy into their own project.
 
-`mcp.json` declares one MCP server, `archlang`, the hosted one: `type: "streamable-http"`,
-`url: "https://mcp.archlang.uk/mcp"`, no headers and no sign-in. It names no version. The OpenAI
-directory takes a remote HTTPS server (a local stdio server is excluded from a public submission) and
-no longer accepts a skills-only package, so the plugin it lists must declare this server. Copilot CLI
-gives the portable `plugin.json` precedence over the Claude manifest, and this file is how Copilot
-(and Cursor) users get the server as well as the skills; they now get the hosted server, which
-registers the stdio server's tools (plus `read_me`), except that its `compile` cannot produce PNG.
-Anyone who wants the local server adds `npx -y @chanmeng666/archlang-mcp` by hand (the package README
-shows each host's config); the Claude plugin keeps its pinned stdio server in
-`.claude-plugin/plugin.json`.
+`mcp.json` declares the MCP server as a stdio server run with `npx -y @chanmeng666/archlang-mcp`, the
+unpinned command the README recommends, so it names no version. Copilot CLI gives the portable
+`plugin.json` precedence over the Claude manifest, and this file is how Copilot (and Cursor) users get the
+server as well as the skills: the local one, so PNG output and offline use keep working. The OpenAI
+directory takes a remote HTTPS server instead (a local server is excluded from a public submission)
+and no longer accepts a skills-only package, so its ZIP carries a different `mcp.json`, the hosted
+server `https://mcp.archlang.uk/mcp` (below).
 
 ## How a user installs them
 
@@ -87,18 +84,28 @@ The format is OpenAI's portable "Agent Plugins" layout
 <https://developers.openai.com/plugins/deploy/submission-errors>). The listing fields live in the
 generated `plugin.json`, so the dashboard's Metadata checks read them from the ZIP.
 
+`npm run build:openai-plugin` (`scripts/build-openai-plugin.ts`) writes
+`dist-openai/archlang-plugin-<core version>.zip` (gitignored) from the generated `plugins/archlang/`,
+and refuses a folder that is out of step with its generators. At the archive root: `plugin.json` with
+`"version"` set to the core's version (final submission requires a semantic version and an update must
+change it; the repository's `plugin.json` has none), `mcp.json` declaring the hosted server
+(`type: "streamable-http"`, `url: "https://mcp.archlang.uk/mcp"`, no headers, no sign-in),
+`assets/icon.png` and `skills/`. `.claude-plugin/`, `.cursor-plugin/` and `rules/` stay out. It then
+opens the written ZIP again and checks the entry list and both rewritten files;
+`npm run prove:openai-plugin` repeats that check on an existing ZIP.
+
 1. Sign in at <https://platform.openai.com/plugins> with an organization-owner account (or a member with
    Apps Management Write) and complete the individual or business verification in organization settings.
-2. Build the ZIP from `plugins/archlang/` with these at the archive root, using `/` in entry paths:
-   `plugin.json`, `mcp.json`, `skills/` and `assets/icon.png`. Leave out `.claude-plugin/`,
-   `.cursor-plugin/` and `rules/` (other hosts' files). In the ZIP's copy of `plugin.json` add
-   `"version"` set to the release tag's version (final submission requires a semantic version, and an
-   update must change it); the repository's `plugin.json` deliberately has none.
+2. In the PRIMARY checkout, on the release's commit, run `npm run build:openai-plugin`; upload
+   `dist-openai/archlang-plugin-<version>.zip`.
 3. Choose **Upload new or existing plugin**, then the **With MCP** path (the hosted server is remote
    HTTPS), and upload the ZIP. Resolve the Metadata and Skills findings. Under **MCPs**, connect
-   `archlang` with no authentication and complete the domain-verification challenge: the portal shows a
-   token to serve as plain text at `https://<host>/.well-known/openai-apps-challenge` on
-   `mcp.archlang.uk` or a parent origin.
+   `archlang` with no authentication and complete the domain-verification challenge. The Worker
+   serves `GET /.well-known/openai-apps-challenge` as `text/plain` from the `OPENAI_APPS_CHALLENGE`
+   entry under `vars` in `packages/mcp-worker/wrangler.jsonc` (a 404 while it is empty): paste the
+   portal's token there in a one-line PR, let `deploy-mcp` ship it, then verify. The token is a
+   public verification string, not a secret. Every tool declares its MCP annotations (read-only,
+   not destructive, idempotent, closed-world), which the tool scan requires.
 4. Fill in the review form: five positive and three negative test cases (they may also be declared in
    `extensions["com.openai"].review` in `plugin.json`), a reviewer-accessible video URL and release
    notes. Submit for review and attest to the policies.

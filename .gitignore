@@ -16,6 +16,7 @@ engine-digests-report.md
 *.tsbuildinfo
 *.vsix
 dist-mcpb/
+dist-openai/
 # Live eval output is ephemeral (moves with the model/day) — the committed
 # scorecard is eval/results.md; the live headline lives in eval/live-baseline.json.
 eval/results.live.md

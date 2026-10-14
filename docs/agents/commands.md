@@ -33,6 +33,9 @@
   `prove:mcpb` unpacks one outside the repo and drives it over stdio. Neither runs in `ci.yml`: only
   `release.yml` runs them, last and best-effort, so a broken bundle shows as a yellow step on a
   green release.
+- `build:openai-plugin` writes the OpenAI directory ZIP to the gitignored `dist-openai/` from the
+  generated `plugins/archlang/` (adds the version, swaps in the hosted server's `mcp.json`) and checks
+  what it wrote; `prove:openai-plugin` re-checks a ZIP. Neither is in CI; the owner uploads by hand.
 - `gen:font-cjk` needs Python + fonttools + network and sits outside the drift gate.
 - `npm run dev` is `tsup --watch`, not a web server (`playground:dev` / `docs:dev` are the sites).
 
