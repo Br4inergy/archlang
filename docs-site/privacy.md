@@ -1,6 +1,11 @@
 # Privacy
 
-ArchLang collects as little as it can. This page says what happens to data, and nothing more.
+ArchLang collects as little as it can. This page says what happens to data.
+
+## Who we are
+
+ArchLang is an open-source project run by Chan Meng. The same publisher offers the npm packages,
+these sites, the hosted endpoint at `mcp.archlang.uk` and the ArchLang plugins.
 
 ## This site and the playground
 
@@ -16,15 +21,29 @@ result. It keeps no request logs: Workers Logs are off and the Worker logs nothi
 plan, sign-in or cookie. The one thing it keeps is a rendered drawing in Cloudflare's edge cache for
 an `/svg/` link, which carries the plan's labels.
 
+The only personal data it handles is the sender's IP address, used transiently as a rate-limit key
+and not stored by us. Its tools accept only plan text and a few drawing options. They never ask for
+conversation history, credentials, location or any other personal data, so please do not put such
+data in a plan.
+
 An `/svg/` link puts the plan in the URL path, so unlike a playground link it reaches Cloudflare's
 edge like any URL.
 
-It writes only aggregate counts to Cloudflare Analytics Engine: the request method, the tool name,
-and, for a refused request, the reason (rate limit or size cap). No plan text, no address.
+## Retention
 
-To limit abuse it applies a per-address rate limit. The sender's IP address is used as the rate
-limit key and is not stored by us. Cloudflare, as the host, processes IP addresses under its own
-privacy policy.
+- A cached `/svg/` drawing is stored under a versioned path with `max-age=31536000` (one year). The
+  unversioned `/svg/` path tells clients to reuse a drawing for 300 seconds and revalidate with an
+  `ETag`. We cannot list or delete individual entries; Cloudflare may evict them sooner.
+- The aggregate counts in Cloudflare Analytics Engine are the request method, the tool name and, for
+  a refused request, the reason. They hold no plan text and no address. Cloudflare keeps them for
+  three months.
+
+## Sharing and your choices
+
+We do not sell data, share it with advertisers, or send it to anyone except Cloudflare, which hosts
+the service and processes IP addresses under its own privacy policy. Because we keep no plan text,
+account or log, there is nothing to access, correct or delete on our side. To avoid the edge cache,
+use the playground or the local tools, which send nothing.
 
 ## Local tools
 
@@ -34,4 +53,4 @@ it at.
 
 ## Contact
 
-Questions or requests: [open an issue](https://github.com/ChanMeng666/archlang/issues).
+Requests: [open an issue](https://github.com/ChanMeng666/archlang/issues).
