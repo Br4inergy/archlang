@@ -57,6 +57,23 @@ detects a stale deploy), and `report` (the single writer of the pinned issue). `
 both sites on every push to `main`; `release.yml` publishes on a `v*` tag. The `eval-*.yml`
 workflows are manual and owner-only — never dispatch `eval-l2.yml`.
 
+## Release
+
+`/release-check` (`.claude/commands/release-check.md`) is the checklist and holds the human steps.
+Two things it pins:
+
+- **Gate order in the PRIMARY checkout**: `npm run build`, `npm run mcp:build:only`,
+  `npm run vscode:build:only`, then `npm run check`. `check` runs
+  `editors/vscode/test/stdio.test.ts`, which compares the bundled server's stamped core version with
+  the workspace version, so a stale `editors/vscode/dist/server.js` fails it after a version bump.
+- **npm shows a just-published version only about 3 minutes after `npm publish` returns.** The
+  shim's core-exports check (`VIEW_ATTEMPTS`, `VIEW_INTERVAL_MS` in
+  `packages/mcp/scripts/check-core-exports.ts`) and the MCP-registry step can trip on it; the
+  remedy is `gh run rerun <id> --failed` (idempotent).
+
+`@chanmeng666/arch-plan` is not published by `release.yml`; its first version was published by hand
+by the owner (`docs/backlog.md` O.5).
+
 ## CLI contract
 
 Every command takes `--json` (result on stdout, messages on stderr) and `-` for stdin. Exit codes:

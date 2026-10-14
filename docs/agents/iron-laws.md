@@ -46,8 +46,13 @@ Owner decisions and laws that no test fully states. Do not re-propose, re-open o
   Browser Integrity Check stay OFF, or the smoke test and the nightly byte-equality probe break.
   Neither Worker has a `main` script.
 - **`archlang-mcp` (`packages/mcp-worker`, ADR 0026) is the third Worker and the only scripted
-  one**: its own deploy job, workers.dev until the owner attaches `mcp.archlang.uk`; DNS and the
+  ArchLang one** (the Cloudflare account also holds an unrelated scripted Worker, `sunostats`, which
+  shares the Workers Paid caps): its own deploy job, served at `mcp.archlang.uk`; DNS and the
   Workers plan are owner-only. A site never gains a `main` to share its work.
+- **The hosted MCP spend bound is three things**: `limits.cpu_ms`, the account's USD 10 billing
+  budget alert, and the zone WAF rule `mcp abuse guard` (100 `/mcp` requests per 10 s per IP). The
+  Worker's own rate-limit bindings are best-effort and are not part of the bound. The rule lives in
+  the Cloudflare dashboard, not in the repository, and does not cover `/svg/`.
 
 ## Language & geometry
 
@@ -79,3 +84,16 @@ Owner decisions and laws that no test fully states. Do not re-propose, re-open o
   without a nearby `r.poly` branch. Fix locally: probe one wall thickness off each face and ask
   which side has floor (`pointInRoomBox`/`pointInPolygon`), or use `polygonLabelPoint`. Never build
   the wall joinery to answer a `describe()` question.
+
+## Owner policies
+
+- **Merging a PR**: once CI is green and the diff has been read (a code change: adversarially
+  reviewed), the agent merges without asking. It never merges a red gate or an unread diff.
+  Committing and pushing still happen only when asked.
+- **The release chain** (version-bump PR, tag, `release.yml`, proofs, hand publishes, listings) runs
+  end to end by the agent. The owner pauses it only for OTP/2FA, logins, account/token/secret
+  creation, acceptance of terms and attestations, and native file pickers.
+- **Listings**: an agent may drive a submission form or a publish step through the owner's logged-in
+  browser or CLI when the owner has asked for that listing; the final submit of anything that
+  accepts terms is the owner's (`docs/seo.md` section 8).
+- **Distribution first**: ArchLang exists for distribution and credibility; revenue is secondary.

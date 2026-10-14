@@ -2380,6 +2380,9 @@ than late; the corpus `describe()` output does not move. **Size:** M.
 
 The state of each listing is the table in `docs/seo.md` § 8. These are what is still owed.
 
+Readings of the agent-reach E1/E2 metrics must discount the 2026-10-14 burst traffic (the owner's
+own ~1,500 hosted-MCP requests; `docs/seo.md` section 8).
+
 ### O.1 · Glama is in review, and the awesome-mcp-servers pull request waits on it — `todo` (BLOCKED on a third party)
 
 The server was submitted to Glama on 2026-10-10 and is pending its review; the result arrives by
@@ -2408,7 +2411,26 @@ offered a "push updates" webhook, which was dismissed and is not set up. Whether
 the first release after the listing is approved. The directory holds a pinned-`npx` server for a
 policy review, and may ask for a privacy-policy page. The OpenAI plugin directory
 needs a privacy-policy page and a terms page too; both now exist, at https://archlang.uk/privacy and
-https://archlang.uk/terms.
+https://archlang.uk/terms. The OpenAI submission itself is blocked on the owner's identity
+verification ("Identity in review") and a native file picker the agent cannot drive.
+
+### O.4 · Open VSX trusted publishing after #14189 — `todo` (BLOCKED on a third party)
+
+The namespace ownership claim is EclipseFdn/open-vsx.org#14189. Open VSX offers Trusted Publishing
+(OIDC from CI, no token), but its page requires a verified namespace. After #14189: add a publish
+workflow and register the trusted publisher (a human step). Until then the token path in
+`editors/vscode/DEVELOPMENT.md` is the way.
+
+### O.5 · `@chanmeng666/arch-plan` publishing in `release.yml`? — `todo` (decision needed)
+
+0.1.0 was published by hand by the owner. Decide whether `release.yml` publishes later versions
+(trusted publisher, `prepack` needs a fresh root `dist/`) or the owner keeps publishing by hand.
+
+### O.6 · A WAF rule for `/svg/`? — `todo` (decision needed)
+
+The zone rule `mcp abuse guard` covers `/mcp` only. `/svg/` is guarded by the Worker's best-effort
+binding alone. The Free plan allows one rate-limiting rule, so covering `/svg/` means widening the
+expression or changing plan.
 
 ## Site chrome (found while fixing the nav overflow, 2026-09-20)
 

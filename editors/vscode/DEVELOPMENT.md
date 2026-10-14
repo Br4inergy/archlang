@@ -48,10 +48,17 @@ errors/warnings appear inline (squiggles + Problems panel).
 
 ## Open VSX (owner step)
 
-Not yet published there. Once the owner has created a namespace and a token, publish the
-packaged `.vsix` (built in the PRIMARY checkout). ovsx reads the token from the `OVSX_PAT`
-environment variable (set it in the shell, so it is never in argv),
-never from a file in the repo; `ovsx` is pinned to 1.2.0 (the npm latest on 2026-10-13):
+The namespace `ChanMeng` was created from the owner's Open VSX account (@ChanMeng666), and the
+ownership claim is filed as EclipseFdn/open-vsx.org#14189 (option 1: a Marketplace publisher whose
+repository is owned by the requesting GitHub account). `archlang` 0.31.0 was published with the
+token path below but shows "Under review / Deactivated", and the public API answers "Extension not
+found", until the namespace is verified. Trusted Publishing (OIDC from CI, no token) is offered by
+Open VSX, but its page requires a verified namespace, so it follows #14189 (`docs/backlog.md` O.4);
+keep the token path until then.
+
+Publish the packaged `.vsix` (built in the PRIMARY checkout). ovsx reads the token from the
+`OVSX_PAT` environment variable (set it in the shell, so it is never in argv), never from a file in
+the repo; `ovsx` is pinned to 1.2.0 (the npm latest on 2026-10-13):
 
 ```bash
 npx ovsx@1.2.0 publish archlang-<version>.vsix

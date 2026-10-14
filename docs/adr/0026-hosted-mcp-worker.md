@@ -1,7 +1,7 @@
 # 26. A third, scripted Worker hosts the MCP server
 
-- **Status:** Accepted (owner decision, 2026-10). Deployed to workers.dev only; the custom domain
-  `mcp.archlang.uk` and the plan choice are the owner's (see "Owner steps").
+- **Status:** Accepted (owner decision, 2026-10). Live at `https://mcp.archlang.uk`; what production
+  showed is in "Addendum: production" below.
 - **Date:** 2026-10
 - **Relates to:** [ADR 0019](0019-cloudflare-workers-hosting.md) (both sites are static assets with
   no `main`, and "a future feature that wants a request handler must justify the cap it buys"),
@@ -78,8 +78,8 @@ same JSON text as before: that is the text fallback the specification requires.
   host that does not know the key ignores it, and the result text is identical either way.
 - **Size:** the page is about 513 KiB (111 KiB gzipped), most of it the SDK's schemas inside the
   `App` class. It is fetched once per host session, not per call.
-- **Not verified:** whether any particular chat host renders a third-party MCP App from a remote
-  connector. Nothing in this repository claims one does; it is an open proof (below).
+- **Rendering in a host:** proven in claude.ai for a custom connector (see "Addendum: production").
+  No other host is claimed.
 
 ### No `/png/`
 
@@ -191,7 +191,7 @@ The Workers free plan allows 10 ms of CPU per HTTP request and 100,000 requests 
 to static assets are free and unlimited, which is why the two sites are unaffected; but every MCP
 call and every `/svg/` request reaches the script and counts. The daily allowance is the plan's,
 not this Worker's, so any other scripted Worker in the same Cloudflare account draws on it too
-(the owner should confirm what else runs there).
+(the account does have one more, `sunostats`, an unrelated project).
 
 Measured with `packages/mcp-worker/scripts/measure-cpu.mjs` against `wrangler dev --local`
 (wrangler 4.108.0, workerd 1.20260706) on the development machine, `MEASURE_CPU=1` making the
@@ -298,9 +298,36 @@ version-keyed cache with an in-memory stand-in.
 - **Analytics:** query the `archlang_mcp` dataset (SQL API: `SELECT blob1 AS method, blob2 AS tool,
   count() FROM archlang_mcp GROUP BY method, tool`); refusals are `method = 'refused'`, with the
   reason in `tool`.
-- **Open proof:** whether claude.ai (or any given host) renders this third-party MCP App from a
-  remote connector. Until someone sees it render, no document says it does.
+- **Open proof:** none for claude.ai (done, see "Addendum: production"); any other host stays
+  unclaimed until someone sees it render.
 - **Listings:** the connector directories and app stores that take a remote MCP URL.
+
+## Addendum: production
+
+- **Deploy and domain.** `deploy.yml`'s `deploy-mcp` job deploys `archlang-mcp` on every `main`
+  push. The custom domain `https://mcp.archlang.uk` (Production, zone `archlang.uk`) is attached in
+  the dashboard; `https://archlang-mcp.chanmeng-dev.workers.dev` also answers.
+- **The Worker's rate-limit bindings are best-effort.** Measured from one address: 700 POSTs in
+  60 s, 800 in 69 s and 1500 in 100 s to `/mcp` all returned 200, because a Cloudflare rate-limit
+  binding counts per server, not globally (`RATE_MCP` 600/60 s and `RATE_SVG` 3000/60 s above).
+- **The precise guard is a zone WAF rule, outside the repo.** A rate-limiting rule on `archlang.uk`
+  named `mcp abuse guard`: expression
+  `(http.host eq "mcp.archlang.uk" and starts_with(http.request.uri.path, "/mcp"))`, per IP, 100
+  requests per 10 s, action Block for 10 s (the Free plan's only period and timeout). Measured: 300
+  POSTs gave 130 x 200 then 170 x 429, and service resumed after the timeout. It does not cover
+  `/svg/`. It lives in the Cloudflare dashboard, so a reader of the repository alone cannot see it.
+- **Spend bound, restated.** `limits.cpu_ms` plus the account's USD 10 billing budget alert plus
+  that WAF rule; the Worker's own bindings are not part of the bound.
+- **Shared account caps.** The Cloudflare account also holds another scripted Worker, `sunostats`
+  (an unrelated project), which shares the Workers Paid account caps. ADR 0019's "no `main`" law
+  concerns the two ArchLang site Workers only.
+- **Render proof.** A claude.ai custom connector (`https://mcp.archlang.uk/mcp`, no sign-in, tool
+  permission "needs approval") renders the `compile` result as an MCP App card ("ArchLang
+  compile": pan and zoom, +, -, Fit, a view-source toggle).
+- **Analytics.** The growth repository's weekly metrics job reads the Analytics Engine dataset
+  through the SQL API with an Account Analytics Read token. It counts `tools/call` only, so
+  `tools/list` traffic and WAF-blocked requests never appear, and the first ~1,500 requests on
+  2026-10-14 were the owner's own burst tests.
 
 ## Deferred, by name
 

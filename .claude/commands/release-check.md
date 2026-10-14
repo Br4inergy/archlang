@@ -74,6 +74,10 @@ you observed. Do NOT push anything — this command only verifies.
    npx vitest run packages/mcp/test/lockstep.test.ts
    ```
 
+   Gate ORDER: these builds come BEFORE `npm run check` (item 5). `check` includes
+   `editors/vscode/test/stdio.test.ts`, which compares the bundled server's stamped core version with
+   the workspace version, so a stale `editors/vscode/dist/server.js` fails it after a version bump.
+
    Run every build and package step in the PRIMARY checkout, never a `.claude/worktrees/*` one: a
    worktree resolves the core by walking up to the shared repo and bundles that one.
    `editors/vscode/resolve-core.mjs` refuses in that case, and the `__CORE_VERSION__` stamp cannot
@@ -101,10 +105,14 @@ you observed. Do NOT push anything — this command only verifies.
 - **MCP registry race.** The registry step can 404 on a version npm has published but not yet made
   visible. Both npm publishes have already succeeded; run `gh run rerun <id> --failed`. Never delete
   the retry loop (`docs/backlog.md` 4.7).
-- **npm visibility race.** The shim's core-exports check waits 8 minutes for npm to finish processing a just-published core; if it still trips, nothing is broken: run `gh run rerun <id> --failed`.
+- **npm visibility race.** npm shows a just-published version only about 3 minutes after `npm publish`
+  returns. The shim's core-exports check waits `VIEW_ATTEMPTS` x `VIEW_INTERVAL_MS`
+  (`packages/mcp/scripts/check-core-exports.ts`, 8 minutes) for it; if it still trips, nothing is
+  broken: run `gh run rerun <id> --failed` (idempotent).
 - **A new npm package's FIRST version is published by hand by the owner** (as for
   `@chanmeng666/archlang-font-cjk`), then registered as a trusted publisher; later versions go
-  through `release.yml`.
+  through `release.yml`. `@chanmeng666/arch-plan` (0.1.0 published by hand) is not in `release.yml`
+  yet (`docs/backlog.md` O.5); its `prepack` refuses a stale root `dist/`, so `npm run build` first.
 - **VS Code Marketplace upload is a human web step** (publisher `ChanMeng`, extension
   `ChanMeng.archlang`); nothing in CI publishes it. After a language-surface change:
   1. In the primary checkout: root `npm run build`, then `npm run package` in `editors/vscode`

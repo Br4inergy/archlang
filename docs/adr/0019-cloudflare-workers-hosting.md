@@ -57,7 +57,10 @@ With no script to invoke, **every request is a static-asset request**: free, unm
 and exempt from the Workers free plan's 100,000-requests/day cap. Adding a `main` — even
 a trivial pass-through — opts both public sites into that cap in exchange for nothing.
 This is a standing constraint, not an implementation detail: a future feature that wants
-a request handler must justify the cap it buys.
+a request handler must justify the cap it buys. The law binds the two ArchLang site Workers
+(`archlang-docs`, `archlang-playground`); the hosted MCP Worker is the one ArchLang Worker with a
+script ([ADR 0026](0026-hosted-mcp-worker.md)), and the Cloudflare account also holds an unrelated
+scripted Worker.
 
 ### Why deploys stay in GitHub Actions, not Cloudflare's Git integration
 
