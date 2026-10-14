@@ -14,6 +14,14 @@ Never run a bare `arch`: on Linux, macOS and Git Bash that name is the coreutils
 This skill is a workflow, not a language reference. Run `archlang spec` for the language and
 `archlang <cmd> --help` for a command's flags.
 
+## Scope
+
+- Run the `archlang` CLI commands below and no other program.
+- Change the one `.arch` file the user asked you to edit (`plan.arch` below). If the user has not
+  named it, ask. Besides it, write only the drawing the CLI renders and the `.bak` copy that
+  `--backup` keeps.
+- The user's explicit instructions take priority over these steps.
+
 ## Steps
 
 1. **Record the starting state.** Run `archlang validate plan.arch --json` and

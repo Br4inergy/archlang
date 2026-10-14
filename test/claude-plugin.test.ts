@@ -16,11 +16,13 @@ const PLUGIN = "plugins/archlang";
 const MAX_FILE = 5 * 1024 * 1024;
 const ICON = ".claude-plugin/icon.png";
 // the Claude manifest and icon, plus the version-free files `gen:agent-manifests` generates here
+// (`assets/icon.png` is its byte copy of the icon, for the OpenAI listing)
 const CLAUDE_PLUGIN_FILES = new Set([
   ".claude-plugin/plugin.json",
   ICON,
   "plugin.json",
   "mcp.json",
+  "assets/icon.png",
   ".cursor-plugin/plugin.json",
   "rules/archlang.mdc",
 ]);

@@ -2,17 +2,22 @@
  * The agent-directory manifests (`npm run gen:agent-manifests`) are one skill source published in
  * each host's shape. `check:drift` proves they are reproducible; this proves they are well formed:
  * the portable manifest validates against the vendored Agent Plugins schema (never fetched at test
- * time), the Cursor manifest meets its one documented requirement, every skill a host will look
- * for exists and is byte-identical to its source, and no generated file carries a version number,
- * a secret or a retired positioning claim.
+ * time), the OpenAI directory listing meets that directory's submission limits, `mcp.json` names the
+ * hosted server, the Cursor manifest meets its one documented requirement, every skill a host will
+ * look for exists and is byte-identical to its source, and no generated text file carries a version
+ * number, a secret or a retired positioning claim.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CURSOR_RULE,
+  HOSTED_MCP_URL,
+  ICON_SOURCE,
   MCP_MANIFEST,
   MCP_SCHEMA_ID,
+  OPENAI_CATEGORIES,
+  PLUGIN_ICON,
   PLUGIN_ROOT,
   allOutputs,
   CURSOR_MANIFEST,
@@ -144,7 +149,7 @@ describe("agent-directory manifests", () => {
     expect(missing.join("\n")).toMatch(/missing required `name`/);
   });
 
-  it("mcp.json meets the vendored Agent Plugins MCP schema and pins no version", () => {
+  it("mcp.json declares exactly the hosted server, Streamable HTTP, per the vendored MCP schema", () => {
     const schema = readJson("test/fixtures/schemas/agent-plugin-mcp.schema.json");
     expect(schema.$id).toBe(MCP_SCHEMA_ID);
     const mcp = readJson(MCP_MANIFEST);
@@ -152,14 +157,84 @@ describe("agent-directory manifests", () => {
     expect(schema.required).toEqual(["$schema", "mcpServers"]);
     expect(Object.keys(mcp).sort()).toEqual(["$schema", "mcpServers"]);
     expect(mcp.$schema).toBe(MCP_SCHEMA_ID);
+    // one server: the OpenAI portal connects one per plugin, and plugin-level review cases need one
+    expect(Object.keys(mcp.mcpServers)).toEqual(["archlang"]);
     const server = mcp.mcpServers.archlang;
-    const stdio = schema.$defs.stdioServer;
-    expect(stdio.required).toEqual(["type", "command"]);
-    for (const k of Object.keys(server)) expect(Object.keys(stdio.properties), k).toContain(k);
-    expect(server.type).toBe(stdio.properties.type.const);
-    expect(server.command).toBe("npx");
-    expect(server.args).toEqual(["-y", readJson("packages/mcp/package.json").name]);
-    for (const a of server.args) expect(a).not.toMatch(/@[^/]*$|@latest/);
+    const http = schema.$defs.streamableHttpServer;
+    expect(http.required).toEqual(["type", "url"]);
+    expect(http.additionalProperties).toBe(false);
+    for (const k of Object.keys(server)) expect(Object.keys(http.properties), k).toContain(k);
+    expect(server.type).toBe(http.properties.type.const);
+    expect(server.url).toBe(HOSTED_MCP_URL);
+    expect(new URL(server.url).protocol).toBe("https:");
+    // no sign-in: a public submission rejects non-empty server headers, and a token is a secret
+    expect(server).not.toHaveProperty("headers");
+    // the URL is the one the integration docs and the hosted-server ADR name
+    expect(read("docs/integrations.md")).toContain(HOSTED_MCP_URL);
+    expect(read("docs/adr/0026-hosted-mcp-worker.md")).toContain(new URL(HOSTED_MCP_URL).host);
+  });
+
+  it("the OpenAI listing fields meet the directory's submission limits", () => {
+    const manifest = readJson(PORTABLE_MANIFEST);
+    const openai = manifest.extensions["com.openai"];
+    // the ZIP portal rejects app references and lifecycle hooks
+    expect(Object.keys(openai)).toEqual(["interface"]);
+    const ui = openai.interface;
+    const oneLine = (s: string, max: number, at: string) => {
+      expect(typeof s, at).toBe("string");
+      expect(s.trim().length, at).toBeGreaterThan(0);
+      expect(s, at).not.toMatch(/[\n\r\t]/);
+      expect(s.length, at).toBeLessThanOrEqual(max);
+    };
+    oneLine(ui.displayName, 30, "displayName");
+    oneLine(ui.shortDescription, 30, "shortDescription");
+    expect(ui.longDescription.length).toBeLessThanOrEqual(4000);
+    expect(ui.longDescription).toContain(manifest.description);
+    expect(ui.longDescription).toContain(HOSTED_MCP_URL);
+    oneLine(ui.developerName, 80, "developerName");
+    expect(ui.developerName).toBe(manifest.author.name);
+    expect(OPENAI_CATEGORIES).toContain(ui.category);
+    expect(ui.capabilities.length).toBeLessThanOrEqual(20);
+    for (const c of ui.capabilities) oneLine(c, 120, "capabilities");
+    expect(ui.defaultPrompt.length).toBeLessThanOrEqual(3);
+    expect(new Set(ui.defaultPrompt).size).toBe(ui.defaultPrompt.length);
+    for (const p of ui.defaultPrompt) {
+      oneLine(p, 128, "defaultPrompt");
+      expect(p).not.toContain("@");
+    }
+    for (const k of ["websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL"]) {
+      const u = new URL(ui[k]);
+      expect(u.protocol, k).toBe("https:");
+      expect(u.username + u.password, k).toBe("");
+      expect(ui[k].length, k).toBeLessThanOrEqual(1024);
+    }
+    expect(ui.websiteURL).toBe(manifest.homepage);
+    expect(ui.supportURL).toBe(`${manifest.repository}/issues`);
+    // the privacy and terms URLs are pages the docs site builds
+    for (const [k, page] of [
+      ["privacyPolicyURL", "docs-site/privacy.md"],
+      ["termsOfServiceURL", "docs-site/terms.md"],
+    ] as const) {
+      expect(ui[k]).toBe(`${manifest.homepage}/${page.slice("docs-site/".length, -".md".length)}`);
+      expect(existsSync(resolve(page)), page).toBe(true);
+    }
+  });
+
+  it("the OpenAI listing icon is a square PNG inside the plugin, copied from the Claude icon", () => {
+    const ui = readJson(PORTABLE_MANIFEST).extensions["com.openai"].interface;
+    for (const k of ["composerIcon", "logo"]) {
+      expect(ui[k], k).toMatch(/^\.\/[^.]/);
+      expect(`${PLUGIN_ROOT}/${ui[k].slice(2)}`, k).toBe(PLUGIN_ICON);
+    }
+    const buf = readFileSync(resolve(PLUGIN_ICON));
+    expect(buf.equals(readFileSync(resolve(ICON_SOURCE)))).toBe(true);
+    expect(buf.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+    expect(buf.subarray(12, 16).toString("latin1")).toBe("IHDR");
+    const w = buf.readUInt32BE(16);
+    expect(buf.readUInt32BE(20)).toBe(w);
+    expect(w).toBeGreaterThanOrEqual(48);
+    expect(w).toBeLessThanOrEqual(4096);
+    expect(buf.length).toBeLessThanOrEqual(5 * 1024 * 1024);
   });
 
   it("the Cursor manifest has the one field Cursor requires, and the name agrees across hosts", () => {
@@ -202,8 +277,8 @@ describe("agent-directory manifests", () => {
     expect(read("integrations/copilot/copilot-instructions.md")).toMatch(/^<!-- GENERATED /);
   });
 
-  it("no generated file names a version, a secret or a retired claim", () => {
-    for (const f of allOutputs()) {
+  it("no generated text file names a version, a secret or a retired claim", () => {
+    for (const { dest: f } of textOutputs()) {
       const text = read(f);
       // the Agent Plugins schema URL carries the schema revision, which is not a release version
       expect(text.replaceAll(PORTABLE_SCHEMA_ID, "").replaceAll(MCP_SCHEMA_ID, ""), `${f} has a version`).not.toMatch(

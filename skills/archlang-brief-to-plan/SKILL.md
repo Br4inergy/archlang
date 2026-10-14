@@ -14,6 +14,14 @@ Never run a bare `arch`: on Linux, macOS and Git Bash that name is the coreutils
 
 This skill is a workflow, not a language reference. The language is whatever `archlang spec` prints.
 
+## Scope
+
+- Run the `archlang` CLI commands below and no other program.
+- Write one new plan file, `plan.arch` here or the name the user gives, in the user's working
+  directory, plus the drawings the CLI renders beside it. If a file of that name already exists,
+  ask the user before replacing it.
+- The user's explicit instructions take priority over these steps.
+
 ## Steps
 
 1. **Read the language.** Run `archlang spec` and read all of it before writing a line. For one
