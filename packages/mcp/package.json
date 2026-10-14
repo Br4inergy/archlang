@@ -42,7 +42,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@chanmeng666/archlang": "^1.42.1",
+    "@chanmeng666/archlang": "^1.43.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.6.5"
   },
