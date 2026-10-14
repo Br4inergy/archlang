@@ -101,6 +101,7 @@ you observed. Do NOT push anything — this command only verifies.
 - **MCP registry race.** The registry step can 404 on a version npm has published but not yet made
   visible. Both npm publishes have already succeeded; run `gh run rerun <id> --failed`. Never delete
   the retry loop (`docs/backlog.md` 4.7).
+- **npm visibility race.** The shim's core-exports check waits 8 minutes for npm to finish processing a just-published core; if it still trips, nothing is broken: run `gh run rerun <id> --failed`.
 - **A new npm package's FIRST version is published by hand by the owner** (as for
   `@chanmeng666/archlang-font-cjk`), then registered as a trusted publisher; later versions go
   through `release.yml`.
