@@ -113,6 +113,8 @@
     "mcp-worker:build": "npm run build && npm -w packages/mcp-worker run build",
     "build:mcpb": "npm run build && tsx packages/mcp/scripts/build-mcpb.ts",
     "prove:mcpb": "tsx packages/mcp/scripts/prove-mcpb.ts",
+    "build:openai-plugin": "tsx scripts/build-openai-plugin.ts",
+    "prove:openai-plugin": "tsx scripts/build-openai-plugin.ts --prove",
     "playground:build:only": "npm -w playground run build",
     "vscode:build:only": "npm -w editors/vscode run build",
     "build:workspaces": "npm run docs:build:only && npm run playground:build:only && npm run mcp:build:only && npm run vscode:build:only",

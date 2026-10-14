@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import pkg from "../package.json" with { type: "json" };
 import serverJson from "../server.json" with { type: "json" };
 import { SHIM_VERSION } from "../src/server.js";
+import { TOOL_ANNOTATIONS } from "../src/tools.js";
 // The transport harness + the shared `.arch` fixtures live in ./helpers.ts, so the
 // tool-coverage, resource, lockstep and fuzz suites all drive one server the same way.
 import { connect, payload, TINY, TWO_STOREY } from "./helpers.js";
@@ -37,6 +38,22 @@ describe("archlang mcp server", () => {
       "archlang://schema",
       "archlang://spec",
     ]);
+  });
+
+  it("every tool states all four MCP annotations as explicit booleans: read-only, idempotent, closed-world", async () => {
+    const client = await connect();
+    const { tools } = await client.listTools();
+    expect(tools.length).toBeGreaterThan(0);
+    for (const t of tools) {
+      // OpenAI's directory review wants explicit booleans for readOnly/destructive/openWorld
+      expect(t.annotations, t.name).toEqual({
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      });
+      expect(t.annotations, t.name).toEqual(TOOL_ANNOTATIONS);
+    }
   });
 
   it("compile returns SVG + diagnostics for a valid plan", async () => {

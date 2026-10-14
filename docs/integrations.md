@@ -8,13 +8,13 @@ other files below by `npm run gen:agent-manifests`. Both are gated by `npm run c
 the skill or `src/manifest.ts`, never the output. No generated manifest names a version or a count, so
 none can go stale; hosts read the repository's own tags and releases.
 
-Formats were taken from each host's own documentation on 2026-10-13; the source URLs are in the header
-of `scripts/gen-agent-manifests.ts`. The Claude Code plugin (`plugins/archlang/.claude-plugin/`) is
+Formats were taken from each host's own documentation on 2026-10-13 (the OpenAI directory's on
+2026-10-15); the source URLs are in the header of `scripts/gen-agent-manifests.ts`. The Claude Code plugin (`plugins/archlang/.claude-plugin/`) is
 covered in [`overview.md`](overview.md) and is not repeated here.
 
 | Host | Plugin files (under `plugins/archlang/`) | Copy-in files |
 |---|---|---|
-| Codex and ChatGPT | `plugin.json`, `skills/` | none |
+| Codex and ChatGPT | a ZIP built from `plugin.json`, `skills/`, `assets/icon.png` (below) | none |
 | GitHub Copilot (CLI) | `plugin.json`, `mcp.json`, `skills/` | `integrations/copilot/*` |
 | Cursor | `.cursor-plugin/plugin.json`, `mcp.json`, `skills/`, `rules/archlang.mdc` | none |
 | Any Agent Plugins client | `plugin.json`, `mcp.json`, `skills/` | none |
@@ -22,8 +22,15 @@ covered in [`overview.md`](overview.md) and is not repeated here.
 ## What the files are
 
 - `plugin.json`: the portable Agent Plugins manifest (`$schema` `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json`).
-  Identity fields only (name, description, author, homepage, repository, license, keywords). The skills
-  are found in the plugin root's `skills/` directory, so there is no `skills` field.
+  Identity fields (name, description, author, homepage, repository, license, keywords) plus the OpenAI
+  directory listing under `extensions["com.openai"].interface`: display name, a subtitle of 30
+  characters or fewer, the long description, developer, category (`Developer Tools`, from the
+  directory's fixed list), capabilities (`Read`, `Write`: the skills read and write `.arch` files and
+  the drawings rendered from them), three starter prompts, the website, support, privacy-policy and
+  terms URLs, and the icon. The skills are found in the plugin root's `skills/` directory and the MCP
+  server in its `mcp.json`, so there is no `skills` or `mcpServers` field.
+- `assets/icon.png`: a byte copy of `.claude-plugin/icon.png` (1024 px square PNG), the OpenAI
+  listing's `logo` and `composerIcon`.
 - `.cursor-plugin/plugin.json`: the Cursor plugin manifest. Cursor requires only `name`; it discovers
   `skills/` and `rules/*.mdc` from the plugin root.
 - `mcp.json`: the MCP server (see below).
@@ -35,7 +42,10 @@ covered in [`overview.md`](overview.md) and is not repeated here.
 `mcp.json` declares the MCP server as a stdio server run with `npx -y @chanmeng666/archlang-mcp`, the
 unpinned command the README recommends, so it names no version. Copilot CLI gives the portable
 `plugin.json` precedence over the Claude manifest, and this file is how Copilot (and Cursor) users get the
-server as well as the skills. It is not part of the OpenAI directory ZIP described below.
+server as well as the skills: the local one, so PNG output and offline use keep working. The OpenAI
+directory takes a remote HTTPS server instead (a local server is excluded from a public submission)
+and no longer accepts a skills-only package, so its ZIP carries a different `mcp.json`, the hosted
+server `https://mcp.archlang.uk/mcp` (below).
 
 ## How a user installs them
 
@@ -68,24 +78,42 @@ and the final submit of anything that accepts terms. Live status per host is the
 
 ### OpenAI plugin directory (Codex and ChatGPT)
 
-Blocked on the owner's individual developer identity verification (step 1); the privacy and terms
-pages the form asks for exist at <https://archlang.uk/privacy> and <https://archlang.uk/terms>.
+The format is OpenAI's portable "Agent Plugins" layout
+(<https://developers.openai.com/plugins/build/plugins>; field reference and limits at
+<https://developers.openai.com/plugins/deploy/submission> and
+<https://developers.openai.com/plugins/deploy/submission-errors>). The listing fields live in the
+generated `plugin.json`, so the dashboard's Metadata checks read them from the ZIP.
+
+`npm run build:openai-plugin` (`scripts/build-openai-plugin.ts`) writes
+`dist-openai/archlang-plugin-<core version>.zip` (gitignored) from the generated `plugins/archlang/`,
+and refuses a folder that is out of step with its generators. At the archive root: `plugin.json` with
+`"version"` set to the core's version (final submission requires a semantic version and an update must
+change it; the repository's `plugin.json` has none), `mcp.json` declaring the hosted server
+(`type: "streamable-http"`, `url: "https://mcp.archlang.uk/mcp"`, no headers, no sign-in),
+`assets/icon.png` and `skills/`. `.claude-plugin/`, `.cursor-plugin/` and `rules/` stay out. It then
+opens the written ZIP again and checks the entry list and both rewritten files;
+`npm run prove:openai-plugin` repeats that check on an existing ZIP.
 
 1. Sign in at <https://platform.openai.com/plugins> with an organization-owner account (or a member with
    Apps Management Write) and complete the individual or business verification in organization settings.
-2. Choose **Upload new or existing plugin** and upload a ZIP of `plugins/archlang/plugin.json` plus
-   `plugins/archlang/skills/` only (not the whole folder: the `.claude-plugin` and `.cursor-plugin`
-   directories are other hosts'). The directory's Codex checklist also asks for `version`,
-   `author.name`, `capabilities` and a `composerIcon`, and the portal collects `displayName` (30
-   characters or fewer), `shortDescription` (30 or fewer), `longDescription`, `developerName`,
-   `category`, an icon and HTTPS website, support, privacy-policy and terms-of-service URLs. The
-   generated `plugin.json` deliberately has no `version`; add the release tag's version in the ZIP, not
-   in the repository.
-3. Resolve the automated Metadata and Skills findings, then fill in the review form: five positive and
-   three negative test cases and a reviewer-accessible video URL. Submit for review and attest to the
-   policies.
-4. After approval the owner chooses when to publish. The portal does not currently accept
-   `.app.json` references or lifecycle hooks; the ZIP has neither.
+2. In the PRIMARY checkout, on the release's commit, run `npm run build:openai-plugin`; upload
+   `dist-openai/archlang-plugin-<version>.zip`.
+3. Choose **Upload new or existing plugin**, then the **With MCP** path (the hosted server is remote
+   HTTPS), and upload the ZIP as a NEW plugin draft: OpenAI does not support adding an MCP server to
+   an existing skills-only plugin (<https://developers.openai.com/plugins/deploy/submission>), so do
+   not upload it into the earlier skills-only `archlang` draft, and delete that draft first if the
+   portal refuses the duplicate name. Resolve the Metadata and Skills findings. Under **MCPs**, connect
+   `archlang` with no authentication and complete the domain-verification challenge. The Worker
+   serves `GET /.well-known/openai-apps-challenge` as `text/plain` from the `OPENAI_APPS_CHALLENGE`
+   entry under `vars` in `packages/mcp-worker/wrangler.jsonc` (a 404 while it is empty): paste the
+   portal's token there in a one-line PR, let `deploy-mcp` ship it, then verify. The token is a
+   public verification string, not a secret. Every tool declares its MCP annotations (read-only,
+   not destructive, idempotent, closed-world), which the tool scan requires.
+4. Fill in the review form: five positive and three negative test cases, a reviewer-accessible video
+   URL and release notes. Submit for review and attest to the policies.
+5. After approval the owner chooses when to publish. The portal does not accept `.app.json` references
+   or lifecycle hooks; the ZIP has neither. A later change to the listing or the skills needs a new ZIP
+   with a new `version`; a change to the hosted server's tools is picked up by the portal's scans.
 
 ### Awesome Copilot (GitHub Copilot CLI marketplace)
 

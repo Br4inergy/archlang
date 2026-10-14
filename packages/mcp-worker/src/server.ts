@@ -8,7 +8,13 @@
  */
 import { RESOURCE_MIME_TYPE, RESOURCE_URI_META_KEY, registerAppResource } from "@modelcontextprotocol/ext-apps/server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { INSTRUCTIONS, type ResourceName, registerResources, registerTools } from "../../mcp/src/tools.js";
+import {
+  INSTRUCTIONS,
+  type ResourceName,
+  registerResources,
+  registerTools,
+  TOOL_ANNOTATIONS,
+} from "../../mcp/src/tools.js";
 import { MCP_PER_PERIOD, RATE_PERIOD_SECONDS, SOURCE_CAP_BYTES, SVG_PER_PERIOD } from "./limits.js";
 
 /** What the Worker serves that it cannot read at run time (it has no filesystem): bundled at build. */
@@ -91,6 +97,7 @@ export function createHostedServer(origin: string, assets: HostedAssets): McpSer
     "read_me",
     {
       title: "How to use this server",
+      annotations: TOOL_ANNOTATIONS,
       description:
         "Explain this hosted ArchLang server in one short page: the authoring loop, the size cap, what is unavailable here, how to get an image URL for a plan, and what the server keeps (nothing). Call it first when unsure.",
       inputSchema: {},
