@@ -62,6 +62,8 @@ public/examples.md
 public/gallery.md
 public/relational.md
 public/embed.md
+public/privacy.md
+public/terms.md
 
 # The self-contained <arch-plan> (core inlined, ~700 KB), built from the just-built dist/ by the
 # `standalone` script on every dev/build. The slim /arch-plan.js beside it IS tracked (gen:arch-plan).

@@ -62,6 +62,13 @@ const ECOSYSTEM = [
           <span class="cell__label">Sheet</span>
           <span class="cell__value">1 of 1</span>
         </div>
+        <div class="cell">
+          <span class="cell__label">Legal</span>
+          <nav class="cell__links">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+          </nav>
+        </div>
         <div class="cell cell--eco">
           <span class="cell__label">Ecosystem</span>
           <nav class="cell__links">
