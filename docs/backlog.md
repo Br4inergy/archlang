@@ -2388,7 +2388,7 @@ entry — its triage bot has asked twice. Once Glama approves: give it a Dockerf
 server, claim the server from the owner's account, then add the badge to the entry in #14383. The
 owner logs in; an agent may drive the rest on request.
 
-### O.2 · The release workflow's bundle step has never run on a tag — `todo` (verify at the next release)
+### O.2 · The release workflow's bundle step has never run on a tag — `done`
 
 `release.yml` ends with `build:mcpb`, `prove:mcpb` and `gh release upload dist-mcpb/*.mcpb`, under
 `continue-on-error`. It was merged after the last tag, so it has run only locally. At the next tag,
@@ -2397,13 +2397,17 @@ confirm the GitHub Release carries both `archlang-mcp-<version>.mcpb` and the `.
 variant. Then re-publish the variant to Smithery (`/release-check`); nothing does that
 automatically.
 
+**Done:** the v1.43.0 Release carries both `.mcpb` files, and the Smithery listing was re-published from
+the `.smithery.mcpb` asset.
+
 ### O.3 · How the Claude plugin directory learns of a new version is unverified — `todo`
 
 The plugin was submitted from `plugins/archlang/` on 2026-10-10 and is in review. The directory
 offered a "push updates" webhook, which was dismissed and is not set up. Whether the listing follows
 `main` without it, or needs a resubmission after each release, has not been observed; settle it at
 the first release after the listing is approved. The directory holds a pinned-`npx` server for a
-policy review, and may ask for a privacy-policy page, which the sites do not have.
+policy review, and may ask for a privacy-policy page, which the sites do not have. The OpenAI plugin directory
+needs a privacy-policy page and a terms page too; neither exists, and that blocks its submission.
 
 ## Site chrome (found while fixing the nav overflow, 2026-09-20)
 
