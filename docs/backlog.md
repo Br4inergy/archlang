@@ -2439,6 +2439,12 @@ tool scan requires; the hosted Worker already serves them once they reach `main`
 redeploys on a tool-set change). The OpenAI/Codex listing is then
 `npm run build:openai-plugin` uploaded through **With MCP** (`docs/integrations.md`).
 
+### O.8 · `OPENAI_CATEGORIES` is a retyped list — `todo` (re-check on disagreement)
+
+`OPENAI_CATEGORIES` in `scripts/gen-agent-manifests.ts` is retyped from the `plugin_category_unknown`
+row of https://developers.openai.com/plugins/deploy/submission-errors as read on 2026-10-15. When
+`test/agent-manifests.test.ts` or the portal disagrees with it, re-check it against that page.
+
 ## Site chrome (found while fixing the nav overflow, 2026-09-20)
 
 ### N.1 · The nav row needs 1152px, and the hamburger persists until then — `todo` (a WANT, not a bug)

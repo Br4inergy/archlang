@@ -41,7 +41,11 @@ keep no `main`.**
     MCP App viewer `ui://archlang/viewer`;
   - `GET /svg/<payload>` — the playground's `#z=` payload (`deflate-raw` + base64url), compiled,
     answered as `image/svg+xml`, so `archlang link` and an image URL share one encoding; and
-    `GET /v/<render version>/svg/<payload>`, the same drawing pinned to one compiler (below).
+    `GET /v/<render version>/svg/<payload>`, the same drawing pinned to one compiler (below);
+  - `GET`/`HEAD /.well-known/openai-apps-challenge` — the OpenAI plugin portal's domain
+    verification: the `OPENAI_APPS_CHALLENGE` var from `wrangler.jsonc` as `text/plain`, 404 while it
+    is empty. Like `/`, it compiles nothing and is neither rate-limited nor counted, so it needs no
+    new spend bound.
 - **How it is deployed:** `deploy.yml` job `deploy-mcp`, separate from the site matrix so the site
   job is byte-identical. It runs on a push to `main` only when something the Worker bundles changed
   (its package, the MCP tool set, the core, the served resources), or on a manual run, and

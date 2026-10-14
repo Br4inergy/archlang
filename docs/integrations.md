@@ -99,16 +99,18 @@ opens the written ZIP again and checks the entry list and both rewritten files;
 2. In the PRIMARY checkout, on the release's commit, run `npm run build:openai-plugin`; upload
    `dist-openai/archlang-plugin-<version>.zip`.
 3. Choose **Upload new or existing plugin**, then the **With MCP** path (the hosted server is remote
-   HTTPS), and upload the ZIP. Resolve the Metadata and Skills findings. Under **MCPs**, connect
+   HTTPS), and upload the ZIP as a NEW plugin draft: OpenAI does not support adding an MCP server to
+   an existing skills-only plugin (<https://developers.openai.com/plugins/deploy/submission>), so do
+   not upload it into the earlier skills-only `archlang` draft, and delete that draft first if the
+   portal refuses the duplicate name. Resolve the Metadata and Skills findings. Under **MCPs**, connect
    `archlang` with no authentication and complete the domain-verification challenge. The Worker
    serves `GET /.well-known/openai-apps-challenge` as `text/plain` from the `OPENAI_APPS_CHALLENGE`
    entry under `vars` in `packages/mcp-worker/wrangler.jsonc` (a 404 while it is empty): paste the
    portal's token there in a one-line PR, let `deploy-mcp` ship it, then verify. The token is a
    public verification string, not a secret. Every tool declares its MCP annotations (read-only,
    not destructive, idempotent, closed-world), which the tool scan requires.
-4. Fill in the review form: five positive and three negative test cases (they may also be declared in
-   `extensions["com.openai"].review` in `plugin.json`), a reviewer-accessible video URL and release
-   notes. Submit for review and attest to the policies.
+4. Fill in the review form: five positive and three negative test cases, a reviewer-accessible video
+   URL and release notes. Submit for review and attest to the policies.
 5. After approval the owner chooses when to publish. The portal does not accept `.app.json` references
    or lifecycle hooks; the ZIP has neither. A later change to the listing or the skills needs a new ZIP
    with a new `version`; a change to the hosted server's tools is picked up by the portal's scans.
