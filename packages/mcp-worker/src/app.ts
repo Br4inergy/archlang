@@ -37,6 +37,14 @@ export const IMMUTABLE = "public, max-age=31536000, immutable";
  */
 export const FRESH = "public, max-age=300, stale-while-revalidate=86400";
 
+/**
+ * OpenAI's plugin-portal domain verification: the portal shows a token and fetches it from this
+ * path on the MCP host, expecting the exact token as plain text. The token is a public
+ * verification string, not a secret, so it is a plain `vars` entry in wrangler.jsonc; while that is
+ * empty the path is a 404 like any unknown one. Nothing is logged or counted here.
+ */
+export const OPENAI_CHALLENGE_PATH = "/.well-known/openai-apps-challenge";
+
 const CORS: Record<string, string> = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, HEAD, POST, OPTIONS",
@@ -510,6 +518,13 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, assets: Host
       return new Response(req.method === "HEAD" ? null : readMe(url.origin), {
         headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": "no-cache", ...CORS },
       });
+    if (url.pathname === OPENAI_CHALLENGE_PATH && (req.method === "GET" || req.method === "HEAD")) {
+      const token = env.OPENAI_APPS_CHALLENGE;
+      if (token)
+        return new Response(req.method === "HEAD" ? null : token, {
+          headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
+        });
+    }
     return new Response("not found\n", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
   } catch {
     // A bug in this Worker, never a user's input (inputs get diagnostics). The error is not

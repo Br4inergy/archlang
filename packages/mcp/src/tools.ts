@@ -293,6 +293,22 @@ export function registerResources(server: McpServer, texts: Readonly<Record<Reso
   }
 }
 
+/**
+ * The MCP tool annotations every ArchLang tool carries, because each one is the same kind of
+ * tool: it computes over the arguments it is given and returns text (or, for `compile` with
+ * format "png", an image). None writes to the caller's environment or deletes anything
+ * (`readOnlyHint`, `destructiveHint`); each result is a function of the arguments alone, so a
+ * repeated call returns the same result and has no further effect (`idempotentHint`); and none
+ * reaches anything outside this server (`openWorldHint`): `link` builds its URLs locally and
+ * fetches nothing.
+ */
+export const TOOL_ANNOTATIONS = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+} as const;
+
 /** Register every ArchLang tool on `server`. */
 export function registerTools(server: McpServer, opts: ToolOptions): void {
   /** `compile`'s handler with `opts.compileMeta`, when set, on every result it returns. */
@@ -307,6 +323,7 @@ export function registerTools(server: McpServer, opts: ToolOptions): void {
     "compile",
     {
       title: "Compile ArchLang → SVG, ASCII, Plan JSON or PNG",
+      annotations: TOOL_ANNOTATIONS,
       description:
         'Compile ArchLang `.arch` source (or a Plan-JSON object) to an SVG floor plan, or with `format` to a plain-text ASCII plan ("txt"), Plan JSON ("json") or an image ("png"). Format "json" returns the plan as an object, with `schema` naming its JSON Schema; passed back as `plan_json` it compiles to the same drawing, unless the plan uses a part of the language Plan JSON does not carry (the sheet, styles, curves, roofs, storeys, `place`, accessibility metadata). Returns the output plus diagnostics; a diagnostic usually carries a byte span with line/col and an E_/W_ code, and often a fix, sometimes one the `fix` tool can apply. Errors come back as data, never as exceptions: read `diagnostics` and correct the source. A multi-storey plan (`level <n> { … }`) returns the lowest storey in `output` and every storey in `pages[]` ({ level, name, output }); pass `level` to render just one. ' +
         (opts.pngUnavailable ?? compilePngSentence()),
@@ -443,6 +460,7 @@ export function registerTools(server: McpServer, opts: ToolOptions): void {
     "describe",
     {
       title: "Describe a plan (facts, no render)",
+      annotations: TOOL_ANNOTATIONS,
       description:
         "Report a plan's facts without rendering, so you can check it against the brief without looking at an image. Returns rooms (area, bbox, adjacency, use, and the exact shape: `floor_polygon` for a `room polygon`, `floor_circle` for a `room circle`, whose area is exactly πR²), doors (what each connects), windows, circulation (walk distance, bottleneck width, detour), zones, storeys (`levels[i]` carries the same facts per floor) with the shafts that join them and which storeys stay reachable (`vertical`), the drawing extent (`bbox`, `bbox_outer`), `freedom` (which positions are hand-authored and which are derived), and totals.",
       inputSchema: { source: z.string().describe("ArchLang source.") },
@@ -457,6 +475,7 @@ export function registerTools(server: McpServer, opts: ToolOptions): void {
     "lint",
     {
       title: "Lint architectural soundness",
+      annotations: TOOL_ANNOTATIONS,
       description:
         'List advisory architectural-soundness warnings (`W_*` codes) as data: unreachable room, windowless bedroom, too-narrow door, blocked doorway, furniture through a wall, circuitous path, and more. `profile` selects a ruleset ("residential-basic", "accessibility-advisory", …).',
       inputSchema: {
@@ -471,6 +490,7 @@ export function registerTools(server: McpServer, opts: ToolOptions): void {
     "validate",
     {
       title: "Validate (parse + resolve + lint)",
+      annotations: TOOL_ANNOTATIONS,
       description:
         "Check a plan in one pass without returning a drawing (parse, resolve and lint): the gate a plan passes before it ships. `strict:true` makes advisory warnings fail too. Optional `graph` checks the plan's interior-door adjacency against an intended room graph (`{ room: [neighbours] }`); a mismatch fails. Optional `intent` (a brief's expectations, shaped as the `archlang://intent-schema` resource describes) is checked against the plan: a missed gating assertion (room count, existence, area, total area, windows) fails, while adjacency and reachability are advisory and only score. A malformed intent returns `{ ok:false, intentErrors }` as data, never an exception. Returns { ok, diagnostics, graph?, intent? }.",
       inputSchema: {
@@ -540,6 +560,7 @@ export function registerTools(server: McpServer, opts: ToolOptions): void {
     "score",
     {
       title: "Score a plan against a brief (intent meter)",
+      annotations: TOOL_ANNOTATIONS,
       description:
         "Measure how much of a brief's intent JSON a plan satisfies, without gating. Returns { ok, satisfied, total, score, subscores, violations }, where `score` is satisfied/total in [0,1] (an empty intent scores 1); call it across edits to watch a plan approach the brief. The intent's shape is the `archlang://intent-schema` resource. A malformed intent returns `{ ok:false, intentErrors }` as data, never an exception.",
       inputSchema: {
@@ -569,6 +590,7 @@ export function registerTools(server: McpServer, opts: ToolOptions): void {
     "repair",
     {
       title: "Repair furniture placement",
+      annotations: TOOL_ANNOTATIONS,
       description:
         "Correct furniture placement and return the corrected `.arch` source with a change log. It pushes furniture out of walls, doorways and door swings, separates overlapping pieces, moves fixtures that sit in the wrong room, and snaps floating pieces to walls. A piece it may not rewrite is listed in `unresolved` with the reason. It never adds doors or windows (that is a design choice); use `suggest` for those.",
       inputSchema: { source: z.string().describe("ArchLang source to correct.") },
@@ -583,6 +605,7 @@ export function registerTools(server: McpServer, opts: ToolOptions): void {
     "fix",
     {
       title: "Apply machine-applicable diagnostic fixes",
+      annotations: TOOL_ANNOTATIONS,
       description:
         "Apply the machine-applicable fixes attached to a plan's compile diagnostics and return the edited source. It corrects source-level faults (an opening off its wall becomes the attachment form, an out-of-range position is clamped, …); furniture geometry is `repair`'s job. It runs at most 4 passes and rolls back a pass that raises the error count. `unsafe:true` also applies `maybe-incorrect` fixes. Returns { ok, passes, applied, skipped, source }.",
       inputSchema: {
@@ -630,6 +653,7 @@ export function registerTools(server: McpServer, opts: ToolOptions): void {
     "finish",
     {
       title: "Finish the drawing",
+      annotations: TOOL_ANNOTATIONS,
       description:
         "Complete a plan for export by adding what it lacks; run it once `lint` is clean. Two stages. `furnish` puts furniture, by room use, in each rectangular room that holds none (single-storey plans; a furnished room is never touched, and one that lacks a piece its use requires is named in `unresolved` with the missing pieces, not filled; placement is `against wall` / `in <room> anchor`, never absolute). `sheet` adds the sheet statements the plan lacks (`paper`, `scale`, `dims auto`, `title`, `schedule rooms`, `legend`), choosing the finest standard scale on the smallest sheet that holds the drawing. It fills only what is missing and deletes nothing; `only` runs one stage; `reissue:true` may replace `paper`/`scale` (only those) when the drawing does not fit them. Returns { ok, changed, changes, unresolved, source }; a plan that does not compile comes back untouched with `ok:false`, and a room or a sheet that would raise a new diagnostic is left as it was, with the reason in `unresolved`.",
       inputSchema: {
@@ -655,6 +679,7 @@ export function registerTools(server: McpServer, opts: ToolOptions): void {
     "suggest",
     {
       title: "Suggest topology fixes (advisory)",
+      annotations: TOOL_ANNOTATIONS,
       description:
         "Suggest the doors and windows a plan's room graph needs, as data; nothing is applied. For a room with no path back, a building with no entrance, a bath reachable only through a bedroom, or a windowless bedroom, it returns ready-to-paste `door`/`window` statements with a rationale, for you to choose among and insert. Each names its wall by an authored id or a unique wall category, else by absolute `at (x, y)` coordinates. Door candidates avoid furniture in the door's approach; window candidates do not consider furniture.",
       inputSchema: { source: z.string().describe("ArchLang source.") },
@@ -666,6 +691,7 @@ export function registerTools(server: McpServer, opts: ToolOptions): void {
     "complete",
     {
       title: "Completions at a source offset",
+      annotations: TOOL_ANNOTATIONS,
       description:
         "List the completion items in scope at a source byte offset: keywords, element names, ids and enum values, the same items an editor's language server offers. For structured or assisted authoring.",
       inputSchema: {
@@ -680,6 +706,7 @@ export function registerTools(server: McpServer, opts: ToolOptions): void {
     "link",
     {
       title: "Share link to the rendered plan",
+      annotations: TOOL_ANNOTATIONS,
       description:
         "Make two URLs that show a plan in the browser with nothing to install, for handing to a person. `playground` opens it in the hosted editor, rendered; `embed` draws it alone, for an iframe. The plan travels inside the URL, after the `#`, so it is never sent to a server and the URL carries nothing else. A plan that does not compile still gets links, and the page shows its diagnostics; `ok` says whether it compiles, and `errors` counts the errors when it does not. `bytes` is the size of the compressed plan in the URL.",
       inputSchema: { source: z.string().describe("ArchLang source.") },

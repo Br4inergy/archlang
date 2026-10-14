@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { encodePlanHash } from "../../../src/cli/share-codec.mjs";
 import { compile, ERROR_CATALOG } from "../../../src/index.js";
-import { INSTRUCTIONS, RESOURCE_DEFS } from "../../mcp/src/tools.js";
+import { INSTRUCTIONS, RESOURCE_DEFS, TOOL_ANNOTATIONS } from "../../mcp/src/tools.js";
 import { connect } from "../../mcp/test/helpers.js";
 import { resourcePaths } from "../scripts/resource-paths.mjs";
 import {
@@ -20,6 +20,7 @@ import {
   KNOWN_TOOLS,
   MAX_ARGUMENT_DEPTH,
   makeWorker,
+  OPENAI_CHALLENGE_PATH,
   oversizeArgument,
   tooDeep,
 } from "../src/app.js";
@@ -106,6 +107,14 @@ describe("hosted MCP over Streamable HTTP", () => {
     expect(hosted).toEqual([...stdio, "read_me"]);
     // The telemetry allow-list is exactly the registered set.
     expect([...KNOWN_TOOLS].sort()).toEqual([...hosted].sort());
+  });
+
+  it("every hosted tool, read_me included, carries the stdio server's annotations", async () => {
+    const stdio = new Map((await (await connect()).listTools()).tools.map((t) => [t.name, t.annotations]));
+    for (const t of (await rpc("tools/list")).tools as Array<{ name: string; annotations?: unknown }>) {
+      expect(t.annotations, t.name).toEqual(TOOL_ANNOTATIONS);
+      if (t.name !== "read_me") expect(t.annotations, t.name).toEqual(stdio.get(t.name));
+    }
   });
 
   it("compile links the viewer: on its definition and on every result", async () => {
@@ -557,6 +566,34 @@ describe.skipIf(!HAS_DEFLATE_RAW)("GET /svg/<payload> and the pinned /v/<render 
   });
 });
 
+describe("GET /.well-known/openai-apps-challenge (OpenAI domain verification)", () => {
+  const TOKEN = "challenge-token-for-test";
+  const get = (e: Env, method = "GET") =>
+    worker.fetch(new Request(`${ORIGIN}${OPENAI_CHALLENGE_PATH}`, { method }), e, ctx);
+
+  it("answers the configured token, exactly, as text/plain, and records nothing", async () => {
+    expect(OPENAI_CHALLENGE_PATH).toBe("/.well-known/openai-apps-challenge");
+    points.length = 0;
+    const res = await get({ ...env, OPENAI_APPS_CHALLENGE: TOKEN });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(await res.text()).toBe(TOKEN);
+    const head = await get({ ...env, OPENAI_APPS_CHALLENGE: TOKEN }, "HEAD");
+    expect(head.status).toBe(200);
+    expect(await head.text()).toBe("");
+    expect(points).toEqual([]);
+  });
+
+  it("is a 404 while the token is unset or empty, and for any other method", async () => {
+    for (const e of [env, { ...env, OPENAI_APPS_CHALLENGE: "" }]) {
+      const res = await get(e);
+      expect(res.status).toBe(404);
+      expect(await res.text()).toBe("not found\n");
+    }
+    expect((await get({ ...env, OPENAI_APPS_CHALLENGE: TOKEN }, "POST")).status).toBe(404);
+  });
+});
+
 describe("configuration laws", () => {
   /** wrangler.jsonc as data: `//` line comments removed (none of these files puts `//` in a string). */
   const jsonc = (rel: string) => JSON.parse(read(rel).replace(/^\s*\/\/.*$/gm, ""));
@@ -574,6 +611,11 @@ describe("configuration laws", () => {
     expect(w.route).toBeUndefined();
     expect(w.workers_dev).toBe(true);
     expect(w.observability).toEqual({ enabled: false });
+  });
+
+  it("declares one plain var, the OpenAI domain-verification token (a public string, never a secret)", () => {
+    expect(Object.keys(w.vars)).toEqual(["OPENAI_APPS_CHALLENGE"]);
+    expect(typeof w.vars.OPENAI_APPS_CHALLENGE).toBe("string");
   });
 
   it("bounds spend: a CPU limit per request, and the rate limiters at the numbers the code states", () => {

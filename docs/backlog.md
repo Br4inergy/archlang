@@ -2411,8 +2411,7 @@ offered a "push updates" webhook, which was dismissed and is not set up. Whether
 the first release after the listing is approved. The directory holds a pinned-`npx` server for a
 policy review, and may ask for a privacy-policy page. The OpenAI plugin directory
 needs a privacy-policy page and a terms page too; both now exist, at https://archlang.uk/privacy and
-https://archlang.uk/terms. The OpenAI submission itself is blocked on the owner's identity
-verification ("Identity in review") and a native file picker the agent cannot drive.
+https://archlang.uk/terms. The OpenAI submission's state is O.7 and `docs/seo.md` section 8.
 
 ### O.4 · Open VSX trusted publishing after #14189 — `todo` (BLOCKED on a third party)
 
@@ -2431,6 +2430,14 @@ workflow and register the trusted publisher (a human step). Until then the token
 The zone rule `mcp abuse guard` covers `/mcp` only. `/svg/` is guarded by the Worker's best-effort
 binding alone. The Free plan allows one rate-limiting rule, so covering `/svg/` means widening the
 expression or changing plan.
+
+### O.7 · The next shim release carries the MCP tool annotations and the OpenAI/Codex listing — `todo`
+
+The next `@chanmeng666/archlang-mcp` release (bumped by `/release-check` item 2, not before) ships the
+tools' `annotations` (read-only, not destructive, idempotent, closed-world) that the OpenAI directory's
+tool scan requires; the hosted Worker already serves them once they reach `main` (`deploy-mcp`
+redeploys on a tool-set change). The OpenAI/Codex listing is then
+`npm run build:openai-plugin` uploaded through **With MCP** (`docs/integrations.md`).
 
 ## Site chrome (found while fixing the nav overflow, 2026-09-20)
 
