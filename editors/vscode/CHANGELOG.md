@@ -14,11 +14,19 @@ are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-10-14
+
 ### Added
 
 - **Floor plans in the Markdown preview.** A fenced block tagged `arch` (or `archlang`) renders
   as the compiled plan in VS Code's built-in Markdown preview; a plan with an error shows its
   diagnostic and source instead.
+
+### Changed
+
+- **Rebundled the core at `@chanmeng666/archlang@1.43.0`** (the `notes` keyword, `schedule
+  openings`, the title block's `number` and `revision`, and lint hints that carry the edit that
+  clears them).
 
 ## [0.30.0] - 2026-10-09
 

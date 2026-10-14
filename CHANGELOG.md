@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.43.0] - 2026-10-14
+
 ### Added
 
 - **`describe()` reports each room's net internal area beside its centreline area.** Every room gains `net_area_m2`: the floor no wall stands on, its own shape less every part of it a wall's band covers (each band as the drawing draws it; a wall on the edge takes half of itself, a wall standing on the floor takes what it stands on), computed exactly in closed form, never from a bounding box or a sample, and absent when it cannot be computed exactly. `totals` gains `net_floor_area_m2` (absent when any room's is), and on a `schedule rooms` plan each `schedule` row gains `net_area_m2`. `area_m2` is unchanged. The drawn ROOM SCHEDULE gains a `NET AREA (m²)` column with its subtotals and TOTAL, and its centreline column is relabelled `AREA (CENTRELINE, m²)` and widened to fit; the NO. and NAME cells keep their place, and a table to its right moves right by the added width. On the agent-UX audit plan the 65.00 m² centreline total reads 59.96 m² net, and Bedroom 1 nets 11.56 m² (3450 × 3350). `lint()` is unchanged. Rule: `docs/adr/0027-net-internal-area.md`.
@@ -19,6 +21,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The MCP server as a one-click `.mcpb` bundle** (Claude Desktop extension; the file Smithery publishes for local stdio servers). `npm run build:mcpb` bundles `packages/mcp` with the SDK and the core into one self-contained `dist-mcpb/archlang-mcp-<version>.mcpb`, with a `manifest.json` generated from the package metadata and the server's own `tools/list`; `npm run prove:mcpb` unpacks it outside the repo and drives it over stdio. A second file, `*.smithery.mcpb`, adds each tool's `inputSchema` to the manifest (Smithery requires it, `mcpb validate` rejects it). The release workflow attaches both to the GitHub Release, best-effort and last.
 
+- **Sheet notes, a drawing number and a revision.** `notes "…" ["…" …]` (a new keyword) draws a numbered NOTES table in the margin-table row beside the room schedule and legend; repeated statements append, and each note wraps to the table's fixed column width. A plan whose notes would run past 200 lines is refused with `E_DRAWING_LIMIT` before anything is drawn. `title { … number "…" revision "…" }` adds DRAWING NO. and REVISION rows to the title block and round-trips through Plan JSON's `title`. Both are drawing-only: `describe()` and `lint()` learn nothing. New example: `examples/sheet-notes.arch`.
+
+- **Door and window tags with a DOOR & WINDOW SCHEDULE.** `schedule openings`, a second subject of `schedule` that composes with `schedule rooms`, tags every door `D01…` and every window `W01…` and draws the schedule in the margin-table row: tag, room(s), width, type and hand. Every row is derived, never typed: the rooms as `describe()` reports `doors[].between` and `windows[].room`, and a hinged door's hand read off its drawn leaf from the side it opens into (EN 12519 / DIN 107; ANSI reads inswing the other way), so it does not flip with a wall's point order. A tag takes the first of its candidate positions beside the opening that is clear of every opening, wall, drawn element and other tag on the storey, when one is. Drawing-only: `describe()` and `lint()` learn nothing, and no plan without the statement moves.
+
+- **An `archlang` command beside `arch`.** The package installs a second bin, `archlang`, running the same CLI: `arch` is also a coreutils command on Linux, macOS and Git Bash, and the unscoped npm name `archlang` belongs to another publisher, so `npx -y @chanmeng666/archlang <cmd>` is the no-install spelling. The help, usage lines, CLI examples, skills, `llms.txt` and docs now write `archlang <cmd>`; `arch` keeps working.
+
+- **`<arch-plan>`, an element that draws a plan in any web page (`packages/web-component`).** It compiles a plan from `src` or its inline text into a shadow root, shows each error as `CODE line:col message` instead of throwing, and takes `level` and `theme`. The docs site serves `/arch-plan.js` (loads the core from jsDelivr, pinned to the release) and `/arch-plan.standalone.js` (core inlined), with the recipe at `/embed`. The package, `@chanmeng666/arch-plan`, is not on npm yet. The core gains no dependency.
+
+- **Three non-dwelling examples: `examples/practice-office.arch`, `examples/corner-cafe.arch` and `examples/classroom-block.arch`**, each lint-clean under the default and accessibility-advisory profiles; the office and the classroom block use `schedule openings` and `notes`.
+
+- **The playground gains Finish and "Open in Claude / ChatGPT".** Finish runs `finish()` on the editor text as one undo step and lists what it added and left unresolved in the Lint tab. "Open in AI" opens Claude or ChatGPT with a short prompt carrying the plan's share link in the host's `q` parameter; the panel says that this, unlike Copy link, puts the plan in the chat host's URL, and a prompt over 8,000 characters is copied to the clipboard instead. A first visit now opens a lint-clean plan, the toolbar links the agents page, the playground serves an `llms.txt` pointer, and the layout fits a narrow screen.
+
+- **The docs site serves a Markdown copy of every page** at `/<route>.md`, each live plan replaced by its `.arch` source, and the home page says what ArchLang is and how to install it above the fold.
+
+- **Agent-directory manifests from the one skill source.** `npm run gen:agent-manifests` writes a portable `plugin.json` (with the MCP server), a Cursor plugin manifest and rule, GitHub Copilot instructions and the `.agents/skills` copies, all drift-gated; `docs/integrations.md` lists them and the owner's hand steps.
+
+- **The VS Code extension draws `arch` fences in the Markdown preview**; a plan with an error shows its diagnostic and source instead (the extension's own changelog has the detail).
+
 ### Changed
 
 - **The Claude Code plugin passes the directory's checks.** The manifest pins the MCP launcher to an exact version (`npx -y @chanmeng666/archlang-mcp@<version>`, not the unpinned package), carries a `version` (the core's), and ships a 1024 px `.claude-plugin/icon.png` rendered from the plum mark on a light tile. `npm run gen:plugin` stamps the version and the pin from the package manifests and `check:drift` gates them, so a release bump cannot leave them stale.
@@ -28,6 +48,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The umbrella skill now lives at `skills/archlang/SKILL.md`.** `npx skills add ChanMeng666/archlang` finds all five skills without `--full-depth` (a terminal user gets a picker; `--yes` or an agent installs all). The npm tarball no longer ships a root `SKILL.md`.
 
 - **`@chanmeng666/archlang-mcp` 0.2.25 sends `instructions` and describes its tools by behaviour.** At `initialize` the server sends the authoring loop (read `archlang://spec`, write `.arch`, `compile`/`fix`, `describe`, `validate` strict, `finish`) and the CLI spelling `archlang <cmd>` / `npx -y @chanmeng666/archlang <cmd>`; tool and resource descriptions no longer cite ADR numbers or repo file names. Release order: publish 0.2.25 only after the core release that ships the `archlang` bin (core 1.42.1 installs only `arch`).
+
+- **Automatic wall-thickness call-outs stay off doorways and fixtures.** A `dims auto all`/`walls` call-out was stationed in the widest run clear of other walls only, so its number could land in a doorway or on a fixture. It now takes the widest run that is also clear of every opening on its wall and every furniture footprint on its side, falling back to the wall-clear run and then the midpoint; a call-out that clashed with nothing does not move. The number of call-outs is unchanged and `describe()`/`lint()` do not move; the shipped examples whose call-outs clashed are redrawn.
+
+- **The DXF export declares millimetres and splits the wall layer.** The header carries `$INSUNITS 4` and `$MEASUREMENT 1`, and walls move from `A-WALL` to `A-WALL-EXTR` (category `exterior`) and `A-WALL-INTR` (every other wall), both colour 7: a face line is cut where it changes layer, and each material's hatch is written once per class. `Scene.walls` (type `SceneWall`) carries the walls the split reads. SVG, `describe()` and `lint()` are unchanged.
+
+- **`finish` names a partly furnished room instead of skipping it silently.** A room that holds some furniture but lacks a piece its use requires gets one `unresolved` note naming what is missing, use by use ("living: `sofa` missing"); it is never topped up. A piece that does the job counts (a double bed for `bed`, a loveseat for `sofa`, a urinal for `wc`); whether a piece stands in a room is read off the room's shape, not its bounding box; and a room whose declared piece stands outside it is reported. No example's finished source or `changes` moved.
+
+- **Four lint hints now carry the edit that clears them.** `W_FIXTURE_BACK_TO_ROOM` says to swap the size when the piece's aspect rules out every walled edge; `W_FURNITURE_WALL_COLLISION` names the wall crossed and quotes an `offset` checked to clear it; `W_ROOM_NO_FIXTURE` gives a pasteable built-in statement placed clear on the room's shape; `W_PATH_TOO_NARROW` names the door(s) whose widening, re-measured, clears the room, with the `width` to use, and reports one bottleneck once. Every diagnostic and catalogue text that said `arch <cmd>` says `archlang <cmd>`. `lint()` text only: no SVG, `describe()` or compile diagnostic moved.
+
+- **The MCP shim's and the VS Code extension's core ranges are re-pinned to this release**, and the shim re-bakes its spec, `llms-full.txt`, grammar and schemas when it is packed.
 
 ## [1.42.1] - 2026-10-09
 
