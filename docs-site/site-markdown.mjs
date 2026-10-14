@@ -24,12 +24,20 @@ export function withVersion(text, version) {
   return text.split(VERSION_TOKEN).join(version);
 }
 
+/** `html` with every tag removed, repeated to a fixpoint so removing one tag can never splice
+ * its neighbours into a new one (`<scr<b>ipt>` must not survive as `<script>`). */
+function stripTags(html) {
+  let out = html;
+  for (let prev = ""; prev !== out; ) {
+    prev = out;
+    out = out.replace(/<[^>]+>/g, "");
+  }
+  return out;
+}
+
 /** Markup → plain text: tags removed, the few entities the components use decoded. */
 function plain(html) {
-  return html
-    .replace(/<code[^>]*>([\s\S]*?)<\/code>/g, "`$1`")
-    .replace(/<em>([\s\S]*?)<\/em>/g, "*$1*")
-    .replace(/<[^>]+>/g, "")
+  return stripTags(html.replace(/<code[^>]*>([\s\S]*?)<\/code>/g, "`$1`").replace(/<em>([\s\S]*?)<\/em>/g, "*$1*"))
     .replace(/&nbsp;/g, " ")
     .replace(/&rarr;/g, "->")
     .replace(/&amp;/g, "&")
@@ -185,12 +193,13 @@ export function siteMarkdown(src, deps) {
   text = text.replace(
     /^<section[\s\S]*?^<\/section>\n?/gm,
     (block) =>
-      `${block
-        .replace(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g, "[$2]($1)")
-        .replace(/<code[^>]*>([\s\S]*?)<\/code>/g, "`$1`")
-        .replace(/<br \/>/g, "\n")
-        .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/, "## $1\n")
-        .replace(/<[^>]+>/g, "")
+      `${stripTags(
+        block
+          .replace(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g, "[$2]($1)")
+          .replace(/<code[^>]*>([\s\S]*?)<\/code>/g, "`$1`")
+          .replace(/<br \/>/g, "\n")
+          .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/, "## $1\n"),
+      )
         .replace(/&nbsp;/g, " ")
         .replace(/&rarr;/g, "->")
         .split("\n")
