@@ -37,7 +37,7 @@
   // OpenAI plugin-portal domain verification (src/app.ts, OPENAI_CHALLENGE_PATH): the token the
   // portal shows, a public string and not a secret, served as text/plain at
   // /.well-known/openai-apps-challenge. Empty, that path is a 404. The owner pastes the token here.
-  "vars": { "OPENAI_APPS_CHALLENGE": "" },
+  "vars": { "OPENAI_APPS_CHALLENGE": "wCFjEx1TTGByo7tTXplM-Trqr5vW1jEzSM9m-mwdsZw" },
   // No Workers Logs and no source maps: a /svg/ URL path IS a plan, so request logging would
   // record plans. The Worker itself logs nothing.
   "observability": { "enabled": false },
