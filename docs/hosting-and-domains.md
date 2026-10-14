@@ -35,7 +35,7 @@ Sizes, measured at the migration: docs-site builds to 235 files / 14 MB (largest
 are **20,000 assets per version** and **25 MiB per file** — both sites sit far inside them, but the
 docs site's `examples.html` is the file to watch if the example gallery keeps growing.
 
-### The third Worker: the hosted MCP server, the only one with code
+### The third Worker: the hosted MCP server, the only ArchLang one with code
 
 `packages/mcp-worker` deploys a third Worker, **`archlang-mcp`**, and it is the one Worker here with
 a `main` script ([ADR 0026](adr/0026-hosted-mcp-worker.md)). It does not share anything with the
@@ -50,9 +50,11 @@ change when this one was added.
 | `GET /v/<render version>/svg/<payload>` | the same drawing pinned to one compiler, the only `immutable` path; an older version 302s to `/svg/` |
 | `GET /` | the `read_me` text |
 
-- **Reached at workers.dev only**, until the owner attaches `mcp.archlang.uk` (`workers_dev: true`,
-  no `routes`, no `account_id` in the file). Attaching the domain is the same one-step custom-domain
-  attachment as the sites; do not hand-make the DNS record.
+- **Reached at `https://mcp.archlang.uk`** (custom domain attached in the dashboard) and at
+  `https://archlang-mcp.chanmeng-dev.workers.dev` (`workers_dev: true`, no `routes`, no `account_id`
+  in the file). Do not hand-make the DNS record. A zone WAF rule on `archlang.uk`, `mcp abuse guard`
+  (100 requests per 10 s per IP to `/mcp`, block 10 s), is the precise guard; it is dashboard state,
+  not in the repository, and does not cover `/svg/` (ADR 0026, "Addendum: production").
 - **It is metered.** Every request runs the script, so it counts against the plan's daily requests
   and per-request CPU limit, unlike the sites. ADR 0026 has the per-tool measurement and why it
   points at Workers Paid. A request that runs out of CPU fails with the platform's 5xx; inputs that

@@ -111,6 +111,22 @@ Non-obvious traps that no test catches, or whose symptom points the wrong way. E
   `editors/vscode/test/wrong-core.test.ts` fails by design**, so `npm run check` is fully green only
   in the primary checkout and a `&&` gate chain stops there. Run gates one by one in a worktree;
   build/package the extension and the MCP shim only in the primary.
+- **Card tests under `test/` and the playground specs are typed and run only by `typecheck:all` and
+  the playground e2e in the PRIMARY checkout.** A worktree whose `node_modules` is a junction
+  resolves an older core, so those two gates are invalid there.
+- **A stale zero-byte `.git/index.lock` in the primary checkout** (left by a killed git process)
+  makes `git checkout` and `gh pr merge` fail. Delete it only after confirming no git process runs.
+- **The primary checkout can hold CRLF working copies** (`core.autocrlf=true`) that git shows clean;
+  byte-digest tests then fail only there. `git ls-files --eol | grep w/crlf` finds them: delete the
+  file and `git checkout -- <path>`; never re-pin a digest.
+- **The hosted MCP's precise rate guard is a zone WAF rule in the Cloudflare dashboard**
+  (`mcp abuse guard`, ADR 0026 "Addendum: production"). The Worker's own bindings count per server,
+  so the repository alone shows a limit that does not hold; the WAF rule does not cover `/svg/`.
+- **A version bump reddens `npm run check` until `editors/vscode/dist/server.js` is rebuilt**:
+  `editors/vscode/test/stdio.test.ts` compares the bundle's stamped core version with the
+  workspace's. Release gate order is in `docs/agents/commands.md`.
+- **`@chanmeng666/arch-plan`'s `prepack` refuses a stale root `dist/`**: run `npm run build` at the
+  root before packing or publishing it.
 - **Remove a worktree's `node_modules` junctions with `cmd /c rmdir <path>`** before
   `git worktree remove --force` or any recursive delete, or the delete follows them into the primary.
 - **A clean auto-merge of a moved function another branch modified is not evidence.** Taking one

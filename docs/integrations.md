@@ -51,13 +51,25 @@ server as well as the skills. It is not part of the OpenAI directory ZIP describ
 - **Anything else:** `npx skills add ChanMeng666/archlang` installs the same skills for the hosts the
   `skills` CLI supports.
 
-## Owner-only submission
+## Hosted MCP server
 
-An agent never creates an account, types a credential, accepts terms or submits a form (see
-[`seo.md`](seo.md) section 8). Every step below is the owner's, by hand. Status of all three: prepared,
-not submitted.
+`https://mcp.archlang.uk/mcp` is the same tool set over Streamable HTTP, with no sign-in
+([ADR 0026](adr/0026-hosted-mcp-worker.md)). claude.ai takes it as a custom connector per user
+(there is no separate Claude connectors directory); its `compile` result renders as an MCP App card.
+
+## Submission
+
+The policy is stated once, in [`seo.md`](seo.md) section 8: an agent may drive a submission form or
+publish step through the owner's logged-in browser or CLI when the owner has asked for that listing.
+The owner personally does account creation, logins, 2FA/OTP, API-token and secret creation,
+acceptance of terms and attestations, native file pickers (the OpenAI portal's ZIP upload is one),
+and the final submit of anything that accepts terms. Live status per host is the table in
+`seo.md`; the steps below are the recipes.
 
 ### OpenAI plugin directory (Codex and ChatGPT)
+
+Blocked on the owner's individual developer identity verification (step 1); the privacy and terms
+pages the form asks for exist at <https://archlang.uk/privacy> and <https://archlang.uk/terms>.
 
 1. Sign in at <https://platform.openai.com/plugins> with an organization-owner account (or a member with
    Apps Management Write) and complete the individual or business verification in organization settings.
