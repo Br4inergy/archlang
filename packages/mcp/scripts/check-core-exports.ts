@@ -19,6 +19,13 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 export const CORE = "@chanmeng666/archlang";
 
 /**
+ * npm answers "Your package is being processed and may take a few minutes to become available"
+ * after a publish; a version has been seen to appear 3m09s later. 32 x 15 s = 8 min of waiting.
+ */
+export const VIEW_ATTEMPTS = 32;
+export const VIEW_INTERVAL_MS = 15_000;
+
+/**
  * Every `./<sub>` of the core the server loads at RUNTIME: a static `import … from` (not
  * `import type`) or an `import("…")` call. A type-only `typeof import("…")` loads nothing.
  */
@@ -70,11 +77,11 @@ async function main(): Promise<void> {
   }
   const min = rangeMinimum(String(pkg.dependencies?.[CORE] ?? ""));
   let exportsField: unknown;
-  for (let attempt = 1; attempt <= 10; attempt++) {
+  for (let attempt = 1; attempt <= VIEW_ATTEMPTS; attempt++) {
     exportsField = viewExports(min);
     if (exportsField !== undefined) break;
-    console.log(`check-core-exports: ${CORE}@${min} not on npm yet (attempt ${attempt}/10)`);
-    await new Promise((r) => setTimeout(r, 15_000));
+    console.log(`check-core-exports: ${CORE}@${min} not on npm yet (attempt ${attempt}/${VIEW_ATTEMPTS})`);
+    await new Promise((r) => setTimeout(r, VIEW_INTERVAL_MS));
   }
   if (exportsField === undefined) {
     console.error(`::error::${CORE}@${min} (the minimum of the shim's core range) is not on npm.`);
