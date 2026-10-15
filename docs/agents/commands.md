@@ -74,8 +74,8 @@ Two things it pins:
   `packages/mcp/scripts/check-core-exports.ts`) and the MCP-registry step can trip on it; the
   remedy is `gh run rerun <id> --failed` (idempotent).
 
-`@chanmeng666/arch-plan` is not published by `release.yml`; its first version was published by hand
-by the owner (`docs/backlog.md` O.5).
+`@chanmeng666/arch-plan` is published by `release.yml` in its own job, `publish-arch-plan`, after the
+core, so a failure there never blocks the core, the shim or the registry.
 
 ## CLI contract
 
