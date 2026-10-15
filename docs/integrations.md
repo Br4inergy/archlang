@@ -109,11 +109,17 @@ opens the written ZIP again and checks the entry list and both rewritten files;
    portal's token there in a one-line PR, let `deploy-mcp` ship it, then verify. The token is a
    public verification string, not a secret. Every tool declares its MCP annotations (read-only,
    not destructive, idempotent, closed-world), which the tool scan requires.
-4. Fill in the review form: five positive and three negative test cases, a reviewer-accessible video
-   URL and release notes. Submit for review and attest to the policies.
+4. Fill in the review form, four steps: countries and translations; five positive test cases; three
+   negative test cases; supporting content, which holds only "Video walkthrough URL" (required,
+   reviewer-accessible) and "Release notes". The video on file is the owner's unlisted narrated
+   command-line demo; its URL stays out of this repository. Submit and attest to the policies:
+   the draft locks ("In review", "Cancel review" replaces Submit, review information is read-only).
 5. After approval the owner chooses when to publish. The portal does not accept `.app.json` references
    or lifecycle hooks; the ZIP has neither. A later change to the listing or the skills needs a new ZIP
-   with a new `version`; a change to the hosted server's tools is picked up by the portal's scans.
+   with a new `version`, uploaded as a new version; a change to the hosted server's tools is picked up
+   by the portal's scans. The hosted server's tools show "Not live" until the plugin is published.
+   Non-blocking findings (a skill "could create a security risk", the `compile` tool title) do not
+   block submission but may be raised in review.
 
 ### Awesome Copilot (GitHub Copilot CLI marketplace)
 

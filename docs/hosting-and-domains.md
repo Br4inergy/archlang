@@ -54,7 +54,8 @@ change when this one was added.
   `https://archlang-mcp.chanmeng-dev.workers.dev` (`workers_dev: true`, no `routes`, no `account_id`
   in the file). Do not hand-make the DNS record. A zone WAF rule on `archlang.uk`, `mcp abuse guard`
   (100 requests per 10 s per IP to every path on `mcp.archlang.uk`, block 10 s), is the precise guard;
-  it is dashboard state, not in the repository (ADR 0026, "Addendum: production").
+  it is dashboard state, not in the repository (ADR 0026, "Addendum: production"), and the owner edits
+  it by hand (agents cannot act in the dashboard; policy in `docs/seo.md` section 8).
 - **It is metered.** Every request runs the script, so it counts against the plan's daily requests
   and per-request CPU limit, unlike the sites. ADR 0026 has the per-tool measurement and why it
   points at Workers Paid. A request that runs out of CPU fails with the platform's 5xx; inputs that

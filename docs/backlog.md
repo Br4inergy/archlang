@@ -2450,6 +2450,11 @@ The portal's MCP scan reports "compile: This tool's name appears unclear or does
 purpose" (the scanner shows the title "Compile ArchLang → SVG, ASCII, Plan JSON or PNG"). Give the
 tool a shorter title at the next shim release (O.7 already schedules it).
 
+### O.10 · Two Dependabot major bumps wait for a decision — todo (decision needed)
+
+`@types/node` 22 → 26 (#121; the runtime stays Node 18-22, so the types would run ahead of it) and
+`vitest` 2 → 5 (#119, CI red on the branch). Patch/minor bumps were merged on 2026-10-15 under the merge policy.
+
 ## Site chrome (found while fixing the nav overflow, 2026-09-20)
 
 ### N.1 · The nav row needs 1152px, and the hamburger persists until then — `todo` (a WANT, not a bug)

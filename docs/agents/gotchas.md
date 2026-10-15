@@ -127,6 +127,8 @@ Non-obvious traps that no test catches, or whose symptom points the wrong way. E
   workspace's. Release gate order is in `docs/agents/commands.md`.
 - **`@chanmeng666/arch-plan`'s `prepack` refuses a stale root `dist/`**: run `npm run build` at the
   root before packing or publishing it.
+- **(npm) A newly registered trusted publisher lapses unless a publish goes through it within about
+  48 hours**; dispatch `release.yml` once (`.claude/commands/release-check.md`).
 - **Remove a worktree's `node_modules` junctions with `cmd /c rmdir <path>`** before
   `git worktree remove --force` or any recursive delete, or the delete follows them into the primary.
 - **A clean auto-merge of a moved function another branch modified is not evidence.** Taking one

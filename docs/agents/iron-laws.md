@@ -89,11 +89,13 @@ Owner decisions and laws that no test fully states. Do not re-propose, re-open o
 
 - **Merging a PR**: once CI is green and the diff has been read (a code change: adversarially
   reviewed), the agent merges without asking. It never merges a red gate or an unread diff.
+  Dependabot patch/minor bumps merge under the same rule after `@dependabot rebase` onto a fresh
+  `main` and green CI; a major bump waits for the owner.
   Committing and pushing still happen only when asked.
 - **The release chain** (version-bump PR, tag, `release.yml`, proofs, hand publishes, listings) runs
   end to end by the agent. The owner pauses it only for OTP/2FA, logins, account/token/secret
   creation, acceptance of terms and attestations, and native file pickers.
 - **Listings**: an agent may drive a submission form or a publish step through the owner's logged-in
   browser or CLI when the owner has asked for that listing; the final submit of anything that
-  accepts terms is the owner's (`docs/seo.md` section 8).
+  accepts terms, and Cloudflare dashboard edits, are the owner's (`docs/seo.md` section 8).
 - **Distribution first**: ArchLang exists for distribution and credibility; revenue is secondary.

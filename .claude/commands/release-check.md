@@ -116,6 +116,13 @@ you observed. Do NOT push anything — this command only verifies.
   (`@chanmeng666/arch-plan` → Settings → Trusted Publisher → GitHub Actions, repo `ChanMeng666/archlang`,
   workflow `release.yml`, no environment); until then that job fails with an auth error and nothing
   else is affected. Its `prepack` refuses a stale root `dist/`, so `npm run build` first when publishing by hand.
+  npmjs lists a new trusted publisher as "Pending validation" and it LAPSES unless one publish goes
+  through it within about 48 hours: right after registering, run `gh workflow run release.yml --ref main`
+  once (a dispatch run skips every version already on npm and publishes only the new one). On the
+  registration form tick "Allow npm publish" (`release.yml` publishes directly; the form prefers staged
+  publishing and warns), label free, environment empty. Afterwards `npm view` lists a `0.0.0-stage`
+  placeholder version made by npm's staged-publish machinery: ignore it, never unpublish it by hand.
+  Any NEW package follows this order: first version by hand, register, dispatch once within 48 hours.
 - **VS Code Marketplace upload is a human web step** (publisher `ChanMeng`, extension
   `ChanMeng.archlang`); nothing in CI publishes it. After a language-surface change:
   1. In the primary checkout: root `npm run build`, then `npm run package` in `editors/vscode`
