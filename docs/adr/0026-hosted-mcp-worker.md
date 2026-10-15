@@ -316,10 +316,11 @@ version-keyed cache with an in-memory stand-in.
   binding counts per server, not globally (`RATE_MCP` 600/60 s and `RATE_SVG` 3000/60 s above).
 - **The precise guard is a zone WAF rule, outside the repo.** A rate-limiting rule on `archlang.uk`
   named `mcp abuse guard`: expression
-  `(http.host eq "mcp.archlang.uk" and starts_with(http.request.uri.path, "/mcp"))`, per IP, 100
+  `(http.host eq "mcp.archlang.uk")` (every path on the host, `/svg/` included), per IP, 100
   requests per 10 s, action Block for 10 s (the Free plan's only period and timeout). Measured: 300
-  POSTs gave 130 x 200 then 170 x 429, and service resumed after the timeout. It does not cover
-  `/svg/`. It lives in the Cloudflare dashboard, so a reader of the repository alone cannot see it.
+  POSTs gave 130 x 200 then 170 x 429, and service resumed after the timeout. It was first
+  scoped to `/mcp` only and later widened to the whole host. It lives in the Cloudflare dashboard,
+  so a reader of the repository alone cannot see it.
 - **Spend bound, restated.** `limits.cpu_ms` plus the account's USD 10 billing budget alert plus
   that WAF rule; the Worker's own bindings are not part of the bound.
 - **Shared account caps.** The Cloudflare account also holds another scripted Worker, `sunostats`

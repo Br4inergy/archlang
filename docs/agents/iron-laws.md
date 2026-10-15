@@ -50,9 +50,9 @@ Owner decisions and laws that no test fully states. Do not re-propose, re-open o
   shares the Workers Paid caps): its own deploy job, served at `mcp.archlang.uk`; DNS and the
   Workers plan are owner-only. A site never gains a `main` to share its work.
 - **The hosted MCP spend bound is three things**: `limits.cpu_ms`, the account's USD 10 billing
-  budget alert, and the zone WAF rule `mcp abuse guard` (100 `/mcp` requests per 10 s per IP). The
+  budget alert, and the zone WAF rule `mcp abuse guard` (100 requests per 10 s per IP to any path on `mcp.archlang.uk`). The
   Worker's own rate-limit bindings are best-effort and are not part of the bound. The rule lives in
-  the Cloudflare dashboard, not in the repository, and does not cover `/svg/`.
+  the Cloudflare dashboard, not in the repository.
 
 ## Language & geometry
 
