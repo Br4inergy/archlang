@@ -121,7 +121,7 @@ Non-obvious traps that no test catches, or whose symptom points the wrong way. E
   file and `git checkout -- <path>`; never re-pin a digest.
 - **The hosted MCP's precise rate guard is a zone WAF rule in the Cloudflare dashboard**
   (`mcp abuse guard`, ADR 0026 "Addendum: production"). The Worker's own bindings count per server,
-  so the repository alone shows a limit that does not hold; the WAF rule does not cover `/svg/`.
+  so the repository alone shows a limit that does not hold; the WAF rule covers every path on the host.
 - **A version bump reddens `npm run check` until `editors/vscode/dist/server.js` is rebuilt**:
   `editors/vscode/test/stdio.test.ts` compares the bundle's stamped core version with the
   workspace's. Release gate order is in `docs/agents/commands.md`.

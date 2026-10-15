@@ -2425,11 +2425,10 @@ workflow and register the trusted publisher (a human step). Until then the token
 `release.yml` publishes it in its own job, `publish-arch-plan`, after the core; the owner registers the
 npmjs trusted publisher once (steps in `.claude/commands/release-check.md`).
 
-### O.6 · A WAF rule for `/svg/`? — `todo` (decision needed)
+### O.6 · A WAF rule for `/svg/` — `done`
 
-The zone rule `mcp abuse guard` covers `/mcp` only. `/svg/` is guarded by the Worker's best-effort
-binding alone. The Free plan allows one rate-limiting rule, so covering `/svg/` means widening the
-expression or changing plan.
+The zone rule `mcp abuse guard` was widened from `/mcp` to the whole host `mcp.archlang.uk` (same
+per-IP 100 requests per 10 s, block 10 s), so it covers `/svg/` too.
 
 ### O.7 · The next shim release carries the MCP tool annotations and the OpenAI/Codex listing — `todo`
 

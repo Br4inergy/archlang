@@ -53,8 +53,8 @@ change when this one was added.
 - **Reached at `https://mcp.archlang.uk`** (custom domain attached in the dashboard) and at
   `https://archlang-mcp.chanmeng-dev.workers.dev` (`workers_dev: true`, no `routes`, no `account_id`
   in the file). Do not hand-make the DNS record. A zone WAF rule on `archlang.uk`, `mcp abuse guard`
-  (100 requests per 10 s per IP to `/mcp`, block 10 s), is the precise guard; it is dashboard state,
-  not in the repository, and does not cover `/svg/` (ADR 0026, "Addendum: production").
+  (100 requests per 10 s per IP to every path on `mcp.archlang.uk`, block 10 s), is the precise guard;
+  it is dashboard state, not in the repository (ADR 0026, "Addendum: production").
 - **It is metered.** Every request runs the script, so it counts against the plan's daily requests
   and per-request CPU limit, unlike the sites. ADR 0026 has the per-tool measurement and why it
   points at Workers Paid. A request that runs out of CPU fails with the platform's 5xx; inputs that
