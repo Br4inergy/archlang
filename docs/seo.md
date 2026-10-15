@@ -173,7 +173,10 @@ the tool. This section is the single statement of the submission policy (owner, 
 agent may drive a submission form or publish step through the owner's logged-in browser or CLI when
 the owner has asked for that listing. The owner personally does account creation, logins, 2FA/OTP,
 API-token and secret creation, acceptance of terms and attestations, native file pickers, and the
-final submit of anything that accepts terms; an agent never passes a CAPTCHA or pays. State on
+final submit of anything that accepts terms, and edits in the Cloudflare dashboard (WAF rules, DNS,
+custom domains): the agent's browser session is refused there by its permission layer, so the agent
+writes the exact steps and verifies the result afterwards (for a rate limit: a burst of requests and
+the 429s). An agent never passes a CAPTCHA or pays. State on
 2026-10-15 (the site, not this table, is the truth for what is live):
 
 | Where | State | Kept current by |
