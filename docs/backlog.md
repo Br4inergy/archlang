@@ -2436,8 +2436,8 @@ expression or changing plan.
 The next `@chanmeng666/archlang-mcp` release (bumped by `/release-check` item 2, not before) ships the
 tools' `annotations` (read-only, not destructive, idempotent, closed-world) that the OpenAI directory's
 tool scan requires; the hosted Worker already serves them once they reach `main` (`deploy-mcp`
-redeploys on a tool-set change). The OpenAI/Codex listing is then
-`npm run build:openai-plugin` uploaded through **With MCP** (`docs/integrations.md`).
+redeploys on a tool-set change), so the OpenAI/Codex draft (state in `docs/seo.md` section 8) already
+passes that scan; the shim release brings the annotations to local installs.
 
 ### O.8 · `OPENAI_CATEGORIES` is a retyped list — `todo` (re-check on disagreement)
 
