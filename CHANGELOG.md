@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`@chanmeng666/arch-plan` 0.1.1 is published by the release workflow.** The element is unchanged; the version exists so the package's first trusted-publishing release (OIDC, with provenance) goes through `release.yml` instead of the owner's machine, as the core and the shim already do.
+
 ## [1.43.0] - 2026-10-14
 
 ### Added
