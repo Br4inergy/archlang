@@ -111,8 +111,11 @@ you observed. Do NOT push anything — this command only verifies.
   broken: run `gh run rerun <id> --failed` (idempotent).
 - **A new npm package's FIRST version is published by hand by the owner** (as for
   `@chanmeng666/archlang-font-cjk`), then registered as a trusted publisher; later versions go
-  through `release.yml`. `@chanmeng666/arch-plan` (0.1.0 published by hand) is not in `release.yml`
-  yet (`docs/backlog.md` O.5); its `prepack` refuses a stale root `dist/`, so `npm run build` first.
+  through `release.yml`. `@chanmeng666/arch-plan` (0.1.0 published by hand) is published by `release.yml`'s
+  `publish-arch-plan` job. The owner registers its trusted publisher once on npmjs.com
+  (`@chanmeng666/arch-plan` → Settings → Trusted Publisher → GitHub Actions, repo `ChanMeng666/archlang`,
+  workflow `release.yml`, no environment); until then that job fails with an auth error and nothing
+  else is affected. Its `prepack` refuses a stale root `dist/`, so `npm run build` first when publishing by hand.
 - **VS Code Marketplace upload is a human web step** (publisher `ChanMeng`, extension
   `ChanMeng.archlang`); nothing in CI publishes it. After a language-surface change:
   1. In the primary checkout: root `npm run build`, then `npm run package` in `editors/vscode`

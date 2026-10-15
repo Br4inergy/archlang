@@ -2420,10 +2420,10 @@ The namespace ownership claim is EclipseFdn/open-vsx.org#14189. Open VSX offers 
 workflow and register the trusted publisher (a human step). Until then the token path in
 `editors/vscode/DEVELOPMENT.md` is the way.
 
-### O.5 · `@chanmeng666/arch-plan` publishing in `release.yml`? — `todo` (decision needed)
+### O.5 · `@chanmeng666/arch-plan` publishing in `release.yml` — `done`
 
-0.1.0 was published by hand by the owner. Decide whether `release.yml` publishes later versions
-(trusted publisher, `prepack` needs a fresh root `dist/`) or the owner keeps publishing by hand.
+`release.yml` publishes it in its own job, `publish-arch-plan`, after the core; the owner registers the
+npmjs trusted publisher once (steps in `.claude/commands/release-check.md`).
 
 ### O.6 · A WAF rule for `/svg/`? — `todo` (decision needed)
 
