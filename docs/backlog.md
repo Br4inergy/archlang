@@ -2617,7 +2617,7 @@ manifest.
 | v1.30.0 | failed, manual `gh run rerun --failed` |
 | v1.31.0 · v1.32.0 · v1.33.0 | green on attempt 1 |
 | **v1.34.0** | **all 6 retries 404'd; manual re-run needed** |
-| **v1.43.1** (2026-10-16 UTC) | **all 6 retries (6 × 20 s) 404'd.** The shim publish signed its provenance at 13:36:14 and returned at 13:36:16; the registry still answered 404 at 13:38:01; `npm view …@0.2.26` first answered at 13:39:17, about 3 minutes later. Recovered by `gh run rerun --failed` once `npm view` showed the version |
+| **v1.43.1** (2026-10-16 UTC) | **all 6 retries (6 × 20 s) 404'd.** The shim publish signed its provenance at 13:36:14 and returned at 13:36:16; the registry still answered 404 at 13:38:01; `npm view …@0.2.26` first answered at 13:39:17, about 3 minutes later. Recovered by `gh run rerun --failed` once `npm view` showed the version. **Budget raised after it:** `release.yml` now waits for `npm view @chanmeng666/archlang-mcp@<version> version --prefer-online` to answer, every 20 s for up to 10 minutes, before the registry publish, and fails with an error if it never does; the six retries stay as the second line |
 
 **Blast radius, which is why this is worth fixing rather than living with.** The registry step sits
 *before* the GitHub Release step, so its failure also left the Release uncreated while both npm

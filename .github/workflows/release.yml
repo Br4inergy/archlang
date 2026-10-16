@@ -197,14 +197,40 @@ jobs:
         working-directory: packages/mcp
         run: ./mcp-publisher login github-oidc
 
+      # Wait for npm to SHOW the shim version before asking the registry to validate it. The
+      # registry looks the version up on npm, and npm makes a just-published version visible only
+      # minutes later: on v1.43.1 the shim publish returned at 13:36:16 UTC, every one of the six
+      # retries below 404'd up to 13:38:01, and `npm view` first answered at 13:39:17 (docs/backlog.md
+      # 4.7). This turns the blind retry into a precondition: poll every 20 s for up to 10 minutes,
+      # go on as soon as the version resolves, and stop with an error if it never does.
+      # --prefer-online skips npm's local cache, which the "Resolve versions" step filled with this
+      # same lookup while the version was still absent.
+      - name: Wait for npm to show the shim version
+        if: ${{ success() && steps.check.outputs.registry_synced != 'true' }}
+        env:
+          MCP_VERSION: ${{ steps.check.outputs.mcp_version }}
+        run: |
+          for attempt in $(seq 1 30); do
+            seen=$(npm view "@chanmeng666/archlang-mcp@$MCP_VERSION" version --prefer-online 2>/dev/null || true)
+            if [ "$seen" = "$MCP_VERSION" ]; then
+              echo "::notice::npm shows @chanmeng666/archlang-mcp@$MCP_VERSION (check $attempt/30)."
+              exit 0
+            fi
+            if [ "$attempt" -lt 30 ]; then
+              sleep 20
+            fi
+          done
+          echo "::error::npm still does not show @chanmeng666/archlang-mcp@$MCP_VERSION after 10 minutes; the MCP registry would reject it. Check the shim publish step, then re-run with gh run rerun --failed."
+          exit 1
+
       # Bounded retry, and the reason is a RACE we have actually seen. The registry validates
       # `server.json` against the npm package it names — and on the v1.30.0 release that
       # validation 404'd on a version this same job had published moments earlier, because
       # the npm registry had not yet made it visible to a third party. `gh run rerun --failed`
       # then succeeded with no change, which is the signature of a race and not of a broken
-      # manifest. Six attempts, 20 s apart, is ~2 minutes of patience against a lookup that
-      # normally settles in seconds; a genuinely bad manifest still fails, just two minutes
-      # later, and the last attempt's output is what the log shows.
+      # manifest. Six attempts, 20 s apart, is ~2 minutes; since v1.43.1 they are the SECOND line,
+      # after the npm wait above, for a registry that still lags npm. A genuinely bad manifest
+      # still fails, two minutes later, and the last attempt's output is what the log shows.
       - name: Publish server to MCP Registry
         if: ${{ success() && steps.check.outputs.registry_synced != 'true' }}
         working-directory: packages/mcp
