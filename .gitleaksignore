@@ -147,3 +147,35 @@ aa6da412c4355a333198e3d6c94bebb4478b2aa7:test/height-byte-identity.test.ts:gener
 # ---------------------------------------------------------------------------------------
 5ca445c904b47aca761044fef9689d7fe1b77c94:test/byte-identity-baseline.ts:generic-api-key:676
 5ca445c904b47aca761044fef9689d7fe1b77c94:test/while-byte-identity-baseline.ts:generic-api-key:102
+
+# ---------------------------------------------------------------------------------------
+# 2026-10-17 — nine findings, rule `generic-api-key`, the same false positive as the blocks
+# above (nightly run 38869516582, issue #124). Each was opened and read before being listed.
+#
+#   test/byte-identity-baseline.ts:937,982            at 3115f219 (net internal area)
+#   test/while-byte-identity-baseline.ts:205          at 3115f219
+#   test/import-module-lets.test.ts:349,412,413       at 3115f219
+#   test/import-module-lets.test.ts:274,324,325       at 12509431 (the module-`let`s law)
+#
+#           `["accessible", "a3c542ae…<56 more hex>"]`,
+#           `["examples/accessible.arch", "dd7d71eb…<56 more hex>"]` and
+#           `["eval/goldens/accessible-bath.arch", "0f2e47f8…<56 more hex>"]` and their kin —
+#           MEASURED SHA-256 BYTE-IDENTITY BASELINES of public output (SVG + `describe()` +
+#           `lint()`, with `compile().diagnostics` in the last two files), keyed by a plan whose
+#           name contains the rule's key-ish word "access": `examples/accessible.arch` and
+#           `eval/goldens/accessible-{bath,flat}.arch`. Recomputable by anyone from this
+#           repository (`test/byte-identity-digest.ts`); they grant access to nothing.
+#
+#           `test/import-module-lets.test.ts` is new to this file: its corpus-wide table covers
+#           the eval goldens too, so it holds two more `accessible` rows than the others. It
+#           now has its own content rule in `test/opaque-literal-guard.test.ts`.
+# ---------------------------------------------------------------------------------------
+3115f219d8543f2ef5550b52e972f10d11ac7a16:test/byte-identity-baseline.ts:generic-api-key:937
+3115f219d8543f2ef5550b52e972f10d11ac7a16:test/byte-identity-baseline.ts:generic-api-key:982
+3115f219d8543f2ef5550b52e972f10d11ac7a16:test/while-byte-identity-baseline.ts:generic-api-key:205
+3115f219d8543f2ef5550b52e972f10d11ac7a16:test/import-module-lets.test.ts:generic-api-key:349
+3115f219d8543f2ef5550b52e972f10d11ac7a16:test/import-module-lets.test.ts:generic-api-key:412
+3115f219d8543f2ef5550b52e972f10d11ac7a16:test/import-module-lets.test.ts:generic-api-key:413
+125094317842c845913d09480e16b202cdab78eb:test/import-module-lets.test.ts:generic-api-key:274
+125094317842c845913d09480e16b202cdab78eb:test/import-module-lets.test.ts:generic-api-key:324
+125094317842c845913d09480e16b202cdab78eb:test/import-module-lets.test.ts:generic-api-key:325
