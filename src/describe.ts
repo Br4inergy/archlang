@@ -31,6 +31,7 @@ import type {
 } from "./ir.js";
 import type { FenceStyle, OutdoorKind, Point, RailSide, VerticalDir } from "./ast.js";
 import { polygonArea, polygonBounds } from "./geometry/polygon.js";
+import { memoRoomNetAreaMm2, storeyNetAreaBands } from "./analyze/net-area-memo.js";
 import type { DoorKind } from "./grammar/tokens.js";
 import type { Diagnostic } from "./diagnostics.js";
 import {
@@ -38,8 +39,6 @@ import {
   rectOf,
   pointInRoomBox,
   roomAreaMm2,
-  netAreaBands,
-  roomNetAreaMm2,
   roomBox,
   roomsAdjacent,
   roomsAtPoint,
@@ -1127,7 +1126,7 @@ function summarize(
 
   const adjacency = roomAdjacency(roomEls, roomRects, tol);
   // The storey's wall bands, once: every room's net area reads them.
-  const bands = netAreaBands(ir.walls);
+  const bands = storeyNetAreaBands(ir.walls);
 
   const rooms: RoomSummary[] = roomEls.map((r, i) => {
     const rect = roomRects.get(r.id)!;
@@ -1139,7 +1138,7 @@ function summarize(
       uses: [...uses],
       room_type: roomTypeForUses(uses),
       area_m2: r2(roomAreaMm2(r) / 1_000_000),
-      ...netField(roomNetAreaMm2(r, bands)),
+      ...netField(memoRoomNetAreaMm2(r, bands)),
       // `bbox` stays a plain {x,y,w,h} — never the RoomBox, whose `poly` would leak a
       // fifth key into the JSON. A polygon room's true floor is `floor_polygon`.
       bbox: { x: rect.x, y: rect.y, w: rect.w, h: rect.h },

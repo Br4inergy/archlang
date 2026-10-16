@@ -42,7 +42,8 @@ import type { RenderSizes, SceneNode } from "./scene.js";
 import type { Theme } from "./theme.js";
 import { FIXTURE_CATEGORIES, fixtureGlyph, hasFixtureGlyph } from "./elements/fixtures-glyphs.js";
 import { fmt2 } from "./num-format.js";
-import { netAreaBands, roomAreaMm2, roomNetAreaMm2 } from "./analyze.js";
+import { roomAreaMm2 } from "./analyze.js";
+import { memoRoomNetAreaMm2, storeyNetAreaBands } from "./analyze/net-area-memo.js";
 import { openingCount, type OpeningRow } from "./opening-schedule.js";
 import { textWidth } from "./text-metrics.js";
 
@@ -147,9 +148,9 @@ export function roomSchedule(
   const grouped = groupRoomsByZone(rooms, zones);
   const ordered = grouped ? grouped.flatMap((g) => g.rooms) : rooms;
   const width = Math.max(2, String(ordered.length).length);
-  const bands = walls ? netAreaBands(walls) : null;
+  const bands = walls ? storeyNetAreaBands(walls) : null;
   const rows: ScheduleRow[] = ordered.map((r, i) => {
-    const net = bands ? roomNetAreaMm2(r, bands) : undefined;
+    const net = bands ? memoRoomNetAreaMm2(r, bands) : undefined;
     return {
       no: String(i + 1).padStart(width, "0"),
       id: r.id,
