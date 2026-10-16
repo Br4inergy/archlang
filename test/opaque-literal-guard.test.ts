@@ -75,6 +75,7 @@ const opaqueLiteralsIn = (path: string): string[] => [...read(path).matchAll(OPA
 const HAVE_RULES = [
   "test/byte-identity-baseline.ts",
   "test/height-byte-identity.test.ts",
+  "test/import-module-lets.test.ts",
   "test/indexnow-script.test.ts",
   "test/while-byte-identity-baseline.ts",
 ].sort();
@@ -106,6 +107,18 @@ describe("every gitleaks-excluded file is guarded for what it may CONTAIN", () =
       expect(unexplained, "an opaque string that is neither a digest nor a shipped example name").toEqual([]);
     },
   );
+
+  it("test/import-module-lets.test.ts holds only digests and the names of corpus directories", () => {
+    // A test file whose closing byte-identity table pins every corpus plan, eval goldens
+    // included. Its plan paths carry a `.` and so are no candidates; what remains must be a
+    // measured SHA-256 value or a directory this repository has (the corpus roots it walks).
+    const opaque = opaqueLiteralsIn("test/import-module-lets.test.ts");
+    expect(opaque.filter((s) => /^[0-9a-f]{64}$/.test(s)).length).toBeGreaterThan(0);
+    const unexplained = opaque.filter(
+      (s) => !/^[0-9a-f]{64}$/.test(s) && !(/^[a-z0-9/-]+$/.test(s) && existsSync(resolve(ROOT, s))),
+    );
+    expect(unexplained, "an opaque string that is neither a digest nor a corpus directory").toEqual([]);
+  });
 
   it("test/height-byte-identity.test.ts holds no opaque string at all", () => {
     // Its tables moved to `byte-identity-baseline.ts`; it is excluded only because the
