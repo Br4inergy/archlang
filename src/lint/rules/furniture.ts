@@ -307,11 +307,13 @@ export const furnitureWallCollision: LintRule = {
       if (hit) {
         const name = f.label ?? f.category;
         const where = axisLine(hit);
+        // The wall is named by its kind and the line it runs on, never its id: a consumer may
+        // show the message to someone who never sees the source. The hint names it by id.
         out.push({
           severity: "warning",
           code: "W_FURNITURE_WALL_COLLISION",
           ...at(f),
-          message: `Furniture "${name}" penetrates ${hit.category} wall "${hit.wallId}"${where} — ${mm(depth)} mm into its ${mm(hit.thickness)} mm thickness.`,
+          message: `Furniture "${name}" penetrates ${where ? "the" : /^[aeiou]/i.test(hit.category) ? "an" : "a"} ${hit.category} wall${where} — ${mm(depth)} mm into its ${mm(hit.thickness)} mm thickness.`,
           hints: [collisionHint(f, fr, hit, ctx)],
         });
       }

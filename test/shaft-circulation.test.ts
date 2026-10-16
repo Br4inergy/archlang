@@ -288,13 +288,15 @@ describe("a storey reached only by a stair is walked from the landing", () => {
     stair id=st at (200,1000) size 1000x3000 dir down`);
     const narrow = lint(src).filter((d) => d.code === "W_PATH_TOO_NARROW");
     // A 700 mm door's modeled clear width is 640 mm (the 60 mm leaf allowance), and it is the
-    // box room's only way in, so the message names it.
+    // box room's only way in, so the message names it by the rooms it joins (in source order:
+    // a storey walked from its shafts has no door hops from an entrance) and the hint by id.
     expect(narrow.map((d) => [d.level, d.message])).toEqual([
       [
         2,
-        'The walk from the entrance to "Box room" squeezes to 640 mm (60 mm below the 700 mm minimum) — the bottleneck is door "db", 640 mm clear.',
+        'The walk from the entrance to "Box room" squeezes to 640 mm (60 mm below the 700 mm minimum) — the bottleneck is the door between "Landing" and "Box room", 640 mm clear.',
       ],
     ]);
+    expect(narrow[0]!.hints![0]).toMatch(/^Widen door "db" to `width \d+`/);
     expect(level(src, 2).circulation?.rooms.find((r) => r.roomId === "box")?.bottleneckClearWidthMm).toBe(640);
   });
 });

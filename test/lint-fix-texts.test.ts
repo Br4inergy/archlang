@@ -329,11 +329,12 @@ describe("W_FURNITURE_WALL_COLLISION — names the wall; `offset` is the CENTRE;
     return offset;
   }
 
-  it("fires naming the crossed wall", () => {
+  it("fires naming the crossed wall: by kind and line in the message, by id in the hint", () => {
     const [d] = of(SRC, "W_FURNITURE_WALL_COLLISION");
     expect(d!.message).toBe(
-      'Furniture "fridge" penetrates partition wall "w_part" at x 4000 — 100 mm into its 100 mm thickness.',
+      'Furniture "fridge" penetrates the partition wall at x 4000 — 100 mm into its 100 mm thickness.',
     );
+    expect(d!.hints!.join(" ")).toContain('wall "w_part"');
     expect(d!.hints!.join(" ")).toContain("CENTRE");
   });
 
@@ -391,7 +392,8 @@ describe("W_FURNITURE_WALL_COLLISION — names the wall; `offset` is the CENTRE;
   it("an `at (x,y)` piece is not told about `offset` it never wrote, and still learns the wall", () => {
     const at = replaceOnce(SRC, FRIDGE, "furniture fridge at (3800,100) size 600x650");
     const [d] = of(at, "W_FURNITURE_WALL_COLLISION");
-    expect(d!.message).toContain('wall "w_part"');
+    expect(d!.message).not.toContain("w_part");
+    expect(d!.hints!.join(" ")).toContain('wall "w_part"');
     expect(d!.hints!.join(" ")).not.toMatch(/`offset \d+`/);
   });
 });
@@ -484,8 +486,9 @@ describe("W_PATH_TOO_NARROW — names only doors whose widening clears the room,
 
   it("one diagnostic for the one door (the bedroom → bath route through it is not repeated)", () => {
     expect(of(SRC, "W_PATH_TOO_NARROW").map((d) => d.message)).toEqual([
-      'The walk from the entrance to "Bath" squeezes to 640 mm (60 mm below the 700 mm minimum) — the bottleneck is door "d_bath", 640 mm clear.',
+      'The walk from the entrance to "Bath" squeezes to 640 mm (60 mm below the 700 mm minimum) — the bottleneck is the door between "Hall" and "Bath", 640 mm clear.',
     ]);
+    expect(of(SRC, "W_PATH_TOO_NARROW")[0]!.hints![0]).toMatch(/^Widen door "d_bath" to `width \d+`/);
   });
 
   /** The plan as each profile needs it: under `accessibility-advisory` every 900 mm door is
@@ -496,7 +499,7 @@ describe("W_PATH_TOO_NARROW — names only doors whose widening clears the room,
     it(`${p ?? "default"} · the hint's \`width\` on that door clears it, and raises nothing new`, () => {
       const src = wide(SRC, p);
       const [d] = of(src, "W_PATH_TOO_NARROW", p).filter((x) => x.message.includes('"Bath"'));
-      expect(d!.message).toContain('door "d_bath"');
+      expect(d!.message).toContain('the door between "Hall" and "Bath"');
       const fixed = widenAll(src, d!.hints!)!;
       expect(fixed).not.toBe(src);
       expect(of(fixed, "W_PATH_TOO_NARROW", p)).toEqual([]);
@@ -506,7 +509,9 @@ describe("W_PATH_TOO_NARROW — names only doors whose widening clears the room,
     it(`${p ?? "default"} · doors in series: the bath names BOTH doors, and widening every named door clears it`, () => {
       const src = wide(SERIES, p);
       const bath = of(src, "W_PATH_TOO_NARROW", p).find((d) => d.message.includes('"Bath"'));
-      expect(bath!.message).toContain('the bottlenecks are door "d_c" and door "d_b"');
+      expect(bath!.message).toContain(
+        'the bottlenecks are the door between "Hall" and "Corridor", and the door between "Corridor" and "Bath"',
+      );
       const fixed = widenAll(src, bath!.hints!)!;
       expect(of(fixed, "W_PATH_TOO_NARROW", p)).toEqual([]);
       expect(gained(src, fixed, p)).toEqual([]);
@@ -519,7 +524,7 @@ describe("W_PATH_TOO_NARROW — names only doors whose widening clears the room,
       if (!p) return;
       const [d] = of(SRC, "W_PATH_TOO_NARROW", p).filter((x) => x.message.includes('"Bath"'));
       expect(d!.message).toContain(
-        'the bottlenecks are door "d_front" (840 mm clear) and door "d_bath" (640 mm clear): widen them together',
+        'the bottlenecks are the door from outside into "Hall" (840 mm clear), and the door between "Hall" and "Bath" (640 mm clear): widen them together',
       );
       const fixed = widenAll(SRC, d!.hints!)!;
       expect(of(fixed, "W_PATH_TOO_NARROW", p).filter((x) => x.message.includes('"Bath"'))).toEqual([]);
@@ -582,7 +587,10 @@ describe("W_PATH_TOO_NARROW — names only doors whose widening clears the room,
 `;
     const box = of(src, "W_PATH_TOO_NARROW").filter((d) => d.message.includes('"Box room"'));
     expect(box.length).toBeGreaterThan(0);
-    for (const d of box) expect(d.message).not.toContain('door "db"');
+    for (const d of box) {
+      expect(d.message).not.toContain("bottleneck");
+      expect(d.hints!.join(" ")).not.toContain('door "db"');
+    }
   });
 
   it("a withdrawn route still counts as warned: no later route from the same room is reported", () => {
@@ -618,7 +626,12 @@ describe("W_PATH_TOO_NARROW — names only doors whose widening clears the room,
     ).circulation.routes;
     expect(routes.filter((r) => r.fromRoomId === "r_f" && r.bottleneckClearWidthMm < minOf(A11Y))).toHaveLength(2);
     const ds = of(src, "W_PATH_TOO_NARROW", A11Y);
-    expect(ds.some((d) => d.message.includes('"Living"') && d.message.includes('door "d_l"'))).toBe(true);
+    expect(
+      ds.some(
+        (d) =>
+          d.message.includes('the door between "Studio" and "Living"') && d.hints!.join(" ").includes('door "d_l"'),
+      ),
+    ).toBe(true);
     expect(ds.filter((d) => d.message.startsWith("The route from"))).toEqual([]);
   });
 
@@ -724,5 +737,69 @@ describe("diagnostic texts name the `archlang` command, never the coreutils-shad
       }
     }
     expect(hints).toBeGreaterThan(0); // the corpus does carry such a hint, so the check ran
+  });
+});
+
+describe("the four reworded hints' messages name things as a reader would; ids stay in the hints", () => {
+  // A consumer may show `message` to a person who never sees the source (an app built on the
+  // compiler does). So these four messages quote only what the plan itself calls a room or a
+  // piece of furniture; the element id an agent edits by is in the hints. Derived from
+  // `describe()`, never retyped: a room is named by its label (its id when it has none), a
+  // piece by its label or category.
+  const CODES = ["W_PATH_TOO_NARROW", "W_FURNITURE_WALL_COLLISION", "W_FIXTURE_BACK_TO_ROOM", "W_ROOM_NO_FIXTURE"];
+  type Storey = {
+    rooms?: { id: string; label?: string }[];
+    furniture?: { category: string; label?: string }[];
+  };
+  function names(src: string, world: World): Set<string> {
+    const facts = describePlan(src, { world }) as Storey & { levels?: Storey[] };
+    const out = new Set<string>();
+    for (const s of facts.levels ?? [facts]) {
+      for (const r of s.rooms ?? []) out.add(r.label ?? r.id);
+      for (const f of s.furniture ?? []) out.add(f.label ?? f.category);
+    }
+    return out;
+  }
+  // The shipped corpus plus the minimal plans above, read out of this file (never retyped):
+  // the collision plan and the two door-path plans are where these messages are pinned exactly.
+  const self = readFileSync(resolvePath("test/lint-fix-texts.test.ts"), "utf8");
+  const inline = ["Fridge through a partition", "Doors in series", "Narrow bath door"].map((title) => {
+    const from = self.indexOf(`plan "${title}" {`);
+    return { name: `inline: ${title}`, src: self.slice(from, self.indexOf("\n}\n", from) + 3), world: worldFor(".") };
+  });
+  const cases = [...corpus(["examples", "test/fixtures"]), ...inline];
+
+  for (const p of PROFILES) {
+    it(`${p ?? "default"} · every quoted name in the message is a room's or a piece's own name`, () => {
+      const seen = new Map<string, number>();
+      for (const { name, src, world } of cases) {
+        const ds = lint(src, { world, ...opts(p) }).filter((d) => CODES.includes(d.code ?? ""));
+        if (ds.length === 0) continue;
+        const allowed = names(src, world);
+        for (const d of ds) {
+          seen.set(d.code!, (seen.get(d.code!) ?? 0) + 1);
+          for (const [, q] of d.message.matchAll(/"([^"]+)"/g))
+            expect(allowed.has(q!), `${name} (${p ?? "default"}): ${d.message}`).toBe(true);
+        }
+      }
+      // Not vacuous: the path and collision messages, the two that named ids, are exercised.
+      expect(seen.get("W_PATH_TOO_NARROW") ?? 0).toBeGreaterThan(0);
+      expect(seen.get("W_FURNITURE_WALL_COLLISION") ?? 0).toBeGreaterThan(0);
+    });
+  }
+
+  it("a named door's id is in a hint whenever the message names its rooms", () => {
+    let checked = 0;
+    for (const { name, src, world } of cases) {
+      for (const d of lint(src, { world }).filter((x) => x.code === "W_PATH_TOO_NARROW")) {
+        const phrases = [
+          ...d.message.matchAll(/the (door|opening) (?:between "[^"]+" and "[^"]+"|from outside into "[^"]+")/g),
+        ];
+        const widen = d.hints!.filter((h) => /^Widen (?:door|opening) "[^"]+" to `width \d+`/.test(h));
+        expect(widen.length, `${name}: ${d.message}`).toBe(phrases.length);
+        checked += phrases.length;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 });

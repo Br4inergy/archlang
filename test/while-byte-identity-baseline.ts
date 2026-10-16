@@ -212,6 +212,14 @@
  * re-measured when it met them: `describe()` and the drawn NET AREA column only, diagnostics
  * byte-identical. Field by field in `./byte-identity-baseline.ts`, "Three example rows
  * re-measured when net area met them".
+ *
+ * Four rows re-measured when `W_PATH_TOO_NARROW` began naming a bottleneck door by the rooms it
+ * joins instead of its id (the id stays in the hint): `examples/hillside-villa.arch` (field by
+ * field in `./byte-identity-baseline.ts`, "names a door by its rooms") and the fixtures
+ * `test/fixtures/chain30.arch`, `star30.arch` and `off-path-bypass.arch`, whose walks name
+ * their doors (`off-path-bypass` also in its `W_FURNITURE_WALL_COLLISION`, which now names
+ * "the exterior wall at y 2000" rather than `wall "w_s"`). `lint()` `message` text only: hashing the new SVG, `describe()` and
+ * `compile().diagnostics` with the previous `lint()` reproduces each previous row.
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "dd7d71ebb95715ca666f7a087af5456436cba420936c111d20cb497159715529"],
@@ -227,7 +235,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/garden-house.arch", "ffe33b785e9b5d6a2d2b83b0c5fe416bb1df75e9cfe2755cd9721df2e424f85d"], // re-measured, see header
   ["examples/garden-loft.arch", "eb6ba7bdcd33231cd0cfd2072a1a99e2b416be039e6efc2cc0a5ea76129738f2"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
-  ["examples/hillside-villa.arch", "37a845006932e569e9cd6549d5f1be8b033c555633d7114e213cf53b7cc49efc"], // re-measured, see header
+  ["examples/hillside-villa.arch", "6ed0aaedb565b86b967a79d57c63a065d6f96c457bde328f308dbb31ac86c87d"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
   ["examples/laneway-house.arch", "d87dea46b06ea13b539e0a7c03674038e15762d15948a7bc27632e1b8afd11e2"],
   ["examples/library.arch", "cd5e1d08ae576e6303bc71ededc689e3033456929ffa3bee1568bafc01d45c33"],
@@ -249,15 +257,15 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/two-bed.arch", "63fdc9d0c77062228876013f4b0e8172f496fc80f4f943184a2bff3098dec5ad"],
   ["examples/two-storey.arch", "17402c97f15a8aeb54ded52a2460ced472e1788d7d5415fa83b1c91042ce59d6"],
   ["test/fixtures/axes-grid.arch", "bf15439e40c442b499b4b43025cea4827954e3fd2c2e89102e7d6c527d7375b3"],
-  ["test/fixtures/chain30.arch", "b5d0712ddc39a77f8f1eca7effc10b4460e0fe824b5d062a7809ad7b767b4b4b"], // new fixture, see header
+  ["test/fixtures/chain30.arch", "13411e1dbffca14e73601338837daf6517ddf9fc2447695021101fc051073cb6"], // new fixture, see header
   ["test/fixtures/dense-bays.arch", "c01f946b1cd01d07fb673f33c210388d647aeab75049be76a9e5a6c30c00ac46"],
   ["test/fixtures/diff-a.arch", "1cff5f9be081933217e1ee78804a2cf68cf17dba8d9997a51efc89ea3cbc7632"], // re-measured, see header
   ["test/fixtures/diff-b.arch", "baab46a8480793499c0992812fc3867988f1d874df02fe5ce5fc187373bfcdda"], // re-measured, see header
   ["test/fixtures/diff-circ-a.arch", "272184ab44393f0f5cf74f5ad7a41c65ee2e16fbaf837dd9d0a1fb40ab71a335"],
   ["test/fixtures/diff-circ-b.arch", "68ba4e31f6e1bcb57fda4bc7eefc2afba407b1e0038497fb4a65079be210864d"],
-  ["test/fixtures/off-path-bypass.arch", "b1337e552726a9bd62f36938c1c1287b99ff2124926dc809d4c8e6765e064fd4"], // new fixture, see header
+  ["test/fixtures/off-path-bypass.arch", "b8123c5f00d6ce700209f6c5f6a479847f0e5218cf99c8bb2d4af66006289415"], // new fixture, see header
   ["test/fixtures/schedule-sheet.arch", "10506aac800b77d2a5e579f5bebcdb8d35d72d882ef0b92d7200a1e7a6bdacfa"],
-  ["test/fixtures/star30.arch", "a3fa9d28ec92c4e358eb2ff6e78a9d9fb85e6535126def4e41068f9182e420dd"], // new fixture, see header
+  ["test/fixtures/star30.arch", "eb21a2460d3cd302bc0b470184924cb46c947fa9ca95a7d8d7cbda839f791761"], // new fixture, see header
   ["test/fixtures/zones-levels.arch", "3bcbe8f909a76528732dc309234e17526c80030e7baff7605e1879dd328ab10b"],
   ["test/fixtures/zones-wings.arch", "a709a63178d723d6ceff5b39103b35dd16823449fd87200523c43a848a77cda2"],
 ];
