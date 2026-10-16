@@ -981,6 +981,23 @@
  * tree's `describe()` the SEMANTIC rows reproduce, and with its SVG too the whole-surface
  * rows and those in `while-byte-identity-baseline.ts` and `import-module-lets.test.ts`
  * reproduce. Their `finish` digests did not move.
+ *
+ * ## `hillside-villa`: both rows re-measured — `W_PATH_TOO_NARROW` names a door by its rooms
+ *
+ * Case (3), a diagnostic-text change, in `lint()` only (`test/lint-fix-texts.test.ts`, "the four
+ * reworded hints' messages"). A consumer may show `message` to a person who never sees the
+ * source, so the message names a bottleneck door by the rooms it joins, the room fewer door hops
+ * from where the walk starts first, and its id stays in the hint ("Widen door … to `width …`",
+ * unchanged). Field by field, `message` only, no other key of any diagnostic: on level 2 (walked
+ * from its stair) the three "Ensuite" walks' `door "d_en2_corr"` and `door "d_en3_corr"` →
+ * `the door between "Landing" and "Ensuite"`, and `door "d_enm"` → `the door between "Master
+ * Suite" and "Ensuite"`. The first two now read alike, because the plan labels both rooms
+ * "Ensuite"; their hints still name each door. Under `accessibility-advisory` (no pinned digest)
+ * level 1's "Powder", "Pantry" and "Terrace" walks likewise name `the door between "Service
+ * Hall" and "Powder"`, `… "Service Hall" and "Pantry"` and `… "Dining" and "Terrace"`. Hashing
+ * the NEW compile + `describe()` with the PREVIOUS `lint()` reproduces both previous rows, and
+ * the rows in `while-byte-identity-baseline.ts` and `import-module-lets.test.ts`. No diagnostic
+ * was added or withdrawn, and no other row in this table moved.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -998,7 +1015,7 @@ export const BASELINE: [string, string][] = [
   ["garden-house", "0532109ebf9869b2ebddfa229823f6c08f8aa50572af0da44e50fa80e7bbd749"], // re-measured, see header
   ["garden-loft", "7161ddddda40ba6f520128b2196fdbba997e5f3b82674dbf2ee09495d763dc1d"],
   ["hexagon-pavilion", "92d343afbb62315ad0014b95de9f4a8b26ccffbc14093b04c5956b689f850252"],
-  ["hillside-villa", "ce6b14e1dbe05e16fde2c710d666655d4da42a1f5a51a63f8eaf122d1f766474"], // re-measured, see header
+  ["hillside-villa", "8a2769c87a237afe454ab8cb0eb37d31f703162722b5bf515050c07b40e2ae76"], // re-measured, see header
   ["imports", "4b0151513963a656e52ac84c6fd80eb35c9820ae101921420cb8d5c9c13c0b70"],
   ["laneway-house", "62b3fdb835ccc7eb565f982ed7930d99cfced87bbf4ae9d6bb5410e4945d255c"],
   ["library", "b1afe29423122d4d161d5ba51c8d4af703f47efd8299fdfb265df1d8f8e402fd"],
@@ -1046,7 +1063,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["garden-house", "fee030c619c813af20a581665bc6366f66f511f8c8e6a035cca3fb344acab128"], // re-measured, see header
   ["garden-loft", "77bddbf7b08d49b0845e5268bb267a602b93002dfa20175e9218e5156dc435d1"],
   ["hexagon-pavilion", "6e8005c3a0af9b80598574e77141301a957b4a293ba8d5de6cc1effb00693494"],
-  ["hillside-villa", "5dce9065cd082e812793eb7355f35e6b3c63e8ecf9625ba4a5d2a55c4d05df71"], // re-measured, see header
+  ["hillside-villa", "32ca3aba5e381e1bc7374d084211d6e9b503824ecc2444f6a499bf992389cb4c"], // re-measured, see header
   ["imports", "183bf4ec261e6650b21c4771b64fe924bf5c6eabd3ea1b8d3bbdac71b2900ac3"],
   ["laneway-house", "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0"],
   ["library", "b2032b46514e9563ba3106e23869db32fef49e8241e65b7c84f6108a2cf4af08"],

@@ -352,6 +352,19 @@ suite("a module `let` that fails reports as it does in the module", () => {
  * `townhouse` (and the `test/recovery-corpus/` copy of `materials`), whose `describe()`
  * moves in its net figures only. Field by field in `./byte-identity-baseline.ts`, "Six
  * plans re-measured again".
+ *
+ * Five rows re-measured when two lint messages stopped quoting element ids (a consumer may show
+ * `message` to someone who never sees the source; the id stays in the hint), `lint()` `message`
+ * text only. Hashing the new payload with the previous `lint()` reproduces each previous row:
+ *   - `W_PATH_TOO_NARROW` names a bottleneck door by the rooms it joins:
+ *     `examples/hillside-villa.arch` (field by field in `./byte-identity-baseline.ts`, "names a
+ *     door by its rooms"), `test/fixtures/chain30.arch`, `star30.arch` and
+ *     `off-path-bypass.arch` (the same rows as `./while-byte-identity-baseline.ts`;
+ *     `off-path-bypass` also moves in the collision below, `penetrates exterior wall "w_s" at
+ *     y 2000` → `penetrates the exterior wall at y 2000`).
+ *   - `W_FURNITURE_WALL_COLLISION` names the wall by its kind and line:
+ *     `eval/faults/furniture-through-wall.arch`, `penetrates partition wall "partition_2" at
+ *     x 4000` → `penetrates the partition wall at x 4000`.
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "dd7d71ebb95715ca666f7a087af5456436cba420936c111d20cb497159715529"],
@@ -373,7 +386,7 @@ const BASELINE: [string, string][] = [
   // Re-measured for the facade-probe fix (level 2's `dims auto` chains only), and again because
   // the EXAMPLE changed (backlog D.2, its piano turned and moved): the same row, with the same
   // digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/hillside-villa.arch", "37a845006932e569e9cd6549d5f1be8b033c555633d7114e213cf53b7cc49efc"],
+  ["examples/hillside-villa.arch", "6ed0aaedb565b86b967a79d57c63a065d6f96c457bde328f308dbb31ac86c87d"],
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
   ["examples/laneway-house.arch", "d87dea46b06ea13b539e0a7c03674038e15762d15948a7bc27632e1b8afd11e2"],
   ["examples/library.arch", "cd5e1d08ae576e6303bc71ededc689e3033456929ffa3bee1568bafc01d45c33"],
@@ -401,15 +414,15 @@ const BASELINE: [string, string][] = [
   ["examples/lib/fixtures.arch", "25e792ed80e5571a57ac00323283b58af9ffd96646008637646f99600f4716f8"],
   ["examples/lib/furniture.arch", "0b3f57be12defbd32e7dd349a5c81619acc3c2650bcf2e2bffaff1669b7a112a"],
   ["test/fixtures/axes-grid.arch", "bf15439e40c442b499b4b43025cea4827954e3fd2c2e89102e7d6c527d7375b3"],
-  ["test/fixtures/chain30.arch", "b5d0712ddc39a77f8f1eca7effc10b4460e0fe824b5d062a7809ad7b767b4b4b"], // new fixture, see header
+  ["test/fixtures/chain30.arch", "13411e1dbffca14e73601338837daf6517ddf9fc2447695021101fc051073cb6"], // new fixture, see header
   ["test/fixtures/dense-bays.arch", "c01f946b1cd01d07fb673f33c210388d647aeab75049be76a9e5a6c30c00ac46"],
   ["test/fixtures/diff-a.arch", "1cff5f9be081933217e1ee78804a2cf68cf17dba8d9997a51efc89ea3cbc7632"],
   ["test/fixtures/diff-b.arch", "baab46a8480793499c0992812fc3867988f1d874df02fe5ce5fc187373bfcdda"],
   ["test/fixtures/diff-circ-a.arch", "272184ab44393f0f5cf74f5ad7a41c65ee2e16fbaf837dd9d0a1fb40ab71a335"],
   ["test/fixtures/diff-circ-b.arch", "68ba4e31f6e1bcb57fda4bc7eefc2afba407b1e0038497fb4a65079be210864d"],
-  ["test/fixtures/off-path-bypass.arch", "b1337e552726a9bd62f36938c1c1287b99ff2124926dc809d4c8e6765e064fd4"], // new fixture, see header
+  ["test/fixtures/off-path-bypass.arch", "b8123c5f00d6ce700209f6c5f6a479847f0e5218cf99c8bb2d4af66006289415"], // new fixture, see header
   ["test/fixtures/schedule-sheet.arch", "10506aac800b77d2a5e579f5bebcdb8d35d72d882ef0b92d7200a1e7a6bdacfa"],
-  ["test/fixtures/star30.arch", "a3fa9d28ec92c4e358eb2ff6e78a9d9fb85e6535126def4e41068f9182e420dd"], // new fixture, see header
+  ["test/fixtures/star30.arch", "eb21a2460d3cd302bc0b470184924cb46c947fa9ca95a7d8d7cbda839f791761"], // new fixture, see header
   ["test/fixtures/zones-levels.arch", "3bcbe8f909a76528732dc309234e17526c80030e7baff7605e1879dd328ab10b"],
   ["test/fixtures/zones-wings.arch", "a709a63178d723d6ceff5b39103b35dd16823449fd87200523c43a848a77cda2"],
   ["test/recovery-corpus/attached.arch", "591f4199087b7f7fcab65af3cab3f12dbe062456954e7ef0f02969a974d34b93"],
@@ -483,7 +496,7 @@ const BASELINE: [string, string][] = [
   ],
   ["eval/faults/blocked-doorway.arch", "7f35390a12c0e596cd2bc43d0f9d3c34ffcbb5cf373b0c6159fa4ba72f68fd3c"],
   ["eval/faults/combined.arch", "d3740a0d13d8117fa16eb80308713f68f0b645d193ebaca01ef23f85784cec6d"],
-  ["eval/faults/furniture-through-wall.arch", "4b12f054ab79baeccd30aa0c0cad2508022dd47092bae3c44eba4e2a1c50c930"],
+  ["eval/faults/furniture-through-wall.arch", "d6f67fc6b02a0e869063c7b2c0084053505acea98eb1d5d5b30bf260335129c7"],
   ["eval/faults/off-wall-door.arch", "c74fceee88106e783d23ffa40c1004a0413b2a20537541f45899e226b61d58e1"],
   ["eval/faults/off-wall-opening.arch", "52a35945771a2840340f56006f6e17824f127075fc830ce957e4c36e52b605f4"],
   ["eval/faults/off-wall-window.arch", "2665dac70c4431a9d12e0a17a43fc1f85fdc8e99c6695c6743545f4f81ae2cd3"],

@@ -412,15 +412,72 @@ function throughSet(
   return best;
 }
 
+const hopsCache = new WeakMap<LintContext, ReadonlyMap<string, number>>();
+
+/**
+ * Door hops from where this storey's walks start, per room: the exterior through the front
+ * doors, or, ONLY on a storey with no front door, the rooms its shafts arrive in — the same
+ * sources {@link bottleneckDoors} and the circulation model walk from. A breadth-first search
+ * over the non-ambiguous connectors; a room it never reaches is absent.
+ */
+function hopsOf(ctx: LintContext): ReadonlyMap<string, number> {
+  const memo = hopsCache.get(ctx);
+  if (memo) return memo;
+  const edges = ctx.access().edges.filter((e) => !e.ambiguous);
+  const hops = new Map<string, number>();
+  let frontier = ctx.access().hasEntrance ? [EXTERIOR_NODE] : [...ctx.building.arrivalRooms];
+  for (const n of frontier) hops.set(n, 0);
+  for (let d = 1; frontier.length > 0; d++) {
+    const next: string[] = [];
+    for (const u of frontier)
+      for (const e of edges) {
+        if (!e.between.includes(u)) continue;
+        const v = e.between[0] === u ? e.between[1] : e.between[0];
+        if (v === "" || hops.has(v)) continue;
+        hops.set(v, d);
+        next.push(v);
+      }
+    frontier = next;
+  }
+  hopsCache.set(ctx, hops);
+  return hops;
+}
+
+/**
+ * A connector named as a reader would name it: by the rooms it joins (`the door between "Hall"
+ * and "Bath"`, `the door from outside into "Hall"`), never by its id. A consumer may show the
+ * message to someone who never sees the source; the id an agent edits by is in the hints
+ * ({@link narrowHints}). The room fewer door hops from where the walk starts comes first
+ * ({@link hopsOf}; source order on a tie), so the phrase reads in the walk's direction.
+ */
+function connectorPhrase(e: AccessEdge, ctx: LintContext): string {
+  const byId = new Map(ctx.rooms.map((r, i) => [r.id, { r, i }] as const));
+  const depth = hopsOf(ctx);
+  const name = (id: string): string => {
+    const hit = byId.get(id);
+    return `"${hit ? ctx.labelOf(hit.r) : id}"`;
+  };
+  if (e.exterior) {
+    const inside = e.between[0] === EXTERIOR_NODE ? e.between[1] : e.between[0];
+    return `the ${e.kind} from outside into ${name(inside)}`;
+  }
+  const rank = (id: string): [number, number] => [depth.get(id) ?? Number.POSITIVE_INFINITY, byId.get(id)?.i ?? 0];
+  const [a, b] = e.between;
+  const [ra, rb] = [rank(a), rank(b)];
+  const [first, second] = ra[0] < rb[0] || (ra[0] === rb[0] && ra[1] <= rb[1]) ? [a, b] : [b, a];
+  return `the ${e.kind} between ${name(first)} and ${name(second)}`;
+}
+
 /** The message clause naming the connectors a walk squeezes through, or nothing. */
-function namedClause(doors: readonly AccessEdge[] | null, width: number): string {
+function namedClause(doors: readonly AccessEdge[] | null, width: number, ctx: LintContext): string {
   if (doors === null) return "";
   const same = doors.every((e) => Math.round(e.estimatedClearWidth) === width);
   const list = doors.map(
-    (e) => `${e.kind} "${e.doorId}"${same ? "" : ` (${mm(Math.round(e.estimatedClearWidth))} mm clear)`}`,
+    (e) => `${connectorPhrase(e, ctx)}${same ? "" : ` (${mm(Math.round(e.estimatedClearWidth))} mm clear)`}`,
   );
   if (list.length === 1) return ` — the bottleneck is ${list[0]}, ${mm(width)} mm clear`;
-  const joined = `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
+  // Each item already says "between X and Y", so the list takes a comma before its last "and".
+  const joined = `${list.slice(0, -1).join(", ")}, and ${list[list.length - 1]}`;
   return ` — the bottlenecks are ${joined}${same ? `, each ${mm(width)} mm clear` : ""}: widen them together`;
 }
 
@@ -488,7 +545,7 @@ export const pathTooNarrow: LintRule = {
         severity: "warning",
         code: "W_PATH_TOO_NARROW",
         ...at(r),
-        message: `The walk from the entrance to "${labelOf(r)}" squeezes to ${mm(rc.bottleneckClearWidthMm)} mm (${mm(shortfall(min, rc.bottleneckClearWidthMm))} mm below the ${mm(min)} mm minimum)${namedClause(doors, rc.bottleneckClearWidthMm)}.`,
+        message: `The walk from the entrance to "${labelOf(r)}" squeezes to ${mm(rc.bottleneckClearWidthMm)} mm (${mm(shortfall(min, rc.bottleneckClearWidthMm))} mm below the ${mm(min)} mm minimum)${namedClause(doors, rc.bottleneckClearWidthMm, ctx)}.`,
         hints: narrowHints(min, doors, ctx),
       });
     }

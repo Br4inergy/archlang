@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Two lint messages name things the way a person would, and leave the element id to the hint.** A consumer may show a diagnostic's `message` to someone who never sees the source, and 1.43.0's reworded `W_PATH_TOO_NARROW` and `W_FURNITURE_WALL_COLLISION` quoted ids there. `W_PATH_TOO_NARROW` now names a bottleneck door by the rooms it joins, the room nearer where the walk starts first: `— the bottleneck is the door between "Hall" and "Bath", 640 mm clear` (was `door "d_bath"`), or `the door from outside into "Hall"` for a front door; a list of several takes a comma before its last `and`. `W_FURNITURE_WALL_COLLISION` says `penetrates the partition wall at x 4000` (was `partition wall "w_part" at x 4000`), or `a partition wall` when the wall is curved or diagonal. The ids are unchanged in the hints, which already carried them (`Widen door "d_bath" to …`, `wall "w_part"`), so an agent edits by the same handle; the clause shapes (`— the bottleneck is …, N mm clear`, `— the bottlenecks are …: widen them together`) are kept. `W_FIXTURE_BACK_TO_ROOM` and `W_ROOM_NO_FIXTURE` already quoted only a room or fixture name and are unchanged. `lint()` message text only: no SVG, `describe()`, compile diagnostic, code, span or hint moved, and no diagnostic was added or withdrawn.
+
 - **`@chanmeng666/arch-plan` 0.1.1 is published by the release workflow.** The element is unchanged; the version exists so the package's first trusted-publishing release (OIDC, with provenance) goes through `release.yml` instead of the owner's machine, as the core and the shim already do.
 
 ## [1.43.0] - 2026-10-14
