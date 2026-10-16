@@ -2430,7 +2430,9 @@ npmjs trusted publisher once (steps in `.claude/commands/release-check.md`).
 The zone rule `mcp abuse guard` was widened from `/mcp` to the whole host `mcp.archlang.uk` (same
 per-IP 100 requests per 10 s, block 10 s), so it covers `/svg/` too.
 
-### O.7 · The next shim release carries the MCP tool annotations and the OpenAI/Codex listing — `todo`
+### O.7 · The next shim release carries the MCP tool annotations and the OpenAI/Codex listing — `done`
+
+**Done 2026-10-16:** `@chanmeng666/archlang-mcp` 0.2.26 (released with core 1.43.1) ships the annotations to local installs.
 
 The next `@chanmeng666/archlang-mcp` release (bumped by `/release-check` item 2, not before) ships the
 tools' `annotations` (read-only, not destructive, idempotent, closed-world) that the OpenAI directory's
@@ -2615,7 +2617,7 @@ manifest.
 | v1.30.0 | failed, manual `gh run rerun --failed` |
 | v1.31.0 · v1.32.0 · v1.33.0 | green on attempt 1 |
 | **v1.34.0** | **all 6 retries 404'd; manual re-run needed** |
-| **v1.43.1** (2026-10-16 UTC) | **all 6 retries 404'd; manual re-run needed.** Shim `npm publish` returned 13:36:16, last registry 404 at 13:38:01, `npm view …@0.2.26` first answered 13:39:17: about 3 minutes |
+| **v1.43.1** (2026-10-16 UTC) | **all 6 retries (6 × 20 s) 404'd.** The shim publish signed its provenance at 13:36:14 and returned at 13:36:16; the registry still answered 404 at 13:38:01; `npm view …@0.2.26` first answered at 13:39:17, about 3 minutes later. Recovered by `gh run rerun --failed` once `npm view` showed the version |
 
 **Blast radius, which is why this is worth fixing rather than living with.** The registry step sits
 *before* the GitHub Release step, so its failure also left the Release uncreated while both npm
