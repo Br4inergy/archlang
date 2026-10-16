@@ -14,6 +14,13 @@ are documented here. The format is based on
 
 ## [Unreleased]
 
+## [0.31.1] - 2026-10-17
+
+### Changed
+
+- **Rebundled the core at `@chanmeng666/archlang@1.43.1`** (two lint messages name doors by
+  the rooms they join and walls by their kind and line; the hints keep the ids).
+
 ## [0.31.0] - 2026-10-14
 
 ### Added
