@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`@chanmeng666/arch-plan` 0.1.1 is published by the release workflow.** The element is unchanged; the version exists so the package's first trusted-publishing release (OIDC, with provenance) goes through `release.yml` instead of the owner's machine, as the core and the shim already do.
 
+### Changed — internal, output byte-identical
+
+- **Net internal area is computed once per storey and once per room.** On a `schedule rooms` plan 1.43.0 rebuilt every storey's wall bands and redid each room's exact area on every path that reads it (the resolver's margin-table count, the drawn ROOM SCHEDULE, `describe()`'s `rooms[]` and `schedule[]`), and a multi-storey plan resolves each storey twice; `describe()` of `examples/hillside-villa.arch` built each storey's bands four times. Both are now memoised on their exact inputs (`src/analyze/net-area-memo.ts`; `clearCache()` empties it), so every figure, SVG byte, `describe()` and `lint()` result is unchanged and no byte-identity row was re-measured. On `examples/hillside-villa.arch` (best of six interleaved medians, ms) `compile()` 74 → 43, `describe()` 120 → 54, `lint()` 90 → 49.
+
 ## [1.43.0] - 2026-10-14
 
 ### Added

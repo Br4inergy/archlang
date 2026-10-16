@@ -11,6 +11,7 @@
 // `reroll.ts`'s twin-compile proof calls the SAME function, so the two can
 // never drift apart. See that module's header.
 import { compileUncached } from "./pipeline.js";
+import { clearNetAreaMemo } from "./analyze/net-area-memo.js";
 import { clearLexCache } from "./lexer.js";
 import { clearParseCache } from "./parser.js";
 import { clearResolveCache } from "./ir.js";
@@ -523,11 +524,12 @@ export function compile(source: string, opts: CompileOptions = {}): CompileResul
   return result;
 }
 
-/** Clear the internal compile cache + all per-stage memos (lex/parse/resolve) and the `reroll` baseline memo. */
+/** Clear the internal compile cache + all per-stage memos (lex/parse/resolve, net area) and the `reroll` baseline memo. */
 export function clearCache(): void {
   cache.clear();
   clearLexCache();
   clearParseCache();
   clearResolveCache();
+  clearNetAreaMemo();
   resetRerollCache();
 }
