@@ -2615,6 +2615,7 @@ manifest.
 | v1.30.0 | failed, manual `gh run rerun --failed` |
 | v1.31.0 · v1.32.0 · v1.33.0 | green on attempt 1 |
 | **v1.34.0** | **all 6 retries 404'd; manual re-run needed** |
+| **v1.43.1** (2026-10-16 UTC) | **all 6 retries 404'd; manual re-run needed.** Shim `npm publish` returned 13:36:16, last registry 404 at 13:38:01, `npm view …@0.2.26` first answered 13:39:17: about 3 minutes |
 
 **Blast radius, which is why this is worth fixing rather than living with.** The registry step sits
 *before* the GitHub Release step, so its failure also left the Release uncreated while both npm
