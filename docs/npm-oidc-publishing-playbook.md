@@ -149,8 +149,10 @@ Template notes, each learned the hard way or from the docs:
 3. **Package-level "Publishing access" setting** — the option "Require two-factor
    authentication and disallow tokens" does NOT block trusted publishing (it blocks GATs), but
    while you still depend on any token anywhere, know that this radio silently EOTPs it.
-4. **`npm view` can lag a minute** after publish on edge caches — verify against the registry
-   JSON (`https://registry.npmjs.org/<pkg>`) before declaring failure.
+4. **`npm view` can lag minutes** after publish on edge caches: about three minutes on the v1.43.1
+   shim publish, which is why the release workflow now waits up to ten minutes for it before the
+   MCP registry sync. Verify against the registry JSON (`https://registry.npmjs.org/<pkg>`) before
+   declaring failure.
 5. **npm 12 on dev machines/CI**: when it arrives, dependency install scripts stop running by
    default — build an allowlist with `npm approve-scripts` and commit it, or installs of
    script-dependent toolchains (esbuild et al.) break quietly.

@@ -54,10 +54,6 @@ Non-obvious traps that no test catches, or whose symptom points the wrong way. E
 - **`npm run check:drift` regenerates in place.** A red run leaves the regenerated artifacts
   (`examples/*.svg` after any rendering change) modified in the working tree. Read the diff, then
   commit them or `git checkout --` them; do not mistake them for your own edits.
-- **A `.gitleaksignore` fingerprint names a commit.** A re-measured digest row keyed by a key-ish
-  word (`accessible`) is allowlisted at the branch commit that introduced it, so the branch must
-  land by a merge commit: a squash or rebase re-creates the line in a new commit and the nightly
-  full-history scan flags it again.
 
 ## Docs & prose
 
@@ -106,7 +102,9 @@ Non-obvious traps that no test catches, or whose symptom points the wrong way. E
   `Bin`, search skips the file). Write `\u0000`.
 - **gitleaks `generic-api-key` flags SHA-256 digest tables keyed by a name containing a key-ish word**
   (e.g. `accessible`). Allowlist the exact fingerprint per `.gitleaksignore`'s header and hold the
-  file in `test/opaque-literal-guard.test.ts`; never a glob.
+  file in `test/opaque-literal-guard.test.ts`; never a glob. The fingerprint names the branch commit,
+  so the branch must land by a merge commit: a squash or rebase re-creates the line in a new commit
+  and the nightly full-history scan flags it again.
 - **In a `.claude/worktrees/*` checkout whose `node_modules` is a junction to the primary,
   `editors/vscode/test/wrong-core.test.ts` fails by design**, so `npm run check` is fully green only
   in the primary checkout and a `&&` gate chain stops there. Run gates one by one in a worktree;
