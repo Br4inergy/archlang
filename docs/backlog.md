@@ -2376,6 +2376,51 @@ per-plan total and omit `net_area_m2` past it, as a single room already omits pa
 **Gate:** the adversarial plan above returns within the budget, with net areas omitted rather
 than late; the corpus `describe()` output does not move. **Size:** M.
 
+## Found downstream (2026-10-17)
+
+ArchCanvas adopted net area and the issued-sheet statements and showed two gaps that only a
+consumer sees. Each has an issue holding its measurements; the numbers below are the issue's own
+and were not re-run when filing.
+
+### H.1 · Lint messages still quote element ids (issue #187) — `todo`
+
+**Observed.** A consumer shows a diagnostic's `message` verbatim to people who never see the
+source, so an id in it (`"d_main"`, `"w_mid"`, `"r_bath"`, an auto-generated `"door_1"`) is
+noise to them. PR #186 fixed `W_PATH_TOO_NARROW` and `W_FURNITURE_WALL_COLLISION`. These
+still quote ids: `W_CIRCUITOUS_PATH` (the entrance door), `W_POCKET_RUN` (the host wall),
+`W_OPENING_NOT_DIMENSIONED` from the `dims auto all` chain rule (the opening and the wall),
+`W_FIXTURE_WRONG_ROOM` (the room id where its label is what a person knows), and every room rule
+for an unlabelled room, because `labelOf` (`src/lint/context.ts`) falls back to `r.id`.
+
+**Hypothesis.** The shape #186 used carries over: a door by the rooms it joins, a wall by its kind
+and the line it runs on, a room by its label, with the id kept or moved into the hint. The unlabelled-room fallback needs a decision first: a derived name (the room's use plus its
+position) or the id marked as one.
+
+**Gate:** extend `CODES` in the "messages name things as a reader would" law in
+`test/lint-fix-texts.test.ts` to these codes, with a minimal plan per rule (the shipped corpus
+raises none of them); re-measure the byte-identity rows as #186 did, by hashing the new compile
+and describe with the old `lint()` and checking the old row reproduces. **Size:** M.
+
+### H.2 · `finish()` cannot accept a code its caller treats as advisory (issue #189) — `todo`
+
+**Observed.** `finish()`'s never-worse law (`codesOf`, `src/finish.ts`) refuses any statement
+that adds a diagnostic code, so where `dims auto all` raises `W_OPENING_NOT_DIMENSIONED` the sheet
+stage degrades it to `dims auto overall`. ArchCanvas treats that code as advisory. Over 416 of
+its recorded plans, 410 match `finish({ only: "sheet" })` on every sheet statement; the other 6
+differ only in `dims auto all` (its own chooser) versus `dims auto overall` (upstream), each on a
+courtyard or recessed face whose opening no facade chain passes. This is the one thing keeping
+ArchCanvas on its own sheet chooser.
+
+**Hypothesis.** An explicit allow-list, `FinishOptions.accept: [codes]`: an accepted code leaves
+the before/after comparison under every profile, errors are never acceptable, and each statement
+kept only because of `accept` gets a `FinishNote` naming the code. It defaults to empty. The
+alternative, a lint profile with per-code severity, is larger and changes what `lint()` reports.
+
+**Gate:** with `accept` omitted every `finish` law test and the corpus output are unchanged; a plan
+whose `dims auto all` raises only `W_OPENING_NOT_DIMENSIONED` keeps `dims auto all` under
+`accept: ["W_OPENING_NOT_DIMENSIONED"]` with a note naming the code; fixpoint holds with `accept` as
+part of the input; an unknown or error code is a usage error. **Size:** S.
+
 ## Registry listings (opened 2026-10-10)
 
 The state of each listing is the table in `docs/seo.md` § 8. These are what is still owed.

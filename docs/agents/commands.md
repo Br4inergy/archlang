@@ -71,8 +71,10 @@ Two things it pins:
   the workspace version, so a stale `editors/vscode/dist/server.js` fails it after a version bump.
 - **npm shows a just-published version only about 3 minutes after `npm publish` returns.** The
   shim's core-exports check (`VIEW_ATTEMPTS`, `VIEW_INTERVAL_MS` in
-  `packages/mcp/scripts/check-core-exports.ts`) and the MCP-registry step can trip on it; the
-  remedy is `gh run rerun <id> --failed` (idempotent).
+  `packages/mcp/scripts/check-core-exports.ts`) can trip on it. The MCP-registry publish validates
+  against npm, so `release.yml` first runs "Wait for npm to show the shim version" (`npm view
+  … --prefer-online` every 20 s, up to 10 minutes) and fails there if npm never answers. Whatever
+  still fails, the remedy is `gh run rerun <id> --failed` (idempotent; backlog 4.7).
 
 `@chanmeng666/arch-plan` is published by `release.yml` in its own job, `publish-arch-plan`, after the
 core, so a failure there never blocks the core, the shim or the registry.

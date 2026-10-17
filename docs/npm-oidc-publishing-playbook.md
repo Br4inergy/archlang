@@ -128,6 +128,12 @@ Template notes, each learned the hard way or from the docs:
   publish happen this run"** — otherwise an npm-ok/registry-failed partial run skips the sync
   forever on re-run. (Example: the MCP registry — `mcp-publisher login github-oidc` →
   `mcp-publisher publish` is likewise tokenless under the same `id-token: write`.)
+- **Wait for npm to show the version before a secondary registry validates against it.** npm
+  makes a fresh version visible to third parties minutes after `npm publish` returns, longer than
+  a short retry loop (2 minutes) covers, so poll `npm view <pkg>@<version> version --prefer-online`
+  (every 20 s, up to 10 minutes; `--prefer-online` skips the local cache an earlier lookup filled)
+  and only then run the sync. If the sync still fails, `gh run rerun <id> --failed` is the
+  recovery: the guards above make it safe.
 
 ## Gotchas that will actually bite you
 

@@ -60,6 +60,10 @@ Owner decisions and laws that no test fully states. Do not re-propose, re-open o
   past it an element is `E_OUT_OF_RANGE`. Do not widen it to suit an input.
 - **Budgets are counts, never time, and every input returns a diagnostic**, never a hang or a throw
   (`E_STEP_LIMIT`, `E_DRAWING_LIMIT`). Never replace one with a wall-clock timeout.
+- **A `lint()` diagnostic's `message` names things the way a person would** (rooms by label, doors
+  by the rooms they join, walls by kind and the line they run on) and never quotes an element id;
+  ids live only in `hint`. A consumer may show `message` to someone who never sees the source,
+  while an agent edits by the id in the hint (`test/lint-fix-texts.test.ts` holds the codes it covers).
 - **Circulation**: furniture within R + δ of a doorway's face reads the room `blocked` (kept; no one can
   stand in the doorway). There is no far-seed stamp: routes start and rooms are reached on the
   room's floor, and a door's width lives only on the cells its carve opened.
