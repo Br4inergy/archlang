@@ -109,6 +109,9 @@ source (.arch)
   element's own `resolve()` fix text and Plan JSON's decompiler
 - `analyze/symmetry.ts` a plan's D4 ⋉ Z² stabiliser and its repeats · `analyze/syntax.ts`
   space-syntax depths/RA/RRA/integration on the access graph — both opt-in `describe --facts`
+- `analyze/net-area-memo.ts` memoises each storey's wall bands and each room's exact net internal
+  area, keyed on their exact inputs (ADR 0027's figures, output byte-identical); `clearCache()`
+  empties it
 - `analyze/circulation.ts` the walking model on a nav grid. A door's width lives only on the cells
   its carve opened; routes start, and rooms are reached, on the room's floor (the cells walkable
   before any carve). A storey with no front door is seeded at the arrival head of each arriving

@@ -128,6 +128,12 @@ Template notes, each learned the hard way or from the docs:
   publish happen this run"** — otherwise an npm-ok/registry-failed partial run skips the sync
   forever on re-run. (Example: the MCP registry — `mcp-publisher login github-oidc` →
   `mcp-publisher publish` is likewise tokenless under the same `id-token: write`.)
+- **Wait for npm to show the version before a secondary registry validates against it.** npm
+  makes a fresh version visible to third parties minutes after `npm publish` returns, longer than
+  a short retry loop (2 minutes) covers, so poll `npm view <pkg>@<version> version --prefer-online`
+  (every 20 s, up to 10 minutes; `--prefer-online` skips the local cache an earlier lookup filled)
+  and only then run the sync. If the sync still fails, `gh run rerun <id> --failed` is the
+  recovery: the guards above make it safe.
 
 ## Gotchas that will actually bite you
 
@@ -143,8 +149,10 @@ Template notes, each learned the hard way or from the docs:
 3. **Package-level "Publishing access" setting** — the option "Require two-factor
    authentication and disallow tokens" does NOT block trusted publishing (it blocks GATs), but
    while you still depend on any token anywhere, know that this radio silently EOTPs it.
-4. **`npm view` can lag a minute** after publish on edge caches — verify against the registry
-   JSON (`https://registry.npmjs.org/<pkg>`) before declaring failure.
+4. **`npm view` can lag minutes** after publish on edge caches: about three minutes on the v1.43.1
+   shim publish, which is why the release workflow now waits up to ten minutes for it before the
+   MCP registry sync. Verify against the registry JSON (`https://registry.npmjs.org/<pkg>`) before
+   declaring failure.
 5. **npm 12 on dev machines/CI**: when it arrives, dependency install scripts stop running by
    default — build an allowlist with `npm approve-scripts` and commit it, or installs of
    script-dependent toolchains (esbuild et al.) break quietly.

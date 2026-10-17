@@ -56,7 +56,9 @@ you observed. Do NOT push anything — this command only verifies.
      mismatch with the core's exact `optionalDependencies` pin.
 
 3. **CHANGELOG.md has an entry for the new version**, and
-   `node scripts/changelog-section.mjs <version>` exits 0 with the section body.
+   `node scripts/changelog-section.mjs <version>` exits 0 with the section body. A new sheet-level
+   statement is called out there: a consumer that strips or owns the sheet layer must learn it
+   (ArchCanvas had to add `notes` to its strip list by hand; no test of its own could have caught it).
 
 4. **`package.json` `repository.url` owner is byte-exact `ChanMeng666`** (provenance fails with E422
    otherwise).

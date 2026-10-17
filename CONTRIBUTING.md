@@ -108,7 +108,7 @@ in [docs/npm-oidc-publishing-playbook.md](docs/npm-oidc-publishing-playbook.md).
 3. Commit, push, then tag: `git tag vX.Y.Z && git push origin vX.Y.Z`. The tag push triggers
    `release.yml`, which publishes the core, then the MCP shim (if its version moved), then syncs
    the MCP registry — each step skips versions already on its registry, so re-running a partial
-   failure is safe (`gh workflow run release.yml` re-dispatches).
+   failure is safe (`gh run rerun --failed <run-id>` re-runs the failed jobs).
 
 > **Provenance gotcha:** npm rejects the publish (E422) if `package.json`'s
 > `repository.url` casing differs from the real repo — it must say
