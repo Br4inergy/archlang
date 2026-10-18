@@ -2036,7 +2036,7 @@ room at (1000,0) size 2000x2000   # warning
 
 *warning* — Room is implausibly small.
 
-**Cause.** A room's floor area is below the configured minimum (default 4 m²).
+**Cause.** A room's floor area is below the minimum for its use. A room is held to the generic minimum (default 4 m²) unless every use it has (its `uses`, or its label when it has none) has a floor of its own: a WC 1.1 m² and a bathroom 2.0 m² (GB 50096-2011 5.4.2, read as advice), while a store, utility room, hall, circulation space or entry has no area floor at all (a passage is judged by its width, `W_PATH_TOO_NARROW`). A room with several uses takes the highest floor among them, and a room with no classified use keeps the generic minimum. The per-use floors are the `minRoomAreaByUseM2` ruleset setting, so a profile can change them.
 
 **Fix.** Increase its `size`, or merge it into an adjacent space.
 

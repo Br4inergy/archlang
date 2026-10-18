@@ -6,12 +6,14 @@
  */
 
 import type { AnalyzeOptions } from "../analyze.js";
+import type { UseKind } from "../ast.js";
 import { DEFAULT_TOL } from "../analyze.js";
 import { FIXTURE_WALL_TOL_MM } from "../fixture-orientation.js";
 
 /** Tunable thresholds for the lint rules. All distances in mm, areas in m². */
 export interface LintRuleset {
-  /** Rooms smaller than this (m²) warn as implausibly small. Default 4. */
+  /** Rooms smaller than this (m²) warn as implausibly small. Default 4. A room whose every
+   *  use has its own entry in {@link minRoomAreaByUseM2} is held to that instead. */
   minRoomAreaM2: number;
   /** Doors narrower than this (mm) warn as sub-passable. Default 700 (≥800 recommended). */
   minDoorWidthMm: number;
@@ -150,6 +152,28 @@ export interface LintRuleset {
    * centreline, so half its thickness counts as floor that nobody can stand on.
    */
   minStraddleCoverMm: number;
+  /**
+   * `W_ROOM_TOO_SMALL`'s floor (m²) for a room of a given use, read from {@link roomUses}
+   * (its `uses`, else its label). `null` exempts the use: no floor at all. A use with no
+   * entry, and a room with no classified use, keep {@link minRoomAreaM2}. A room with
+   * several uses takes the highest floor among them, so `uses kitchen storage` is held to
+   * the kitchen's 4 m² and `uses hall storage` to none.
+   *
+   * **Why per use.** One 4 m² floor for every room made the rule ask a WC and a cupboard to
+   * be the size of a kitchen; repairing against it, an author inflated a café's staff WC to
+   * 1.6 × 3.4 m and deleted a house's linen store (plan-soundness audit, first contact,
+   * "repair pressure"). The defaults:
+   *  - `wc` 1.1: GB 50096-2011 5.4.2 item 5, a room with a WC alone, at least 1.10 m².
+   *  - `bath` 2.0: GB 50096-2011 5.4.2 items 2 and 3, the smallest combinations with a
+   *    shower or bath (WC + shower, basin + shower), at least 2.00 m². A three-fixture
+   *    bathroom wants 2.50 m² (5.4.1); the rule does not count fixtures, so it asks the lower.
+   *  - `storage`, `utility`, `hall`, `circulation`, `entry` exempt: the standard sets no area
+   *    for a store, a laundry or a lobby, and a cupboard is a room. A passage is judged by its
+   *    width (`W_PATH_TOO_NARROW`), never its area.
+   * Clauses as read in `docs/plans/plan-soundness/research/prior-art.md` §3.1 (full text
+   * extracted), applied as advice, never as compliance (ADR 0005).
+   */
+  minRoomAreaByUseM2: Readonly<Partial<Record<UseKind, number | null>>>;
 }
 
 export const DEFAULT_RULESET: LintRuleset = {
@@ -169,6 +193,15 @@ export const DEFAULT_RULESET: LintRuleset = {
   junctionNibThicknessRatio: 0.5,
   minMullionMm: 100,
   minStraddleCoverMm: 100,
+  minRoomAreaByUseM2: Object.freeze({
+    wc: 1.1,
+    bath: 2.0,
+    storage: null,
+    utility: null,
+    hall: null,
+    circulation: null,
+    entry: null,
+  }),
 };
 
 /**
