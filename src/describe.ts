@@ -189,7 +189,7 @@ export interface DoorSummary {
   /**
    * The one or two spaces this door connects: room ids, and/or the literal
    * `"exterior"` when the door sits on an outer wall with open space on one side.
-   * Read off the host wall: the space one wall thickness off each face.
+   * Read off the host wall: the space one wall thickness either side of its centreline.
    */
   between: string[];
   /** Every room the door's clear span covers on one face of its host wall, when that is

@@ -1002,8 +1002,8 @@
  * ## `hillside-villa`: both rows re-measured — `between` is read off the host wall's faces
  *
  * Case (1), a compiler change, in `describe()` only (backlog C.4, plan-soundness PS0.1;
- * `test/between-face-probes.test.ts`). A connector on a wall now joins the space one wall
- * thickness off each face of that wall, not the rooms whose edges its centre point touches,
+ * `test/between-face-probes.test.ts`). A connector on a wall now joins the space probed one wall
+ * thickness either side of that wall's centreline, not the rooms whose edges its centre point touches,
  * and one whose clear span covers more than one room on a face carries an additive
  * `straddles` list. Field by field, `describe()` gains that one key and nothing else moves:
  * `o_entry_dining` (2400 mm on `w_l1_band_w`, x 4300..6700) spans the end of `w_liv_din`
@@ -1012,7 +1012,8 @@
  * Hashing the NEW `compile()` with the PREVIOUS `describe()` reproduces both previous rows
  * (with the new `lint()` as well as the old: `lint()` did not move), and the rows in
  * `while-byte-identity-baseline.ts` and `import-module-lets.test.ts`. Every storey's SVG and
- * `compile().diagnostics` are byte-identical. No other row in this table moved.
+ * `compile().diagnostics` are byte-identical, and so are its Plan JSON (`compile -f json`) and its
+ * `lint()` under `accessibility-advisory`. No other row in this table moved.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */

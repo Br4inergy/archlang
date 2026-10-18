@@ -645,8 +645,8 @@ plan "corner" {
 It was `describe().doors[d].between` `["a", "b"]`, `access.entrances` `[]`, lint `W_NO_ENTRANCE`.
 The same cause covered a door CENTRED on an exterior T-junction (plan-soundness PS0.1). The fix is
 wider than the one proposed here: every connector with a host wall, on any wall category, now
-joins the space one wall thickness off each face of that wall (`connectorConnection`,
-`src/analyze.ts`), probed at the centre and just inside both jambs. A centre probe on a boundary two
+joins the space probed one wall thickness either side of that wall's centreline (`connectorConnection`,
+`src/analyze.ts`), at the centre and just inside both jambs, when the point touches that room. A centre probe on a boundary two
 rooms share takes the room covering more of the clear span on that face. A connector with no
 host, or whose faces do not name two spaces, keeps `doorConnections`; the 3+-room policy is
 unchanged. The repro now reads `between ["exterior", "b"]`, `access.entrances ["d"]`, no

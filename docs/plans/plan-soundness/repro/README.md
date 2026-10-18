@@ -3,7 +3,8 @@
 Minimal sources behind `../evidence.md`. They are evidence, not examples: no test walks this folder.
 When PS1.1 builds `test/defect-corpus/`, reduce these further and move them there.
 
-Lint as of `main@98bd30b`:
+Lint as of `main@98bd30b`, except the `door-on-tee.arch` row, which is as of the PS0.1 branch
+(`fix/between-face-probes`):
 
 | File | What it shows | Lint |
 |---|---|---|

@@ -18,7 +18,7 @@ import { NULL_WORLD } from "./world.js";
 import type { Diagnostic } from "./diagnostics.js";
 import type { Point } from "./ast.js";
 import type { CompileOptions } from "./types.js";
-import { segmentsOfWall, wallFaceProbes, type WallLike, type WallSegment } from "./geometry.js";
+import { distPointToWallSegment, segmentsOfWall, wallFaceProbes, type WallLike, type WallSegment } from "./geometry.js";
 import { mergedLength, overlap1d, pointInRect, type BBox } from "./geometry/rect.js";
 import {
   collinearOverlapLength,
@@ -310,8 +310,8 @@ export const DEFAULT_CLEAR_ALLOWANCE_MM = 60;
  * several room edges, so the edge-touch test alone does not say which two rooms it
  * connects.
  *
- *  - `"probe"` asks the connector's HOST WALL: one wall thickness off each face
- *    ({@link wallFaceProbes}), which room's floor holds the probe point
+ *  - `"probe"` asks the connector's HOST WALL: one wall thickness either side of its
+ *    centreline ({@link wallFaceProbes}), which room's floor holds the probe point
  *    ({@link pointInRoomBox}, shape-aware)? A probe on no floor is the `exterior` side
  *    when the host is an exterior wall. When both faces resolve, to two different
  *    spaces, the connector joins exactly those. When either face cannot be decided —
@@ -348,7 +348,8 @@ export interface AccessConnector {
  */
 export const JAMB_PROBE_INSET_MM = 50;
 
-/** What one face of a connector's host wall holds, one wall thickness off that face. */
+/** What one side of a connector's host wall holds, probed one wall thickness from the
+ *  host's CENTRELINE ({@link wallFaceProbes}) — half a thickness past that face. */
 interface FaceReading {
   /** Rooms whose floor holds the CENTRE probe (closed bounds), in `roomRects` order. */
   holders: string[];
@@ -419,9 +420,14 @@ function alongHost(host: NonNullable<AccessConnector["host"]>, at: Point, along:
 }
 
 /**
- * The two faces of a connector's host wall, `[minus, plus]` ({@link wallFaceProbes}),
- * each probed one wall thickness off the face at the centre and a little inside both
- * jambs ({@link JAMB_PROBE_INSET_MM}). `null` for a connector with no host.
+ * The two sides of a connector's host wall, `[minus, plus]` ({@link wallFaceProbes}),
+ * each probed one wall thickness from the host's centreline (half a thickness past the
+ * face) at the centre and a little inside both jambs ({@link JAMB_PROBE_INSET_MM}). `null`
+ * for a connector with no host.
+ *
+ * A room whose bounding box, grown by the host's thickness, misses the probe path's box is
+ * skipped before its shape is asked: a room's box holds its whole floor, so this only
+ * FILTERS candidates — every answer still comes from the shape.
  */
 function connectorFaces(
   c: Pick<AccessConnector, "at" | "host"> & { width?: number },
@@ -438,9 +444,14 @@ function connectorFaces(
   const read = (side: "minus" | "plus"): FaceReading => {
     const mid = centre[side];
     const path = [jambLo[side], mid, jambHi[side]];
+    const x0 = Math.min(path[0]!.x, mid.x, path[2]!.x) - dist;
+    const x1 = Math.max(path[0]!.x, mid.x, path[2]!.x) + dist;
+    const y0 = Math.min(path[0]!.y, mid.y, path[2]!.y) - dist;
+    const y1 = Math.max(path[0]!.y, mid.y, path[2]!.y) + dist;
     const holders: string[] = [];
     const cover: FaceReading["cover"] = [];
     for (const [id, box] of roomRects) {
+      if (box.x > x1 || box.x + box.w < x0 || box.y > y1 || box.y + box.h < y0) continue;
       if (pointInRoomBox(mid, box)) holders.push(id);
       const mm = pathLengthInRoom(path, box);
       if (mm > 0) cover.push({ id, mm });
@@ -484,10 +495,16 @@ function probeConnection(
  * is on one floor is that room; on no floor, `exterior` behind an exterior host (else
  * undecided); on a boundary two floors share, the room covering more of that face's
  * clear span — a measured length, ties to `roomRects` order.
+ *
+ * A face's room counts only when it is one of the rooms the connector's point `touching`
+ * (`exterior` always counts). The probe stands half a thickness past the face, so behind a
+ * thick wall and a room shallower than that it lands in the room beyond, which the
+ * connector does not open into; such a face decides nothing.
  */
 function faceConnection(
   faces: [FaceReading, FaceReading],
   hostCategory: string,
+  touching: readonly string[],
   roomRects: Map<string, RoomBox>,
 ): [string, string] | null {
   const face = (f: FaceReading): string | null => {
@@ -501,7 +518,7 @@ function faceConnection(
         bestMm = mm;
       }
     }
-    return best;
+    return touching.includes(best) ? best : null;
   };
   const a = face(faces[0]);
   const b = face(faces[1]);
@@ -511,20 +528,14 @@ function faceConnection(
 
 /**
  * Every room a face's clear span covers, over each face that covers more than one, in
- * `roomRects` order — or `undefined` when no face does, or when the list would only
- * restate `between`.
+ * `roomRects` order — or `undefined` when no face does. Never suppressed for equalling
+ * `between`: a wall running into the opening is the fact, whichever rooms it divides.
  */
-function straddledRooms(
-  faces: [FaceReading, FaceReading],
-  between: readonly string[],
-  roomRects: Map<string, RoomBox>,
-): string[] | undefined {
+function straddledRooms(faces: [FaceReading, FaceReading], roomRects: Map<string, RoomBox>): string[] | undefined {
   const covered = new Set<string>();
   for (const f of faces) if (f.cover.length > 1) for (const x of f.cover) covered.add(x.id);
   if (covered.size === 0) return undefined;
-  const out = [...roomRects.keys()].filter((id) => covered.has(id));
-  const same = out.length === between.length && out.every((id) => between.includes(id));
-  return same ? undefined : out;
+  return [...roomRects.keys()].filter((id) => covered.has(id));
 }
 
 /**
@@ -537,7 +548,8 @@ function straddledRooms(
  *  - A host, ≤2 rooms touching: the room on each face of the host wall
  *    ({@link faceConnection}) — never the centre point's edge touch alone, which hands an
  *    exterior door on a T-junction or beside a partition's end to the two rooms inside.
- *    When the faces do not name two different spaces, {@link doorConnections}' answer.
+ *    A face's room counts only if the point touches it. When the faces do not name two
+ *    different spaces, {@link doorConnections}' answer.
  *  - A host, 3+ rooms touching: resolved by `policy` ({@link AmbiguityPolicy}); when that
  *    cannot decide it keeps {@link doorConnections}' pair for display and is `ambiguous`.
  *
@@ -553,16 +565,24 @@ export function connectorConnection(
   const touching = roomsAtPoint(c.at, roomRects, tol);
   const faces = connectorFaces(c, roomRects);
   const hostCategory = c.host?.category ?? "";
+  // A connector that is not ON its host — a free `door at` far from every wall is still
+  // given the nearest segment — has no faces of its own: it keeps the edge-touch answer and
+  // straddles nothing. The tolerance is `hostInfoForWalls`' own on-wall test. (The 3+-room
+  // policy probes it as it always has.)
+  const onHost =
+    c.host !== null && distPointToWallSegment(c.at, c.host) <= c.host.thickness / 2 + Math.max(c.host.thickness, 1);
   let between: string[];
   let ambiguous = false;
   if (touching.length < 3) {
-    between = (faces && faceConnection(faces, hostCategory, roomRects)) ?? doorConnections(c, roomRects, tol);
+    between =
+      (faces && onHost && faceConnection(faces, hostCategory, touching, roomRects)) ||
+      doorConnections(c, roomRects, tol);
   } else {
     const probed = faces && policy === "probe" ? probeConnection(faces, hostCategory, roomRects) : null;
     between = probed ?? doorConnections(c, roomRects, tol);
     ambiguous = probed === null;
   }
-  const straddles = faces ? straddledRooms(faces, between, roomRects) : undefined;
+  const straddles = faces && onHost ? straddledRooms(faces, roomRects) : undefined;
   return straddles ? { between, ambiguous, straddles } : { between, ambiguous };
 }
 
@@ -590,10 +610,10 @@ export interface AccessEdge {
    *  bottleneck and circulation. */
   ambiguous: boolean;
   /** Every room the opening's clear span covers on a face of its host wall, when a face
-   *  covers more than one (a partition runs into the opening), in room order. Measured
-   *  one wall thickness off each face between probes just inside the jambs
-   *  ({@link JAMB_PROBE_INSET_MM}). Absent when no face straddles, or when it would only
-   *  restate `between`. */
+   *  covers more than one (a partition runs into the opening), in room order — even when
+   *  those are the `between` pair. Measured one wall thickness from the host's centreline
+   *  (half a thickness past each face) between probes just inside the jambs
+   *  ({@link JAMB_PROBE_INSET_MM}). Absent when no face straddles. */
   straddles?: string[];
 }
 
