@@ -23,6 +23,6 @@ plan "Axis Grid" {
   room id=left at (0,0) size 4000x3000 label "Left" uses living
   room id=right at (4000,0) size 4000x3000 label "Right" uses bedroom
 
-  door on shell at 20% width 900
+  door on shell at 25% width 900
   window at (2000,0) width 1200
 }

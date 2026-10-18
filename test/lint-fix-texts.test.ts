@@ -756,7 +756,7 @@ describe("the four reworded hints' messages name things as a reader would; ids s
   // compiler does). So these four messages quote only what the plan itself calls a room or a
   // piece of furniture; the element id an agent edits by is in the hints. Derived from
   // `describe()`, never retyped: a room is named by its label (its id when it has none), a
-  // piece by its label or category.
+  // piece by its label or category. The three opening rules (PS2.1–PS2.3) are held to it too.
   // The three circulation-and-privacy codes (plan-soundness PS2.5–PS2.7) were written to this
   // rule from the start; `test/lint-circulation-privacy.test.ts` holds their option texts.
   const CODES = [
@@ -767,6 +767,9 @@ describe("the four reworded hints' messages name things as a reader would; ids s
     "W_ROOM_VIA_PRIVATE",
     "W_WET_ROOM_DOOR",
     "W_ENTRANCE_INTO_PRIVATE",
+    "W_OPENING_AT_JUNCTION",
+    "W_OPENING_OVERLAP",
+    "W_CONNECTOR_AMBIGUOUS",
     "W_HABITABLE_NO_WINDOW",
     "W_ROOM_MISSING_DEFINING",
   ];
@@ -830,5 +833,69 @@ describe("the four reworded hints' messages name things as a reader would; ids s
       }
     }
     expect(checked).toBeGreaterThan(0);
+  });
+});
+
+describe("the opening rules (PS2.1–PS2.3) — a quoted move clears the warning and raises nothing new", () => {
+  // Every defect case of the three codes, read from the corpus (never retyped). Each hint that
+  // quotes a source clause for the element the warning is ON (`Move …`, not `Or move` the
+  // other opening) is applied to that statement: the warning on it is gone and nothing new
+  // appears, under both profiles. The messages quote only rooms' own names.
+  //
+  // "Nothing new" has one measured exception, and it is the case's own clean twin: a door
+  // straddling a tee can carry a phantom way into the room behind the tee, so moving it off the
+  // tee (the twin's fix as much as the hint's) uncovers that room's real way in. In
+  // `fa-door-across-tee` that is a 700 mm door (640 mm clear) into "Bathroom 1", which the twin
+  // reports as `W_PATH_TOO_NARROW` too. A move may raise a code only if the twin raises it.
+  const DIR = resolvePath("test/defect-corpus/openings-ignore-walls");
+  const OPENING_CODES = ["W_OPENING_AT_JUNCTION", "W_OPENING_OVERLAP", "W_CONNECTOR_AMBIGUOUS"];
+  const cases = readdirSync(DIR)
+    .filter((f) => f.endsWith(".arch") && !f.endsWith(".clean.arch"))
+    .map((f) => ({
+      name: f,
+      src: readFileSync(join(DIR, f), "utf8"),
+      twin: readFileSync(join(DIR, f.replace(/\.arch$/, ".clean.arch")), "utf8"),
+    }));
+  for (const p of PROFILES) {
+    it(`${p ?? "default"} · every quoted move clears its warning and raises nothing new`, () => {
+      let applied = 0;
+      for (const { name, src, twin } of cases) {
+        const twinCodes = new Set(lint(twin, opts(p)).map((x) => x.code));
+        for (const d of lint(src, opts(p)).filter((x) => OPENING_CODES.includes(x.code ?? ""))) {
+          const stmt = src.slice(d.span!.start, d.span!.end);
+          for (const h of d.hints!.filter((x) => x.startsWith("Move"))) {
+            const clause = /— `((?:on \S+ at \S+)|(?:at \([^)]*\)))`\.$/.exec(h)?.[1];
+            if (!clause) continue;
+            const moved = clause.startsWith("on ")
+              ? stmt.replace(/on \S+ at \S+/, clause)
+              : stmt.replace(/at \([^)]*\)/, clause);
+            expect(moved, `${name}: ${h}`).not.toBe(stmt);
+            const after = src.slice(0, d.span!.start) + moved + src.slice(d.span!.end);
+            expect(errorsOf(after), `${name}: ${h}`).toEqual([]);
+            expect(of(after, d.code!, p).length, `${name}: ${h}`).toBeLessThan(of(src, d.code!, p).length);
+            expect(
+              gained(src, after, p).filter((c) => !twinCodes.has(c)),
+              `${name}: ${h}`,
+            ).toEqual([]);
+            applied++;
+          }
+        }
+      }
+      expect(applied).toBeGreaterThan(10); // the corpus quotes moves, so the check ran
+    });
+  }
+
+  it("every quoted name in their messages is a room's own name", () => {
+    let seen = 0;
+    for (const { name, src } of cases) {
+      const rooms = (describePlan(src) as { rooms?: { id: string; label?: string }[] }).rooms ?? [];
+      const allowed = new Set(rooms.map((r) => r.label ?? r.id));
+      for (const d of lint(src).filter((x) => OPENING_CODES.includes(x.code ?? ""))) {
+        seen++;
+        for (const [, q] of d.message.matchAll(/"([^"]+)"/g))
+          expect(allowed.has(q!), `${name}: ${d.message}`).toBe(true);
+      }
+    }
+    expect(seen).toBeGreaterThan(10);
   });
 });

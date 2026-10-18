@@ -59,11 +59,11 @@ plan "Two-storey house" {
   level 2 "First floor" height 3000 {
     wall id=shell exterior thickness T { (0,0) (W,0) (W,D) (0,D) close }
     wall id=hall_w partition thickness 100 { (HALL,0) (HALL,D) }
-    wall id=bath_w partition thickness 100 { (0,4600) (HALL,4600) }
+    wall id=bath_w partition thickness 100 { (0,4900) (HALL,4900) }
     wall id=bed_w partition thickness 100 { (HALL,3600) (W,3600) }
 
-    room id=landing at (0,0) size 2200x4600 label "Landing" uses circulation
-    room id=bath at (0,4600) size 2200x2400 label "Bath" uses bath
+    room id=landing at (0,0) size 2200x4900 label "Landing" uses circulation
+    room id=bath at (0,4900) size 2200x2100 label "Bath" uses bath
     room id=bed1 at (2200,0) size 5800x3600 label "Bedroom 1" uses bedroom
     room id=bed2 at (2200,3600) size 5800x3400 label "Bedroom 2" uses bedroom
 
@@ -72,7 +72,7 @@ plan "Two-storey house" {
     # storey below. (Before vertical circulation was modelled this floor needed a
     # made-up balcony door to lint clean.)
     door id=d_bed1 on hall_w at 1800 width 900 swing into bed1
-    door id=d_bed2 on hall_w at 4100 width 900 swing into bed2
+    door id=d_bed2 on hall_w at 4250 width 900 swing into bed2
     door id=d_bath on bath_w at 1100 width 800 swing into bath
 
     window id=w_bed1 on shell at 5000 width 1500

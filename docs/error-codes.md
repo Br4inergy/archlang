@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**103 errors** · **57 warnings**
+**103 errors** · **60 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -118,6 +118,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_BEDROOM_NO_WINDOW`](#w_bedroom_no_window) | warning | Bedroom has no window. |
 | [`W_CIRCUITOUS_PATH`](#w_circuitous_path) | warning | A room is reached by a very roundabout path. |
 | [`W_CJK_FONT_MISSING`](#w_cjk_font_missing) | warning | PDF/PNG text has CJK characters, but the optional CJK font package is not installed. |
+| [`W_CONNECTOR_AMBIGUOUS`](#w_connector_ambiguous) | warning | A door or cased opening does not join two rooms cleanly. |
 | [`W_DIM_INSIDE`](#w_dim_inside) | warning | A hand-written dimension line lands inside the building. |
 | [`W_DIM_NO_WALL`](#w_dim_no_wall) | warning | A `dim faces`/`dim clear` endpoint has no wall to measure to. |
 | [`W_DIM_OVERLAP`](#w_dim_overlap) | warning | Two hand-written dimensions are drawn on top of each other. |
@@ -141,8 +142,10 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_HATCH_SCALE`](#w_hatch_scale) | warning | Hatch scale must be positive; using 1. |
 | [`W_IMPORT_EMPTY_FILE`](#w_import_empty_file) | warning | Whole-file import binds an empty component. |
 | [`W_NO_ENTRANCE`](#w_no_entrance) | warning | The plan has no exterior door. |
+| [`W_OPENING_AT_JUNCTION`](#w_opening_at_junction) | warning | An opening runs into a wall junction, or leaves too short a nib of wall beside a jamb. |
 | [`W_OPENING_NOT_DIMENSIONED`](#w_opening_not_dimensioned) | warning | An opening on the outside of the building is on no `dims auto all` chain. |
 | [`W_OPENING_OFF_WALL`](#w_opening_off_wall) | warning | Opening does not lie on any wall. |
+| [`W_OPENING_OVERLAP`](#w_opening_overlap) | warning | Two openings on one wall run overlap, or leave a pier thinner than a mullion. |
 | [`W_OUTDOOR_OVERLAPS_ROOM`](#w_outdoor_overlaps_room) | warning | A ground surface is laid over a room's floor. |
 | [`W_PATH_TOO_NARROW`](#w_path_too_narrow) | warning | The walk to a room squeezes below a passable width. |
 | [`W_POCKET_RUN`](#w_pocket_run) | warning | A pocket door has no wall to slide into. |
@@ -1513,6 +1516,22 @@ room id=bed at (0,0) size 3000x3000 label "Bed"   # only door is on the far side
 room at (0,0) size 4000x3000 label "厨房"   # -f pdf / -f png warns when the CJK font package is absent
 ```
 
+## W_CONNECTOR_AMBIGUOUS
+
+*warning* — A door or cased opening does not join two rooms cleanly.
+
+**Cause.** The access graph reads which two spaces a connector joins off the faces of its host wall. This one either cannot be read at all (three or more rooms meet at its point and a face probe lands on a room boundary, or in no room behind an interior wall, so the edge is `ambiguous` and joins nothing), or one face of its clear span covers more than one room (`straddles`, typically a partition meeting the host inside the doorway), so the rooms it opens into are a guess. A straddle counts only when at least two rooms each cover `max(minStraddleCoverMm, host thickness × junctionNibThicknessRatio)` of that face (100 mm by default), net of the body of the wall meeting the host there: a smaller sliver is a jamb set against the meeting wall, which `W_OPENING_AT_JUNCTION` reports alone. The message names the rooms on each side by label, with how much of the span each covers; the ids are in the hints. **Why:** a doorway joins exactly two spaces; when one side spans two rooms, `describe()`'s `between`, reachability and the circulation walk all rest on a reading the plan does not support. A connector at a wall junction usually also raises `W_OPENING_AT_JUNCTION`: that warning is about the wall in the opening, this one about which rooms it serves.
+
+**Fix.** Move the connector so each side lies in one room. The hints quote each direction with a checked position (each side in one of the rooms it touches now, no straddle, no room left unreachable, the junction nib and mullions kept), the two spaces it then opens between, and its source clause. Accept it only if the rooms it spans are one open space with no wall between them, so the doorway serves both. There is no machine-applicable fix.
+
+```arch static
+wall id=shell exterior thickness 200 { (0,0) (8000,0) (8000,5000) (0,5000) close }
+wall partition thickness 100 { (4000,0) (4000,5000) }
+room at (0,0) size 4000x5000
+room at (4000,0) size 4000x5000
+door on shell at 4000 width 900   # lint: its inner side spans both rooms
+```
+
 ## W_DIM_INSIDE
 
 *warning* — A hand-written dimension line lands inside the building.
@@ -1807,6 +1826,20 @@ import "lib.arch" as lib   # warning when lib.arch only declares components
 wall exterior thickness 200 { (0,0) (4000,0) (4000,3000) (0,3000) close }   # lint: no way in
 ```
 
+## W_OPENING_AT_JUNCTION
+
+*warning* — An opening runs into a wall junction, or leaves too short a nib of wall beside a jamb.
+
+**Cause.** A door, window or cased opening sits on its host run where another wall meets it — a tee, a crossing, a host that itself ends on another wall, or a corner — and either that wall's body stands inside the opening's span, or the nib of wall between a jamb and that wall's FACE is shorter than `max(minJunctionNibMm, host thickness × junctionNibThicknessRatio)` (100 mm and half the thickness by default). The meeting wall's footprint is where its two face lines cross the host's face line, so an angled wall is measured at the face; on a curved host only the two ends are measured. **Why:** a jamb needs a return of wall to carry its frame and architrave or its lining (100-150 mm in trade practice), and a wall inside an opening is a pier standing in it, which also leaves the rooms it serves a guess. The thickness limb is `W_DOOR_NEAR_CORNER`'s threshold read at the face instead of the centreline: for two walls of one thickness, a nib of one thickness to the corner point is a nib of half the thickness to the meeting face. **A door `W_DOOR_NEAR_CORNER` reports is not measured here at its host's corners** (one defect, one warning), only against tees and crossings, and every plan's `W_DOOR_NEAR_CORNER` output is unchanged. A door that rule passes is measured at corners too: on a thin wall its one thickness to the corner's centreline point is less than this rule's nib at the face (a 100 mm partition: 50 mm at the face, against 100). A cased opening whose jamb lands flush (0 mm) on a meeting wall's face is not reported for that jamb: the face is its jamb, and there is no sliver of wall left to carry anything (a hall that opens its full width into a room). A door or a window there still is.
+
+**Fix.** Move the opening along its run. The hints quote each direction that has a clear position: the span it lands on, the nib it leaves and the `on <wall> at <pos>` or `at (x,y)` clause. Every quoted position was checked: on the run, the nib kept to every meeting wall, a mullion kept to every other opening, `W_DOOR_NEAR_CORNER`'s nib kept at a corner, and the same rooms served, which the hint names. The two leaves of a double door move together, with a clause for each. When no direction has one, the hint gives the longest clear stretch of wall and says to use another wall the same rooms share, or to move the meeting wall. Accept it where the plan means it: glazing running past a junction onto a mullion, a screen stopping short of a cased opening's head, a frame fixed into the meeting wall. There is no machine-applicable fix: every remedy moves something the author placed, and there are always at least two.
+
+```arch static
+wall id=shell exterior thickness 200 { (0,0) (8000,0) (8000,5000) (0,5000) close }
+wall partition thickness 100 { (4000,0) (4000,5000) }
+window on shell at 4500 width 2000   # lint: the partition stands inside the window's span
+```
+
 ## W_OPENING_NOT_DIMENSIONED
 
 *warning* — An opening on the outside of the building is on no `dims auto all` chain.
@@ -1831,6 +1864,20 @@ window on w1 at 12000 width 1200   # lint: on the angled wall, no chain can meas
 
 ```arch static
 opening at (9999,9999) width 1000   # warning: not on a wall
+```
+
+## W_OPENING_OVERLAP
+
+*warning* — Two openings on one wall run overlap, or leave a pier thinner than a mullion.
+
+**Cause.** Two openings (doors, windows or cased openings) sit on one host run (the same segment, or collinear straight segments of one wall), and their along-run spans intersect or the pier of wall between them is thinner than `minMullionMm` (100 mm by default). Two openings cannot share a length of wall: one cuts through the other's frame, and a pier thinner than a mullion has no room for the two frames that meet on it. One warning per pair, on the LATER-declared opening, naming both by the rooms they serve. The two leaves of one double door (two hinged doors closing onto one shared latch jamb) are one opening and are not reported.
+
+**Fix.** Move one of the two along the run. The hints quote, for each opening and each direction, the nearest position that keeps a mullion to every other opening and the junction nib to every meeting wall and still serves the same rooms, with its source clause, or say that none exists. Where the two are deliberately one framed unit (a door with a sidelight, windows meeting on a slim mullion), accept the pier warning. There is no machine-applicable fix.
+
+```arch static
+wall id=shell exterior thickness 200 { (0,0) (8000,0) (8000,5000) (0,5000) close }
+door on shell at 4600 width 900
+window on shell at 3800 width 1200   # lint: 250 mm of the window's span is the door's
 ```
 
 ## W_OUTDOOR_OVERLAPS_ROOM

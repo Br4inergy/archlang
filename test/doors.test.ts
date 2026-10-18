@@ -441,6 +441,9 @@ suite("doors — W_POCKET_RUN", () => {
     // position again: no new syntax, so an older plan can trip them, and they are appended
     // after everything so no existing diagnostic moves. Their corpus movement is listed in
     // the commit that added them.
+    // The three opening rules (plan-soundness PS2.1–PS2.3) are in the same position, appended
+    // after those. Across the shipped examples they found real defects (audit rows X3, X10,
+    // X19, X26), which those examples now fix; every example lints as before.
     // `habitable-no-window` and `room-missing-defining` (plan-soundness PS2.8, PS2.9) are in
     // the same position again: no new syntax, appended last, every corpus movement listed in
     // `test/byte-identity-baseline.ts`'s header.
@@ -452,6 +455,9 @@ suite("doors — W_POCKET_RUN", () => {
       "room-via-private",
       "wet-room-door",
       "entrance-into-private",
+      "opening-at-junction",
+      "opening-overlap",
+      "connector-ambiguous",
       "habitable-no-window",
       "room-missing-defining",
     ]);
@@ -461,14 +467,19 @@ suite("doors — W_POCKET_RUN", () => {
     const { LINT_RULES } = await import("../src/lint/rules/index.js");
     // `door-near-corner` was last when this pin was written; `opening-not-dimensioned`
     // now follows it, and only fires under `dims auto all`, which this
-    // plan does not write. The three circulation-and-privacy rules follow those, then the two
-    // room-contents rules, and this plan has no room for any of them to read.
-    expect(LINT_RULES.map((r) => r.name).slice(-7)).toEqual([
+    // plan does not write. The three circulation-and-privacy rules follow those, and this
+    // plan has no room for them to read; the three opening rules follow those, and none fires
+    // here (a door at a corner is `W_DOOR_NEAR_CORNER`'s alone); the two room-contents rules
+    // follow those, and this plan has no room for them to read either.
+    expect(LINT_RULES.map((r) => r.name).slice(-10)).toEqual([
       "door-near-corner",
       "opening-not-dimensioned",
       "room-via-private",
       "wet-room-door",
       "entrance-into-private",
+      "opening-at-junction",
+      "opening-overlap",
+      "connector-ambiguous",
       "habitable-no-window",
       "room-missing-defining",
     ]);

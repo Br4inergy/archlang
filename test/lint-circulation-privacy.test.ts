@@ -415,15 +415,16 @@ describe("review fixes (PR #199)", () => {
 });
 
 describe("the three rules' texts", () => {
-  it("are appended after every older rule, in card order", () => {
-    // The two room-contents rules (PS2.8, PS2.9) were appended after these three.
-    const names = LINT_RULES.map((r) => r.name);
-    const i = names.indexOf("room-via-private");
-    expect(names.slice(i - 1, i + 3)).toEqual([
-      "opening-not-dimensioned",
+  it("are appended in card order, followed only by the opening rules (PS2.1–PS2.3) and the room-contents rules (PS2.8, PS2.9)", () => {
+    expect(LINT_RULES.slice(-8).map((r) => r.name)).toEqual([
       "room-via-private",
       "wet-room-door",
       "entrance-into-private",
+      "opening-at-junction",
+      "opening-overlap",
+      "connector-ambiguous",
+      "habitable-no-window",
+      "room-missing-defining",
     ]);
   });
 

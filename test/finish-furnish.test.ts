@@ -490,6 +490,14 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
    * since: neither may move what `finish` writes or how it reports an empty room. Re-measure
    * only for a change you can explain row by row (`test/finish-digest.ts`).
    *
+   * Six rows re-measured 2026-10-18 (plan-soundness PS2.1–PS2.3): courtyard-house,
+   * furnished-flat, hillside-villa, library, terrace-row and two-storey had openings at wall
+   * junctions fixed in their SOURCE (`./byte-identity-baseline.ts`, "Six examples fixed for the
+   * opening rules"). `finish` writes nothing different: the previous runs with the same edits
+   * applied to their `source` equal the new runs exactly, `changes[]` and notes included.
+   * `terrace-row` again in the review round (`win_bath` at w − 700, was w − 500): the `bc5c55f`
+   * runs with that edit applied to `source` equal the new runs exactly.
+   *
    * 2026-10-18 (PS2.8, PS2.9): seven rows re-measured for SOURCE edits to their examples, not a
    * compiler change. With this function, each example's PREVIOUS source under the new compiler
    * (W_HABITABLE_NO_WINDOW, W_ROOM_MISSING_DEFINING) reproduces its previous row exactly, so
@@ -497,7 +505,9 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
    * `relational` gain a living-room window, `hillside-villa` a window on the living room's bay
    * and one `dim`, `practice-office` a stove in the break room, `two-storey` a stove and a
    * shower, `corner-cafe`'s servery drops `uses kitchen`, `terrace-row`'s front room drops
-   * `dining`.
+   * `dining`. Measured again on the tree merged with the opening rules: `hillside-villa`,
+   * `terrace-row` and `two-storey` carry both branches' edits, and each one's source as `main`
+   * has it (cefe7e9) still reproduces `main`'s row under this compiler.
    */
   // Digest first: a name-keyed row reads to a secret scanner as `<key-ish word>: <opaque value>`.
   const FINISH_DIGESTS: ReadonlyMap<string, string> = new Map(
@@ -510,8 +520,8 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["cbf505c9f38de1bce32a5f6256b035a3a5cb35df068f411621db590234da0685", "classroom-block"], // first measurement, added with the example
         ["8f1860697479247a76d029ed309957a97660716904b948956bbe76b6bd46873c", "clinic"],
         ["c23c854e798c435b2d16e1a067edc7ef860d7c46c878f2126fdbe92de1d4aa7d", "corner-cafe"], // first measurement with the example; PS2.9 source edit, see above
-        ["85385abf1ba670c9ba8362ed21773cd8567ce233ce276914cf428689bf4a938e", "courtyard-house"],
-        ["603c773d4df5b0e984b6505af56c8d7a49f128b6f690273f4553a2b629a48d73", "furnished-flat"],
+        ["34d62884662a298eba9f224039bc128f5e24d865f658438f37bf5a8b8cc12f8e", "courtyard-house"],
+        ["d6216018c7eeca2476644c8c57a52efa63e33584fc8acb9843752e4902244d8a", "furnished-flat"],
         ["6680a2b84429d16bf60bed5d240dbf498fa920c9aa99c2cf91a44362ea5d14b1", "gallery-l"],
         // Re-measured 2026-10-18 (plan-soundness PS2.6): the example's SOURCE changed, one door
         // re-hosted (`d_gar` onto the kitchen, +3 bytes), and `source` is part of this digest. The
@@ -519,10 +529,10 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["088bafd17d2c504adc4aa7690a14cc295b02337099787f3e2111c5e91f133e33", "garden-house"],
         ["33a8fdea6f6aaab2ef4b42bdcf137312ac3b0b63818c9a3bc347cbb176a829ef", "garden-loft"],
         ["57d4237846d3b666c6806da6ee2bf4cadeb68a2e1d39723c6a024e5b415d5faf", "hexagon-pavilion"],
-        ["f2d2ebe4b35b6656f8b937c49777a12a0945e66fb741d264db6d21b7df2a4cf5", "hillside-villa"], // PS2.9 source edit, see above
+        ["bea58a9a66de93242c279308887d8979ded9c1547d9dc7ef3761c5df04f837af", "hillside-villa"], // PS2.1–PS2.3 and PS2.9 source edits, see above
         ["d90d58c40a4068427ef23c066acba5d50d8e99a801b6ce890da3ac9dc01a9554", "imports"],
         ["d04b5112a75e5f493257685ab80f161288f82a78eedbb47ec0bc92950ed928e3", "laneway-house"],
-        ["825e5a65cedc04cca28384d9c6ec5bf79c9ed7efff56be8a20b36208c2bc5cd7", "library"],
+        ["a80df92f27d3f9f35535fb27f41b12b56a8d81f582dab3e818fff97487ded019", "library"],
         ["7737a7533af7804514e028ee6740c98133ae439ec57ca1a73f5ef72de0260a06", "materials"],
         ["0c540e53b8c534793dbfb63eb0ecedc39c152f99b1bfee51237baf114c5eaab5", "museum"],
         ["e56adeb88cb99daf3c2e93723b84ccd134c948f803bffb84fb519553d0ff63c4", "museum-wing"],
@@ -533,13 +543,13 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["d58bfbf0a25a5b70b7bdfdd1a8ef7b0fb8912f88ebb5cf631da3efe8268015e4", "sheet-notes"], // first measurement, added with the example
         ["324269a53206201f470d727c6b29f3b7cce19f58f3d99822f474be1901503675", "practice-office"], // first measurement with the example; PS2.9 source edit, see above
         ["147ce7e23f6f2a403d2d269cc0e68b678cab850e0d3a641287ef50bced7c76d3", "studio"],
-        ["97036208f50fd9bd230f94c43230873375343a3e906bd7fe5f7787d2e4bf475b", "terrace-row"], // PS2.9 source edit, see above
+        ["d8c991ab749604d5f2e7abfb47a54d8adb4fb0560a96ecf4a7c07d17e5ad142d", "terrace-row"], // PS2.1–PS2.3 and PS2.9 source edits, see above
         ["9da982b56530f0ec0c1b313fe8be64e5346f71bc4d098244664f164a02029a09", "themed"],
         ["c8c89f7f1db78626ab2620d113675e146a63c80461d978ce15b968a6aff581f5", "tiny-house"],
         ["ec6046117fe68a7329ef5aded15217195ecbd3d0108153d5e7b5d56e602e43a2", "townhouse"],
         ["8512160d1872176b1d122364ca4a36274ccde6c5e8204c394d50e325598bdc33", "transit-hall"],
         ["07ed5965a8bee0706176c15c95b2714ea43a4f3212267bfcafc4a7333b9a6fdb", "two-bed"],
-        ["3ca2adb623329069b83a14b89eb0aed03cada8362cf7ddc79e3bf9bf2590dae4", "two-storey"], // PS2.9 source edit, see above
+        ["0fe04a1e57aaecab23f6a095f9eb6a0824077dd6f58e6b63022518f420c8a462", "two-storey"], // PS2.1–PS2.3 and PS2.9 source edits, see above
       ] as const
     ).map(([digest, example]) => [example, digest]),
   );

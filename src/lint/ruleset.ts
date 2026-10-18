@@ -92,6 +92,64 @@ export interface LintRuleset {
    * constant would be invented rather than evidenced.
    */
   minCornerNibRatio: number;
+  /**
+   * The shortest nib of wall an opening's jamb may leave to the FACE of a wall that meets
+   * its host run (a tee, a crossing, or — for windows and cased openings — a corner).
+   * `W_OPENING_AT_JUNCTION` requires `max(minJunctionNibMm, host thickness ×
+   * junctionNibThicknessRatio)`. Default 100.
+   *
+   * **Source.** 100 mm is the low end of the trade practice (100-150 mm) for the return a
+   * frame and architrave or a lining need beside a jamb, recorded with its source in
+   * `docs/plans/plan-soundness/research/associativity.md` (the door-nib row, BuildHub
+   * "architrave offset") and `research/prior-art.md` (T5: an opening's span stays clear of
+   * wall junctions by at least a nib).
+   */
+  minJunctionNibMm: number;
+  /**
+   * The thickness limb of `W_OPENING_AT_JUNCTION`'s nib, as a multiple of the HOST wall's
+   * thickness, measured to the meeting wall's FACE. Default 0.5.
+   *
+   * **Why half, at the face.** It is `W_DOOR_NEAR_CORNER`'s own threshold restated at the
+   * datum this rule measures from. That rule asks for a nib of one wall thickness measured to
+   * the corner's CENTRELINE point; the meeting wall's face stands half its thickness short of
+   * that point, so for two walls of one thickness the same requirement read at the face is
+   * half the thickness. The plan-soundness audit proposed the same `max(100, H.thickness/2)`
+   * at the face (`docs/plans/plan-soundness/audits/showcase-and-examples.md`, proposed check
+   * 1) and found no false positive on its corpus.
+   *
+   * **Measured against the plan's first reading, a full thickness (ratio 1.0).** The PS2.1
+   * card states `max(100 mm, host thickness)`. Read at the face, that raised 38 more
+   * warnings than 0.5 does, in 11 of the shipped examples, and every one was a nib of
+   * 100-250 mm, mostly beside a window on a 200-300 mm wall. Those returns sit inside or above
+   * the 100-150 mm trade range, so they are not defects, and 0.5 is the default. A profile that
+   * wants the stricter reading sets 1.0.
+   */
+  junctionNibThicknessRatio: number;
+  /**
+   * The thinnest pier of wall that may separate two openings on one run — a mullion.
+   * `W_OPENING_OVERLAP` fires when two openings' along-run spans intersect, or leave less
+   * than this between them. Default 100: the mullion width the plan-soundness audit used
+   * (`docs/plans/plan-soundness/audits/archcanvas-public-examples.md`, proposed check 1),
+   * the same 100 mm as {@link minJunctionNibMm}'s first limb, since either side of the pier
+   * has a frame to carry.
+   */
+  minMullionMm: number;
+  /**
+   * The least length of a SECOND room a straddling connector's face must cover, net of the
+   * body of any wall meeting the host there, before `W_CONNECTOR_AMBIGUOUS` reads it as
+   * opening into that room. The threshold is `max(minStraddleCoverMm, host thickness ×
+   * junctionNibThicknessRatio)`. Default 100.
+   *
+   * **Why the junction nib.** A sliver of the other room beside a meeting wall is the same
+   * length of wall `W_OPENING_AT_JUNCTION` measures as the jamb's nib: below the nib a jamb
+   * needs, it is a jamb set against the meeting wall, not a way into the room beyond it, and
+   * that warning already reports it. One defect gets one warning, so below this length only
+   * the junction warning speaks. At or above it the doorway really does open onto two rooms,
+   * and both warnings stand: one about the wall in the opening, one about which rooms it
+   * serves. The meeting wall's body is taken out because the rooms are drawn to its
+   * centreline, so half its thickness counts as floor that nobody can stand on.
+   */
+  minStraddleCoverMm: number;
 }
 
 export const DEFAULT_RULESET: LintRuleset = {
@@ -107,6 +165,10 @@ export const DEFAULT_RULESET: LintRuleset = {
   maxDetourRatio: 3.0,
   pocketRunClearanceMm: 50,
   minCornerNibRatio: 1.0,
+  minJunctionNibMm: 100,
+  junctionNibThicknessRatio: 0.5,
+  minMullionMm: 100,
+  minStraddleCoverMm: 100,
 };
 
 /**

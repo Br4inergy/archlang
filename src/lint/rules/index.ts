@@ -19,6 +19,7 @@ import {
   furnitureOverlap,
   furnitureWallCollision,
 } from "./furniture.js";
+import { connectorAmbiguous, openingAtJunction, openingOverlap } from "./openings.js";
 import { perRoomRules } from "./per-room.js";
 import { entranceIntoPrivate, roomViaPrivate, wetRoomDoor } from "./privacy.js";
 import { reachability } from "./reachability.js";
@@ -91,6 +92,13 @@ export const LINT_RULES: readonly LintRule[] = [
   roomViaPrivate,
   wetRoomDoor,
   entranceIntoPrivate,
+  // Plan-soundness advisories on openings and the walls around them (PS2.1–PS2.3): an
+  // opening at a wall junction, two openings sharing a run, and a connector whose sides do
+  // not each lie in one room. Appended LAST, in that order, so no existing plan's
+  // diagnostic ORDER moves.
+  openingAtJunction,
+  openingOverlap,
+  connectorAmbiguous,
   // Room-contents advisories (plan-soundness PS2.8, PS2.9): a living room, dining room or
   // kitchen with no window, and a furnished room missing the piece that defines it. Appended
   // LAST, in this order, so no existing diagnostic moves within the array.

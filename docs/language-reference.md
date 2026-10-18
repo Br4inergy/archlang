@@ -1312,6 +1312,17 @@ run that carries straight past it, and a **tangent** arc/straight hand-over are 
 of them corners. On a curve the nib is an **arc length**, not a chord, measured at
 the wall's centreline between the radial jambs.
 
+The same holds where a wall **tees into or crosses** the run, or meets it at a corner, for
+doors, windows and cased openings alike: a jamb must leave at least the larger of 100 mm and
+half the wall's thickness between it and the meeting wall's **face**, and no wall may stand
+inside the span, or [`W_OPENING_AT_JUNCTION`](error-codes.md#w_opening_at_junction). (A door
+`W_DOOR_NEAR_CORNER` reports is that warning's alone at the corner: one defect, one
+warning.) Two openings on one run may not share wall or leave less than a 100 mm mullion
+between them ([`W_OPENING_OVERLAP`](error-codes.md#w_opening_overlap)), and a door or cased
+opening whose side spans two rooms, each by at least a jamb's nib, is
+[`W_CONNECTOR_AMBIGUOUS`](error-codes.md#w_connector_ambiguous): which room it opens into
+is then a guess. Each warning quotes only moves it has checked along the run.
+
 ```arch
 plan "Door kinds" {
   units mm
@@ -1321,12 +1332,12 @@ plan "Door kinds" {
   room id=west   at (0,0)    size 4000x5000 label "West"
   room id=middle at (4000,0) size 5000x5000 label "Middle"
   room id=east   at (9000,0) size 5000x5000 label "East"
-  door id=front on exterior at 10% width 1000 swing in
+  door id=front on exterior at 5% width 1000 swing in
   door sliding  on p1 at 25% width 1400
   door pocket   on p1 at 75% width 900  slide left open 0.4
   door barn     on p2 at 30% width 1100 swing out slide left
   door bifold   on p2 at 70% width 1500 swing in  slide right
-  door garage   on exterior at 60% width 2400
+  door garage   on exterior at 58% width 2400
 }
 ```
 

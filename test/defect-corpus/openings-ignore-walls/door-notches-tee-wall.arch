@@ -1,7 +1,7 @@
 # class: openings-ignore-walls
 # origin: audits/showcase-and-examples.md F1 (friends d_exit notches 25 mm into the party wall w_corr_east)
 # expect: W_OPENING_AT_JUNCTION
-# status: todo
+# status: done
 # fact: d_exit spans x 3875-4875 on the north run; the 300 mm party wall's west face is at 4850, so the
 #   east jamb sits 25 mm inside that wall's body
 plan "Door notched into a party wall" {

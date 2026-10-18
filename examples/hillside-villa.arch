@@ -131,12 +131,12 @@ plan "Hillside Villa" {
     door id=d_living_garden at (800,10200) width 1000 wall shell hinge left swing out
 
     opening id=o_liv_din on w_liv_din at 2000 width 3000
-    opening id=o_entry_svc on w_entry_svc at 1000 width 1800
-    opening id=o_entry_dining on w_l1_band_w at 5500 width 2400
+    opening id=o_entry_svc on w_entry_svc at 1000 width 1600
+    opening id=o_entry_dining on w_l1_band_w at 6200 width 2400
 
     # ---- windows: the ribbon of study windows is a `for` loop --------------------------
     for i in 0..3 {
-      window on shell at (500 + i * 1100) width 700
+      window on shell at (700 + i * 1100) width 700
     }
     window on shell at 11800 width 900                # pantry
     window on shell at 19000 width 1200                # kitchen (east wall)
