@@ -119,8 +119,8 @@ Two checks extend existing codes instead of adding one: a desk in front of a lea
 - The first-contact audit (`audits/2026-10-18-first-contact.md`, card PS1.2) adds one case per new
   shape. Instances whose shape an earlier case already holds get no second copy: the kitchens with
   no worktop (A7, H4, S3, T5, C8) are `kitchen-no-worktop`, the wall-thickness labels inside rooms
-  (A10, H6, S5, C11, T8, K11) are `auto-dims-in-room`, K2 is `door-jamb-50-from-tee` and K3 is
-  `door-fills-gap`. Instances outside the eight classes, and those in a class with no check a card
+  (A10, H6, S5, C11, T8, K11) are `auto-dims-in-room`, K2 is `door-jamb-50-from-tee`, K3 is
+  `door-fills-gap` and C5's staff WC onto a `uses kitchen` servery is `bath-door-off-kitchen`. Instances outside the eight classes, and those in a class with no check a card
   names (A6, S2 bed sides; A7 hob against a side wall; C6, C7, K8 accessible WC layout), are left
   out for the planner.
 - The two masked-route cases (PS0.10) are silent because a balcony or patio door is a way in for
