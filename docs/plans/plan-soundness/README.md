@@ -224,15 +224,17 @@ Dependencies are by card id. Each card's gate is the backlog floor gate plus wha
 
 ### PS0 · Bugs found by the audit (independent; file and fix first)
 
+Landed: PS0.1 (`between` from wall-face probes at centre and jambs, additive `straddles`; PR #196)
+and PS0.7 (the label classifier emits `living`/`dining`; a living alias yields to any other kind
+but dining; PR #197).
+
 | Card | Bug (re-measure first; the evidence is in the cited file) | Status |
 |---|---|---|
-| PS0.1 | `between` uses only an opening's centre point, so a wide opening across a junction is silently given to one side. An opening centred on a T-junction of an exterior wall reports an interior `a↔b` door (`exterior:false, ambiguous:false`) and the plan then raises `W_NO_ENTRANCE` (`repro/door-on-tee.arch`). Decide `between` from both jamb probes; surface undecidable cases (see PS2.3) | todo |
 | PS0.2 | `compile -f json` (Plan JSON) drops arc segments; a round trip loses a bay and floats its window (`audits/archcanvas-public-examples.md` G2) | todo |
 | PS0.3 | Multi-storey `describe`: upper-storey rooms report `reachable:false` though a stair reaches them; an exterior door on an upper storey counts as an entrance (`audits/showcase-and-examples.md` §5.10) | todo |
 | PS0.4 | `diffPlans` reports a pure move as "resized +0.0 m²", ignores an opening whose `between` changed, and has no wall section (`research/associativity.md` §1.2). Extend additively | todo |
 | PS0.5 | `furniture … against wall … in <relational room>` fails with `E_FURN_AGAINST` because relational placement resolves after furniture (`src/ir.ts` ~2488). May fall out of PS3.2's reorder | todo |
 | PS0.6 | `suggest` connects an unreachable room to *any* reachable neighbour, a bedroom included (`src/suggest.ts` ~364-395), against `skills/archlang/SKILL.md`'s own advice. Rank by neighbour use (hall/circulation/living first, bedroom and bath last) | todo |
-| PS0.7 | The label classifier never emits `living`/`dining` (`src/vocabulary.ts` ~212-216): "Living", "Living Room" and "Kitchen / Living" lose their living use, so every living-room rule is blind on label-only plans. Decide the honest rule (exact-word labels only?) and record it | todo |
 | PS0.8 | `W_PATH_TOO_NARROW` measures pinches on the 100 mm grid and missed a 500 mm diagonal between a bench and a jamb (`repro/gallery-bench-pinch.arch`, `audits/archcanvas-public-examples.md` GW3). Re-measure the case first: the repro lints with the warning in isolation | todo |
 | PS0.9 | `describe` assigns a window between an enclosed room and a covered loggia to the loggia, so lint and describe disagree on bedroom windows (`audits/showcase-and-examples.md` villa-rotonda) | todo |
 | PS0.10 | Reachability and the walk are seeded from every exterior door, so a patio or balcony door masks a route blocked from the front door: `W_ROOM_UNREACHABLE`/`W_PATH_TOO_NARROW` stay silent on a sofa across the hall→living opening (`audits/2026-10-18-first-contact.md` T2, A2; proven by turning the secondary door into a window). Single-storey sibling of PS0.3. Decide the honest fact: report per-entrance reachability, or name a main entrance (the one on `site.street`, else the widest leafed exterior door) and report the rest as secondary | todo |
@@ -240,18 +242,20 @@ Dependencies are by card id. Each card's gate is the backlog floor gate plus wha
 
 ### PS1 · The defect corpus (do this before PS2; it is the yardstick)
 
-**PS1.1 · `test/defect-corpus/`: one minimal plan per verified defect class, each pinned to the code
-that must fire.** `todo`
-- *Goal:* a red guard that every class in §1 is caught, and a clean twin per case that must stay
-  silent, to control false positives.
-- *Seeds:* `repro/*.arch`, the coordinates in `audits/*.md`, and the class list in §1.
-- *Shape:* a reduced copy of the defect, not the whole source plan (licences are fine; size matters).
-  Header comment: class, origin, expected code. A table-driven test asserts `lint()` codes per file.
-- *Acceptance:* at least 40 cases spanning all eight classes. Each case starts red (expected code
-  absent today; mark it `todo` in the table) and flips green as PS2 lands. The test reports the
-  catch rate.
-- *Open:* should the corpus also feed `eval:ci` as a non-gating metric? Read `.claude/rules/eval-dataset.md`
-  first: the holdout rules apply.
+**PS1.1 · `test/defect-corpus/`** landed 2026-10-18 (PR #195, commit df00ab5): 53 defect cases with
+clean twins across all eight classes, headers parsed by `test/defect-corpus.test.ts`, catch rate
+printed per class (7/53 at landing, all from existing rules). A `todo` case is also asserted NOT to
+fire, so a PS2 rule that starts catching one turns the test red until its header says `done`.
+Proposed code names for PS2.4/PS2.11/PS2.12 live in the folder README and are the names PS2 uses.
+
+**PS1.2 · Fold the first-contact instances into the corpus.** `todo`
+- Reduce the `audits/2026-10-18-first-contact.md` defects into cases: a seat facing away from its
+  table, a transposed directional footprint, door–door interference, the masked route behind a
+  patio door (PS0.10), the tee-crossed WC window, the stair foot under a door swing, the fire door
+  swinging inward, a kitchen with no worktop. Same header scheme, clean twins, and the new codes
+  added to the folder README's proposed list.
+- *Open (carried from PS1.1):* should the corpus also feed `eval:ci` as a non-gating metric? Read
+  `.claude/rules/eval-dataset.md` first: the holdout rules apply.
 
 ### PS2 · Validity checks that read existing facts (small, high yield)
 
@@ -263,7 +267,7 @@ owner's audit scratch. Re-derive them from this text rather than asking for them
 |---|---|---|---|
 | PS2.1 | `W_OPENING_AT_JUNCTION` | For every opening kind (door, window, cased opening): another wall's body intersects the opening's clear span on the host run, or either jamb's nib to a meeting wall face is under max(100 mm, host thickness), configurable by profile. Supersedes the door-only, L-corner-only scope of `W_DOOR_NEAR_CORNER`; decide whether to widen that rule or add this one beside it (byte-identity of existing output matters) | todo |
 | PS2.2 | `W_OPENING_OVERLAP` | Two openings on one host run whose along-run spans intersect, or whose separating pier is thinner than a mullion (100 mm) | todo |
-| PS2.3 | `W_CONNECTOR_AMBIGUOUS` | An access edge with `ambiguous: true`, or (after PS0.1) one whose clear span covers more than one room on a face (PS0.1 reports this as an additive `straddles` list; the edge stays in the graph with a measured `between`). The message names the rooms on each side | todo |
+| PS2.3 | `W_CONNECTOR_AMBIGUOUS` | An access edge with `ambiguous: true`, or one whose clear span covers more than one room on a face (`describe()` reports this as the additive `straddles` list since PS0.1 landed; the edge stays in the graph with a measured `between`). The message names the rooms on each side | todo |
 | PS2.4 | `W_BOUNDARY_NO_WALL` | Two rooms share an edge run longer than a doorway with no wall or opening on it, unless both rooms' authored `uses` form an open-plan pair (kitchen/dining/living) or a fixed counter stands in the gap (a café servery is a deliberate boundary, `audits/2026-10-18-first-contact.md` C-plan). Plus its dual: a walled face with no room covering ≥ 95 % (unassigned floor), and rooms outside the closed exterior ring (`W_ROOM_OUTSIDE_SHELL`). Generalises `largestPerimeterGap` beyond wet rooms. After it lands, a test pins that circulation-reachable implies access-reachable | todo |
 | PS2.5 | `W_ROOM_VIA_PRIVATE` | Remove a bedroom or bath/WC from the access graph: does any other room (not its own ensuite, wardrobe, storage or balcony) become unreachable? Generalises `W_BATH_VIA_BEDROOM` (keep that code; this is the general case). ResPlan: 0.03–0.06 % of real dwellings do this, so a warning is safe | todo |
 | PS2.6 | `W_WET_ROOM_DOOR` | A bath/WC whose only connector is a leaf-less opening to a habitable room; a bath/WC door onto a kitchen or dining room (GB 50096 5.4.3); a bath with two or more connectors acting as a passage (the PS2.5 test covers part of this) | todo |
@@ -449,7 +453,7 @@ owner's audit scratch. Re-derive them from this text rather than asking for them
 
 | Order | Cards | Done when |
 |---|---|---|
-| 1 | PS0.1, PS0.7, PS1.1 (`doing` since 2026-10-18) | The corpus exists and reports a catch rate; the two fact bugs are fixed |
+| 1 | PS0.1, PS0.7, PS1.1 | Done 2026-10-18: PS0.7 in PR #197 (ad58551, dfd1737), PS1.1 in PR #195 (df00ab5), PS0.1 in PR #196 (1e0c2d9, e81a136; also closed backlog C.4). Corpus catch rate 7/53 |
 | 2 | PS2.1–PS2.9, PS2.13 | Defect-corpus catch rate ≥ 90 % for classes 1–6, with no false positive on the clean twins; every corpus `lint()` movement is explained (two-bed is expected to start warning: fix the example, see PS3.6) |
 | 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form |
 | 4 | PS0.4, PS4.1, PS4.2 | The widening drill's `impact` names every moved, held and broken item correctly |
