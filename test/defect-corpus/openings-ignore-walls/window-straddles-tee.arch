@@ -1,7 +1,7 @@
 # class: openings-ignore-walls
 # origin: audits/showcase-and-examples.md MR1 (miraflores s_vest_w across w_s3); audits/archcanvas-public-examples.md BB2
 # expect: W_OPENING_AT_JUNCTION
-# status: todo
+# status: done
 # fact: win spans x 3500-5500 on the north run; partition p (faces 3950-4050) dead-ends into the glass,
 #   leaving 450 mm of glazing in a and 1450 mm in b
 plan "Window across a tee" {

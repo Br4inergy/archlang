@@ -409,18 +409,8 @@ export const doorNearCorner: LintRule = {
     for (const d of doors) {
       const seg = d.host;
       if (!seg) continue;
-      const runs = jambRuns(d, seg);
-      if (!runs) continue;
       const need = seg.thickness * rules.minCornerNibRatio;
-      if (!(need > 0)) continue;
-      /** The tightest CORNER of the two ends — the one the warning is about. */
-      let worst: { have: number; corner: Point } | null = null;
-      for (const end of ["a", "b"] as const) {
-        const have = Math.max(0, end === "a" ? runs.toA : runs.toB);
-        if (have >= need) continue;
-        if (!isCorner(seg, end, wallSegs)) continue;
-        if (!worst || have < worst.have) worst = { have, corner: seg[end] };
-      }
+      const worst = tightestCorner(d, seg, wallSegs, need);
       if (!worst) continue;
       const short = shortfall(need, worst.have);
       out.push({
@@ -444,6 +434,29 @@ export const doorNearCorner: LintRule = {
 };
 
 /**
+ * The tightest CORNER end of a door's host run whose nib is under `need` (the one
+ * `W_DOOR_NEAR_CORNER` reports), or null when that rule is silent for the door. Exported so
+ * `W_OPENING_AT_JUNCTION` defers to this rule by the same test, never a restatement of it.
+ */
+export function tightestCorner(
+  d: Pick<RDoor, "at" | "width">,
+  seg: WallSegment,
+  wallSegs: readonly WallSegment[],
+  need: number,
+): { have: number; corner: Point } | null {
+  const runs = jambRuns(d, seg);
+  if (!runs || !(need > 0)) return null;
+  let worst: { have: number; corner: Point } | null = null;
+  for (const end of ["a", "b"] as const) {
+    const have = Math.max(0, end === "a" ? runs.toA : runs.toB);
+    if (have >= need) continue;
+    if (!isCorner(seg, end, wallSegs)) continue;
+    if (!worst || have < worst.have) worst = { have, corner: seg[end] };
+  }
+  return worst;
+}
+
+/**
  * Below this turn two runs are one straight wall. 5 degrees — at a wall's half-thickness
  * the mitre then moves the outer face by `h*tan(theta/2)`, i.e. 5.5 mm on a 250 mm wall,
  * which is nothing at page scale — and it comfortably absorbs the float residue in an
@@ -460,7 +473,7 @@ const COLLINEAR_TURN_RAD = (5 * Math.PI) / 180;
  * A negative result means the opening runs PAST that end; the caller floors it at zero,
  * so the warning reports the nib that exists rather than a negative length.
  */
-function jambRuns(d: RDoor, seg: WallSegment): { toA: number; toB: number } | null {
+export function jambRuns(d: Pick<RDoor, "at" | "width">, seg: WallSegment): { toA: number; toB: number } | null {
   if (seg.arc) {
     // `arcOpeningVoid` is the single existing answer for where an opening lands along a
     // curve — the same one the curved band measurement uses — so the jamb positions here
@@ -508,7 +521,7 @@ const angleBetween = (u: Point, v: Point): number => Math.abs(Math.atan2(u.x * v
  * that is close enough that the two solids overlap and the joinery draws one corner, so
  * the test matches what a reader sees rather than demanding byte-equal coordinates.
  */
-function isCorner(seg: WallSegment, end: "a" | "b", all: readonly WallSegment[]): boolean {
+export function isCorner(seg: WallSegment, end: "a" | "b", all: readonly WallSegment[]): boolean {
   const into = tangentInto(seg, end);
   if (!into) return false;
   const p = seg[end];

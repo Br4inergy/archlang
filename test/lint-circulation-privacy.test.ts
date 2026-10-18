@@ -415,11 +415,14 @@ describe("review fixes (PR #199)", () => {
 });
 
 describe("the three rules' texts", () => {
-  it("are the last three rules, in card order", () => {
-    expect(LINT_RULES.slice(-3).map((r) => r.name)).toEqual([
+  it("are appended in card order, followed only by the three opening rules (PS2.1–PS2.3)", () => {
+    expect(LINT_RULES.slice(-6).map((r) => r.name)).toEqual([
       "room-via-private",
       "wet-room-door",
       "entrance-into-private",
+      "opening-at-junction",
+      "opening-overlap",
+      "connector-ambiguous",
     ]);
   });
 

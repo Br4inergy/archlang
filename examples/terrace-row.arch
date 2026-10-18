@@ -102,10 +102,10 @@ plan "Terrace Row" {
     door    id=d_bath at (w - 1400,BACK) width 800 wall w_hall_n swing into bath
     opening id=o_hall on w_hall_s at 900 width 1000
 
-    window id=win_liv  at (600,d)        width 900  wall shell
+    window id=win_liv  at (650,d)        width 800  wall shell
     window id=win_liv2 at (w - 900,d)    width 1000 wall shell
-    window id=win_bed  at (BEDW - 450,0) width 800  wall shell
-    window id=win_bath at (w - 500,0)    width 500  wall shell
+    window id=win_bed  at (BEDW - 600,0) width 800  wall shell
+    window id=win_bath at (w - 700,0)    width 500  wall shell
 
     # Only the two units with a free gable get a side window — the other two have a
     # party wall there, and a window in a party wall is not a window.

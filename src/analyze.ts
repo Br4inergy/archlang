@@ -349,8 +349,9 @@ export interface AccessConnector {
 export const JAMB_PROBE_INSET_MM = 50;
 
 /** What one side of a connector's host wall holds, probed one wall thickness from the
- *  host's CENTRELINE ({@link wallFaceProbes}) — half a thickness past that face. */
-interface FaceReading {
+ *  host's CENTRELINE ({@link wallFaceProbes}) — half a thickness past that face. Exported
+ *  for `W_CONNECTOR_AMBIGUOUS`, which names the rooms on each side from this reading. */
+export interface FaceReading {
   /** Rooms whose floor holds the CENTRE probe (closed bounds), in `roomRects` order. */
   holders: string[];
   /** Every room covering a positive length (mm) of the face's clear span — the path
@@ -420,6 +421,25 @@ function alongHost(host: NonNullable<AccessConnector["host"]>, at: Point, along:
 }
 
 /**
+ * The length (mm) of `box`'s floor along one face of a connector's host, between the run
+ * offsets `from` and `to` (mm from `at`): the probe path {@link connectorFaces} measures a
+ * face's `cover` over, cut to a sub-range of it. `W_CONNECTOR_AMBIGUOUS` uses it to take a
+ * meeting wall's body out of a straddled room's cover.
+ */
+export function faceLengthInRoom(
+  host: NonNullable<AccessConnector["host"]>,
+  at: Point,
+  from: number,
+  to: number,
+  side: "minus" | "plus",
+  box: RoomBox,
+): number {
+  const dist = Math.max(host.thickness, 1);
+  const path = [from, (from + to) / 2, to].map((s) => wallFaceProbes(host, alongHost(host, at, s), dist)[side]);
+  return pathLengthInRoom(path, box);
+}
+
+/**
  * The two sides of a connector's host wall, `[minus, plus]` ({@link wallFaceProbes}),
  * each probed one wall thickness from the host's centreline (half a thickness past the
  * face) at the centre and a little inside both jambs ({@link JAMB_PROBE_INSET_MM}). `null`
@@ -429,7 +449,7 @@ function alongHost(host: NonNullable<AccessConnector["host"]>, at: Point, along:
  * skipped before its shape is asked: a room's box holds its whole floor, so this only
  * FILTERS candidates — every answer still comes from the shape.
  */
-function connectorFaces(
+export function connectorFaces(
   c: Pick<AccessConnector, "at" | "host"> & { width?: number },
   roomRects: Map<string, RoomBox>,
 ): [FaceReading, FaceReading] | null {

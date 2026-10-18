@@ -490,6 +490,14 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
    * BEFORE the partly-furnished note and the shape test existed (base a18dcca) and unchanged
    * since: neither may move what `finish` writes or how it reports an empty room. Re-measure
    * only for a change you can explain row by row (`test/finish-digest.ts`).
+   *
+   * Six rows re-measured 2026-10-18 (plan-soundness PS2.1–PS2.3): courtyard-house,
+   * furnished-flat, hillside-villa, library, terrace-row and two-storey had openings at wall
+   * junctions fixed in their SOURCE (`./byte-identity-baseline.ts`, "Six examples fixed for the
+   * opening rules"). `finish` writes nothing different: the previous runs with the same edits
+   * applied to their `source` equal the new runs exactly, `changes[]` and notes included.
+   * `terrace-row` again in the review round (`win_bath` at w − 700, was w − 500): the `bc5c55f`
+   * runs with that edit applied to `source` equal the new runs exactly.
    */
   // Digest first: a name-keyed row reads to a secret scanner as `<key-ish word>: <opaque value>`.
   const FINISH_DIGESTS: ReadonlyMap<string, string> = new Map(
@@ -502,8 +510,8 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["cbf505c9f38de1bce32a5f6256b035a3a5cb35df068f411621db590234da0685", "classroom-block"], // first measurement, added with the example
         ["8f1860697479247a76d029ed309957a97660716904b948956bbe76b6bd46873c", "clinic"],
         ["3cc20ad5137b43a2a40e416d38e649cf25527afe66dc0672b14f566a3f2f3257", "corner-cafe"], // first measurement, added with the example
-        ["85385abf1ba670c9ba8362ed21773cd8567ce233ce276914cf428689bf4a938e", "courtyard-house"],
-        ["603c773d4df5b0e984b6505af56c8d7a49f128b6f690273f4553a2b629a48d73", "furnished-flat"],
+        ["34d62884662a298eba9f224039bc128f5e24d865f658438f37bf5a8b8cc12f8e", "courtyard-house"],
+        ["d6216018c7eeca2476644c8c57a52efa63e33584fc8acb9843752e4902244d8a", "furnished-flat"],
         ["6680a2b84429d16bf60bed5d240dbf498fa920c9aa99c2cf91a44362ea5d14b1", "gallery-l"],
         // Re-measured 2026-10-18 (plan-soundness PS2.6): the example's SOURCE changed, one door
         // re-hosted (`d_gar` onto the kitchen, +3 bytes), and `source` is part of this digest. The
@@ -511,10 +519,10 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["088bafd17d2c504adc4aa7690a14cc295b02337099787f3e2111c5e91f133e33", "garden-house"],
         ["33a8fdea6f6aaab2ef4b42bdcf137312ac3b0b63818c9a3bc347cbb176a829ef", "garden-loft"],
         ["57d4237846d3b666c6806da6ee2bf4cadeb68a2e1d39723c6a024e5b415d5faf", "hexagon-pavilion"],
-        ["a97e3db608fd51d8e441daafb55989387411ada1531da0fad9ca003f74d6bc8d", "hillside-villa"],
+        ["94fd5bfbba844d8df1bba7f2117e86c5a66fe620e7850b390fce35076f456f02", "hillside-villa"],
         ["d90d58c40a4068427ef23c066acba5d50d8e99a801b6ce890da3ac9dc01a9554", "imports"],
         ["d04b5112a75e5f493257685ab80f161288f82a78eedbb47ec0bc92950ed928e3", "laneway-house"],
-        ["825e5a65cedc04cca28384d9c6ec5bf79c9ed7efff56be8a20b36208c2bc5cd7", "library"],
+        ["a80df92f27d3f9f35535fb27f41b12b56a8d81f582dab3e818fff97487ded019", "library"],
         ["7737a7533af7804514e028ee6740c98133ae439ec57ca1a73f5ef72de0260a06", "materials"],
         ["0c540e53b8c534793dbfb63eb0ecedc39c152f99b1bfee51237baf114c5eaab5", "museum"],
         ["e56adeb88cb99daf3c2e93723b84ccd134c948f803bffb84fb519553d0ff63c4", "museum-wing"],
@@ -525,13 +533,13 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["d58bfbf0a25a5b70b7bdfdd1a8ef7b0fb8912f88ebb5cf631da3efe8268015e4", "sheet-notes"], // first measurement, added with the example
         ["2ee5f9d3aba27fe4db572ab912c46013a452f4edf0cbbfd1066a3561fd84019b", "practice-office"], // first measurement, added with the example
         ["147ce7e23f6f2a403d2d269cc0e68b678cab850e0d3a641287ef50bced7c76d3", "studio"],
-        ["e4ce4942694b6939c8885bd302dbf2fe53f7903025fe86a11e5dfd8cf63f1764", "terrace-row"],
+        ["227cc156aaa908ab73c1e7c7cd248358589fc6772ee5772a518acb884975b0ff", "terrace-row"],
         ["9da982b56530f0ec0c1b313fe8be64e5346f71bc4d098244664f164a02029a09", "themed"],
         ["c8c89f7f1db78626ab2620d113675e146a63c80461d978ce15b968a6aff581f5", "tiny-house"],
         ["ec6046117fe68a7329ef5aded15217195ecbd3d0108153d5e7b5d56e602e43a2", "townhouse"],
         ["8512160d1872176b1d122364ca4a36274ccde6c5e8204c394d50e325598bdc33", "transit-hall"],
         ["07ed5965a8bee0706176c15c95b2714ea43a4f3212267bfcafc4a7333b9a6fdb", "two-bed"],
-        ["8e5e10658ec093d71e87dc1068f52b12b1aed8981d7e98f1c640c54b6246ccd9", "two-storey"],
+        ["08d436a62c25c504ae19973ba62808a0a48aa40a835c01a0fb67ecce3c1f755e", "two-storey"],
       ] as const
     ).map(([digest, example]) => [example, digest]),
   );

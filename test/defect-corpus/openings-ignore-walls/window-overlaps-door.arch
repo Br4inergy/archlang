@@ -1,7 +1,7 @@
 # class: openings-ignore-walls
 # origin: repro/door-beside-tee-window-overlap.arch (partition and second room removed)
 # expect: W_OPENING_OVERLAP
-# status: todo
+# status: done
 # fact: on the north run the window spans x 3200-4400 and the door x 4150-5050: 250 mm of glazing runs
 #   into the door opening
 plan "Window over a door" {

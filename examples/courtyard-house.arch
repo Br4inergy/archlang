@@ -118,7 +118,7 @@ plan "Courtyard House" {
 
   # Onto the courtyard. A slider is what a full-height garden opening actually is, and
   # a hinged leaf here would sweep either the gallery or the courtyard threshold.
-  door id=d_court_l sliding on w_band_n at 6000 width 1800 slide left
+  door id=d_court_l sliding on w_band_n at 6100 width 1800 slide left
   door id=d_court_g sliding on w_court  at 6500 width 2000 slide right
 
   # The study, off a gallery only 1350 mm wide between faces. A pocket keeps both sides
@@ -136,8 +136,8 @@ plan "Courtyard House" {
   # Cased openings: the public rooms read into one another with no leaf at all.
   opening id=o_entry  at (3500,1750)  width 1500 wall w_entry
   opening id=o_dining at (9000,1750)  width 1600 wall w_dining
-  opening id=o_gal_w  at (4250,3500)  width 1200 wall w_band_n
-  opening id=o_gal_e  at (11750,3500) width 1200 wall w_band_n
+  opening id=o_gal_w  at (4250,3500)  width 1100 wall w_band_n
+  opening id=o_gal_e  at (11750,3500) width 1100 wall w_band_n
 
   # ---- windows: outer facades first -----------------------------------------
   window id=n_living  at (6000,0)      width 2000 wall shell
@@ -150,7 +150,7 @@ plan "Courtyard House" {
   window id=s_bed2    at (8250,11500)  width 1600 wall shell
   window id=s_bed3    at (13500,11500) width 1600 wall shell
   window id=w_study   at (0,6000)      width 1400 wall shell
-  window id=w_entry_l at (0,2950)      width 800  wall shell
+  window id=w_entry_l at (0,2850)      width 800  wall shell
 
   # ---- ...then the courtyard walls ------------------------------------------
   # These three are the facing demonstration. `w_court_w` is hosted on the courtyard's

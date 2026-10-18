@@ -441,6 +441,9 @@ suite("doors — W_POCKET_RUN", () => {
     // position again: no new syntax, so an older plan can trip them, and they are appended
     // after everything so no existing diagnostic moves. Their corpus movement is listed in
     // the commit that added them.
+    // The three opening rules (plan-soundness PS2.1–PS2.3) are in the same position, appended
+    // after those. Across the shipped examples they found real defects (audit rows X3, X10,
+    // X19, X26), which those examples now fix; every example lints as before.
     expect(names.slice(i + 1)).toEqual([
       "outdoor-overlaps-room",
       "balcony-no-door",
@@ -449,6 +452,9 @@ suite("doors — W_POCKET_RUN", () => {
       "room-via-private",
       "wet-room-door",
       "entrance-into-private",
+      "opening-at-junction",
+      "opening-overlap",
+      "connector-ambiguous",
     ]);
   });
 
@@ -457,13 +463,17 @@ suite("doors — W_POCKET_RUN", () => {
     // `door-near-corner` was last when this pin was written; `opening-not-dimensioned`
     // now follows it, and only fires under `dims auto all`, which this
     // plan does not write. The three circulation-and-privacy rules follow those, and this
-    // plan has no room for them to read.
-    expect(LINT_RULES.map((r) => r.name).slice(-5)).toEqual([
+    // plan has no room for them to read; the three opening rules follow those, and none fires
+    // here (a door at a corner is `W_DOOR_NEAR_CORNER`'s alone).
+    expect(LINT_RULES.map((r) => r.name).slice(-8)).toEqual([
       "door-near-corner",
       "opening-not-dimensioned",
       "room-via-private",
       "wet-room-door",
       "entrance-into-private",
+      "opening-at-junction",
+      "opening-overlap",
+      "connector-ambiguous",
     ]);
     // A plan carrying an unrelated pre-existing warning (a sub-passable door width) AND
     // tripping the new rule: the old diagnostic must still be first, byte-for-byte.

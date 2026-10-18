@@ -1,7 +1,7 @@
 # class: openings-ignore-walls
 # origin: audits/archcanvas-public-examples.md CC1 (corner-cafe d_entry + win_corner on the chamfered wall)
 # expect: W_OPENING_OVERLAP
-# status: todo
+# status: done
 # fact: along the chamfer (run from 9000) the door spans s 1350-2850 and the window s 250-1750: 400 mm of overlap
 plan "Door and window on a chamfer" {
   units mm
