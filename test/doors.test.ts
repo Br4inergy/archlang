@@ -436,11 +436,19 @@ suite("doors — W_POCKET_RUN", () => {
     // `door-near-corner`: it needs no new syntax beyond `dims auto all`, so an older plan
     // can trip it, and it is appended after everything for exactly that reason. Across the
     // shipped examples it found two real gaps, which those examples now dimension by hand.
+    //
+    // The three circulation-and-privacy rules (plan-soundness PS2.5–PS2.7) are in the same
+    // position again: no new syntax, so an older plan can trip them, and they are appended
+    // after everything so no existing diagnostic moves. Their corpus movement is listed in
+    // the commit that added them.
     expect(names.slice(i + 1)).toEqual([
       "outdoor-overlaps-room",
       "balcony-no-door",
       "door-near-corner",
       "opening-not-dimensioned",
+      "room-via-private",
+      "wet-room-door",
+      "entrance-into-private",
     ]);
   });
 
@@ -448,8 +456,15 @@ suite("doors — W_POCKET_RUN", () => {
     const { LINT_RULES } = await import("../src/lint/rules/index.js");
     // `door-near-corner` was last when this pin was written; `opening-not-dimensioned`
     // now follows it, and only fires under `dims auto all`, which this
-    // plan does not write.
-    expect(LINT_RULES.map((r) => r.name).slice(-2)).toEqual(["door-near-corner", "opening-not-dimensioned"]);
+    // plan does not write. The three circulation-and-privacy rules follow those, and this
+    // plan has no room for them to read.
+    expect(LINT_RULES.map((r) => r.name).slice(-5)).toEqual([
+      "door-near-corner",
+      "opening-not-dimensioned",
+      "room-via-private",
+      "wet-room-door",
+      "entrance-into-private",
+    ]);
     // A plan carrying an unrelated pre-existing warning (a sub-passable door width) AND
     // tripping the new rule: the old diagnostic must still be first, byte-for-byte.
     // centre 4500 on a 250 mm wall whose corner is at 5000: a 600 mm leaf leaves a

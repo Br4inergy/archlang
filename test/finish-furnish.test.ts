@@ -505,7 +505,10 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["85385abf1ba670c9ba8362ed21773cd8567ce233ce276914cf428689bf4a938e", "courtyard-house"],
         ["603c773d4df5b0e984b6505af56c8d7a49f128b6f690273f4553a2b629a48d73", "furnished-flat"],
         ["6680a2b84429d16bf60bed5d240dbf498fa920c9aa99c2cf91a44362ea5d14b1", "gallery-l"],
-        ["566a0d4d8610714ba8a4655e302be926717d5991d1edce9af5ca68efadfbb594", "garden-house"],
+        // Re-measured 2026-10-18 (plan-soundness PS2.6): the example's SOURCE changed, one door
+        // re-hosted (`d_gar` onto the kitchen, +3 bytes), and `source` is part of this digest. The
+        // pre-edit source still gives the previous row; see ./byte-identity-baseline.ts.
+        ["088bafd17d2c504adc4aa7690a14cc295b02337099787f3e2111c5e91f133e33", "garden-house"],
         ["33a8fdea6f6aaab2ef4b42bdcf137312ac3b0b63818c9a3bc347cbb176a829ef", "garden-loft"],
         ["57d4237846d3b666c6806da6ee2bf4cadeb68a2e1d39723c6a024e5b415d5faf", "hexagon-pavilion"],
         ["a97e3db608fd51d8e441daafb55989387411ada1531da0fad9ca003f74d6bc8d", "hillside-villa"],

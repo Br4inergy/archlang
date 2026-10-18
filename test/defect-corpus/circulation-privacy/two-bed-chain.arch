@@ -1,7 +1,7 @@
 # class: circulation-privacy
 # origin: audits/showcase-and-examples.md X1 (examples/two-bed.arch: hall, bath, master bedroom, kitchen/living, bedroom 2 in a chain; re-laid on a 3x2 grid)
 # expect: W_ROOM_VIA_PRIVATE
-# status: todo
+# status: done
 # fact: access depths hall 1, bath 2, master 3, kitchen/living 4, bedroom 2 5; removing the bath (or the
 #   master bedroom) from the access graph leaves the kitchen/living and bedroom 2 unreachable
 plan "Two-bed chain" {
