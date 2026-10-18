@@ -397,18 +397,24 @@ const BASELINE: [string, string][] = [
   ["examples/one-room.arch", "e12596f5401f097b5cf431fda952e96fc6523d7ca6a97c1518ffe6dd64e72cbe"],
   ["examples/parametric.arch", "982d09bc2018a495ca4c50d1cf5a99dcbb92f235b86f9cb722c4e931c839e921"],
   ["examples/practice-office.arch", "1692d70a7c06b0ebd17a64b47004afd37fd98b0a65e79df3de8d2f110162073e"], // added with the example, re-measured for net area, see header
-  ["examples/relational.arch", "e152e9a813406d1188e87584acdb63bb4c4a48438006e33420db2c760bc8f9ec"],
+  // Re-measured 2026-10-18 (PS0.7, the label classifier emits living; `describe()` only): the
+  // same row, with the same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
+  ["examples/relational.arch", "d27362e8dec9b595eaff227c2ea7978f311634fd22dfd7ac54c2bd12f002a918"],
   // ADDED with the new example (the issued-sheet statements), then re-measured once when the
   // thickness call-out change met it (drawing only): the same row, with the same digest body,
   // as `./while-byte-identity-baseline.ts`, whose header has both.
   ["examples/sheet-notes.arch", "0104550fc3b3a39a71c1a005da79c3db5ea10ae21d9739e11a6d1f18ee7b7420"],
   ["examples/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
   ["examples/terrace-row.arch", "514aa86e7acbac76a0c1a0c38c43f7f6cf6cf40bb9121576b2abacbe0344cfe8"],
-  ["examples/themed.arch", "6b6c68980f86565d82c396ee618dbe75ef5435bb4ad2be134822dc6d0aef6ead"],
+  // Re-measured 2026-10-18 (PS0.7, the label classifier emits living; `describe()` only): the
+  // same row, with the same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
+  ["examples/themed.arch", "083872e0955d587897a87084c2f0bfe395856b02c643d7a8920e02f4bde870c1"],
   ["examples/tiny-house.arch", "cbd44f2c14aa28ea42f1fac0c7029f6257e6d7bcaab42c21ec290cecc3bd1933"],
   ["examples/townhouse.arch", "a3252455577b780dfed37d5eebeea1f8725c2df9d5c538b0e61c091418022f94"],
   ["examples/transit-hall.arch", "b8ec53697030c76a35fdd875115c89cedca4e5ff591837eab5b1fb1209024ad9"],
-  ["examples/two-bed.arch", "63fdc9d0c77062228876013f4b0e8172f496fc80f4f943184a2bff3098dec5ad"],
+  // Re-measured 2026-10-18 (PS0.7, the label classifier emits living; `describe()` only): the
+  // same row, with the same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
+  ["examples/two-bed.arch", "a805e3baa9df0117a2216af7fda83174706ca4d47f38a13c5eb1e77bea89285c"],
   ["examples/two-storey.arch", "17402c97f15a8aeb54ded52a2460ced472e1788d7d5415fa83b1c91042ce59d6"],
   ["examples/lib/doors.arch", "232f7d4cf35f3d44678b3e3641c4815139f9412a9fd079f99639026b99f005b6"],
   ["examples/lib/fixtures.arch", "25e792ed80e5571a57ac00323283b58af9ffd96646008637646f99600f4716f8"],
@@ -431,7 +437,8 @@ const BASELINE: [string, string][] = [
   ["test/recovery-corpus/parametric.arch", "982d09bc2018a495ca4c50d1cf5a99dcbb92f235b86f9cb722c4e931c839e921"],
   ["test/recovery-corpus/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
   ["test/recovery-corpus/terrace-row.arch", "514aa86e7acbac76a0c1a0c38c43f7f6cf6cf40bb9121576b2abacbe0344cfe8"],
-  ["test/recovery-corpus/themed.arch", "6b6c68980f86565d82c396ee618dbe75ef5435bb4ad2be134822dc6d0aef6ead"],
+  // Re-measured 2026-10-18 (PS0.7): a copy of `examples/themed.arch`, the same cause and value.
+  ["test/recovery-corpus/themed.arch", "083872e0955d587897a87084c2f0bfe395856b02c643d7a8920e02f4bde870c1"],
   ["test/recovery-corpus/two-storey.arch", "17402c97f15a8aeb54ded52a2460ced472e1788d7d5415fa83b1c91042ce59d6"],
   ["eval/goldens/accessible-bath.arch", "0f2e47f8b1a0afe5e110117ea229b829861353fe1d115b9a8af1ec2085774d14"],
   ["eval/goldens/accessible-flat.arch", "721d479d06915e309d209c1c84dbb4a5b1c40b7c8195891499ed5078c650fe3e"],

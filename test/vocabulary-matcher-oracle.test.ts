@@ -16,7 +16,17 @@
  * generated text (mixed scripts, digits of other scripts, suffixes, punctuation, regex
  * metacharacters, empty, whitespace-only and very long).
  *
- * The oracle's only addition is the `tally` counter, which reads and changes nothing.
+ * The oracle's only addition to the replaced code is the `tally` counter, which reads and changes
+ * nothing.
+ *
+ * ## Deliberately advanced on 2026-10-18 for plan-soundness PS0.7
+ *
+ * The classifier's BEHAVIOUR changed once since the oracle was copied: it now emits `living` and
+ * `dining` (the vocabulary's `living` row split in two), appended after `garage`, and a living
+ * ALIAS word is dropped when a canonical word of another kind matched. The oracle was advanced by
+ * exactly that, written in its own per-word style (the `old*` matcher answers every word), and
+ * `oldMatchesLivingDining` now reads its classification, as the new `matchesLivingDining` does.
+ * Every other kind's lines are untouched, so the gate on them is as strong as it was.
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -93,6 +103,8 @@ function oldClassifyLabelUses(text: string): { uses: UseKind[]; aliases: AliasMa
     uses.push(kind);
     if (!m.canonical) aliases.push({ kind, word: m.word });
   };
+  // PS0.7: was any kind emitted from a canonical word? (the alias-suppression rule below)
+  const canonicalEmitted = (): boolean => uses.length > aliases.length;
 
   const bedroom = oldMatchVocabulary(text, USE_VOCABULARY.bedroom);
   if (bedroom) add("bedroom", bedroom);
@@ -115,11 +127,18 @@ function oldClassifyLabelUses(text: string): { uses: UseKind[]; aliases: AliasMa
   const garage = oldMatchVocabulary(text, USE_VOCABULARY.garage);
   if (garage) add("garage", garage);
 
+  // PS0.7 (2026-10-18): living, then dining, appended; a living alias yields to a canonical word.
+  const living = oldMatchVocabulary(text, USE_VOCABULARY.living);
+  const dining = oldMatchVocabulary(text, USE_VOCABULARY.dining);
+  if (living && (living.canonical || !(canonicalEmitted() || dining?.canonical === true))) add("living", living);
+  if (dining) add("dining", dining);
+
   return { uses, aliases };
 }
 
 function oldMatchesLivingDining(text: string): boolean {
-  return oldMatchVocabulary(text, USE_VOCABULARY.living) !== null;
+  const { uses } = oldClassifyLabelUses(text);
+  return uses.includes("living") || uses.includes("dining");
 }
 
 /* ---------------------------------------------------------------------------
