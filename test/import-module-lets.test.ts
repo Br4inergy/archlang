@@ -441,6 +441,9 @@ suite("a module `let` that fails reports as it does in the module", () => {
  *     window), `office`, `reception-suite`, `sized-office-mix` (both); `core-and-shell` also
  *     `W_ROOM_NO_FIXTURE`'s hint.
  *   - `eval/fidelity-plans/*` (eight rows): `W_ROOM_NO_FIXTURE`'s hint only.
+ * `examples/hillside-villa.arch` re-measured for plan-soundness PS0.12, with this test's own
+ * digest body, as `./while-byte-identity-baseline.ts` records (the bay window's `describe()`
+ * `room`; the previous `describe()` put back reproduces the previous row).
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
@@ -462,7 +465,7 @@ const BASELINE: [string, string][] = [
   // Re-measured for the facade-probe fix (level 2's `dims auto` chains only), and again because
   // the EXAMPLE changed (backlog D.2, its piano turned and moved): the same row, with the same
   // digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/hillside-villa.arch", "a3e70591a0c8dd388878225e9d7dcbe54511690f7ab23b23e6ede1919c6e7092"], // re-measured, see header
+  ["examples/hillside-villa.arch", "0ab249aa8df18e7d04cc57352ec5947c1013ba67ab2054877649af3fb0e44b50"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
   ["examples/laneway-house.arch", "d87dea46b06ea13b539e0a7c03674038e15762d15948a7bc27632e1b8afd11e2"],
   ["examples/library.arch", "3e8f00d70f63d840a1e2ead5c926cea204751fada57e5de028709bec4d091334"],

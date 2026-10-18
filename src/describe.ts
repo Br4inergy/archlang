@@ -42,6 +42,7 @@ import {
   roomBox,
   roomsAdjacent,
   roomsAtPoint,
+  arcWindowRoom,
   connectorConnection,
   roomUses,
   buildDoorAccessGraph,
@@ -53,7 +54,7 @@ import {
   type BBox,
   type RoomBox,
 } from "./analyze.js";
-import { outerFaceBounds } from "./geometry.js";
+import { outerFaceBounds, segmentsOfWall, type WallSegment } from "./geometry.js";
 import type { PaperOrientation, PaperSize } from "./sheet.js";
 import { computeCirculation, type CirculationModel } from "./analyze/circulation.js";
 import { symmetryFacts, type SymmetryFacts } from "./analyze/symmetry.js";
@@ -1203,10 +1204,22 @@ function summarize(
   // `facingPage` key is emitted — so a plan that declares no `north` is byte-identical.
   const northTurns = northQuarterTurns(ir.north);
 
+  // The storey's wall segments, built only when a window stands on an arc edge, the one case
+  // `arcWindowRoom` reads them in.
+  let segsMemo: WallSegment[] | null = null;
+  const segs = (): WallSegment[] => {
+    if (segsMemo === null) segsMemo = ir.walls.flatMap((x) => segmentsOfWall(x));
+    return segsMemo;
+  };
   const windows: WindowSummary[] = windowEls.map((w) => {
     const touching = roomsAtPoint(w.at, roomRects, tol);
-    const room = touching[0] ?? null;
-    const box = room ? (roomRects.get(room) ?? null) : null;
+    const edgeRoom = touching[0] ?? null;
+    // A window on an arc edge no room touches is attributed from the shape (`windowRoom`'s rule
+    // in analyze.ts, PS0.12). Its facing is asked exactly as before, of the edge room only.
+    const room =
+      edgeRoom ??
+      (w.host?.arc ? arcWindowRoom({ at: w.at, width: w.width, host: w.host }, roomRects, tol, segs()) : null);
+    const box = edgeRoom ? (roomRects.get(edgeRoom) ?? null) : null;
     // A POLYGON/CIRCLE room has no four sides to pick the nearest of, and its bounding box
     // would answer for an edge the window is not on — `windowFacingPage` drops it and falls
     // through to the outward-face probe, which is exact at any wall angle and reads the

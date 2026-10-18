@@ -19,6 +19,7 @@ import {
   rectOf,
   roomAreaMm2,
   roomUses,
+  windowServesRoom,
 } from "../../analyze.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import { zoneFixtureCategories } from "../../fixtures-catalog.js";
@@ -41,13 +42,13 @@ export const KITCHEN_FIX = zoneFixtureCategories("kitchen");
 export const areaM2 = (r: RRoom): number => Math.round((roomAreaMm2(r) / 1_000_000) * 100) / 100;
 
 /**
- * Does any window sit on the room's perimeter? The one window-attribution fact the daylight
- * rules read (`W_BEDROOM_NO_WINDOW`, `W_HABITABLE_NO_WINDOW`): {@link pointOnRoomEdge} on the
- * room's own shape, the test `describe().windows[].room` is built from (`roomsAtPoint`).
+ * Does any window serve the room? The one window-attribution fact the daylight rules read
+ * (`W_BEDROOM_NO_WINDOW`, `W_HABITABLE_NO_WINDOW`): {@link windowServesRoom}, a window centred
+ * on the room's own perimeter, or one on an arc edge that the shape attributes to it (PS0.12) —
+ * the tests `describe().windows[].room` is built from.
  */
 export function roomHasWindow(ctx: LintContext, r: RRoom): boolean {
-  const rect = ctx.roomRects.get(r.id)!;
-  return ctx.windows.some((win) => pointOnRoomEdge(win.at, rect, ctx.rules.tolMm));
+  return ctx.windows.some((win) => windowServesRoom(win, r.id, ctx.roomRects, ctx.rules.tolMm, ctx.wallSegs));
 }
 
 /**

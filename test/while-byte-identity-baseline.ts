@@ -279,6 +279,13 @@
  *   - The seven examples `accessible`, `corner-cafe`, `hillside-villa`, `practice-office`,
  *     `relational`, `terrace-row`, `two-storey` also had their SOURCE fixed for the defects the
  *     rules found (listed there), so their rows carry those edits too.
+ *
+ * `examples/hillside-villa.arch` re-measured, with this test's own digest body, for
+ * plan-soundness PS0.12 (a window on an arc edge is attributed from the shape): `describe()`
+ * moves in one value, the bay window's `room` `null` → `"r_living"`. Every storey's SVG,
+ * `lint()` and `compile().diagnostics` are byte-identical; the previous `describe()` put back
+ * into the new payload reproduces the previous row. Field by field in
+ * `./byte-identity-baseline.ts`, "a window on an arc edge is attributed from the shape".
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
@@ -294,7 +301,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/garden-house.arch", "32889de233fcb6d33704ff9daa31a098ec33f0febdc14bf0ea74f52e2fe93976"], // re-measured, see header
   ["examples/garden-loft.arch", "eb6ba7bdcd33231cd0cfd2072a1a99e2b416be039e6efc2cc0a5ea76129738f2"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
-  ["examples/hillside-villa.arch", "a3e70591a0c8dd388878225e9d7dcbe54511690f7ab23b23e6ede1919c6e7092"], // re-measured, see header
+  ["examples/hillside-villa.arch", "0ab249aa8df18e7d04cc57352ec5947c1013ba67ab2054877649af3fb0e44b50"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
   ["examples/laneway-house.arch", "d87dea46b06ea13b539e0a7c03674038e15762d15948a7bc27632e1b8afd11e2"],
   ["examples/library.arch", "3e8f00d70f63d840a1e2ead5c926cea204751fada57e5de028709bec4d091334"],

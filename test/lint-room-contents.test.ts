@@ -84,21 +84,29 @@ ${win}}
     expect(codesOf(L("  window at (3000,4500) width 1200 wall shell\n"))).not.toContain("W_HABITABLE_NO_WINDOW");
   });
 
-  it("says nothing when a window stands on an arc edge of the room (attribution unknown; PS0.12)", () => {
-    const BAY = (glazed: boolean) => `plan "Bay" {
+  it("reads a window on an arc edge of the room from the shape, and says nothing only where that fails (PS0.12)", () => {
+    const BAY = (glazed: boolean, chordWall = false) => `plan "Bay" {
   units mm
   grid 50
   wall id=shell exterior thickness 200 { (0,0) (4800,0) (4800,6000) (4000,6000) arc (1400,6000) radius 2000 cw (0,6000) close }
-  room id=r_living at (0,0) size 4800x6000 label "Living" uses living
+${chordWall ? "  wall id=w_chord partition thickness 100 { (1400,6000) (4000,6000) }\n" : ""}  room id=r_living at (0,0) size 4800x6000 label "Living" uses living
   door id=d_garden at (700,6000) width 900 wall shell swing out
 ${glazed ? "  window id=win_bay on shell at 13000 width 1200\n" : ""}}
 `;
-    // The bay's window is on the arc, so describe gives it to no room; the solid bay is the defect.
+    // The bay's window is on the arc: the probe through the chord gives it to the living room,
+    // which is lit.
     const glazed = BAY(true);
     const facts = describePlan(glazed) as { windows: { id: string; room: string | null }[] };
-    expect(facts.windows).toEqual([expect.objectContaining({ id: "win_bay", room: null })]);
+    expect(facts.windows).toEqual([expect.objectContaining({ id: "win_bay", room: "r_living" })]);
     expect(codesOf(glazed)).not.toContain("W_HABITABLE_NO_WINDOW");
     expect(codesOf(BAY(false))).toContain("W_HABITABLE_NO_WINDOW");
+    // A wall on the chord closes the bay off: describe gives the window to no room, so whether
+    // the living room is lit is unknown and the rule still says nothing (attribution unknown).
+    const walled = BAY(true, true);
+    const walledFacts = describePlan(walled) as { windows: { id: string; room: string | null }[] };
+    expect(walledFacts.windows).toEqual([expect.objectContaining({ id: "win_bay", room: null })]);
+    expect(codesOf(walled)).not.toContain("W_HABITABLE_NO_WINDOW");
+    expect(codesOf(BAY(false, true))).toContain("W_HABITABLE_NO_WINDOW");
   });
 
   it("names only an outside face: an exterior wall shared with an attached wing is not one", () => {

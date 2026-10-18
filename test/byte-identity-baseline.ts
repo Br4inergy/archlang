@@ -1164,6 +1164,20 @@
  * After (2) every one of the seven lints exactly as before (1), field by field, spans aside;
  * each row below is the new measurement with this file's digest bodies (`two-storey` over its
  * height-free derivation).
+ *
+ * ## `hillside-villa`: both rows re-measured — a window on an arc edge is attributed from the shape
+ *
+ * Case (1), a compiler change, in `describe()` only (plan-soundness PS0.12;
+ * `test/arc-window-attribution.test.ts`). A window on an arc wall edge that no room's edge
+ * touches is attributed from the shape: one wall thickness off each face, else along the concave
+ * normal through the arc's chord into the room drawn to it. Field by field, `describe()` moves in
+ * one value: the living-room bay window `windows[9].room` (and its copy under `levels[0]`) `null`
+ * → `"r_living"`; its `facing` stays `S`. `lint()` is byte-identical (the Living room was skipped
+ * by `W_HABITABLE_NO_WINDOW`'s arc-window rule before and is lit now), and so are every storey's
+ * SVG and `compile().diagnostics`. Hashing the NEW `compile()` and `lint()` with the PREVIOUS
+ * `describe()` reproduces both previous rows (5426cb1d…, 69f38c6e…) and the rows in
+ * `while-byte-identity-baseline.ts` and `import-module-lets.test.ts` (a3e70591…). No other row in
+ * this table moved.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -1181,7 +1195,7 @@ export const BASELINE: [string, string][] = [
   ["garden-house", "345f9dd2552ea9165326cab1b33825bcb85eab1a9b4fdea7e566b485985447d3"], // re-measured, see header
   ["garden-loft", "7161ddddda40ba6f520128b2196fdbba997e5f3b82674dbf2ee09495d763dc1d"],
   ["hexagon-pavilion", "92d343afbb62315ad0014b95de9f4a8b26ccffbc14093b04c5956b689f850252"],
-  ["hillside-villa", "5426cb1d6ac42c7d382e21c0f0bd7ba1a4bcd2c5a492db6884eecb902c7c52c6"], // re-measured, see header
+  ["hillside-villa", "78eb9fc4b13c6679bb85766beea3dbee4f3177ad980e89916afb635efe0e06d5"], // re-measured, see header
   ["imports", "4b0151513963a656e52ac84c6fd80eb35c9820ae101921420cb8d5c9c13c0b70"],
   ["laneway-house", "62b3fdb835ccc7eb565f982ed7930d99cfced87bbf4ae9d6bb5410e4945d255c"],
   ["library", "11163f2e43e7b367189c7bfeee6ca84613966600bd05f3433130eced1b731775"],
@@ -1229,7 +1243,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["garden-house", "5f880862d0261a5f892ad0aa5b37e728961b887eb129ce33304ab1af470c0c54"], // re-measured, see header
   ["garden-loft", "77bddbf7b08d49b0845e5268bb267a602b93002dfa20175e9218e5156dc435d1"],
   ["hexagon-pavilion", "6e8005c3a0af9b80598574e77141301a957b4a293ba8d5de6cc1effb00693494"],
-  ["hillside-villa", "69f38c6e7beab174c8ea8d2e9d298baf617d35b68f353e665e23ca3e3766c937"], // re-measured, see header
+  ["hillside-villa", "d7477e2e0ff7a833cffb50cd7bbc30c3438dcac4a4ee1225e8aec710c0e7f87f"], // re-measured, see header
   ["imports", "183bf4ec261e6650b21c4771b64fe924bf5c6eabd3ea1b8d3bbdac71b2900ac3"],
   ["laneway-house", "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0"],
   ["library", "ecb46fb3e1fc3777ae05b5f0f29318f80c35795debddaffa2d8d0f760ee44f85"],

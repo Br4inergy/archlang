@@ -606,6 +606,119 @@ export function connectorConnection(
   return straddles ? { between, ambiguous, straddles } : { between, ambiguous };
 }
 
+/** Do the open segments p1–p2 and q1–q2 cross (a proper crossing, not a touch)? */
+function segmentsCross(p1: Point, p2: Point, q1: Point, q2: Point): boolean {
+  const d1 = (q2.x - q1.x) * (p1.y - q1.y) - (q2.y - q1.y) * (p1.x - q1.x);
+  const d2 = (q2.x - q1.x) * (p2.y - q1.y) - (q2.y - q1.y) * (p2.x - q1.x);
+  const d3 = (p2.x - p1.x) * (q1.y - p1.y) - (p2.y - p1.y) * (q1.x - p1.x);
+  const d4 = (p2.x - p1.x) * (q2.y - p1.y) - (p2.y - p1.y) * (q2.x - p1.x);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+/**
+ * Does window `w` serve room `id`: on that room's perimeter (every room it touches, so a
+ * window on a shared straight wall serves both, as the daylight rules always read it), or,
+ * on an arc edge no room touches, attributed to it by {@link arcWindowRoom}? The lint side of
+ * `describe().windows[].room`, which is the first room the window's point touches
+ * ({@link roomsAtPoint}) or else that same {@link arcWindowRoom} answer.
+ */
+export function windowServesRoom(
+  w: { at: Point; width: number; host: WallSegment | null },
+  id: string,
+  roomRects: Map<string, RoomBox>,
+  tol: number,
+  segs: readonly WallSegment[] = [],
+): boolean {
+  const box = roomRects.get(id);
+  if (!box) return false;
+  if (pointOnRoomEdge(w.at, box, tol)) return true;
+  if (!w.host?.arc || roomsAtPoint(w.at, roomRects, tol).length > 0) return false;
+  return arcWindowRoom({ at: w.at, width: w.width, host: w.host }, roomRects, tol, segs) === id;
+}
+
+/**
+ * The room a window on an ARC wall edge serves, from the shape — or `null` (plan-soundness
+ * PS0.12). Asked only for a window whose point no room's edge touches: one that a room edge
+ * touches keeps the first such room, as every window always has.
+ *
+ * 1. **The faces.** One wall thickness off the arc's concave and convex faces at the window
+ *    centre and just inside its jambs ({@link connectorFaces}, PS0.1's probes, which walk the
+ *    arc's own normal): a face whose centre probe is on a floor names that room, a boundary
+ *    two floors share going to the room covering more of the face's span (ties to
+ *    `roomRects` order). One face naming a room is the answer; both naming rooms (an interior
+ *    curved wall) gives the first in `roomRects` order, the order {@link roomsAtPoint} uses.
+ *    This is the case of a room whose floor follows the curve (a `room circle`, or a polygon
+ *    traced along the arc).
+ * 2. **The bay.** A room drawn to the arc's CHORD leaves the bay between chord and curve on
+ *    no room's floor, so neither probe lands anywhere. Then the probe is carried on along the
+ *    concave normal (towards the arc's centre) to where it crosses the chord, and one wall
+ *    thickness past it. The first room in `roomRects` order whose floor holds that point and
+ *    whose edge holds the crossing serves the window (the bay opens into it there), provided
+ *    no other wall runs between the window and the probe: a wall standing on the chord at the
+ *    crossing, or crossing the way in, closes the bay off, and the window then serves no
+ *    room. The window's CENTRE decides, as it does on a straight wall: a bay whose chord two
+ *    rooms share goes to the room in front of the window's centre.
+ *
+ * `null` when neither step names a room. A room's bounding box only filters candidates in the
+ * face probes; every answer comes from `pointInRoomBox`/`pointOnRoomEdge` on the shape.
+ */
+export function arcWindowRoom(
+  w: { at: Point; width: number; host: WallSegment },
+  roomRects: Map<string, RoomBox>,
+  tol: number,
+  segs: readonly WallSegment[],
+): string | null {
+  const host = w.host;
+  const arc = host.arc;
+  if (!arc) return null;
+  const faces = connectorFaces(w, roomRects);
+  if (faces) {
+    const named = (f: FaceReading): string | null => {
+      if (f.holders.length === 0) return null;
+      let best = f.holders[0]!;
+      let bestMm = -1;
+      for (const id of f.holders) {
+        const mm = f.cover.find((x) => x.id === id)?.mm ?? 0;
+        if (mm > bestMm) {
+          best = id;
+          bestMm = mm;
+        }
+      }
+      return best;
+    };
+    const a = named(faces[0]);
+    const b = named(faces[1]);
+    if (a !== null || b !== null) {
+      if (a === null || b === null) return (a ?? b)!;
+      return [...roomRects.keys()].find((id) => id === a || id === b) ?? a;
+    }
+  }
+  // The bay: along the concave normal from the window centre to the chord a–b.
+  const ux0 = arc.center.x - w.at.x;
+  const uy0 = arc.center.y - w.at.y;
+  const ul = Math.hypot(ux0, uy0);
+  if (ul === 0) return null;
+  const u = { x: ux0 / ul, y: uy0 / ul };
+  const cx = arc.b.x - arc.a.x;
+  const cy = arc.b.y - arc.a.y;
+  const den = u.x * cy - u.y * cx;
+  if (den === 0) return null; // the normal runs along the chord
+  const t = ((arc.a.x - w.at.x) * cy - (arc.a.y - w.at.y) * cx) / den;
+  const s = ((arc.a.x - w.at.x) * u.y - (arc.a.y - w.at.y) * u.x) / den;
+  if (!(t > 0) || s < 0 || s > 1) return null; // the chord is not ahead of the window
+  const crossing = { x: w.at.x + u.x * t, y: w.at.y + u.y * t };
+  const reach = t + Math.max(host.thickness, 1);
+  const probe = { x: w.at.x + u.x * reach, y: w.at.y + u.y * reach };
+  // No other wall between the window and the probe: crossing it, or standing on the chord.
+  for (const g of segs) {
+    if (g.wallId === host.wallId && g.index === host.index) continue;
+    if (distPointToWallSegment(crossing, g) <= g.thickness / 2) return null;
+    if (!g.arc && segmentsCross(w.at, probe, g.a, g.b)) return null;
+  }
+  for (const [id, box] of roomRects) if (pointInRoomBox(probe, box) && pointOnRoomEdge(crossing, box, tol)) return id;
+  return null;
+}
+
 /** One connector (door or cased opening) as a graph edge between two spaces. */
 export interface AccessEdge {
   /** Id of the door/opening element. (`doorId` kept as the historical field name.) */
