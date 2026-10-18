@@ -1,7 +1,7 @@
 # class: circulation-privacy
 # origin: evidence.md section 1 row 4; repro/family-apartment.arch Bedroom 4 reached only through Bedroom 3 (reduced)
 # expect: W_ROOM_VIA_PRIVATE
-# status: todo
+# status: done
 # fact: bedroom 4's only door is d_bed3_bed4; removing bedroom 3 from the access graph leaves bedroom 4 unreachable
 plan "Bedroom through a bedroom" {
   units mm

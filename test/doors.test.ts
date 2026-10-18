@@ -437,15 +437,21 @@ suite("doors — W_POCKET_RUN", () => {
     // can trip it, and it is appended after everything for exactly that reason. Across the
     // shipped examples it found two real gaps, which those examples now dimension by hand.
     //
-    // The three opening rules (plan-soundness PS2.1–PS2.3) are in the same position again:
-    // no new syntax, so an older plan can trip them, and appended last. Across the shipped
-    // examples they found real defects (audit rows X3, X10, X19, X26), which those examples
-    // now fix; every example lints as before.
+    // The three circulation-and-privacy rules (plan-soundness PS2.5–PS2.7) are in the same
+    // position again: no new syntax, so an older plan can trip them, and they are appended
+    // after everything so no existing diagnostic moves. Their corpus movement is listed in
+    // the commit that added them.
+    // The three opening rules (plan-soundness PS2.1–PS2.3) are in the same position, appended
+    // after those. Across the shipped examples they found real defects (audit rows X3, X10,
+    // X19, X26), which those examples now fix; every example lints as before.
     expect(names.slice(i + 1)).toEqual([
       "outdoor-overlaps-room",
       "balcony-no-door",
       "door-near-corner",
       "opening-not-dimensioned",
+      "room-via-private",
+      "wet-room-door",
+      "entrance-into-private",
       "opening-at-junction",
       "opening-overlap",
       "connector-ambiguous",
@@ -456,11 +462,15 @@ suite("doors — W_POCKET_RUN", () => {
     const { LINT_RULES } = await import("../src/lint/rules/index.js");
     // `door-near-corner` was last when this pin was written; `opening-not-dimensioned`
     // now follows it, and only fires under `dims auto all`, which this
-    // plan does not write; the three opening rules follow that, and none fires here (a door
-    // at a corner is `W_DOOR_NEAR_CORNER`'s alone).
-    expect(LINT_RULES.map((r) => r.name).slice(-5)).toEqual([
+    // plan does not write. The three circulation-and-privacy rules follow those, and this
+    // plan has no room for them to read; the three opening rules follow those, and none fires
+    // here (a door at a corner is `W_DOOR_NEAR_CORNER`'s alone).
+    expect(LINT_RULES.map((r) => r.name).slice(-8)).toEqual([
       "door-near-corner",
       "opening-not-dimensioned",
+      "room-via-private",
+      "wet-room-door",
+      "entrance-into-private",
       "opening-at-junction",
       "opening-overlap",
       "connector-ambiguous",

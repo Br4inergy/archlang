@@ -746,11 +746,16 @@ describe("the four reworded hints' messages name things as a reader would; ids s
   // piece of furniture; the element id an agent edits by is in the hints. Derived from
   // `describe()`, never retyped: a room is named by its label (its id when it has none), a
   // piece by its label or category. The three opening rules (PS2.1–PS2.3) are held to it too.
+  // The three circulation-and-privacy codes (plan-soundness PS2.5–PS2.7) were written to this
+  // rule from the start; `test/lint-circulation-privacy.test.ts` holds their option texts.
   const CODES = [
     "W_PATH_TOO_NARROW",
     "W_FURNITURE_WALL_COLLISION",
     "W_FIXTURE_BACK_TO_ROOM",
     "W_ROOM_NO_FIXTURE",
+    "W_ROOM_VIA_PRIVATE",
+    "W_WET_ROOM_DOOR",
+    "W_ENTRANCE_INTO_PRIVATE",
     "W_OPENING_AT_JUNCTION",
     "W_OPENING_OVERLAP",
     "W_CONNECTOR_AMBIGUOUS",
@@ -793,6 +798,9 @@ describe("the four reworded hints' messages name things as a reader would; ids s
       // Not vacuous: the path and collision messages, the two that named ids, are exercised.
       expect(seen.get("W_PATH_TOO_NARROW") ?? 0).toBeGreaterThan(0);
       expect(seen.get("W_FURNITURE_WALL_COLLISION") ?? 0).toBeGreaterThan(0);
+      // …and the privacy rules, which the corpus raises on `two-bed` and two fixtures.
+      expect(seen.get("W_ROOM_VIA_PRIVATE") ?? 0).toBeGreaterThan(0);
+      expect(seen.get("W_ENTRANCE_INTO_PRIVATE") ?? 0).toBeGreaterThan(0);
     });
   }
 

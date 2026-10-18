@@ -1,7 +1,7 @@
 # class: circulation-privacy
 # origin: evidence.md section 1 row 3; repro/family-apartment.arch o_living_bath1 (reduced)
 # expect: W_WET_ROOM_DOOR
-# status: todo
+# status: done
 # fact: the bathroom's only connector is o_bath, a leaf-less 800 mm opening onto the living room
 plan "Bath open to the living room" {
   units mm

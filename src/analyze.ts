@@ -843,7 +843,11 @@ export function buildDoorAccessGraph(
  * NEITHER — a free-standing wall) is never called a balcony door: the ambiguous case
  * keeps the historical "this door is an entrance" answer rather than guessing.
  */
-function doorFacesBalcony(d: RDoor, rooms: readonly RRoom[], balconies: readonly ROutdoor[]): boolean {
+export function doorFacesBalcony(
+  d: Pick<RDoor, "host" | "at">,
+  rooms: readonly RRoom[],
+  balconies: readonly ROutdoor[],
+): boolean {
   if (!d.host || balconies.length === 0) return false;
   const { plus, minus } = wallFaceProbes(d.host, d.at, Math.max(d.host.thickness, 1));
   const onPlus = rooms.some((r) => pointInRoomBox(plus, roomBox(r)));

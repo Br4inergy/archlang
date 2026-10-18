@@ -94,7 +94,7 @@ plan "Garden House" {
     # of blank spine wall (it needs 850 — its own 800 plus a jamb allowance).
     door id=d_util pocket on w_h2 at 1800 width 800 slide left
     # Kitchen to garage — the mud-room door every attached garage has.
-    door id=d_gar on w_gar at 1800 width 900 swing into r_util
+    door id=d_gar on w_gar at 4750 width 900 swing into r_kitchen
     # Living and kitchen are one space across the spine.
     opening id=o_kitchen on w_h2 at 6800 width 1600
 

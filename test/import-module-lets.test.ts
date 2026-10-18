@@ -388,6 +388,17 @@ suite("a module `let` that fails reports as it does in the module", () => {
  *     whose edge for that door goes from `living`→`bath`, `interior` to `exterior`→`living`,
  *     `front`; and `lint()` under `accessibility-advisory`, which gains `W_PATH_TOO_NARROW` twice
  *     (one walk per room, 840 and 740 mm clear against the 900 mm minimum) now that a route exists.
+ *   - 2026-10-18, plan-soundness PS2.5–PS2.7 (three circulation-and-privacy lint rules
+ *     appended): `examples/two-bed`, `examples/garden-house`, `test/fixtures/axes-grid` and
+ *     `chain30` as in `./while-byte-identity-baseline.ts`; and four eval plans, `lint()` only, each
+ *     reproduced by hashing with `lint()` minus the three new codes:
+ *     `eval/goldens/reception-suite` (`W_WET_ROOM_DOOR`: the WC door opens into "Kitchenette"),
+ *     `relational-studio` (`W_WET_ROOM_DOOR`: the bathroom door opens into "Kitchen"),
+ *     `strip-attach-clean` (`W_ROOM_VIA_PRIVATE`: "Bedroom 2" is reached only through
+ *     "Bathroom", depth 3) and `eval/fidelity-plans/four-bed-cap.laundered` (three
+ *     `W_ROOM_VIA_PRIVATE`: bedrooms 2 and 3 only through bedroom 1, bedroom 4 through 1 then 3).
+ *     After the rules' review, `two-bed` and the three goldens moved again on their hint wording
+ *     alone (see `./byte-identity-baseline.ts`): the first commit's `lint()` reproduces each row.
  *
  * Fifteen rows re-measured on 2026-10-18 for the opening rules (plan-soundness PS2.1–PS2.3),
  * each with a held swap-back proof:
@@ -414,6 +425,9 @@ suite("a module `let` that fails reports as it does in the module", () => {
  * `anchor-furniture.arch`; and `strip-attach-clean.arch` loses its `W_CONNECTOR_AMBIGUOUS`
  * (each straddled sliver is 100 mm, 50 mm net of the partition's body, under the 100 mm a
  * jamb's nib needs), keeping its `W_OPENING_AT_JUNCTION`.
+ *
+ * The rows moved by both plan-soundness branches are re-measured on their merge, as recorded
+ * in `./byte-identity-baseline.ts` (the last paragraph of its header).
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "dd7d71ebb95715ca666f7a087af5456436cba420936c111d20cb497159715529"],
@@ -429,7 +443,7 @@ const BASELINE: [string, string][] = [
   // Re-measured because the EXAMPLE changed (backlog D.1, its doubled chairs removed), and again
   // for the legend's ground swatches (backlog D.3, level 1's SVG only): the same row, with the
   // same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/garden-house.arch", "ffe33b785e9b5d6a2d2b83b0c5fe416bb1df75e9cfe2755cd9721df2e424f85d"],
+  ["examples/garden-house.arch", "32889de233fcb6d33704ff9daa31a098ec33f0febdc14bf0ea74f52e2fe93976"],
   ["examples/garden-loft.arch", "eb6ba7bdcd33231cd0cfd2072a1a99e2b416be039e6efc2cc0a5ea76129738f2"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
   // Re-measured for the facade-probe fix (level 2's `dims auto` chains only), and again because
@@ -463,13 +477,13 @@ const BASELINE: [string, string][] = [
   ["examples/transit-hall.arch", "b8ec53697030c76a35fdd875115c89cedca4e5ff591837eab5b1fb1209024ad9"],
   // Re-measured 2026-10-18 (PS0.7, the label classifier emits living; `describe()` only): the
   // same row, with the same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/two-bed.arch", "a805e3baa9df0117a2216af7fda83174706ca4d47f38a13c5eb1e77bea89285c"],
+  ["examples/two-bed.arch", "7a99d973cc7db9e33f46534d4abf6cc879fb32559b13d4459606242e8687dec8"],
   ["examples/two-storey.arch", "9a3c251061973ef6fd1cb77c0a2351e2d224b53cb7cd5f51b97dcf824285606d"],
   ["examples/lib/doors.arch", "232f7d4cf35f3d44678b3e3641c4815139f9412a9fd079f99639026b99f005b6"],
   ["examples/lib/fixtures.arch", "25e792ed80e5571a57ac00323283b58af9ffd96646008637646f99600f4716f8"],
   ["examples/lib/furniture.arch", "0b3f57be12defbd32e7dd349a5c81619acc3c2650bcf2e2bffaff1669b7a112a"],
-  ["test/fixtures/axes-grid.arch", "ce679d02505196bc708ad17fd1774c3af515f4698b3ab4c7e950dff3b695576a"],
-  ["test/fixtures/chain30.arch", "13411e1dbffca14e73601338837daf6517ddf9fc2447695021101fc051073cb6"], // new fixture, see header
+  ["test/fixtures/axes-grid.arch", "a0a729cd0ec5bbfd90353f47e0fc9d3ee45601b66dbb67df459f54165465e8ff"],
+  ["test/fixtures/chain30.arch", "858da6001d3d8032a10d372a3dac4c4eae453ad898c4f930ec4dd09ad4d9c54a"], // new fixture, see header
   ["test/fixtures/dense-bays.arch", "c01f946b1cd01d07fb673f33c210388d647aeab75049be76a9e5a6c30c00ac46"],
   ["test/fixtures/diff-a.arch", "1cff5f9be081933217e1ee78804a2cf68cf17dba8d9997a51efc89ea3cbc7632"],
   ["test/fixtures/diff-b.arch", "baab46a8480793499c0992812fc3867988f1d874df02fe5ce5fc187373bfcdda"],
@@ -502,14 +516,14 @@ const BASELINE: [string, string][] = [
   ["eval/goldens/l-shaped-flat.arch", "d30c51f32a98dcad06472c9d69ce0d42506c24de079b4cfa86325313060080eb"],
   ["eval/goldens/office.arch", "2aa4b26730b2f4104f7464abab0012f6f1861ab21e7e55da416256e99d84fd10"],
   ["eval/goldens/open-plan-loft.arch", "2efcf0fdc611e4c017621e8de25030ea3a7afed4069a6816217ba2f7cfca762a"],
-  ["eval/goldens/reception-suite.arch", "c0c109d44f1ed01a0747e81bcf57c8d0e37d60a47bd147cd3db9a2df83b332ff"],
-  ["eval/goldens/relational-studio.arch", "8b65d8b712ac5ffcc4157bdf3ad210d02db860d3183f88eff5ac97454362274a"],
+  ["eval/goldens/reception-suite.arch", "1b1b7ca31e112ee57d2814a2ae19db90e26c27e92233c56486591c4b8c88f6c8"],
+  ["eval/goldens/relational-studio.arch", "d2afc557024bcc7c1a7bfbcdd2e69e2719415844f4416e120727afe4806b12f5"],
   ["eval/goldens/scripting-units.arch", "6f64fd2f54b9684990933bd56df84b800c97074564c18baf6402cfedd9837c2b"],
   ["eval/goldens/sized-bedrooms.arch", "7282d52c3265cb20f67e27f445e7fdd42ceb56912133bb36c845048a9ddf164f"],
   ["eval/goldens/sized-kitchen-flat.arch", "d53a6f4fef770d801976b2368ff9ce3c828b33085f82616803e3517927aa2bf2"],
   ["eval/goldens/sized-office-mix.arch", "a393fe780123bcc94a86e642874c87863c4f7a6d38528c13e34108e864b3975a"],
   ["eval/goldens/sized-wet-room.arch", "b73b7c5a2ad1eedf1a402331c6c0991ac3a985adf8b23c9b73fa5d4a4c46129a"],
-  ["eval/goldens/strip-attach-clean.arch", "a3b90c54c53c617dd4e59eea0875ddd0c739a14475ba5d0458fd6dd38a597fd9"], // re-measured, see header
+  ["eval/goldens/strip-attach-clean.arch", "5a42e4f024480e5cabc0c1c8e16ffa4a4b1c05f7b24457aab9e3676ff2539d79"], // re-measured, see header
   ["eval/goldens/strip-corridor.arch", "2b471514e89a72253310c75cff0c6589938f3f1d9bb39e97235b95cc2d7aa17e"],
   ["eval/goldens/three-bed-2bath.arch", "41a6646380327d878c4bc2ee25d722009069750024a3b8e3521ed9d818ef06ca"],
   ["eval/goldens/two-bath-flat.arch", "4238d0b5c2d363d15809a6fd3357bd5d97fdbfe02be2caa76022ad7b5e32a305"],
@@ -520,7 +534,7 @@ const BASELINE: [string, string][] = [
   ],
   [
     "eval/fidelity-plans/four-bed-cap.laundered.arch",
-    "e33991f8e4628e12c8a3251bcb566cee2f742c001424e40b7c089c0e342ef260",
+    "f429aedaf782d49151055a261b869c2225423b23b46e943d1bf1eb8d56ae639a",
   ],
   [
     "eval/fidelity-plans/min-bedroom-flat.faithful.arch",

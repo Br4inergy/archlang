@@ -947,6 +947,7 @@ is `0` and its `integration` is `null`: it is as integrated as a space can be.
 | Garage | `W_GARAGE_TOO_NARROW` |
 | Furniture / fixtures | `W_FIXTURE_FLOATING`, `W_FIXTURE_BACK_TO_ROOM`, `W_FIXTURE_WRONG_ROOM`, `W_FURNITURE_OVERLAP`, `W_FURN_CLEARANCE` |
 | Circulation quality | `W_ROOM_NO_CLEAR_PATH`, `W_PATH_TOO_NARROW`, `W_CIRCUITOUS_PATH` |
+| Circulation and privacy | `W_ROOM_VIA_PRIVATE`, `W_WET_ROOM_DOOR`, `W_ENTRANCE_INTO_PRIVATE` |
 
 Every code is documented — with cause, fix, and example — in the
 [error catalog](error-codes.md), or run `archlang explain W_SWING_OBSTRUCTED`. (In human
@@ -959,6 +960,16 @@ storey is reachable from the entrance without passing through one. An en-suite b
 family bathroom — or just a WC — that is reached without crossing a bedroom (off the hall,
 say) is the conventional case and is not flagged. The check runs per storey, so a WC on
 the ground floor does not excuse a first floor whose only bathroom is an en-suite.
+
+`W_ROOM_VIA_PRIVATE` is the general case. Take one bedroom, bathroom or WC out of the access
+graph: any room that is then cut off from the entrance is reached only through it, and the
+warning names the private rooms on that route in order and the room's access depth. An
+en-suite, a WC behind a bathroom and a storage room are exempt. `W_WET_ROOM_DOOR` reads a
+bathroom's or WC's connectors (no door, a door straight onto a kitchen or dining room, or two
+doors that make it a passage), and `W_ENTRANCE_INTO_PRIVATE` fires when every door from
+outside opens into a bedroom, bathroom or WC. All three read `uses` (authored, or from the label
+vocabulary) and skip a room with no classified use. Their hints offer only doors on edges two
+rooms really share, measured, and never suggest shrinking or deleting a room.
 
 Narrow a noisy report with `--code` or `--severity` — on `lint` and on `validate`:
 

@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**103 errors** · **55 warnings**
+**103 errors** · **58 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -129,6 +129,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_DRAWING_OVERFLOW`](#w_drawing_overflow) | warning | The whole drawing does not fit the declared paper, even though the building does. |
 | [`W_DUP_ACC_METADATA`](#w_dup_acc_metadata) | warning | Duplicate `accTitle`/`accDescr`. |
 | [`W_EMPTY_PLAN`](#w_empty_plan) | warning | Empty plan. |
+| [`W_ENTRANCE_INTO_PRIVATE`](#w_entrance_into_private) | warning | The way in from outside opens into a bedroom, bathroom or WC. |
 | [`W_FIXTURE_BACK_TO_ROOM`](#w_fixture_back_to_room) | warning | A fixture stands against a wall but faces the wrong way. |
 | [`W_FIXTURE_FLOATING`](#w_fixture_floating) | warning | A plumbing/kitchen fixture is not against a wall. |
 | [`W_FIXTURE_WRONG_ROOM`](#w_fixture_wrong_room) | warning | Fixture is not inside its declared room. |
@@ -157,6 +158,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_ROOM_OVERLAP`](#w_room_overlap) | warning | Rooms overlap. |
 | [`W_ROOM_TOO_SMALL`](#w_room_too_small) | warning | Room is implausibly small. |
 | [`W_ROOM_UNREACHABLE`](#w_room_unreachable) | warning | Room cannot be reached from the entrance. |
+| [`W_ROOM_VIA_PRIVATE`](#w_room_via_private) | warning | Every route to a room passes through one particular bedroom, bathroom or WC. |
 | [`W_SANITIZED_CONFIG`](#w_sanitized_config) | warning | A disallowed config value was stripped. |
 | [`W_SCALE_OVERFLOW`](#w_scale_overflow) | warning | The drawing does not fit the declared paper at the declared scale. |
 | [`W_STAIR_UNMATCHED`](#w_stair_unmatched) | warning | A run of vertical circulation appears on only one storey. |
@@ -165,6 +167,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_UNKNOWN_MATERIAL`](#w_unknown_material) | warning | Unknown wall material; using the default hatch. |
 | [`W_UNKNOWN_STYLE_KEY`](#w_unknown_style_key) | warning | Unknown style key. |
 | [`W_UNKNOWN_THEME_KEY`](#w_unknown_theme_key) | warning | Unknown theme key. |
+| [`W_WET_ROOM_DOOR`](#w_wet_room_door) | warning | A bathroom or WC has no door, opens onto a kitchen, or is a passage. |
 | [`W_WHILE_DEPRECATED`](#w_while_deprecated) | warning | `while` is deprecated and will be removed in a future major version. |
 | [`W_WINDOW_OFF_WALL`](#w_window_off_wall) | warning | Window does not lie on any wall. |
 
@@ -1654,6 +1657,26 @@ accTitle "B"   # warning: "A" is discarded
 plan "Empty" { units mm }   # warning
 ```
 
+## W_ENTRANCE_INTO_PRIVATE
+
+*warning* — The way in from outside opens into a bedroom, bathroom or WC.
+
+**Cause.** Every door from outside on this storey opens into a bedroom, bathroom or WC (ResPlan: 0 of 16,317 front doors do). Only real ways in count: a door onto an `outdoor balcony` does not, and a storey reached only by a stair or lift is not checked. When any door from outside opens into another room (a hall, living space, kitchen, or a room with no classified use), that is the front door, and a bedroom's own garden door is not reported. A front door into a kitchen is not reported: whether it is acceptable depends on the culture, so a profile may add it. A room that is also a living space (a bedsit with `uses bedroom living`) is not private, and a storey whose classified rooms are all private (a bedroom drawn by itself, a fragment of a dwelling) is not checked. The rooms behind such a front door are not also reported by `W_ROOM_VIA_PRIVATE`: one fault, one warning.
+
+**Fix.** Move the front door onto a hall, living space or kitchen with enough exterior wall for a 1000 mm door and its nibs (the hints name each such room, measured on centrelines, with the depth the private room is then at), or put an entrance hall or lobby at least 1200 mm clear (GB 50096-2011 5.7.1, as advice) between the door and the room. There is no machine fix: a door is a geometric decision (ADR 0005).
+
+```arch static
+plan "Front door into a bedroom" {
+  units mm
+  wall exterior thickness 200 { (0,0) (8000,0) (8000,4000) (0,4000) close }
+  wall partition thickness 100 { (4000,0) (4000,4000) }
+  room at (0,0) size 4000x4000 label "Bedroom"
+  room at (4000,0) size 4000x4000 label "Living"
+  door at (2000,4000) width 1000 wall exterior   # lint: the only way in opens into the bedroom
+  door at (4000,2000) width 900 wall partition
+}
+```
+
 ## W_FIXTURE_BACK_TO_ROOM
 
 *warning* — A fixture stands against a wall but faces the wrong way.
@@ -2006,6 +2029,29 @@ room at (0,0) size 1000x1000 label "Closet"   # lint: 1 m²
 room at (5000,0) size 3000x3000 label "Store"   # lint: no path from the entrance
 ```
 
+## W_ROOM_VIA_PRIVATE
+
+*warning* — Every route to a room passes through one particular bedroom, bathroom or WC.
+
+**Cause.** Take one bedroom, bathroom or WC out of the door graph (`describe().access`) and this room has no route left from the entrance: every way to it passes through that private room. The warning names each private room on the route, in order, and the room's access depth. Not reported, because they belong behind a private room: a bath or WC (an en-suite, or a WC behind a bathroom) and a storage room (a wardrobe or dressing room); a wet room `W_BATH_VIA_BEDROOM` already names is not named again. A room that is also a living space, dining room, kitchen, hall, circulation or entry is not private. The ways in are the doors to the ground and the stair or lift landings; a door onto an `outdoor balcony` is not one. When the front door itself opens into the private room, `W_ENTRANCE_INTO_PRIVATE` reports it and the rooms behind it are not reported again. The test removes one room at a time, so a room whose every route crosses SOME private room but no single one (a living room reached through bedroom 1 or bedroom 2) is not reported: a known limit. A room with no classified use (no `uses`, and a label the use vocabulary does not read) is skipped. ResPlan: about 0.03 % of 16,317 real dwellings reach a non-bath room only through a bedroom.
+
+**Fix.** Give the room a route that passes no private room. The hints list each room reached without one that shares a door-wide edge with it, measured as the longest single straight run on centrelines against a door-width floor (900 mm into a bedroom or living space, 800 into a kitchen, 700 into a bath or WC, plus a 100 mm nib each side), with the depth a door there gives, and, for a room that is not private, its run of exterior wall. When no room qualifies, move partitions so a hall or corridor at least 900 mm clear reaches it. Never shrink, delete or relabel a room to silence this. There is no machine fix: a door is a geometric decision (ADR 0005). Accept it when the route is deliberate: a dressing room, nursery or study in a main bedroom's suite, or a railroad flat.
+
+```arch static
+plan "Through a bedroom" {
+  units mm
+  wall exterior thickness 200 { (0,0) (9000,0) (9000,4000) (0,4000) close }
+  wall id=p1 partition thickness 100 { (3000,0) (3000,4000) }
+  wall id=p2 partition thickness 100 { (6000,0) (6000,4000) }
+  room at (0,0) size 3000x4000 label "Hall"
+  room at (3000,0) size 3000x4000 label "Bedroom"
+  room at (6000,0) size 3000x4000 label "Living"
+  door at (1500,4000) width 1000 wall exterior
+  door at (3000,2000) width 900 wall p1
+  door at (6000,2000) width 900 wall p2   # lint: Living is reached only through Bedroom
+}
+```
+
 ## W_SANITIZED_CONFIG
 
 *warning* — A disallowed config value was stripped.
@@ -2102,6 +2148,26 @@ style room { nope: "#000" }   # warning
 
 ```arch static
 theme { nope: "#000" }   # warning
+```
+
+## W_WET_ROOM_DOOR
+
+*warning* — A bathroom or WC has no door, opens onto a kitchen, or is a passage.
+
+**Cause.** Three cases, each with its own message. (1) The wet room's only connector is a leaf-less `opening` onto a habitable room (living, dining, kitchen, bedroom, office), so it cannot be closed. (2) A connector joins it straight to a kitchen or dining room with no lobby between (GB 50096-2011 5.4.3, cited as advice, not compliance; ResPlan: about 0.3 % of bath doors open off a kitchen); a room that is also the living room, an open-plan kitchen/living or a studio, does not count. (3) Two or more connectors join it to two different rooms outside a private suite (not a bedroom, bath, WC or storage room), so the way between them runs through it; when one of them is reached only through the wet room, `W_ROOM_VIA_PRIVATE` reports that instead. A room with no classified use is skipped.
+
+**Fix.** (1) Hang a leaf in it: write `door` in place of `opening`, at least 700 mm wide, or move its way in onto a hall. (2) Re-host the door onto a hall or corridor the wet room shares a door-wide edge with (the hints name each one, measured on centrelines), or put a lobby at least 900 mm clear between them. (3) Where one of the two rooms already has its own door to a room reached without the wet room, remove the wet room's door to it; where the two share a door-wide straight edge, re-host the wet room's second door onto it; otherwise run a corridor at least 900 mm clear between them. There is no machine fix: a door is a geometric decision (ADR 0005).
+
+```arch static
+plan "Bath off the kitchen" {
+  units mm
+  wall exterior thickness 200 { (0,0) (6000,0) (6000,3000) (0,3000) close }
+  wall partition thickness 100 { (4000,0) (4000,3000) }
+  room at (0,0) size 4000x3000 label "Kitchen"
+  room at (4000,0) size 2000x3000 label "Bathroom"
+  door at (2000,3000) width 900 wall exterior
+  door at (4000,1500) width 700 wall partition   # lint: the bath opens straight into the kitchen
+}
 ```
 
 ## W_WHILE_DEPRECATED

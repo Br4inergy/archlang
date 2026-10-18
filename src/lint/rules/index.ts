@@ -21,6 +21,7 @@ import {
 } from "./furniture.js";
 import { connectorAmbiguous, openingAtJunction, openingOverlap } from "./openings.js";
 import { perRoomRules } from "./per-room.js";
+import { entranceIntoPrivate, roomViaPrivate, wetRoomDoor } from "./privacy.js";
 import { reachability } from "./reachability.js";
 import { balconyNoDoor, outdoorOverlapsRoom } from "./outdoor.js";
 import { roomNotEquatorFacing } from "./site.js";
@@ -84,6 +85,12 @@ export const LINT_RULES: readonly LintRule[] = [
   // `dims auto all` chain measures. Appended LAST, for the same reason as every rule above
   // it, and it cannot fire unless the plan says `dims auto all`.
   openingNotDimensioned,
+  // Circulation and privacy (plan-soundness PS2.5–PS2.7): a room reached only through a
+  // bedroom or bath, a wet room's door in the wrong place, and a front door into a private
+  // room. Appended LAST, in that order, so no existing rule's diagnostic ORDER moves.
+  roomViaPrivate,
+  wetRoomDoor,
+  entranceIntoPrivate,
   // Plan-soundness advisories on openings and the walls around them (PS2.1–PS2.3): an
   // opening at a wall junction, two openings sharing a run, and a connector whose sides do
   // not each lie in one room. Appended LAST, in that order, so no existing plan's
