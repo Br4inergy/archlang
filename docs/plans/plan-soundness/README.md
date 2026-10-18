@@ -224,9 +224,14 @@ Dependencies are by card id. Each card's gate is the backlog floor gate plus wha
 
 ### PS0 · Bugs found by the audit (independent; file and fix first)
 
-Landed: PS0.1 (`between` from wall-face probes at centre and jambs, additive `straddles`; PR #196)
-and PS0.7 (the label classifier emits `living`/`dining`; a living alias yields to any other kind
-but dining; PR #197).
+Landed: PS0.1 (`between` from wall-face probes at centre and jambs, additive `straddles`; PR #196),
+PS0.7 (the label classifier emits `living`/`dining`; a living alias yields to any other kind
+but dining; PR #197), PS0.11 (`W_ROOM_TOO_SMALL` reads the room's use: WC 1.1 m², bath 2.0 m²,
+store/utility/hall/circulation/entry exempt, knob `minRoomAreaByUseM2`; b7d4d28), PS0.12 (a window
+on an arc edge is attributed from the shape: face probes, else through the arc's chord; PS2.8's
+arc-window skip kept only where that fails; 4d6d5ff) and PS0.10 (`describe().access.mainEntrance`
+and `depthFromMainEntrance`; `W_PATH_TOO_NARROW` and the privacy routes judged from the main
+entrance, refused on a tie or a slider-versus-hinged conflict without `site`; e48d61b).
 
 | Card | Bug (re-measure first; the evidence is in the cited file) | Status |
 |---|---|---|
@@ -237,9 +242,6 @@ but dining; PR #197).
 | PS0.6 | `suggest` connects an unreachable room to *any* reachable neighbour, a bedroom included (`src/suggest.ts` ~364-395), against `skills/archlang/SKILL.md`'s own advice. Rank by neighbour use (hall/circulation/living first, bedroom and bath last) | todo |
 | PS0.8 | `W_PATH_TOO_NARROW` measures pinches on the 100 mm grid and missed a 500 mm diagonal between a bench and a jamb (`repro/gallery-bench-pinch.arch`, `audits/archcanvas-public-examples.md` GW3). Re-measure the case first: the repro lints with the warning in isolation | todo |
 | PS0.9 | `describe` assigns a window between an enclosed room and a covered loggia to the loggia, so lint and describe disagree on bedroom windows (`audits/showcase-and-examples.md` villa-rotonda) | todo |
-| PS0.10 | Reachability and the walk are seeded from every exterior door, so a patio or balcony door masks a route blocked from the front door: `W_ROOM_UNREACHABLE`/`W_PATH_TOO_NARROW` stay silent on a sofa across the hall→living opening (`audits/2026-10-18-first-contact.md` T2, A2; proven by turning the secondary door into a window). Single-storey sibling of PS0.3. Decide the honest fact: report per-entrance reachability, or name a main entrance (the one on `site.street`, else the widest leafed exterior door) and report the rest as secondary | todo |
-| PS0.11 | `W_ROOM_TOO_SMALL` is use-blind (one 4 m² floor), so repairing it inflated a café staff WC to 1.6 × 3.4 m and deleted a linen store (`audits/2026-10-18-first-contact.md` "repair pressure"). Make the floor use-aware (WC, store, utility exempt or at their own floor) before more agents repair against it | todo |
-| PS0.12 | A window hosted on an arc wall segment gets `room: null` in `describe().windows[]` (the bay-window case, `audits/archcanvas-public-examples.md` BB3; `examples/hillside-villa.arch` living-room bay). Every window rule and the daylight facts are blind on bays, so PS2.8 skips rooms with an unattributed arc window instead of guessing. Attribute from the shape: probe one thickness off the arc's concave and convex faces at the window centre | todo |
 
 ### PS1 · The defect corpus (do this before PS2; it is the yardstick)
 
