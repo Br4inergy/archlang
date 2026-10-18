@@ -36,6 +36,9 @@ make the wrong thing hard to write), **checks** (rules that read the facts it al
 
   Default lint on that reconstructed plan returns only fixture-rotation warnings. One `arch fix` run
   plus one hand edit makes it pass `validate --strict` with every architectural defect still present.
+- **Fresh plans confirm it (2026-10-18).** Six briefs written cold by an AI author from `spec.llm.md`
+  alone end lint-clean and strict-clean with 57 verified defects, 4 of them blockers; lint caught
+  none, and 26 fall outside the eight classes below (`audits/2026-10-18-first-contact.md`).
 - **The flagship example is wrong and lints clean.** `examples/two-bed.arch` says "central corridor".
   Its access graph is a chain: hall → bathroom → master bedroom → kitchen/living → bedroom 2.
   `arch lint` returns `[]`.
@@ -232,6 +235,8 @@ Dependencies are by card id. Each card's gate is the backlog floor gate plus wha
 | PS0.7 | The label classifier never emits `living`/`dining` (`src/vocabulary.ts` ~212-216): "Living", "Living Room" and "Kitchen / Living" lose their living use, so every living-room rule is blind on label-only plans. Decide the honest rule (exact-word labels only?) and record it | todo |
 | PS0.8 | `W_PATH_TOO_NARROW` measures pinches on the 100 mm grid and missed a 500 mm diagonal between a bench and a jamb (`repro/gallery-bench-pinch.arch`, `audits/archcanvas-public-examples.md` GW3). Re-measure the case first: the repro lints with the warning in isolation | todo |
 | PS0.9 | `describe` assigns a window between an enclosed room and a covered loggia to the loggia, so lint and describe disagree on bedroom windows (`audits/showcase-and-examples.md` villa-rotonda) | todo |
+| PS0.10 | Reachability and the walk are seeded from every exterior door, so a patio or balcony door masks a route blocked from the front door: `W_ROOM_UNREACHABLE`/`W_PATH_TOO_NARROW` stay silent on a sofa across the hall→living opening (`audits/2026-10-18-first-contact.md` T2, A2; proven by turning the secondary door into a window). Single-storey sibling of PS0.3. Decide the honest fact: report per-entrance reachability, or name a main entrance (the one on `site.street`, else the widest leafed exterior door) and report the rest as secondary | todo |
+| PS0.11 | `W_ROOM_TOO_SMALL` is use-blind (one 4 m² floor), so repairing it inflated a café staff WC to 1.6 × 3.4 m and deleted a linen store (`audits/2026-10-18-first-contact.md` "repair pressure"). Make the floor use-aware (WC, store, utility exempt or at their own floor) before more agents repair against it | todo |
 
 ### PS1 · The defect corpus (do this before PS2; it is the yardstick)
 
@@ -259,19 +264,19 @@ owner's audit scratch. Re-derive them from this text rather than asking for them
 | PS2.1 | `W_OPENING_AT_JUNCTION` | For every opening kind (door, window, cased opening): another wall's body intersects the opening's clear span on the host run, or either jamb's nib to a meeting wall face is under max(100 mm, host thickness), configurable by profile. Supersedes the door-only, L-corner-only scope of `W_DOOR_NEAR_CORNER`; decide whether to widen that rule or add this one beside it (byte-identity of existing output matters) | todo |
 | PS2.2 | `W_OPENING_OVERLAP` | Two openings on one host run whose along-run spans intersect, or whose separating pier is thinner than a mullion (100 mm) | todo |
 | PS2.3 | `W_CONNECTOR_AMBIGUOUS` | An access edge with `ambiguous: true`, or (after PS0.1) one whose clear span covers more than one room on a face (PS0.1 reports this as an additive `straddles` list; the edge stays in the graph with a measured `between`). The message names the rooms on each side | todo |
-| PS2.4 | `W_BOUNDARY_NO_WALL` | Two rooms share an edge run longer than a doorway with no wall or opening on it, unless both rooms' authored `uses` form an open-plan pair (kitchen/dining/living). Plus its dual: a walled face with no room covering ≥ 95 % (unassigned floor), and rooms outside the closed exterior ring (`W_ROOM_OUTSIDE_SHELL`). Generalises `largestPerimeterGap` beyond wet rooms. After it lands, a test pins that circulation-reachable implies access-reachable | todo |
+| PS2.4 | `W_BOUNDARY_NO_WALL` | Two rooms share an edge run longer than a doorway with no wall or opening on it, unless both rooms' authored `uses` form an open-plan pair (kitchen/dining/living) or a fixed counter stands in the gap (a café servery is a deliberate boundary, `audits/2026-10-18-first-contact.md` C-plan). Plus its dual: a walled face with no room covering ≥ 95 % (unassigned floor), and rooms outside the closed exterior ring (`W_ROOM_OUTSIDE_SHELL`). Generalises `largestPerimeterGap` beyond wet rooms. After it lands, a test pins that circulation-reachable implies access-reachable | todo |
 | PS2.5 | `W_ROOM_VIA_PRIVATE` | Remove a bedroom or bath/WC from the access graph: does any other room (not its own ensuite, wardrobe, storage or balcony) become unreachable? Generalises `W_BATH_VIA_BEDROOM` (keep that code; this is the general case). ResPlan: 0.03–0.06 % of real dwellings do this, so a warning is safe | todo |
 | PS2.6 | `W_WET_ROOM_DOOR` | A bath/WC whose only connector is a leaf-less opening to a habitable room; a bath/WC door onto a kitchen or dining room (GB 50096 5.4.3); a bath with two or more connectors acting as a passage (the PS2.5 test covers part of this) | todo |
 | PS2.7 | `W_ENTRANCE_INTO_PRIVATE` | The exterior door's room is a bedroom or bath (ResPlan: never). Kitchen entry is advice-level under profiles only | todo |
 | PS2.8 | `W_HABITABLE_NO_WINDOW` | Extend the bedroom rule to living and kitchen (needs PS0.7) | todo |
 | PS2.9 | `W_ROOM_MISSING_DEFINING` | A furnished room missing its defining piece: bedroom without a bed, bath without a shower or tub, kitchen without a sink, hob or worktop. Reuse `FURNISH_TABLE`'s required marks. Also let `finish`/furnish top up partly furnished rooms (backlog M.22); decide whether that stays fill-only | todo |
 | PS2.10 | `W_DIM_TEXT_MISMATCH` | A hand `dim … text "<number>"` whose number differs from the measured span beyond rounding. Non-numeric text is exempt | todo |
-| PS2.11 | Clearance family | WC centreline to side obstacle (default 400, `us` 381, accessible 450–500); front of a wardrobe ≥ 600; hob-to-fridge gap; tall unit (fridge, wardrobe, bookcase) covering a window; a door swing over a stair footprint or its landing; a void at a stair's arrival; stair pitch versus storey height; `W_DOORWAY_BLOCKED` extended to leaf-less openings; a single hinged leaf over 1200 mm. Each is a separate code; split into cards as they start | todo |
+| PS2.11 | Clearance family | WC centreline to side obstacle (default 400, `us` 381, accessible 450–500); front of a wardrobe ≥ 600; hob-to-fridge gap; tall unit (fridge, wardrobe, bookcase) covering a window; a door swing over a stair footprint or its landing; a void at a stair's arrival; stair pitch versus storey height; `W_DOORWAY_BLOCKED` extended to leaf-less openings; a single hinged leaf over 1200 mm (and a double-leaf `door` kind, since authors fake one with two leaves that clash); door–door interference (an open leaf parked across another doorway's approach, which `W_SWING_OBSTRUCTED` does not compare); a transposed footprint on a directional piece (`size WxH` with the depth on the long axis instead of a `rotate`, drawn turned and stretched). Each is a separate code; split into cards as they start. Wardrobe front and bed sides are declarations or profile values, never defaults (PS3.7). Fresh instances: `audits/2026-10-18-first-contact.md` T1, T3, H2, C4, A1, K4 | todo |
 | PS2.12 | Annotation collisions | Auto-dimension text inside a room floor, over a symbol or over a label; title-block text wider than its row. Extend `W_DIM_INSIDE` to `dims auto`; drafting only, never `describe()` | todo |
 | PS2.13 | Lint coverage report | `lint --json` gains an appended `coverage` block: rule families run, skipped (with why: no `uses`, no brief, no `site`, no multi-storey, no dwelling declared, no operable-window data) and unclassified rooms. Human output prints one line when something was skipped. Purely additive JSON | todo |
 | PS2.14 | Dwelling declaration | A zone-level marker that groups rooms into a dwelling, `describe().dwellings`, common area, and the derived party wall (the ladder rung). Needs an ADR. Unblocks the across-dwellings rule (GB 50096 5.4.4 / GB 55038-2025 4.1.7: a WC over another household's bedroom, living, kitchen or dining) and the shared-corridor checks. Corrects `research/design-taste.md` R19's default of "one level = one dwelling": that fires inside a single house and misses flats, so R19 runs only where dwellings are declared and otherwise reports a coverage skip (`research/2026-10-18-furniture-and-multistorey.md` B1, B9, B12) | todo |
 | PS2.15 | `W_SHAFT_FOOTPRINT_MISMATCH` | Same-id stair/lift runs on adjacent storeys whose footprints do not overlap. The facts exist already; ship with PS2.11's arrival-void check (`…multistorey.md` B4) | todo |
-| PS2.16 | Egress necessary-condition checks | `uk-residential-advisory`: `W_INNER_ROOM` (ADB 2.11/2.12, 3.7/3.8: a habitable room whose only route to the exit passes through another room, with its exemptions). `us-residential-advisory`: bedroom escape-window failures provable from gross sizes (IRC R310: width < 508 mm, sill > 1118 mm, area < 0.33 m²); never a pass claim without an `openable` window fact (`…multistorey.md` B10–B11). Blocked on facts, not rules, and listed as such: wet-stack risers, fire ratings, protected-stair enclosure, sprinkler-dependent limits | todo |
+| PS2.16 | Egress necessary-condition checks | `uk-residential-advisory`: `W_INNER_ROOM` (ADB 2.11/2.12, 3.7/3.8: a habitable room whose only route to the exit passes through another room, with its exemptions). `us-residential-advisory`: bedroom escape-window failures provable from gross sizes (IRC R310: width < 508 mm, sill > 1118 mm, area < 0.33 m²); never a pass claim without an `openable` window fact (`…multistorey.md` B10–B11). A non-residential advisory profile for the same family: escape-door swing in the direction of travel and leaf type, exits on separate sides, public/staff zoning, accessible WC pan offset and basin reach (first-contact café and clinic, K1, K9, K10, C6, K8). Blocked on facts, not rules, and listed as such: wet-stack risers, fire ratings, protected-stair enclosure, sprinkler-dependent limits | todo |
 
 ### PS3 · Relation-first authoring (D1 + D5; needs an ADR)
 
@@ -336,6 +341,19 @@ owner's audit scratch. Re-derive them from this text rather than asking for them
 - Facts appear in `describe()` only when declared (byte identity). Output set is D4 turns only, so
   no glyph gains handedness; add a mirror-equivariance test.
 - Design: `research/2026-10-18-furniture-and-multistorey.md` §A.4.
+- *Priority raised 2026-10-18:* the first-contact audit found 0 `rotate` clauses in six plans, 27 of
+  51 chairs at a table facing away, 3 of 3 sofas missing their TV and a reception desk facing away
+  from the door. Pair the form with an undeclared check in PS2.11: a seat whose front ray misses
+  every table or desk within 600 mm. `facing` also refuses a transposed footprint.
+
+**PS3.8 · Building-relative swing and offset wording.** `todo` (spec + grammar)
+- `swing in|out` and `at <pos>` are relative to the wall's drawn direction; an author who drew a
+  wall right-to-left put a fire exit's `swing out` opening inward and a living window in the
+  laundry (`audits/2026-10-18-first-contact.md` K1 and the v1 apartment). Add `swing inward|outward`
+  (relative to the building: towards or away from the room floor on the host) and define `in`/`out`
+  in `spec.llm.md` with a one-line example. PS3.4's `from <room.edge>` offsets fix the `at` half.
+- A plain lint for an exterior door on a public building whose leaf swings into the floor belongs
+  to PS2.16's non-residential profile, not here.
 
 ### PS4 · The change model: what follows, what stays, what breaks
 
@@ -368,6 +386,10 @@ owner's audit scratch. Re-derive them from this text rather than asking for them
 - This is the machine form of "know what to keep" (ADAI's bound dimension targets,
   `research/adai-sketchup.md` idea 1).
 - Check the intent schema's drift and generator rules before adding fields.
+- Add a gross-internal-area fact beside the centreline area (`describe().totals`), because every
+  first-contact brief was "met" on centrelines and the finished floor came out 6–10 % under the
+  brief (`audits/2026-10-18-first-contact.md` A12, H8, S7). The brief binds to the fact the client
+  means.
 
 ### PS5 · The taste layer and the review sheet (D2)
 
@@ -470,7 +492,17 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
    PS3.7. Still open: no evidence on how often agents get a furniture turn wrong; the first-contact
    audit should count it.
 8. **Anything the audits missed.** Run a fresh audit on new plans after PS2 lands. The defect classes
-   in §1 came from about 30 plans and are surely incomplete.
+   in §1 came from about 30 plans and are surely incomplete. *First round done 2026-10-18*
+   (`audits/2026-10-18-first-contact.md`): six briefs written cold by an AI author from
+   `spec.llm.md` alone, all six lint-clean and strict-clean, carry 57 verified defects (4 blockers),
+   lint caught none, and 26 fall outside the eight classes. Twelve new classes are listed there;
+   the ones that became cards: furniture not facing its companion (PS3.7), transposed footprints and
+   door–door interference (PS2.11), entrance masking (PS0.10), direction-relative wording (PS3.8),
+   area basis (PS4.4), non-residential egress and zoning (PS2.16), repair pressure (PS0.11 and the
+   order "land PS2.1 before more corner fixes are suggested"). Still uncarded: context modelled
+   inside the plan (a common corridor as paving; PS2.14's dwelling work should give it a home),
+   vertical stacking of partitions, oblique joins inflating `bbox_outer`, circulation share (taste).
+   Re-run after PS2 lands, and count the furniture turn.
 
 **How to extend this document:**
 - **New evidence:** add a dated file under `research/` or `audits/`. Never rewrite an old report;
@@ -506,4 +538,6 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
   numbers and a fact-sufficiency table (cards PS3.7, PS2.14–PS2.16).
 - `audits/archcanvas-public-examples.md`, `audits/showcase-and-examples.md`: per-plan defects with
   coordinates.
+- `audits/2026-10-18-first-contact.md` and `audits/first-contact-plans/*.arch`: six briefs written
+  cold by an AI author, lint-clean, 57 verified defects, twelve classes outside the taxonomy.
 - `repro/`: minimal reproductions (see its README).
