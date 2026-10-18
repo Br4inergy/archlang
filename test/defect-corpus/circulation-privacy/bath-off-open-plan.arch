@@ -1,11 +1,12 @@
 # class: circulation-privacy
 # origin: audits/2026-10-18-first-contact.md S1 (first-contact-plans/3-studio.arch d_bath opens onto the
-#   living/kitchen/dining room, 2.0 m from the kitchenette); README PS2.6
+#   living/kitchen/dining room, 2.0 m from the kitchenette); README PS2.6. Decided 2026-10-19 (coordinator, review
+#   round 1 of PR #203): W_WET_ROOM_DOOR's exemption for a kitchen that is also the living room was narrowed; a
+#   kitchen warns unless it is the storey's only room that is not a bath or WC (a studio's one room)
 # expect: W_WET_ROOM_DOOR
-# status: todo
-# fact: the bathroom's only door, d_bath, joins it to "Living / Kitchen" (uses living kitchen dining) and the
-#   entrance does not touch it. W_WET_ROOM_DOOR exempts a kitchen or dining room that is also the living room by
-#   design (src/lint/rules/privacy.ts), so this stays todo until that exemption is decided
+# status: done
+# fact: the bathroom's only door, d_bath, joins it to "Living / Kitchen" (uses living kitchen dining), and the
+#   entrance, a second room that is not wet, does not touch it
 plan "Bathroom opening onto the open-plan living room" {
   units mm
   grid 50

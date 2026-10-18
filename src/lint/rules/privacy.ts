@@ -230,6 +230,15 @@ function classifiedFactsOf(ctx: LintContext): Facts {
   return f;
 }
 
+/** Is `to` the only room on the storey that is not a bath or WC (a studio's one room)? */
+function onlyDryRoom(ctx: LintContext, f: Facts, to: RRoom): boolean {
+  return ctx.rooms.every((r) => {
+    if (r.id === to.id) return true;
+    const u = f.uses.get(r.id)!;
+    return u.has("bath") || u.has("wc");
+  });
+}
+
 function factsOf(ctx: LintContext): Facts {
   const { rooms, roomRects, building, access } = ctx;
   const all = access().edges;
@@ -459,9 +468,12 @@ function viaPrivateHints(
  *  1. its only connector is a leaf-less `opening` onto a habitable room (living, dining,
  *     kitchen, bedroom, office), so it cannot be closed;
  *  2. a connector joins it straight to a kitchen or dining room with no lobby between
- *     (GB 50096-2011 5.4.3, cited as advice, not compliance). A room that is also the living
- *     room (an open-plan kitchen/living, a studio) is not a kitchen for this sub-case: a bath
- *     opening off the living space is a matter of taste the plan scores, never warns;
+ *     (GB 50096-2011 5.4.3, cited as advice, not compliance). A kitchen counts even when it is
+ *     also the living or dining room (an open-plan kitchen/living), unless it is the only room
+ *     on the storey that is not a bath or WC: a studio has nothing else to open onto, and a
+ *     lobby it cannot have is not demanded. A living or dining room with no kitchen use, and a
+ *     dining room that is also the living room, are exempt: a bath opening off the living
+ *     space is graded by the taste layer, never warned;
  *  3. two or more connectors join it to two different rooms outside a private suite (not a
  *     bedroom, bath, WC or storage room), so it is a passage between them. When one of those
  *     rooms is reached ONLY through the wet room, `W_ROOM_VIA_PRIVATE` already reports it and
@@ -516,13 +528,17 @@ export const wetRoomDoor: LintRule = {
         });
       }
 
-      // 2. A connector straight onto a kitchen or dining room (not the living room too).
+      // 2. A connector straight onto a kitchen (also when it is the living room, unless it is
+      // the storey's only room that is not wet), or onto a dining room that is not also the
+      // living room.
       for (const e of mine) {
         if (reported.has(e.doorId)) continue;
         const to = room(far(e));
         if (!to) continue;
         const u = f.uses.get(to.id)!;
-        if (u.has("living") || !(u.has("kitchen") || u.has("dining"))) continue;
+        if (!(u.has("kitchen") || u.has("dining"))) continue;
+        if (u.has("living") && !u.has("kitchen")) continue;
+        if (u.has("kitchen") && onlyDryRoom(ctx, f, to)) continue;
         if (f.priv.has(to.id)) continue;
         reported.add(e.doorId);
         const what = u.has("kitchen") ? "a kitchen" : "a dining room";

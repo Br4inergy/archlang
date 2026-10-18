@@ -124,13 +124,21 @@ describe("W_WET_ROOM_DOOR", () => {
     expect(of(dining, "W_WET_ROOM_DOOR")[0]!.message).toContain('"Dining", a dining room,');
   });
 
-  it("sub-case 2 leaves an open-plan kitchen/living room alone (scored, never warned)", () => {
-    const src = replaceOnce(
+  it("sub-case 2 counts a kitchen that is also the living room, and leaves a living room alone", () => {
+    // Narrowed in review round 1 of PR #203 (was: any room that is also the living room was
+    // exempt). The plan has a hall too, so the kitchen/living room is not its only dry room.
+    const kitLiv = replaceOnce(
       corpusCase("bath-door-off-kitchen"),
       'label "Kitchen" uses kitchen',
       'label "Kitchen / Living" uses kitchen living',
     );
-    expect(of(src, "W_WET_ROOM_DOOR")).toEqual([]);
+    expect(of(kitLiv, "W_WET_ROOM_DOOR")).toHaveLength(1);
+    const living = replaceOnce(
+      corpusCase("bath-door-off-kitchen"),
+      'label "Kitchen" uses kitchen',
+      'label "Living" uses living',
+    );
+    expect(of(living, "W_WET_ROOM_DOOR")).toEqual([]);
   });
 
   it("sub-case 3: a WC that is the passage between two rooms", () => {
@@ -479,5 +487,48 @@ describe("the three rules' texts", () => {
     // Not vacuous: every code is exercised, and some option was checked against an edge.
     for (const c of CODES) expect(seen.get(c) ?? 0, c).toBeGreaterThan(0);
     expect(edges).toBeGreaterThan(0);
+  });
+});
+
+describe("W_WET_ROOM_DOOR onto an open-plan kitchen (review round 1 of PR #203)", () => {
+  // A bath off the west room, whose `uses` vary; with `third`, a bedroom east of the bath.
+  const plan = (westUses: string, third: boolean): string => {
+    const w = third ? 9000 : 6000;
+    return [
+      'plan "t" {',
+      "  units mm",
+      "  grid 50",
+      `  wall id=shell exterior thickness 200 { (0,0) (${w},0) (${w},3000) (0,3000) close }`,
+      "  wall id=w_bath partition thickness 100 { (4000,0) (4000,3000) }",
+      ...(third ? ["  wall id=w_bed partition thickness 100 { (6000,0) (6000,3000) }"] : []),
+      `  room id=r_main at (0,0) size 4000x3000 label "Main" uses ${westUses}`,
+      '  room id=r_bath at (4000,0) size 2000x3000 label "Bathroom" uses bath',
+      ...(third
+        ? [
+            '  room id=r_bed at (6000,0) size 3000x3000 label "Bedroom" uses bedroom',
+            "  door id=d_bed at (7500,3000) width 900 wall shell",
+          ]
+        : []),
+      "  door id=d_in at (2000,3000) width 900 wall shell",
+      "  door id=d_bath at (4000,1500) width 800 wall w_bath",
+      "}",
+    ].join("\n");
+  };
+  const fires = (src: string): boolean => lint(src).some((d) => d.code === "W_WET_ROOM_DOOR");
+
+  it("a kitchen that is also the living room warns when another room that is not wet exists", () => {
+    expect(fires(plan("living kitchen", true))).toBe(true);
+    expect(fires(plan("living kitchen dining", true))).toBe(true);
+  });
+
+  it("a studio's one room is exempt: there is nothing else to open onto", () => {
+    expect(fires(plan("living kitchen", false))).toBe(false);
+    expect(fires(plan("kitchen", false))).toBe(false);
+  });
+
+  it("a living or dining room with no kitchen use stays exempt; a dining room alone still warns", () => {
+    expect(fires(plan("living", true))).toBe(false);
+    expect(fires(plan("living dining", true))).toBe(false);
+    expect(fires(plan("dining", true))).toBe(true);
   });
 });

@@ -441,6 +441,14 @@ suite("a module `let` that fails reports as it does in the module", () => {
  *     window), `office`, `reception-suite`, `sized-office-mix` (both); `core-and-shell` also
  *     `W_ROOM_NO_FIXTURE`'s hint.
  *   - `eval/fidelity-plans/*` (eight rows): `W_ROOM_NO_FIXTURE`'s hint only.
+ * Eight rows re-measured on 2026-10-19 (review round 1 of PR #203: `W_WET_ROOM_DOOR` counts a
+ * kitchen that is also the living room unless it is the storey's only room that is not wet),
+ * on `lint()` alone, each gaining one `W_WET_ROOM_DOOR`: `examples/garden-loft.arch`,
+ * `examples/laneway-house.arch`, the goldens `accessible-bath`, `against-wall-bath`,
+ * `attach-openings`, `dims-auto-cottage`, `sized-bedrooms` (never edited; holdout) and
+ * `eval/fidelity-plans/two-bed-min-area.laundered.arch`. With only the narrowed lines of
+ * `src/lint/rules/privacy.ts` reverted, every one reproduces its previous row (the swap-back
+ * proof recorded in `./byte-identity-baseline.ts`).
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
@@ -457,14 +465,14 @@ const BASELINE: [string, string][] = [
   // for the legend's ground swatches (backlog D.3, level 1's SVG only): the same row, with the
   // same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
   ["examples/garden-house.arch", "32889de233fcb6d33704ff9daa31a098ec33f0febdc14bf0ea74f52e2fe93976"],
-  ["examples/garden-loft.arch", "eb6ba7bdcd33231cd0cfd2072a1a99e2b416be039e6efc2cc0a5ea76129738f2"],
+  ["examples/garden-loft.arch", "9773c00cf1a291d3e6496af19f63c4288086857376c536de0dda05e7976da950"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
   // Re-measured for the facade-probe fix (level 2's `dims auto` chains only), and again because
   // the EXAMPLE changed (backlog D.2, its piano turned and moved): the same row, with the same
   // digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
   ["examples/hillside-villa.arch", "a3e70591a0c8dd388878225e9d7dcbe54511690f7ab23b23e6ede1919c6e7092"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
-  ["examples/laneway-house.arch", "d87dea46b06ea13b539e0a7c03674038e15762d15948a7bc27632e1b8afd11e2"],
+  ["examples/laneway-house.arch", "7a6cd105f20eeba826b0647f174a70149dbeac87eceebb44b59863aff4bf2d88"],
   ["examples/library.arch", "3e8f00d70f63d840a1e2ead5c926cea204751fada57e5de028709bec4d091334"],
   ["examples/materials.arch", "29bb896c24060364f51b4cbad9d4065a21dc40444e6e95024bc85cf276b54e9c"],
   ["examples/museum-wing.arch", "6e01f37f15c674c544fac6651e9f3bd32d4d6e4865fdafba36ed97feca9ff33a"],
@@ -516,15 +524,15 @@ const BASELINE: [string, string][] = [
   // Re-measured 2026-10-18 (PS0.7): a copy of `examples/themed.arch`, the same cause and value.
   ["test/recovery-corpus/themed.arch", "083872e0955d587897a87084c2f0bfe395856b02c643d7a8920e02f4bde870c1"],
   ["test/recovery-corpus/two-storey.arch", "5edc692a4e2512dead58af641426f7b6a60873f913ee2007d2c7fe0bde6c5f91"],
-  ["eval/goldens/accessible-bath.arch", "0f2e47f8b1a0afe5e110117ea229b829861353fe1d115b9a8af1ec2085774d14"],
+  ["eval/goldens/accessible-bath.arch", "7ecffbfe69529d0e7c8cc74876eb41cd9f63c7cb021d293cfcad45f560f96584"],
   ["eval/goldens/accessible-flat.arch", "721d479d06915e309d209c1c84dbb4a5b1c40b7c8195891499ed5078c650fe3e"],
-  ["eval/goldens/against-wall-bath.arch", "37f238a6b64aaac8fb0650437e11b392cc6f49160cc8823d9bb8eb0a41fb319e"],
+  ["eval/goldens/against-wall-bath.arch", "879b339dd48a3d17b12262b23368b0444291f1128d22ba0eb12b715df1686da1"],
   ["eval/goldens/anchor-furniture.arch", "5ae5239f1fceec9d9021bcdee198503bd9edb4f92ad21bf887dc6c6777fec2fa"],
-  ["eval/goldens/attach-openings.arch", "a0ac00b106622e0d3d049b88dccfd35700f0c634649941d190f55651fb6c36a6"],
+  ["eval/goldens/attach-openings.arch", "68b1e7acc40150917ef4bb743e1f560527f0648800f8a1f1b2d39dc9ab785c30"],
   ["eval/goldens/bungalow.arch", "2205e6505a37378b5d3e54f64066abfafb1bea07a67b62d5f08c724162842168"],
   ["eval/goldens/compact-studio.arch", "7af1ccb4b35aca496489c382593142d103d9d2a52958a17fb3980576b81b4cd7"],
   ["eval/goldens/core-and-shell.arch", "6711f7ce23b155cabf2e3a7b5b08102775c1d87ab1f576c8d4b7dbb823cbd233"],
-  ["eval/goldens/dims-auto-cottage.arch", "ca327599910fd97d0f8ced7ea4f03bb93312541b92e12119e12e976b0e76b5d8"],
+  ["eval/goldens/dims-auto-cottage.arch", "73f97e8feef2171255df9f03e046cef7e190d80cdd513d0c3f73b5c6e44e0b10"],
   ["eval/goldens/galley-kitchen.arch", "af379acc431baaa7728fde7eee94f2a34fef2e4303ab967cabb029a7b3837669"],
   ["eval/goldens/l-shaped-flat.arch", "9634e0daba1977009de1013018e4f774212ae7632c2079600864ef25fa972255"],
   ["eval/goldens/office.arch", "d41de65cecffa58bbb655304278fee8143bfb2100b3d9177512ffebbd3729eab"],
@@ -532,7 +540,7 @@ const BASELINE: [string, string][] = [
   ["eval/goldens/reception-suite.arch", "2d52aba12f849f3dc957f45d1ec9b615ef180c66c82008b3e36e4ea77b0ce21b"],
   ["eval/goldens/relational-studio.arch", "845f133cddc2eb0f98d363b611c4bccfc87a69ca5554cdd316350030d2883bd5"],
   ["eval/goldens/scripting-units.arch", "6f64fd2f54b9684990933bd56df84b800c97074564c18baf6402cfedd9837c2b"],
-  ["eval/goldens/sized-bedrooms.arch", "a828ac8af20e216f6b2fed310695e253dfb0fa33b34f1a9dcfcfd4dc8a979b10"],
+  ["eval/goldens/sized-bedrooms.arch", "85b54b7b0fbc1f8e8f438a05404f93803e970a5602133fea38ac445b5c37c518"],
   ["eval/goldens/sized-kitchen-flat.arch", "36f1dc563dfbc0f10190bcc2ad2435ac100f00f3e7d2729db9781a87cf1b847f"],
   ["eval/goldens/sized-office-mix.arch", "019a62d8f35753d13b4e8747c03c126395a683b4e19a5ba5553a817b76685926"],
   ["eval/goldens/sized-wet-room.arch", "b73b7c5a2ad1eedf1a402331c6c0991ac3a985adf8b23c9b73fa5d4a4c46129a"],
@@ -567,7 +575,7 @@ const BASELINE: [string, string][] = [
   ],
   [
     "eval/fidelity-plans/two-bed-min-area.laundered.arch",
-    "17b2f92524b675c237477cc2de2b62a5eaff6b1e0f561bf23ec6077cddab110e",
+    "4782c6f2b45c22a7ad445ad32d70de0eccb0ea61da20cdbc681f2dfd09e42601",
   ],
   [
     "eval/fidelity-plans/wide-doorways.faithful.arch",

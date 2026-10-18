@@ -1164,6 +1164,21 @@
  * After (2) every one of the seven lints exactly as before (1), field by field, spans aside;
  * each row below is the new measurement with this file's digest bodies (`two-storey` over its
  * height-free derivation).
+ *
+ * ## `garden-loft`, `laneway-house` (both rows): `W_WET_ROOM_DOOR` counts an open-plan kitchen
+ *
+ * 2026-10-19, review round 1 of PR #203 (coordinator's decision on audit S1): sub-case 2 of
+ * `W_WET_ROOM_DOOR` no longer exempts a kitchen that is also the living room, unless it is the
+ * storey's only room that is not a bath or WC. Case (1), `lint()` only: swept over `examples/**`,
+ * `test/**`, `eval/**` and every `arch` fence in `docs/`, README and spec against a `git archive`
+ * of `cc165f4`, `lint()` gained exactly one `W_WET_ROOM_DOOR` on each moved plan (both examples:
+ * the bath's only door opens onto "Living / Kitchen" while a bedroom exists) and nothing else
+ * moved. Swap-back proof: with only the two narrowed lines of `src/lint/rules/privacy.ts`
+ * reverted, every moved row in this file, `while-byte-identity-baseline.ts`,
+ * `import-module-lets.test.ts`, `garage-byte-identity.test.ts`, `outdoor-byte-identity.test.ts`
+ * and `roof-void-byte-identity.test.ts` reproduces its previous digest. Both examples are left as
+ * they are: the bath shares a wall only with the living room and the bedroom, and re-hosting its
+ * door onto the bedroom trades this warning for `W_BATH_VIA_BEDROOM`; a lobby is a layout change.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -1179,11 +1194,11 @@ export const BASELINE: [string, string][] = [
   ["furnished-flat", "0d00a6d601630e8bbfa2f15a0536bcbf8ccbb82fbfcea50b21b6586339a851d7"],
   ["gallery-l", "ef97490e9b951d76396df52427ba6673b0cce29489dfdf4232dc4d0876fe691d"],
   ["garden-house", "345f9dd2552ea9165326cab1b33825bcb85eab1a9b4fdea7e566b485985447d3"], // re-measured, see header
-  ["garden-loft", "7161ddddda40ba6f520128b2196fdbba997e5f3b82674dbf2ee09495d763dc1d"],
+  ["garden-loft", "7b95e1cef9dd4449a3c4eee2128b9752d58fe7f693009352506ccf1733bed04b"],
   ["hexagon-pavilion", "92d343afbb62315ad0014b95de9f4a8b26ccffbc14093b04c5956b689f850252"],
   ["hillside-villa", "5426cb1d6ac42c7d382e21c0f0bd7ba1a4bcd2c5a492db6884eecb902c7c52c6"], // re-measured, see header
   ["imports", "4b0151513963a656e52ac84c6fd80eb35c9820ae101921420cb8d5c9c13c0b70"],
-  ["laneway-house", "62b3fdb835ccc7eb565f982ed7930d99cfced87bbf4ae9d6bb5410e4945d255c"],
+  ["laneway-house", "c6ebb80b2d84a1189cd83aba7348806247ae1844c802229e91ddcef30d60e9a2"],
   ["library", "11163f2e43e7b367189c7bfeee6ca84613966600bd05f3433130eced1b731775"],
   ["materials", "1217b23686c0616e9e922869271fe400a6a000c7b80ccefbfebab0bb022f8792"],
   ["museum-wing", "00ac6744ffaa76596229248fd62ca5a41c9a5d70315c41ffa0fd6fc844ce2201"],
@@ -1227,11 +1242,11 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["furnished-flat", "dab3b998a75ba65679021c8ae9282cb785d8daf69e6c0d64c39aea0c35a36fa5"],
   ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
   ["garden-house", "5f880862d0261a5f892ad0aa5b37e728961b887eb129ce33304ab1af470c0c54"], // re-measured, see header
-  ["garden-loft", "77bddbf7b08d49b0845e5268bb267a602b93002dfa20175e9218e5156dc435d1"],
+  ["garden-loft", "2b07a8f6cc15156dbe31f3b7ce2641133f9f677461718a85cdaa9ebc88b765f4"],
   ["hexagon-pavilion", "6e8005c3a0af9b80598574e77141301a957b4a293ba8d5de6cc1effb00693494"],
   ["hillside-villa", "69f38c6e7beab174c8ea8d2e9d298baf617d35b68f353e665e23ca3e3766c937"], // re-measured, see header
   ["imports", "183bf4ec261e6650b21c4771b64fe924bf5c6eabd3ea1b8d3bbdac71b2900ac3"],
-  ["laneway-house", "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0"],
+  ["laneway-house", "34835749c62ab93aee21bfd8bea7bd8728434ac4072cf0b6f1b0a46720185adf"],
   ["library", "ecb46fb3e1fc3777ae05b5f0f29318f80c35795debddaffa2d8d0f760ee44f85"],
   ["materials", "ec7ff74d6438df84dcaae9961f01e0013d1e902c65011bdeeb0d7eea65346c8e"],
   ["museum-wing", "b3058ec90b03384f0f6856a475263046f503e246cc654d05dbf8495d263fa246"],

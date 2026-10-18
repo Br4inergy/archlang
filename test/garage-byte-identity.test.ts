@@ -165,7 +165,8 @@ const ROOT = join(HERE, "..");
 // AREA column took the label `AREA (CENTRELINE, m²)`; SEMANTIC_BASELINE did not move.
 const BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f",
-  "laneway-house.arch": "62b3fdb835ccc7eb565f982ed7930d99cfced87bbf4ae9d6bb5410e4945d255c",
+  // laneway-house re-measured 2026-10-19 (PR #203 review round 1, `W_WET_ROOM_DOOR`, lint only): see `./byte-identity-baseline.ts`.
+  "laneway-house.arch": "c6ebb80b2d84a1189cd83aba7348806247ae1844c802229e91ddcef30d60e9a2",
   "bungalow.arch": "d76e52dd1b75a347c84afba5350175032513776572f268839ee550883b564ae9",
   // Re-measured for the `overhead` flag. Its SOURCE gained two statements —
   // a `range_hood` over the stove and a `mirror` over the basin, the two correct drawings
@@ -192,7 +193,8 @@ const BASELINE: Readonly<Record<string, string>> = {
  */
 const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a",
-  "laneway-house.arch": "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0",
+  // laneway-house re-measured 2026-10-19 (PR #203 review round 1, `W_WET_ROOM_DOOR`, lint only): see `./byte-identity-baseline.ts`.
+  "laneway-house.arch": "34835749c62ab93aee21bfd8bea7bd8728434ac4072cf0b6f1b0a46720185adf",
   "bungalow.arch": "f35202195cf872e00bf31d62fffa7c783d04cfac55e7339154a048c496e8fc3a",
   // `furnished-flat.arch` is the ONE value in this table that is not the original `5298b99`
   // measurement, and the exception proves the rule rather than bending it. Its SOURCE keeps
