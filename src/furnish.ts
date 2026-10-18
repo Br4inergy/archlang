@@ -19,7 +19,10 @@
  * and raises no diagnostic code (compile + lint under the default ruleset and under every
  * named profile, as multisets) and no hard furniture conflict it did not have before that
  * room. Otherwise the next candidate is tried; when a required piece cannot be placed its
- * use is left out whole, and a room with no use left is left empty. Both are reported.
+ * use is left out whole, and a room with no use left is left empty. Both are reported. The one
+ * code the gate does not count is `W_ROOM_MISSING_DEFINING`, which every partial state of a
+ * room raises; a use is judged on its finished pieces instead, and left out whole when the
+ * piece that defines it found no position (a bath with no room for a bathtub or shower).
  *
  * **Bounded.** The candidate order is fixed, and the number of compile checks is at most
  * {@link furnishCheckBound} — linear in the rooms. There is no search loop and no randomness.
@@ -45,6 +48,7 @@ import { type BBox, doorLandingRect, rectsOverlap } from "./geometry/rect.js";
 import type { RDoor, RFurniture, ROpening, ResolvedPlan, RRoom, RWall, RWindow } from "./ir.js";
 import { lex } from "./lexer.js";
 import { DEFAULT_RULESET, LINT_PROFILES } from "./lint.js";
+import { definingItems } from "./lint/defining.js";
 import { fmtSource } from "./num-format.js";
 import { parse } from "./parser.js";
 import { BUILTIN_REGISTRY, createRegistry } from "./registry.js";
@@ -98,6 +102,18 @@ export const furnishCheckBound = (rooms: number): number => 1 + rooms * MAX_CHEC
 
 /** The largest floor a room may have and still be furnished from the table, in m². */
 export const MAX_ROOM_AREA_M2 = 100;
+
+/**
+ * The one code the never-worse gate does not count. `W_ROOM_MISSING_DEFINING` reports a
+ * furnished room that lacks the piece its use is defined by, so it fires on every partial
+ * state the stage passes through: a kitchen holding its sink before its stove is placed, a
+ * bath holding its WC before its bathtub. Counted as a gained code it refused each piece of
+ * the piece-by-piece fallback in turn and emptied rooms the stage used to furnish. It is
+ * judged on the finished set instead, use by use, from the same reading the lint uses
+ * (`settle` in {@link furnishStage}): a use whose defining piece found no position is left
+ * out whole, and reported.
+ */
+const JUDGED_BY_PIECES = "W_ROOM_MISSING_DEFINING";
 
 /** The default ruleset and every named profile: a position is pruned by the strictest of them. */
 const RULESETS = [DEFAULT_RULESET, ...Object.values(LINT_PROFILES).map((p) => ({ ...DEFAULT_RULESET, ...p }))];
@@ -263,7 +279,7 @@ export function furnishStage(
   const refusal = (candidate: string): string[] | null => {
     checks++;
     const after = codesOf(candidate);
-    const gained = gainedCodes(before, after);
+    const gained = gainedCodes(before, after).filter((c) => c !== JUDGED_BY_PIECES);
     if (gained.length > 0) return gained;
     if (after.errors) return ["E_PARSE"];
     for (const k of sourceConflicts(candidate, env).conflicts.keys())
@@ -353,6 +369,48 @@ export function furnishStage(
         );
     };
 
+    /**
+     * Accept `placed`, judging each use it furnishes by the pieces that define it
+     * (`definingItems`, the reading `W_ROOM_MISSING_DEFINING` lints). The gate does not count
+     * that code (see {@link JUDGED_BY_PIECES}); it is judged here, per use, on the finished
+     * set: a use whose defining piece has no position in the room at all (a bath too tight for
+     * a bathtub or a shower beside its WC and basin) is left out whole, and what remains is
+     * checked once more before it is kept.
+     */
+    const settle = (room: RRoom, uses: UseKind[], placed: Placed[], leftOutNotes: () => void): void => {
+      const families = new Set(placed.flatMap((p) => servedBy(p.text.split(" ")[1] ?? "")));
+      const holds = (i: FurnishItem): boolean => [i.category, ...(i.or ?? [])].some((w) => families.has(familyOf(w)));
+      const lacking: Array<{ use: UseKind; item: FurnishItem }> = [];
+      // Only a defining piece the room has NO position for: one with a position that the gate
+      // refused, or that the fallback's bounded tries never reached, keeps the stage's output
+      // as it was (the lint then reports the room).
+      for (const use of [...new Set(placed.map((p) => p.use))])
+        for (const item of definingItems(use))
+          if (!holds(item) && site.candidates(item, use, placed).length === 0) lacking.push({ use, item });
+      if (lacking.length === 0) {
+        accept(room, uses, placed);
+        leftOutNotes();
+        return;
+      }
+      const out = new Set(lacking.map((l) => l.use));
+      const remaining = placed.filter((p) => !out.has(p.use));
+      const words = (i: FurnishItem): string => [i.category, ...(i.or ?? [])].map((w) => `\`${w}\``).join(" or ");
+      const why = (l: { use: UseKind; item: FurnishItem }): string =>
+        `no position for its ${words(l.item)}, the piece that defines a ${l.use} room (\`${JUDGED_BY_PIECES}\`)`;
+      let keep = remaining.length > 0 && budget > 0;
+      if (keep) {
+        budget--;
+        keep = refusal(render(remaining.map((p) => p.text))) === null;
+      }
+      if (!keep) {
+        note(room, `"${room.id}" was left empty — ${lacking.map(why).join("; ")}`, [JUDGED_BY_PIECES]);
+        return;
+      }
+      accept(room, uses, remaining);
+      leftOutNotes();
+      for (const l of lacking) note(room, `the ${l.use} pieces were left out of "${room.id}" — ${why(l)}`, [JUDGED_BY_PIECES]);
+    };
+
     // First proposal: use by use, the first candidate of every piece that clears the room's
     // geometry. A use whose required piece has no position is left out whole.
     const first: Placed[] = [];
@@ -378,8 +436,7 @@ export function furnishStage(
     budget--;
     let blocking = refusal(render(first.map((p) => p.text)));
     if (blocking === null) {
-      accept(room, uses, first);
-      leftOut(absent);
+      settle(room, uses, first, () => leftOut(absent));
       continue;
     }
 
@@ -424,8 +481,7 @@ export function furnishStage(
       );
       continue;
     }
-    accept(room, uses, kept);
-    leftOut(dropped);
+    settle(room, uses, kept, () => leftOut(dropped));
   }
 
   if (lines.length === 0) return none(reported(), checks, todo.length);

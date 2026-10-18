@@ -6,7 +6,7 @@
 # schedule subtotals) · `room polygon` (a chamfered nook off the study, and the L-shaped
 # master suite) · `arc` wall edge (a bowed bay off the living room) · all SIX door kinds —
 # the five that have to be named (sliding/pocket/bifold/barn/garage), plus the `hinged`
-# default on the rest. Count them off the
+# default on the rest, each where a builder would actually put it. Count them off the
 # `door` lines and you get five, because `hinged` is the kind you never write: ask
 # `arch describe --json` instead, which reports the kind on every door · `window
 # on <wall> at <pos>` plus a `for` loop (a street-facing ribbon of study windows) ·
@@ -19,7 +19,7 @@
 # The plot fronts the street on the NORTH, in the northern hemisphere — so `back` and
 # `equator_side` are the SAME side (south), which is why the living room, the arc bay and
 # every bedroom on the garden band take the south facade, and the garage/service band
-# stacks along the street. `site` draws nothing; it only names directions.
+# stacks along the street.
 plan "Hillside Villa" {
   units mm
   grid 100
