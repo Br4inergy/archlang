@@ -350,8 +350,11 @@ export const roomViaPrivate: LintRule = {
     const out: Diagnostic[] = [];
     const f = classifiedFactsOf(ctx);
     if (!f.wayIn) {
-      // No way in, so no room is "reached only through" anything.
-      if (ctx.rooms.length > 0) ctx.skip("no-entrance");
+      // No way in, so no room is "reached only through" anything. When the storey does have
+      // a door to the outside but every one opens onto a balcony or terrace, this rule does not
+      // count it as a way in while the access graph and the walk do: say that, not "no entrance".
+      if (ctx.rooms.length > 0)
+        ctx.skip(f.edges.some((e) => e.between.includes(EXTERIOR_NODE)) ? "balcony-only-entrance" : "no-entrance");
       return out;
     }
     const doms = privateDominators(ctx, f);

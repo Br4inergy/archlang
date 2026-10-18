@@ -209,17 +209,22 @@ function sizeTurnHint(
 export const fixtureBackToRoom: LintRule = {
   name: "fixture-back-to-room",
   family: "furniture",
-  check({ furniture, ir, rooms, rules, wallSegs, at, frameOf }: LintContext): Diagnostic[] {
+  check({ furniture, ir, rooms, rules, wallSegs, at, frameOf, skip }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     // A POLYGON room has no north/south/east/west sides, so "which edge is the back?"
     // has no answer there — the rule declines rather than derive a rotation from a
-    // bounding box the room does not have (ADR 0005: no invisible architect).
-    const polyRooms = rooms.filter((r) => r.poly).map((r) => r.poly!);
+    // bounding box the room does not have (ADR 0005: no invisible architect), and says so
+    // to the coverage report (PS2.13).
+    const polyRooms = rooms.filter((r) => r.poly);
     for (const f of furniture) {
       if (!orientationMatters(f.category)) continue;
       const cx = f.at.x + f.size.w / 2;
       const cy = f.at.y + f.size.h / 2;
-      if (polyRooms.some((ring) => pointInPolygon(cx, cy, ring))) continue;
+      const inPoly = polyRooms.find((r) => pointInPolygon(cx, cy, r.poly!));
+      if (inPoly) {
+        skip("non-rectangular-room", inPoly);
+        continue;
+      }
       const backing = wallBackedEdges(rectOf(f), ir.walls, rules.fixtureWallTolMm, wallSegs);
       const back = backEdgeForRotate(f.rotate);
       if (backing[back] !== null) continue; // back is on a wall — correctly oriented

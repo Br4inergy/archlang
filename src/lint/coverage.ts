@@ -62,7 +62,12 @@ export type LintSkipReason =
   /** Reserved: rooms must be grouped into declared dwellings (PS2.14). No caller yet. */
   | "no-dwelling"
   /** Reserved: windows carry no operable-sash data (PS2.16). No caller yet. */
-  | "no-operable-window-data";
+  | "no-operable-window-data"
+  /** Every door to the outside opens onto a balcony or terrace, which the privacy rules do not
+   *  count as a way in (the access graph and the walk do). */
+  | "balcony-only-entrance"
+  /** The door's host wall is angled or curved, which the rule does not measure. */
+  | "unsupported-host-geometry";
 
 /** What each family checks, as the human coverage line names it. */
 export const FAMILY_NOUN: Readonly<Record<LintFamily, string>> = {
@@ -93,6 +98,8 @@ export const SKIP_WHY: Readonly<Record<LintSkipReason, string>> = {
   "no-brief": "no brief is given",
   "no-dwelling": "no dwelling is declared",
   "no-operable-window-data": "windows carry no operable-sash data",
+  "balcony-only-entrance": "the only way in is a balcony or terrace door",
+  "unsupported-host-geometry": "the door's wall is angled or curved",
 };
 
 /** One recorded skip, as the fold collects it. */
@@ -217,8 +224,10 @@ const quotedList = (names: readonly string[]): string => andList(names.map((n) =
 
 /**
  * The one human line for a report with any skip, or `null` when nothing was skipped and no
- * room is unclassified. Rooms are named by label; no id appears. Unclassified rooms are named
- * once, with the families that skipped them, rather than once per family.
+ * room is unclassified. Rooms are named by label, so an id appears only where a room has no
+ * label, as in every lint message. Unclassified rooms are named once, with the families that
+ * skipped them, rather than once per family; on a multi-storey plan each is named with its
+ * storey, so the count always equals the names listed.
  */
 export function coverageLine(c: LintCoverage): string | null {
   const parts: string[] = [];
@@ -236,10 +245,10 @@ export function coverageLine(c: LintCoverage): string | null {
     }
   }
   if (noUses.length > 0 && c.unclassifiedRooms.length > 0) {
-    const names = [...new Set(c.unclassifiedRooms.map((r) => r.name))];
-    const n = c.unclassifiedRooms.length;
+    const named = c.unclassifiedRooms.map((r) => `"${r.name}"${r.level !== undefined ? ` on level ${r.level}` : ""}`);
+    const n = named.length;
     parts.push(
-      `${andList(noUses.map((f) => FAMILY_NOUN[f]))} for ${n} room${n === 1 ? "" : "s"} with no classified use (${quotedList(names)})`,
+      `${andList(noUses.map((f) => FAMILY_NOUN[f]))} for ${n} room${n === 1 ? "" : "s"} with no classified use (${andList(named)})`,
     );
   }
   if (parts.length === 0) return null;

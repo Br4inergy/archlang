@@ -162,6 +162,98 @@ describe("lint coverage: the skips rules declare", () => {
   });
 });
 
+describe("lint coverage: review round 1 (the reviewer's repro shapes)", () => {
+  it("W_BATH_VIA_BEDROOM's rule declares a room it cannot classify", () => {
+    const plan = (label: string) =>
+      PLAN(`  wall id=shell exterior thickness 200 { (0,0) (6000,0) (6000,4000) (0,4000) close }
+  wall id=w_mid partition thickness 100 { (3000,0) (3000,4000) }
+  room id=r_a at (0,0) size 3000x4000 label "${label}"
+  room id=r_b at (3000,0) size 3000x4000 label "Bathroom" uses bath
+  door id=d_front at (1500,4000) width 900 wall shell
+  door id=d_ab at (3000,2000) width 800 wall w_mid
+  window at (1500,0) width 1200 wall shell
+  furniture double_bed at (200,200) size 1800x2000`);
+    const skip = family(lintCoverage(plan("Room A")), "reachability");
+    expect(skip).toEqual({
+      family: "reachability",
+      status: "partial",
+      skipped: [{ reason: "no-uses", why: SKIP_WHY["no-uses"], rooms: ["Room A"], roomIds: ["r_a"] }],
+    });
+    // Classified, nothing is declared.
+    expect(family(lintCoverage(plan("Bedroom")), "reachability")!.status).toBe("ran");
+  });
+
+  it("W_FIXTURE_BACK_TO_ROOM declares the polygon room it declines", () => {
+    const src = PLAN(`  wall id=shell exterior thickness 200 { (0,0) (3000,0) (3000,3000) (0,3000) close }
+  room id=r_bath polygon (0,0) (3000,0) (3000,3000) (0,3000) label "Bathroom" uses bath
+  door id=d at (1500,3000) width 800 wall shell
+  furniture wc at (1200,0) size 400x700 rotate 180`);
+    expect(family(lintCoverage(src), "furniture")).toEqual({
+      family: "furniture",
+      status: "partial",
+      skipped: [
+        {
+          reason: "non-rectangular-room",
+          why: SKIP_WHY["non-rectangular-room"],
+          rooms: ["Bathroom"],
+          roomIds: ["r_bath"],
+        },
+      ],
+    });
+  });
+
+  it("a storey whose only door out is a balcony door is not called 'no entrance'", () => {
+    const src = read(join(ROOT, "test/defect-corpus/clearances/masked-route-balcony-door.arch")).replace(
+      /^ {2}door id=d_front .*\n/m,
+      "",
+    );
+    const privacy = family(lintCoverage(src), "privacy")!;
+    expect(privacy.skipped).toContainEqual({
+      reason: "balcony-only-entrance",
+      why: "the only way in is a balcony or terrace door",
+    });
+    expect(privacy.skipped!.map((s) => s.reason)).not.toContain("no-entrance");
+  });
+
+  it("no-site is declared only when the orientation rule had a habitable room with a window to judge", () => {
+    const fragment = `plan "Fragment" { units mm wall id=w exterior thickness 200 { (0,0) (3000,0) } }`;
+    expect(coverageLine(lintCoverage(fragment)!)).toBeNull();
+    for (const f of ["lib/doors.arch", "lib/fixtures.arch", "lib/furniture.arch"])
+      expect(coverageLine(lintCoverage(example(f))!), f).toBeNull();
+    expect(family(lintCoverage(example("two-bed.arch")), "orientation")!.skipped).toEqual([
+      { reason: "no-site", why: SKIP_WHY["no-site"] },
+    ]);
+  });
+
+  it("a door on an angled wall: the doorway-landing check declares it", () => {
+    const src = PLAN(`  wall id=shell exterior thickness 200 { (0,0) (6000,0) (6000,3000) (3000,6000) (0,6000) close }
+  room id=r polygon (0,0) (6000,0) (6000,3000) (3000,6000) (0,6000) label "Cafe" uses dining
+  door id=d on shell at 11100 width 900
+  window on shell at 3000 width 1500`);
+    expect(family(lintCoverage(src), "doors")!.skipped).toEqual([
+      { reason: "unsupported-host-geometry", why: "the door's wall is angled or curved" },
+    ]);
+  });
+
+  it("the human line counts what it names: same-label rooms on two storeys are named per storey", () => {
+    const storey = (n: number) => `  level ${n} {
+    wall id=shell exterior thickness 200 { (0,0) (6000,0) (6000,4000) (0,4000) close }
+    wall id=w_mid partition thickness 100 { (3000,0) (3000,4000) }
+    room id=r_store at (0,0) size 3000x4000 label "Box"
+    room id=r_bed at (3000,0) size 3000x4000 label "Bedroom" uses bedroom
+    door id=d_in at (4500,4000) width 900 wall shell
+    door id=d_mid at (3000,2000) width 800 wall w_mid
+    window at (4500,0) width 1200 wall shell
+  }`;
+    const c = lintCoverage(PLAN(`${storey(1)}\n${storey(2)}`))!;
+    expect(c.unclassifiedRooms.map((r) => [r.name, r.level])).toEqual([
+      ["Box", 1],
+      ["Box", 2],
+    ]);
+    expect(coverageLine(c)).toContain('2 rooms with no classified use ("Box" on level 1 and "Box" on level 2)');
+  });
+});
+
 describe("lint coverage: the CLI appends it", () => {
   const cli = (args: string[]) =>
     spawnSync(process.execPath, ["--import", "tsx", "src/cli.ts", ...args], { cwd: ROOT, encoding: "utf8" });

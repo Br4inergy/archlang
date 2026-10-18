@@ -35,6 +35,10 @@ const modelCache = new WeakMap<LintContext, CirculationModel | null>();
 function measuredCirculationOf(ctx: LintContext): CirculationModel | null {
   const circ = circulationOf(ctx);
   if (!circ && ctx.rooms.length > 0 && !ctx.access().hasEntrance) ctx.skip("no-entrance");
+  // TODO(coverage): the model is also null for a degenerate extent (zero-width or non-finite
+  // room bounds, `navExtent` in `src/analyze/circulation.ts`) and when `buildGrid` returns null
+  // (`buildNav`'s "none"). Neither is reached by a real plan; when one is, declare it here with
+  // its own reason rather than leave it silent.
   return circ;
 }
 

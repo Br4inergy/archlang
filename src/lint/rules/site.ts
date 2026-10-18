@@ -55,7 +55,12 @@ export const roomNotEquatorFacing: LintRule = {
   check(ctx: LintContext): Diagnostic[] {
     const site = ctx.ir.site;
     if (!site) {
-      ctx.skip("no-site");
+      // Declared only when the rule had something to judge: a habitable room with a window.
+      const judgeable = ctx.rooms.some((r) => {
+        const rect = ctx.roomRects.get(r.id);
+        return isHabitable(r) && rect && ctx.windows.some((w) => pointOnRoomEdge(w.at, rect, ctx.rules.tolMm));
+      });
+      if (judgeable) ctx.skip("no-site");
       return [];
     }
 

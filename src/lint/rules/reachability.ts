@@ -20,6 +20,7 @@ import {
   isBedroom,
   pointOnRoomEdge,
   reachFrom,
+  roomUses,
   wetRoomsOnlyViaBedroom,
 } from "../../analyze.js";
 import type { Diagnostic } from "../../diagnostics.js";
@@ -30,6 +31,9 @@ export const reachability: LintRule = {
   family: "reachability",
   check({ rooms, connectors, roomRects, rules, labelOf, at, building, access, skip }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
+    // W_BATH_VIA_BEDROOM asks which rooms are bedrooms and which are wet rooms; a room with no
+    // classified use is neither, so it is declared to the coverage report (PS2.13).
+    for (const r of rooms) if (roomUses(r).size === 0) skip("no-uses", r);
     const g = accessDigraph(
       rooms.map((r) => r.id),
       access().edges,
