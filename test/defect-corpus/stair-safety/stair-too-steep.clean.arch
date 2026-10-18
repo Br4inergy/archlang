@@ -1,0 +1,23 @@
+# class: stair-safety
+# twin-of: stair-too-steep
+# origin: audits/showcase-and-examples.md X7 with the flight lengthened
+# expect: none
+# fact: a 3600 mm run for the 3000 mm storey: by the audit's method about 15 risers of 200 mm
+plan "Stair long enough for its storey" {
+  units mm
+  grid 50
+  height 3000
+  level 1 "Ground floor" {
+    wall id=shell exterior thickness 200 { (0,0) (6000,0) (6000,4000) (0,4000) close }
+    room id=hall at (0,0) size 6000x4000 label "Hall" uses hall
+    door id=front at (3000,4000) width 1000 wall shell
+    window at (3000,0) width 1500 wall shell
+    stair id=stair at (500,500) size 3600x1000 dir up
+  }
+  level 2 "First floor" {
+    wall id=shell exterior thickness 200 { (0,0) (6000,0) (6000,4000) (0,4000) close }
+    room id=landing at (0,0) size 6000x4000 label "Landing" uses circulation
+    window at (3000,0) width 1500 wall shell
+    stair id=stair at (500,500) size 3600x1000 dir down
+  }
+}
