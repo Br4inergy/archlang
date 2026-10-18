@@ -1,7 +1,7 @@
 # class: missing-defining-contents
 # origin: audits/archcanvas-public-examples.md FH5 (family-house "Living / Dining" has no dining table)
 # expect: W_ROOM_MISSING_DEFINING
-# status: todo
+# status: done
 # fact: r_living (uses living dining) holds a sofa and no dining_table
 plan "Living / dining without a table" {
   units mm

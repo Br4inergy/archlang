@@ -50,6 +50,7 @@ plan "Two-storey house" {
 
     furniture sofa in living anchor top flush inset 300 size 2000x850 label "Sofa"
     furniture kitchen_sink against wall kitchen_w offset 1200 in kitchen
+    furniture stove against wall kitchen_w offset 2200 in kitchen
     stair id=stair at (100,1500) size 900x2600 dir up
   }
 
@@ -84,6 +85,7 @@ plan "Two-storey house" {
     furniture bed in bed2 anchor bottom flush inset 300 size 1000x2000 label "Single"
     furniture wc in bath anchor bottom-left flush size 400x700
     furniture basin in bath anchor bottom-right flush size 600x450
+    furniture shower in bath anchor bottom flush size 900x900
     stair id=stair at (100,1500) size 900x2600 dir down
 
     # The landing looks down into the hall below over a balustrade: there is no floor

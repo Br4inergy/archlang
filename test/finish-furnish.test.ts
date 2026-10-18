@@ -401,7 +401,11 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
   });
 
   it("a room of a placed component is told to furnish the component", () => {
-    const r = finish(srcOf("terrace-row"), { world, only: "furnish" });
+    // terrace-row's front room no longer says `dining` (PS2.9), so it is complete; tagged
+    // dining again it lacks a dining table in every one of its four placed units.
+    const src = srcOf("terrace-row").replace("uses living kitchen", "uses living dining kitchen");
+    expect(src).not.toBe(srcOf("terrace-row"));
+    const r = finish(src, { world, only: "furnish" });
     const notes = r.unresolved.filter((u) => u.reason.includes(PARTLY));
     expect(notes.length).toBeGreaterThan(0);
     for (const n of notes) {
@@ -455,22 +459,18 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
       ["r_treat", "office: `desk`"],
       ["r_staff", "office: `desk`"],
     ],
-    "corner-cafe": [["r_servery", "kitchen: `kitchen_sink`, `stove`"]],
+    // 2026-10-18 (PS2.9): corner-cafe's servery no longer says `uses kitchen` (it has no sink
+    // or hob; no use describes a bar servery), terrace-row's front room no longer says `dining`
+    // (its header calls it living + kitchen), and practice-office's break room and
+    // two-storey's kitchen gained the stove W_ROOM_MISSING_DEFINING asked for: none is named.
     "hexagon-pavilion": [
       ["g_ne", "living: `sofa`"],
       ["g_n", "office: `desk`"],
       ["g_se", "living: `sofa`"],
     ],
-    "terrace-row": [
-      ["u1.living", "dining: `dining_table`"],
-      ["u2.living", "dining: `dining_table`"],
-      ["u3.living", "dining: `dining_table`"],
-      ["u4.living", "dining: `dining_table`"],
-    ],
     "practice-office": [
       ["r_meet1", "office: `desk`"],
       ["r_meet2", "office: `desk`"],
-      ["r_break", "kitchen: `stove`"],
     ],
     // 2026-10-18 (PS0.7): "Living" with no `uses` now classifies as living, so its missing sofa is named.
     themed: [["a", "living: `sofa`"]],
@@ -481,7 +481,6 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
       ["r_shop3", "office: `desk`"],
       ["r_shop4", "office: `desk`"],
     ],
-    "two-storey": [["kitchen", "kitchen: `stove`"]],
   };
 
   /**
@@ -490,25 +489,34 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
    * BEFORE the partly-furnished note and the shape test existed (base a18dcca) and unchanged
    * since: neither may move what `finish` writes or how it reports an empty room. Re-measure
    * only for a change you can explain row by row (`test/finish-digest.ts`).
+   *
+   * 2026-10-18 (PS2.8, PS2.9): seven rows re-measured for SOURCE edits to their examples, not a
+   * compiler change. With this function, each example's PREVIOUS source under the new compiler
+   * (W_HABITABLE_NO_WINDOW, W_ROOM_MISSING_DEFINING) reproduces its previous row exactly, so
+   * the rule moved none of them; `finish` echoes the edited source: `accessible` and
+   * `relational` gain a living-room window, `hillside-villa` a window on the living room's bay
+   * and one `dim`, `practice-office` a stove in the break room, `two-storey` a stove and a
+   * shower, `corner-cafe`'s servery drops `uses kitchen`, `terrace-row`'s front room drops
+   * `dining`.
    */
   // Digest first: a name-keyed row reads to a secret scanner as `<key-ish word>: <opaque value>`.
   const FINISH_DIGESTS: ReadonlyMap<string, string> = new Map(
     (
       [
-        ["c0a176e29ecf6f56a0224fa3b13bc16533b85fdb76cc27ced931ee1cf9d80630", "accessible"],
+        ["50bfe2d1d4955f0399834c0e436ef5f6308a109552a22a7df3aea13f93cdfdd9", "accessible"], // PS2.9 source edit, see above
         ["8c16911c1bfb24f05f97b69b48666a3d6bba913f133e535c15a98df45ceca22e", "aquarium"],
         ["8894023b744a155aad52d1ca28b7836ad1c9d63d1665e82f6b835c8d8e480f3b", "attached"],
         ["c512ccc1711f22b6046175a9ef358ad5b2d95a481448c61bf95196714e990187", "bungalow"],
         ["cbf505c9f38de1bce32a5f6256b035a3a5cb35df068f411621db590234da0685", "classroom-block"], // first measurement, added with the example
         ["8f1860697479247a76d029ed309957a97660716904b948956bbe76b6bd46873c", "clinic"],
-        ["3cc20ad5137b43a2a40e416d38e649cf25527afe66dc0672b14f566a3f2f3257", "corner-cafe"], // first measurement, added with the example
+        ["c23c854e798c435b2d16e1a067edc7ef860d7c46c878f2126fdbe92de1d4aa7d", "corner-cafe"], // first measurement with the example; PS2.9 source edit, see above
         ["85385abf1ba670c9ba8362ed21773cd8567ce233ce276914cf428689bf4a938e", "courtyard-house"],
         ["603c773d4df5b0e984b6505af56c8d7a49f128b6f690273f4553a2b629a48d73", "furnished-flat"],
         ["6680a2b84429d16bf60bed5d240dbf498fa920c9aa99c2cf91a44362ea5d14b1", "gallery-l"],
         ["566a0d4d8610714ba8a4655e302be926717d5991d1edce9af5ca68efadfbb594", "garden-house"],
         ["33a8fdea6f6aaab2ef4b42bdcf137312ac3b0b63818c9a3bc347cbb176a829ef", "garden-loft"],
         ["57d4237846d3b666c6806da6ee2bf4cadeb68a2e1d39723c6a024e5b415d5faf", "hexagon-pavilion"],
-        ["a97e3db608fd51d8e441daafb55989387411ada1531da0fad9ca003f74d6bc8d", "hillside-villa"],
+        ["709eef3b7fa8627339cb89f94a7b11268fe383e7dab26908461dad3321dcd502", "hillside-villa"], // PS2.9 source edit, see above
         ["d90d58c40a4068427ef23c066acba5d50d8e99a801b6ce890da3ac9dc01a9554", "imports"],
         ["d04b5112a75e5f493257685ab80f161288f82a78eedbb47ec0bc92950ed928e3", "laneway-house"],
         ["825e5a65cedc04cca28384d9c6ec5bf79c9ed7efff56be8a20b36208c2bc5cd7", "library"],
@@ -518,17 +526,17 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["c5264000e380ff26ad0ea75d9cb75b84d52d22c5988671aee640f87ef125c340", "museum-wings"],
         ["863a9f2c6d83393b414fc6cf634c7757d3148ba19d9c85ff19b9b935f2d64f99", "one-room"],
         ["aa3345f2ba982f844e25108a7908a6f60a8ed295b574248fb895b54bb5599c27", "parametric"],
-        ["e0ee4c353a512b03833dc5271ea20a22bd5117e6f8a5b812037c45816dcb4ef5", "relational"],
+        ["00b3c35be638154331ed4a4963f3ac5b09a7d9512c43f2003b8585e322ecc020", "relational"], // PS2.9 source edit, see above
         ["d58bfbf0a25a5b70b7bdfdd1a8ef7b0fb8912f88ebb5cf631da3efe8268015e4", "sheet-notes"], // first measurement, added with the example
-        ["2ee5f9d3aba27fe4db572ab912c46013a452f4edf0cbbfd1066a3561fd84019b", "practice-office"], // first measurement, added with the example
+        ["324269a53206201f470d727c6b29f3b7cce19f58f3d99822f474be1901503675", "practice-office"], // first measurement with the example; PS2.9 source edit, see above
         ["147ce7e23f6f2a403d2d269cc0e68b678cab850e0d3a641287ef50bced7c76d3", "studio"],
-        ["e4ce4942694b6939c8885bd302dbf2fe53f7903025fe86a11e5dfd8cf63f1764", "terrace-row"],
+        ["97036208f50fd9bd230f94c43230873375343a3e906bd7fe5f7787d2e4bf475b", "terrace-row"], // PS2.9 source edit, see above
         ["9da982b56530f0ec0c1b313fe8be64e5346f71bc4d098244664f164a02029a09", "themed"],
         ["c8c89f7f1db78626ab2620d113675e146a63c80461d978ce15b968a6aff581f5", "tiny-house"],
         ["ec6046117fe68a7329ef5aded15217195ecbd3d0108153d5e7b5d56e602e43a2", "townhouse"],
         ["8512160d1872176b1d122364ca4a36274ccde6c5e8204c394d50e325598bdc33", "transit-hall"],
         ["07ed5965a8bee0706176c15c95b2714ea43a4f3212267bfcafc4a7333b9a6fdb", "two-bed"],
-        ["8e5e10658ec093d71e87dc1068f52b12b1aed8981d7e98f1c640c54b6246ccd9", "two-storey"],
+        ["3ca2adb623329069b83a14b89eb0aed03cada8362cf7ddc79e3bf9bf2590dae4", "two-storey"], // PS2.9 source edit, see above
       ] as const
     ).map(([digest, example]) => [example, digest]),
   );
@@ -1035,7 +1043,11 @@ suite("furnish law — a use's wall run is placed first and stays together", () 
     for (const w of ["kitchen_sink", "stove", "fridge"]) expect(words).not.toContain(w);
     const note = r.unresolved.find((u) => u.room === "r")!;
     expect(note.reason).toContain("kitchen");
-    expect(note.codes).toEqual(["W_TEST_BLOCK"]);
+    // The piece-by-piece fallback (entered because the whole proposal, stove included, was
+    // refused) tries the sink alone first, and a kitchen holding a sink and no hob raises
+    // W_ROOM_MISSING_DEFINING: every sink candidate is refused for that code, so the kitchen
+    // is dropped at its sink, before the stove's W_TEST_BLOCK is reached.
+    expect(note.codes).toEqual(["W_ROOM_MISSING_DEFINING"]);
   });
 });
 

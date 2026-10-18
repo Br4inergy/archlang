@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**103 errors** · **52 warnings**
+**103 errors** · **54 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -136,6 +136,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_FURN_CLEARANCE`](#w_furn_clearance) | warning | A fixture's use-space is blocked. |
 | [`W_GARAGE_TOO_NARROW`](#w_garage_too_narrow) | warning | A garage is too narrow to park in. |
 | [`W_GLYPH_UNSUPPORTED`](#w_glyph_unsupported) | warning | PDF/PNG text has characters no embedded font can draw. |
+| [`W_HABITABLE_NO_WINDOW`](#w_habitable_no_window) | warning | A living room, dining room or kitchen has no window. |
 | [`W_HATCH_SCALE`](#w_hatch_scale) | warning | Hatch scale must be positive; using 1. |
 | [`W_IMPORT_EMPTY_FILE`](#w_import_empty_file) | warning | Whole-file import binds an empty component. |
 | [`W_NO_ENTRANCE`](#w_no_entrance) | warning | The plan has no exterior door. |
@@ -147,6 +148,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_REASSIGN_DEPRECATED`](#w_reassign_deprecated) | warning | Reassignment (`NAME = expr`) is deprecated and will be removed in a future major version. |
 | [`W_ROOM_DISCONNECTED`](#w_room_disconnected) | warning | Room has no door — it can't be entered. |
 | [`W_ROOM_LABEL_OUTSIDE`](#w_room_label_outside) | warning | A room's explicit label anchor falls outside the room. |
+| [`W_ROOM_MISSING_DEFINING`](#w_room_missing_defining) | warning | A furnished room is missing the piece that defines it. |
 | [`W_ROOM_NOT_ENCLOSED`](#w_room_not_enclosed) | warning | Bathroom is not fully enclosed. |
 | [`W_ROOM_NOT_EQUATOR_FACING`](#w_room_not_equator_facing) | warning | A habitable room has windows, but none faces the equator side. |
 | [`W_ROOM_NO_CLEAR_PATH`](#w_room_no_clear_path) | warning | A room cannot be entered or crossed. |
@@ -1734,6 +1736,18 @@ furniture car at (300,300) size 1800x4600 in g   # lint: 2500 mm across, one bay
 room at (0,0) size 4000x3000 label "ห้องครัว"   # -f pdf / -f png warns: Thai has no embedded glyphs
 ```
 
+## W_HABITABLE_NO_WINDOW
+
+*warning* — A living room, dining room or kitchen has no window.
+
+**Cause.** A room whose use is `living`, `dining` or `kitchen` (its `uses`, or its label when it has none: "Living", "Living Room" and "Kitchen / Living" all classify) has no window on any of its walls. A room people live in needs daylight. The window test is the one `W_BEDROOM_NO_WINDOW` uses, a window centred on the room's own perimeter, which is also how `describe().windows[].room` attributes a window, so lint and describe agree. A window on a curved wall is on no room's straight edge, so describe reports its `room` as null; a room bounded by a curved wall edge that carries such a window is therefore skipped rather than reported, because whether that window lights it is not known. A bedroom is never reported by this code (that is `W_BEDROOM_NO_WINDOW`), and a bath, WC, hall or room with no classified use is never asked. The hint names the `exterior` walls that run along an outside edge of the room (one with no room beyond it), or says that none does.
+
+**Fix.** Add a `window` on an exterior wall of the room; the hint names those walls. Accept the warning if the room is lit in a way the plan cannot draw, such as a roof light or a light well. There is no machine fix: where a window goes on a facade is a design decision.
+
+```arch static
+room id=liv at (0,0) size 4000x4000 label "Living"   # lint: no window on its walls
+```
+
 ## W_HATCH_SCALE
 
 *warning* — Hatch scale must be positive; using 1.
@@ -1872,6 +1886,19 @@ room id=r at (0,0) size 3000x3000   # lint: no door on its perimeter
 room polygon (0,0) (6000,0) (6000,6000) (0,6000) label "Hall" at (9000,9000)   # warning
 ```
 
+## W_ROOM_MISSING_DEFINING
+
+*warning* — A furnished room is missing the piece that defines it.
+
+**Cause.** The room holds at least one piece of furniture, so it has been furnished, but not the piece its use is defined by: a bedroom with no bed, a bathroom with no bathtub or shower, a WC with no WC, a kitchen with no sink or no hob, a dining room with no dining table. The defining pieces are read from the furnish table `finish` furnishes from (`FURNISH_TABLE`), so `finish` never writes a room this rule reports. A piece counts when its footprint centre is on the room's floor (its polygon when it has one), and a piece does the job of its own family and of the one the catalogue says it serves (a `double_bed` is a bed, a `table` is a dining table, a `hob` is a stove). An EMPTY room is never reported (an empty bathroom or kitchen is `W_ROOM_NO_FIXTURE`'s report), living rooms and studies are not checked (no single piece defines them), and a room with no classified use is skipped.
+
+**Fix.** Add the missing piece; the hint quotes statements checked together, clear of the room's walls, doors and furniture, when they fit. If the room is not what its use says, change its `uses`. There is no machine fix: where the piece goes is a design decision.
+
+```arch static
+room id=r_bed at (0,0) size 4000x4000 label "Bedroom 2" uses bedroom
+furniture wardrobe in r_bed anchor top flush size 1800x600   # lint: furnished, but no bed
+```
+
 ## W_ROOM_NOT_ENCLOSED
 
 *warning* — Bathroom is not fully enclosed.
@@ -1916,7 +1943,7 @@ furniture shower at (5000,3000) size 2000x2000   # lint: fills the bathroom agai
 
 **Cause.** A room labelled as a bathroom or kitchen contains no plumbing/kitchen fixture (WC, basin, shower, sink, counter…), so it is drawn as an empty box.
 
-**Fix.** Place a fixture inside the room; the categories are built in, so nothing needs importing. A bathroom or WC takes a `wc`, `basin`, `shower` or `bathtub` (e.g. `furniture wc in bath anchor top flush size 400x700`); a kitchen takes a `kitchen_sink`, `counter`, `stove` or `fridge` (e.g. `furniture kitchen_sink in kitchen anchor top flush size 800x600`). A bare `sink` counts for either. A `polygon` or `circle` room cannot take `anchor`: place the piece `at (x,y)` with `in <roomId>` instead.
+**Fix.** Place a fixture inside the room; the categories are built in, so nothing needs importing. A bathroom or WC takes a `wc`, `basin`, `shower` or `bathtub` (e.g. `furniture wc in bath anchor top flush size 400x700`); a kitchen takes a `kitchen_sink`, `counter`, `stove` or `fridge` (e.g. `furniture kitchen_sink in kitchen anchor top flush size 800x600`). A bare `sink` counts for either. A `polygon` or `circle` room cannot take `anchor`: place the piece `at (x,y)` with `in <roomId>` instead. The hint quotes the pieces that make the room what it is, checked together: a `bathtub` or `shower` for a bathroom, a `wc` for a WC, a sink and a hob for a kitchen, and the defining piece of any other use the room has. One fixture alone would leave a furnished room still missing its defining piece, which `W_ROOM_MISSING_DEFINING` reports.
 
 ```arch static
 room at (4000,4000) size 3000x2000 label "Bath"   # lint: no fixtures inside

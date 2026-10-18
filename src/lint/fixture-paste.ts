@@ -121,7 +121,7 @@ export function pasteFixture(
   category: string,
   along: number,
   depth: number,
-): { stmt: string } | { failure: PasteFailure } {
+): { stmt: string; rect: BBox; rotate: number } | { failure: PasteFailure } {
   const g = ctx.ir.grid;
   const snap = (v: number) => (g > 0 ? Math.round(v / g) * g : v);
   const A = snap(along);
@@ -169,7 +169,11 @@ export function pasteFixture(
               ? (f("bottom") ?? rect.y + rect.h) - h
               : rect.y + rect.h / 2 - h / 2;
         if (fits({ x, y, w, h }, edge))
-          return { stmt: `furniture ${category} in ${room.id} anchor ${a} flush size ${printed(edge)}` };
+          return {
+            stmt: `furniture ${category} in ${room.id} anchor ${a} flush size ${printed(edge)}`,
+            rect: { x, y, w, h },
+            rotate: rotateForBackEdge(edge),
+          };
       }
     }
     return { failure: walled ? "no-room" : "no-wall" };
@@ -224,6 +228,8 @@ export function pasteFixture(
         if (fits(fr, edge))
           return {
             stmt: `furniture ${category} at (${fmt2(fr.x)},${fmt2(fr.y)}) size ${printed(edge)}${rot === 0 ? "" : ` rotate ${rot}`} in ${room.id}`,
+            rect: fr,
+            rotate: rot,
           };
       }
       // The same run at exact coordinates: if it fits there, the grid is what refused it.

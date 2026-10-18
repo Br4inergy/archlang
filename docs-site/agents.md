@@ -61,7 +61,7 @@ archlang context          # == llms-full.txt
 ```
 
 Take one slice of it when that is all you need: `archlang context --section errors` prints just the
-diagnostic catalog: the catalog alone is about 32 KB, where the bundle is about 109 KB in all. The
+diagnostic catalog: the catalog alone is about 36 KB, where the bundle is about 109 KB in all. The
 sections are `spec` (the language), `workflow` (the agent loop), `cli` (every command) and
 `errors`. If you only need the language, `archlang spec` prints the [one-page spec](/spec).
 

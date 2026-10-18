@@ -1,7 +1,7 @@
 # class: missing-defining-contents
 # origin: audits/archcanvas-public-examples.md CB1 (compact-bedsit "Bath" holds only a basin and a WC)
 # expect: W_ROOM_MISSING_DEFINING
-# status: todo
+# status: done
 # fact: r_bath (uses bath) holds a wc and a basin and no shower or bathtub
 plan "Bath without a shower" {
   units mm

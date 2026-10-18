@@ -33,6 +33,16 @@
  * `eval/goldens/accessible-bath.arch`'s "Living / Kitchen") was `LivingRoom` before this change,
  * so a label-only room now agrees with an authored one. No other row, field or order moved. The
  * three rows were edited by hand to the values the corpus sweep measured, nothing else.
+ *
+ * ## Five rows edited on 2026-10-18 (plan-soundness PS2.9): two examples' SOURCE changed
+ *
+ * Not a classifier change: two examples dropped an authored use that misdescribed a room.
+ *   - `examples/corner-cafe.arch` `r_servery` "Servery": `uses kitchen` dropped (a bar servery
+ *     with no sink or hob is not a kitchen, and no use describes one) → `[]`/`Room`.
+ *   - `examples/terrace-row.arch` `u1`–`u4.living` "Living": `uses living dining kitchen` →
+ *     `living kitchen` (its header calls the room living + kitchen; it holds no table);
+ *     `room_type` stays `LivingRoom`.
+ * Edited by hand to what `describe()` measures, nothing else.
  */
 
 import { readFileSync, readdirSync } from "node:fs";

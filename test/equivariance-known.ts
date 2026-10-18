@@ -180,9 +180,10 @@ export const KNOWN: readonly KnownViolation[] = [
     where: "hillside-villa.arch@L1",
     g: DIM_REFLECTED_4,
     path: "scene.dim[].ticks",
-    ids: ["g.dim_1"],
+    // dim_2 (the bay window's centre from the west face) was added with the glazed bay (PS2.8).
+    ids: ["g.dim_1", "g.dim_2"],
     cls: "dim-tick-hand",
-    why: "the ground floor's one hand-written dim (dim_1) draws its 45° station ticks along dir + n, a fixed page slash; the mirror image is the other diagonal (a drafting convention, like a hatch angle)",
+    why: "the ground floor's two hand-written dims (dim_1, dim_2) draw their 45° station ticks along dir + n, a fixed page slash; the mirror image is the other diagonal (a drafting convention, like a hatch angle)",
     closesWith: CLOSES["dim-tick-hand"],
   },
 ];

@@ -225,7 +225,7 @@
     {
       "id": "relational-studio",
       "valid": true,
-      "lintWarnings": 1,
+      "lintWarnings": 2,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -384,7 +384,7 @@
     {
       "id": "against-wall-bath",
       "valid": true,
-      "lintWarnings": 0,
+      "lintWarnings": 1,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -442,7 +442,7 @@
     {
       "id": "small-office",
       "valid": true,
-      "lintWarnings": 2,
+      "lintWarnings": 4,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -511,7 +511,7 @@
     {
       "id": "core-and-shell",
       "valid": true,
-      "lintWarnings": 1,
+      "lintWarnings": 2,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -960,7 +960,7 @@
     {
       "id": "l-shaped-flat",
       "valid": true,
-      "lintWarnings": 2,
+      "lintWarnings": 3,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -1197,7 +1197,7 @@
     {
       "id": "compact-studio",
       "valid": true,
-      "lintWarnings": 2,
+      "lintWarnings": 3,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -1366,7 +1366,7 @@
     {
       "id": "reception-suite",
       "valid": true,
-      "lintWarnings": 4,
+      "lintWarnings": 6,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -1519,7 +1519,7 @@
     {
       "id": "attach-openings",
       "valid": true,
-      "lintWarnings": 1,
+      "lintWarnings": 2,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -1744,7 +1744,7 @@
     {
       "id": "sized-kitchen-flat",
       "valid": true,
-      "lintWarnings": 0,
+      "lintWarnings": 2,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -1859,7 +1859,7 @@
     {
       "id": "sized-bedrooms",
       "valid": true,
-      "lintWarnings": 2,
+      "lintWarnings": 3,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -2061,7 +2061,7 @@
     {
       "id": "sized-office-mix",
       "valid": true,
-      "lintWarnings": 5,
+      "lintWarnings": 7,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],

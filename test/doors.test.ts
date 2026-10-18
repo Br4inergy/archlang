@@ -436,11 +436,17 @@ suite("doors — W_POCKET_RUN", () => {
     // `door-near-corner`: it needs no new syntax beyond `dims auto all`, so an older plan
     // can trip it, and it is appended after everything for exactly that reason. Across the
     // shipped examples it found two real gaps, which those examples now dimension by hand.
+    //
+    // `habitable-no-window` and `room-missing-defining` (plan-soundness PS2.8, PS2.9) are in
+    // the same position again: no new syntax, appended last, every corpus movement listed in
+    // `test/byte-identity-baseline.ts`'s header.
     expect(names.slice(i + 1)).toEqual([
       "outdoor-overlaps-room",
       "balcony-no-door",
       "door-near-corner",
       "opening-not-dimensioned",
+      "habitable-no-window",
+      "room-missing-defining",
     ]);
   });
 
@@ -448,8 +454,12 @@ suite("doors — W_POCKET_RUN", () => {
     const { LINT_RULES } = await import("../src/lint/rules/index.js");
     // `door-near-corner` was last when this pin was written; `opening-not-dimensioned`
     // now follows it, and only fires under `dims auto all`, which this
-    // plan does not write.
-    expect(LINT_RULES.map((r) => r.name).slice(-2)).toEqual(["door-near-corner", "opening-not-dimensioned"]);
+    // plan does not write. The two room-contents rules follow that, and this plan has no room.
+    const names = LINT_RULES.map((r) => r.name);
+    expect(names.slice(names.indexOf("door-near-corner"), names.indexOf("door-near-corner") + 2)).toEqual([
+      "door-near-corner",
+      "opening-not-dimensioned",
+    ]);
     // A plan carrying an unrelated pre-existing warning (a sub-passable door width) AND
     // tripping the new rule: the old diagnostic must still be first, byte-for-byte.
     // centre 4500 on a 250 mm wall whose corner is at 5000: a 600 mm leaf leaves a

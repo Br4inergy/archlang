@@ -958,7 +958,7 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "W_ROOM_NO_FIXTURE",
     "Bathroom or kitchen has no fixtures.",
     "A room labelled as a bathroom or kitchen contains no plumbing/kitchen fixture (WC, basin, shower, sink, counter…), so it is drawn as an empty box.",
-    "Place a fixture inside the room; the categories are built in, so nothing needs importing. A bathroom or WC takes a `wc`, `basin`, `shower` or `bathtub` (e.g. `furniture wc in bath anchor top flush size 400x700`); a kitchen takes a `kitchen_sink`, `counter`, `stove` or `fridge` (e.g. `furniture kitchen_sink in kitchen anchor top flush size 800x600`). A bare `sink` counts for either. A `polygon` or `circle` room cannot take `anchor`: place the piece `at (x,y)` with `in <roomId>` instead.",
+    "Place a fixture inside the room; the categories are built in, so nothing needs importing. A bathroom or WC takes a `wc`, `basin`, `shower` or `bathtub` (e.g. `furniture wc in bath anchor top flush size 400x700`); a kitchen takes a `kitchen_sink`, `counter`, `stove` or `fridge` (e.g. `furniture kitchen_sink in kitchen anchor top flush size 800x600`). A bare `sink` counts for either. A `polygon` or `circle` room cannot take `anchor`: place the piece `at (x,y)` with `in <roomId>` instead. The hint quotes the pieces that make the room what it is, checked together: a `bathtub` or `shower` for a bathroom, a `wc` for a WC, a sink and a hob for a kitchen, and the defining piece of any other use the room has. One fixture alone would leave a furnished room still missing its defining piece, which `W_ROOM_MISSING_DEFINING` reports.",
     'room at (4000,4000) size 3000x2000 label "Bath"   # lint: no fixtures inside',
   ),
   W_FURNITURE_OVERLAP: W(
@@ -1128,6 +1128,21 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "Reassigning an existing `let` binding exists only to make a `while` loop progress. Outside that role it is the same referential-transparency break `while` is deprecated for: a name bound with `let` can no longer be trusted to keep its first value, which breaks the equational tools (rename, `archlang fix`, the planned re-roll refactor) that treat a `let` as a substitutable value. A reassignment LEXICALLY INSIDE a `while` body (at any depth, including inside a nested `if`/`for`/`zone`) does not also raise this — every reassignment there is already covered by that loop's own `W_WHILE_DEPRECATED`.",
     "Bind a new name with `let` instead of reassigning it, or express the surrounding loop as `for NAME in A..B { … }` — `archlang fix` offers this on `W_WHILE_DEPRECATED` for the canonical shape, once proved against this file's own expansion (component sites need `--unsafe`).",
     "let total = 0\ntotal = total + 100   # warning: deprecated reassignment; bind a new name instead",
+  ),
+  // Room-contents advisories (plan-soundness PS2.8, PS2.9), raised by `archlang lint`.
+  W_HABITABLE_NO_WINDOW: W(
+    "W_HABITABLE_NO_WINDOW",
+    "A living room, dining room or kitchen has no window.",
+    'A room whose use is `living`, `dining` or `kitchen` (its `uses`, or its label when it has none: "Living", "Living Room" and "Kitchen / Living" all classify) has no window on any of its walls. A room people live in needs daylight. The window test is the one `W_BEDROOM_NO_WINDOW` uses, a window centred on the room\'s own perimeter, which is also how `describe().windows[].room` attributes a window, so lint and describe agree. A window on a curved wall is on no room\'s straight edge, so describe reports its `room` as null; a room bounded by a curved wall edge that carries such a window is therefore skipped rather than reported, because whether that window lights it is not known. A bedroom is never reported by this code (that is `W_BEDROOM_NO_WINDOW`), and a bath, WC, hall or room with no classified use is never asked. The hint names the `exterior` walls that run along an outside edge of the room (one with no room beyond it), or says that none does.',
+    "Add a `window` on an exterior wall of the room; the hint names those walls. Accept the warning if the room is lit in a way the plan cannot draw, such as a roof light or a light well. There is no machine fix: where a window goes on a facade is a design decision.",
+    'room id=liv at (0,0) size 4000x4000 label "Living"   # lint: no window on its walls',
+  ),
+  W_ROOM_MISSING_DEFINING: W(
+    "W_ROOM_MISSING_DEFINING",
+    "A furnished room is missing the piece that defines it.",
+    "The room holds at least one piece of furniture, so it has been furnished, but not the piece its use is defined by: a bedroom with no bed, a bathroom with no bathtub or shower, a WC with no WC, a kitchen with no sink or no hob, a dining room with no dining table. The defining pieces are read from the furnish table `finish` furnishes from (`FURNISH_TABLE`), so `finish` never writes a room this rule reports. A piece counts when its footprint centre is on the room's floor (its polygon when it has one), and a piece does the job of its own family and of the one the catalogue says it serves (a `double_bed` is a bed, a `table` is a dining table, a `hob` is a stove). An EMPTY room is never reported (an empty bathroom or kitchen is `W_ROOM_NO_FIXTURE`'s report), living rooms and studies are not checked (no single piece defines them), and a room with no classified use is skipped.",
+    "Add the missing piece; the hint quotes statements checked together, clear of the room's walls, doors and furniture, when they fit. If the room is not what its use says, change its `uses`. There is no machine fix: where the piece goes is a design decision.",
+    'room id=r_bed at (0,0) size 4000x4000 label "Bedroom 2" uses bedroom\nfurniture wardrobe in r_bed anchor top flush size 1800x600   # lint: furnished, but no bed',
   ),
 });
 

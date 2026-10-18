@@ -6,15 +6,15 @@
 # schedule subtotals) · `room polygon` (a chamfered nook off the study, and the L-shaped
 # master suite) · `arc` wall edge (a bowed bay off the living room) · all SIX door kinds —
 # the five that have to be named (sliding/pocket/bifold/barn/garage), plus the `hinged`
-# default on the rest, each where a builder would actually put it. Count them off the
+# default on the rest. Count them off the
 # `door` lines and you get five, because `hinged` is the kind you never write: ask
 # `arch describe --json` instead, which reports the kind on every door · `window
 # on <wall> at <pos>` plus a `for` loop (a street-facing ribbon of study windows) ·
 # `level 1`/`level 2` · `stair` (same id both levels, one shaft) · `void` (a double-height
 # gap over the living room) · `roof overhang` (the eaves, drawn on the upper storey) ·
 # `component` + `place … mirror x` (a mirrored pair of ensuite bathrooms) · ~30 furniture
-# families across kitchen/living/bedroom/study/garage/terrace · `dims auto all` plus one
-# manual dim.
+# families across kitchen/living/bedroom/study/garage/terrace · `dims auto all` plus two
+# manual dims.
 #
 # The plot fronts the street on the NORTH, in the northern hemisphere — so `back` and
 # `equator_side` are the SAME side (south), which is why the living room, the arc bay and
@@ -145,6 +145,7 @@ plan "Hillside Villa" {
     window on shell at 23000 width 1400                # terrace (east wall)
     window on shell at 17000 width 900                 # corridor (east wall)
     window at (6000,10200) width 1800 wall shell        # dining, south wall
+    window on shell at 34950 width 1500
 
     # ---- furniture ----------------------------------------------------------------------
     furniture desk         at (600,2700)  size 1600x700 in r_office
@@ -185,6 +186,7 @@ plan "Hillside Villa" {
     furniture sun_lounger at (11200,8700) size 1900x700 in r_terrace
 
     dim (8000,10500)->(13800,10500) offset 600 text "Terrace 5.8 x 2.0 m"
+    dim (0,10800)->(3000,10800) offset 300
 
     stair id=stair at (4900,2700) size 2200x1000 dir up
   }

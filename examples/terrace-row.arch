@@ -89,7 +89,7 @@ plan "Terrace Row" {
     room id=bed    at (0,0)            size BEDW x BACK  label "Bed"    at (1400,800)        uses bedroom
     room id=bath   at (BEDW,0)         size BATHW x BACK label "Bath"   at (BEDW + 1100,2100) uses bath utility
     room id=hall   at (0,BACK)         size w x HALLD    label "Hall"   uses hall circulation
-    room id=living at (0,BACK + HALLD) size w x FRONT    label "Living" at (w / 2,6900)     uses living dining kitchen
+    room id=living at (0,BACK + HALLD) size w x FRONT    label "Living" at (w / 2,6900)     uses living kitchen
 
     # Front door off the street into the front room; the garden door is a slider, so no
     # leaf sweeps the bedroom floor.

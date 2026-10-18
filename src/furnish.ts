@@ -37,8 +37,8 @@ import {
   type RectEdge,
   rotateForBackEdge,
 } from "./fixture-orientation.js";
-import { canonicalFixture } from "./elements/fixtures-glyphs.js";
-import { defaultFootprint, fixtureSpec, frontClearanceMm, zoneFixtureCategories } from "./fixtures-catalog.js";
+import { defaultFootprint, frontClearanceMm } from "./fixtures-catalog.js";
+import { FURNISH_TABLE, type FurnishItem, familyOf, servedBy } from "./furnish-table.js";
 import { doorSwing, normal, sectorIntersectsRect, segmentsOfWall, sub, unit, type WallSegment } from "./geometry.js";
 import { distToPolygonEdge, pointInPolygon, polygonsOverlap, rectRing } from "./geometry/polygon.js";
 import { type BBox, doorLandingRect, rectsOverlap } from "./geometry/rect.js";
@@ -54,115 +54,7 @@ import { sourceConflicts } from "./repair.js";
 // the table
 // ---------------------------------------------------------------------------
 
-/** How a piece is placed. */
-export type FurnishPlacement =
-  /** A services fixture on a wall: `against wall <id> offset <mm>`, the catalogued footprint. */
-  | "wall"
-  /** A free-standing piece with its back to a wall: `in <room> anchor <edge or corner> flush`. */
-  | "back"
-  /** In the middle of the room: `in <room> anchor center`. */
-  | "centre"
-  /** In front of the piece listed before it: the same edge anchor, `inset` past that piece. */
-  | "front";
-
-export interface FurnishItem {
-  /** The catalogue word that is written. */
-  category: string;
-  /** Catalogue words tried, in order, when `category` cannot be placed. */
-  or?: readonly string[];
-  /** A required piece that cannot be placed leaves the whole room empty; an optional one is left out. */
-  required: boolean;
-  place: FurnishPlacement;
-  /**
-   * Footprints tried in order, `along` the wall × `depth` into the room, in mm. Absent =
-   * the catalogue's own footprint. `finish` writes the one it used as an explicit `size`.
-   */
-  sizes?: readonly (readonly [along: number, depth: number])[];
-}
-
-const wet = zoneFixtureCategories("wet");
-const kitchen = zoneFixtureCategories("kitchen");
-/** A wet-room or kitchen fixture, admitted only when the catalogue lists it for that zone. */
-const zoned = (zone: ReadonlySet<string>, required: boolean, category: string, ...or: string[]): FurnishItem[] => {
-  const [first, ...rest] = [category, ...or].filter((c) => zone.has(c) && defaultFootprint(c) !== null);
-  return first === undefined
-    ? []
-    : [{ category: first, ...(rest.length > 0 ? { or: rest } : {}), required, place: "wall" }];
-};
-
-/**
- * What goes in a room, by use. Every word is one `src/fixtures-catalog.ts` already has; the
- * wet-room and kitchen rows are read through the catalogue's own zones. A use with no row
- * (`hall`, `circulation`, `entry`, `storage`, `garage`, `utility`) is never furnished.
- *
- * The rows describe the rooms of a DWELLING. `utility` has no row because the tag does not
- * say laundry: a plant room carries it too. A room larger than {@link MAX_ROOM_AREA_M2} is
- * not a dwelling room whatever its tag says, and is reported instead of furnished.
- */
-export const FURNISH_TABLE: Readonly<Partial<Record<UseKind, readonly FurnishItem[]>>> = Object.freeze({
-  bedroom: [
-    {
-      category: "bed",
-      required: true,
-      place: "back",
-      sizes: [
-        [1500, 2000],
-        [900, 2000],
-      ],
-    },
-    {
-      category: "wardrobe",
-      required: false,
-      place: "back",
-      sizes: [
-        [1800, 600],
-        [1200, 600],
-      ],
-    },
-  ],
-  living: [
-    {
-      category: "sofa",
-      required: true,
-      place: "back",
-      sizes: [
-        [2000, 900],
-        [1600, 900],
-      ],
-    },
-    { category: "coffee_table", required: false, place: "front", sizes: [[1000, 600]] },
-  ],
-  dining: [
-    {
-      category: "dining_table",
-      required: true,
-      place: "centre",
-      sizes: [
-        [1800, 1500],
-        [1400, 1300],
-      ],
-    },
-  ],
-  office: [
-    {
-      category: "desk",
-      required: true,
-      place: "back",
-      sizes: [
-        [1400, 700],
-        [1200, 600],
-      ],
-    },
-    { category: "office_chair", required: false, place: "front", sizes: [[500, 500]] },
-  ],
-  kitchen: [
-    ...zoned(kitchen, true, "kitchen_sink"),
-    ...zoned(kitchen, true, "stove"),
-    ...zoned(kitchen, false, "fridge"),
-  ],
-  bath: [...zoned(wet, true, "wc"), ...zoned(wet, true, "basin"), ...zoned(wet, false, "bathtub", "shower")],
-  wc: [...zoned(wet, true, "wc"), ...zoned(wet, true, "basin")],
-});
+export { FURNISH_TABLE, type FurnishItem, type FurnishPlacement } from "./furnish-table.js";
 
 /** Placement detail that is not part of the public table. */
 interface Detail {
@@ -606,16 +498,6 @@ function footprints(category: string, item: FurnishItem): ReadonlyArray<readonly
   const fp = defaultFootprint(category);
   return fp ? [[fp.along, fp.depth]] : (item.sizes ?? []);
 }
-
-const familyOf = (word: string): string => canonicalFixture(word) ?? word;
-/**
- * The families a held piece does the job of: its own (`couch` is a `sofa`), and the one the
- * catalogue says it serves (`double_bed` serves `bed`, a bare `sink` serves `basin`).
- */
-const servedBy = (category: string): string[] => {
-  const serves = fixtureSpec(category)?.serves;
-  return serves === undefined ? [familyOf(category)] : [familyOf(category), familyOf(serves)];
-};
 
 /**
  * Does the piece stand on the room's floor? Its footprint is tested against the room's
