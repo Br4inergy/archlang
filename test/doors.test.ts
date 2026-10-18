@@ -437,6 +437,10 @@ suite("doors — W_POCKET_RUN", () => {
     // can trip it, and it is appended after everything for exactly that reason. Across the
     // shipped examples it found two real gaps, which those examples now dimension by hand.
     //
+    // The three circulation-and-privacy rules (plan-soundness PS2.5–PS2.7) are in the same
+    // position again: no new syntax, so an older plan can trip them, and they are appended
+    // after everything so no existing diagnostic moves. Their corpus movement is listed in
+    // the commit that added them.
     // `habitable-no-window` and `room-missing-defining` (plan-soundness PS2.8, PS2.9) are in
     // the same position again: no new syntax, appended last, every corpus movement listed in
     // `test/byte-identity-baseline.ts`'s header.
@@ -445,6 +449,9 @@ suite("doors — W_POCKET_RUN", () => {
       "balcony-no-door",
       "door-near-corner",
       "opening-not-dimensioned",
+      "room-via-private",
+      "wet-room-door",
+      "entrance-into-private",
       "habitable-no-window",
       "room-missing-defining",
     ]);
@@ -454,11 +461,16 @@ suite("doors — W_POCKET_RUN", () => {
     const { LINT_RULES } = await import("../src/lint/rules/index.js");
     // `door-near-corner` was last when this pin was written; `opening-not-dimensioned`
     // now follows it, and only fires under `dims auto all`, which this
-    // plan does not write. The two room-contents rules follow that, and this plan has no room.
-    const names = LINT_RULES.map((r) => r.name);
-    expect(names.slice(names.indexOf("door-near-corner"), names.indexOf("door-near-corner") + 2)).toEqual([
+    // plan does not write. The three circulation-and-privacy rules follow those, then the two
+    // room-contents rules, and this plan has no room for any of them to read.
+    expect(LINT_RULES.map((r) => r.name).slice(-7)).toEqual([
       "door-near-corner",
       "opening-not-dimensioned",
+      "room-via-private",
+      "wet-room-door",
+      "entrance-into-private",
+      "habitable-no-window",
+      "room-missing-defining",
     ]);
     // A plan carrying an unrelated pre-existing warning (a sub-passable door width) AND
     // tripping the new rule: the old diagnostic must still be first, byte-for-byte.

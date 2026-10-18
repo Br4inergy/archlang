@@ -411,6 +411,9 @@ export const RULE_CLASS: Readonly<Record<string, RuleClass>> = {
   "balcony-no-door": "invariant",
   "door-near-corner": "invariant",
   "opening-not-dimensioned": "invariant",
+  "room-via-private": "invariant",
+  "wet-room-door": "invariant",
+  "entrance-into-private": "invariant",
   "habitable-no-window": "invariant",
   "room-missing-defining": "invariant",
 };

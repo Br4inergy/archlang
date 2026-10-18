@@ -408,7 +408,8 @@ export function furnishStage(
       }
       accept(room, uses, remaining);
       leftOutNotes();
-      for (const l of lacking) note(room, `the ${l.use} pieces were left out of "${room.id}" — ${why(l)}`, [JUDGED_BY_PIECES]);
+      for (const l of lacking)
+        note(room, `the ${l.use} pieces were left out of "${room.id}" — ${why(l)}`, [JUDGED_BY_PIECES]);
     };
 
     // First proposal: use by use, the first candidate of every piece that clears the room's

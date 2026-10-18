@@ -11909,12 +11909,6 @@ exports[`golden SVG snapshots > renders relational.arch deterministically 1`] = 
 <path d="M 500,1000 A 1000 1000 0 0 0 1500,0" fill="none" stroke="#555555" stroke-width="9.48"/>
 </g>
 <g id="A-GLAZ" inkscape:groupmode="layer" inkscape:label="A-GLAZ">
-<polygon points="2400,122.96 4200,122.96 4200,-122.96 2400,-122.96" fill="#ffffff"/>
-<line x1="2400" y1="100" x2="4200" y2="100" stroke="#1b1b1b" stroke-width="13.12"/>
-<line x1="2400" y1="-100" x2="4200" y2="-100" stroke="#1b1b1b" stroke-width="13.12"/>
-<line x1="2400" y1="25" x2="4200" y2="25" stroke="#3a6ea5" stroke-width="13.12"/>
-<line x1="2400" y1="-25" x2="4200" y2="-25" stroke="#3a6ea5" stroke-width="13.12"/>
-<polygon points="2360,-100 2360,-140 4240,-140 4240,-100" fill="none" stroke="#1b1b1b" stroke-width="13.12"/>
 <polygon points="5600,122.96 7400,122.96 7400,-122.96 5600,-122.96" fill="#ffffff"/>
 <line x1="5600" y1="100" x2="7400" y2="100" stroke="#1b1b1b" stroke-width="13.12"/>
 <line x1="5600" y1="-100" x2="7400" y2="-100" stroke="#1b1b1b" stroke-width="13.12"/>
@@ -11927,6 +11921,12 @@ exports[`golden SVG snapshots > renders relational.arch deterministically 1`] = 
 <line x1="4000" y1="7475" x2="2400" y2="7475" stroke="#3a6ea5" stroke-width="13.12"/>
 <line x1="4000" y1="7525" x2="2400" y2="7525" stroke="#3a6ea5" stroke-width="13.12"/>
 <polygon points="4040,7600 4040,7640 2360,7640 2360,7600" fill="none" stroke="#1b1b1b" stroke-width="13.12"/>
+<polygon points="2400,122.96 4200,122.96 4200,-122.96 2400,-122.96" fill="#ffffff"/>
+<line x1="2400" y1="100" x2="4200" y2="100" stroke="#1b1b1b" stroke-width="13.12"/>
+<line x1="2400" y1="-100" x2="4200" y2="-100" stroke="#1b1b1b" stroke-width="13.12"/>
+<line x1="2400" y1="25" x2="4200" y2="25" stroke="#3a6ea5" stroke-width="13.12"/>
+<line x1="2400" y1="-25" x2="4200" y2="-25" stroke="#3a6ea5" stroke-width="13.12"/>
+<polygon points="2360,-100 2360,-140 4240,-140 4240,-100" fill="none" stroke="#1b1b1b" stroke-width="13.12"/>
 </g>
 <g id="A-ANNO-TEXT" inkscape:groupmode="layer" inkscape:label="A-ANNO-TEXT">
 <text x="2500" y="1950.8" font-size="246" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Living</text>

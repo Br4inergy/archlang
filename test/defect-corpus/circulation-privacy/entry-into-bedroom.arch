@@ -1,7 +1,7 @@
 # class: circulation-privacy
 # origin: README PS2.7 and evidence.md section 6 (ResPlan: 0 of 16,317 front doors open into a bedroom or bath); no audited plan has it (measured: the repo examples' exterior doors into bedrooms are terrace-row rear doors and the garden-house L2 balcony door)
 # expect: W_ENTRANCE_INTO_PRIVATE
-# status: todo
+# status: done
 # fact: the plan's one exterior door, d_entry, opens into the bedroom (access.entrances is [d_entry], depth 1 = bedroom)
 plan "Front door into a bedroom" {
   units mm

@@ -20,6 +20,7 @@ import {
   furnitureWallCollision,
 } from "./furniture.js";
 import { perRoomRules } from "./per-room.js";
+import { entranceIntoPrivate, roomViaPrivate, wetRoomDoor } from "./privacy.js";
 import { reachability } from "./reachability.js";
 import { habitableNoWindow, roomMissingDefining } from "./room-contents.js";
 import { balconyNoDoor, outdoorOverlapsRoom } from "./outdoor.js";
@@ -84,6 +85,12 @@ export const LINT_RULES: readonly LintRule[] = [
   // `dims auto all` chain measures. Appended LAST, for the same reason as every rule above
   // it, and it cannot fire unless the plan says `dims auto all`.
   openingNotDimensioned,
+  // Circulation and privacy (plan-soundness PS2.5–PS2.7): a room reached only through a
+  // bedroom or bath, a wet room's door in the wrong place, and a front door into a private
+  // room. Appended LAST, in that order, so no existing rule's diagnostic ORDER moves.
+  roomViaPrivate,
+  wetRoomDoor,
+  entranceIntoPrivate,
   // Room-contents advisories (plan-soundness PS2.8, PS2.9): a living room, dining room or
   // kitchen with no window, and a furnished room missing the piece that defines it. Appended
   // LAST, in this order, so no existing diagnostic moves within the array.

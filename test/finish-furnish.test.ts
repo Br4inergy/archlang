@@ -513,10 +513,13 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["85385abf1ba670c9ba8362ed21773cd8567ce233ce276914cf428689bf4a938e", "courtyard-house"],
         ["603c773d4df5b0e984b6505af56c8d7a49f128b6f690273f4553a2b629a48d73", "furnished-flat"],
         ["6680a2b84429d16bf60bed5d240dbf498fa920c9aa99c2cf91a44362ea5d14b1", "gallery-l"],
-        ["566a0d4d8610714ba8a4655e302be926717d5991d1edce9af5ca68efadfbb594", "garden-house"],
+        // Re-measured 2026-10-18 (plan-soundness PS2.6): the example's SOURCE changed, one door
+        // re-hosted (`d_gar` onto the kitchen, +3 bytes), and `source` is part of this digest. The
+        // pre-edit source still gives the previous row; see ./byte-identity-baseline.ts.
+        ["088bafd17d2c504adc4aa7690a14cc295b02337099787f3e2111c5e91f133e33", "garden-house"],
         ["33a8fdea6f6aaab2ef4b42bdcf137312ac3b0b63818c9a3bc347cbb176a829ef", "garden-loft"],
         ["57d4237846d3b666c6806da6ee2bf4cadeb68a2e1d39723c6a024e5b415d5faf", "hexagon-pavilion"],
-        ["709eef3b7fa8627339cb89f94a7b11268fe383e7dab26908461dad3321dcd502", "hillside-villa"], // PS2.9 source edit, see above
+        ["be057b348026108b74852402f077001f97af7523674f8035b3055128ab2b7538", "hillside-villa"], // PS2.9 source edit, see above
         ["d90d58c40a4068427ef23c066acba5d50d8e99a801b6ce890da3ac9dc01a9554", "imports"],
         ["d04b5112a75e5f493257685ab80f161288f82a78eedbb47ec0bc92950ed928e3", "laneway-house"],
         ["825e5a65cedc04cca28384d9c6ec5bf79c9ed7efff56be8a20b36208c2bc5cd7", "library"],
@@ -526,7 +529,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["c5264000e380ff26ad0ea75d9cb75b84d52d22c5988671aee640f87ef125c340", "museum-wings"],
         ["863a9f2c6d83393b414fc6cf634c7757d3148ba19d9c85ff19b9b935f2d64f99", "one-room"],
         ["aa3345f2ba982f844e25108a7908a6f60a8ed295b574248fb895b54bb5599c27", "parametric"],
-        ["00b3c35be638154331ed4a4963f3ac5b09a7d9512c43f2003b8585e322ecc020", "relational"], // PS2.9 source edit, see above
+        ["5cdc4092245e98f6e15379d28d6e5ca6c91878b85465684ab6db085a3a3b8926", "relational"], // PS2.9 source edit, see above
         ["d58bfbf0a25a5b70b7bdfdd1a8ef7b0fb8912f88ebb5cf631da3efe8268015e4", "sheet-notes"], // first measurement, added with the example
         ["324269a53206201f470d727c6b29f3b7cce19f58f3d99822f474be1901503675", "practice-office"], // first measurement with the example; PS2.9 source edit, see above
         ["147ce7e23f6f2a403d2d269cc0e68b678cab850e0d3a641287ef50bced7c76d3", "studio"],
@@ -863,7 +866,19 @@ suite("furnish law — generated rows of rooms: fixpoint, never worse, pure inse
           const again = finish(r.source, only ? { only } : {});
           expect(again.source, `not a fixpoint:\n${src}`).toBe(r.source);
           expect(again.changed).toBe(false);
-          expect(gainedBy(src, r.source, undefined), `worse:\n${src}\n→\n${r.source}`).toEqual([]);
+          // W_ROOM_MISSING_DEFINING is the one code the stage judges per use rather than as a
+          // gained code: a room furnished for one use while another use was left out (a
+          // living-dining room whose table has no position) raises it, and the run says so.
+          const gained = gainedBy(src, r.source, undefined);
+          expect(
+            gained.filter((c) => c !== "W_ROOM_MISSING_DEFINING"),
+            `worse:\n${src}\n→\n${r.source}`,
+          ).toEqual([]);
+          if (gained.includes("W_ROOM_MISSING_DEFINING"))
+            expect(
+              r.unresolved.some((u) => /pieces were left out of/.test(u.reason)),
+              `a room lacks its defining piece and no note says which use was left out:\n${r.source}`,
+            ).toBe(true);
           if (only) {
             expect(isOneInsertion(src, r.source)).toBe(true);
             for (const c of r.changes) expect(c.text).not.toContain(" at (");
@@ -1043,11 +1058,10 @@ suite("furnish law — a use's wall run is placed first and stays together", () 
     for (const w of ["kitchen_sink", "stove", "fridge"]) expect(words).not.toContain(w);
     const note = r.unresolved.find((u) => u.room === "r")!;
     expect(note.reason).toContain("kitchen");
-    // The piece-by-piece fallback (entered because the whole proposal, stove included, was
-    // refused) tries the sink alone first, and a kitchen holding a sink and no hob raises
-    // W_ROOM_MISSING_DEFINING: every sink candidate is refused for that code, so the kitchen
-    // is dropped at its sink, before the stove's W_TEST_BLOCK is reached.
-    expect(note.codes).toEqual(["W_ROOM_MISSING_DEFINING"]);
+    // The piece-by-piece fallback places the sink alone first. A kitchen holding a sink and no
+    // hob raises W_ROOM_MISSING_DEFINING, which the gate does not count (the stage judges it
+    // per use), so the stove's own W_TEST_BLOCK is what drops the kitchen, and what is named.
+    expect(note.codes).toEqual(["W_TEST_BLOCK"]);
   });
 });
 

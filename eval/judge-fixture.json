@@ -225,7 +225,7 @@
     {
       "id": "relational-studio",
       "valid": true,
-      "lintWarnings": 2,
+      "lintWarnings": 3,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -1366,7 +1366,7 @@
     {
       "id": "reception-suite",
       "valid": true,
-      "lintWarnings": 6,
+      "lintWarnings": 7,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -1646,7 +1646,7 @@
     {
       "id": "strip-attach-clean",
       "valid": true,
-      "lintWarnings": 0,
+      "lintWarnings": 1,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],

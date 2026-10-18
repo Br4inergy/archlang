@@ -382,10 +382,10 @@ describe("W_ROOM_MISSING_DEFINING", () => {
     expect(codesOf(r.source)).not.toContain("W_ROOM_MISSING_DEFINING");
   });
 
-  it("a bath with no room for a bathtub or shower is left empty by `finish` and reported by W_ROOM_NO_FIXTURE", () => {
-    // 1.5 x 1.2 m: a WC and a basin fit along its walls, a 900 mm shower or 1700 mm bath does
-    // not. Furnished with the WC and basin alone it would raise W_ROOM_MISSING_DEFINING, which
-    // the empty plan does not, so the stage's never-worse gate refuses the room.
+  it("a bath too small to furnish is left empty by `finish` and reported by W_ROOM_NO_FIXTURE, not this code", () => {
+    // 1.5 x 1.2 m: not even its WC has a position, so the stage leaves it empty (as it always
+    // did) and the lint reports the empty room. The case where the WC and basin fit and only the
+    // bathtub or shower does not is the review probe `fz-bath-1800x4200` below.
     const TINY = `plan "Tiny bath" {
   units mm
   grid 50
@@ -405,5 +405,96 @@ describe("W_ROOM_MISSING_DEFINING", () => {
     expect(r.unresolved.some((u) => u.room === "r_bath")).toBe(true);
     const ds = lint(r.source).filter((d) => d.code === "W_ROOM_NO_FIXTURE" || d.code === "W_ROOM_MISSING_DEFINING");
     expect(ds.map((d) => d.code)).toEqual(["W_ROOM_NO_FIXTURE"]);
+  });
+});
+
+/**
+ * The adversarial review's probes (PR #200): the never-worse gate counted
+ * W_ROOM_MISSING_DEFINING, so the piece-by-piece fallback refused a kitchen's lone sink and a
+ * bath's lone WC and emptied rooms `finish` used to furnish. The gate now judges a use on its
+ * finished pieces; these pin what `finish --only furnish` writes, as `main` wrote it before
+ * the rule existed (`kd-regress`, the two kitchens) or, for a bath whose bathtub and shower have
+ * no position beside its WC and basin, an empty room that says why.
+ */
+describe("finish with the room-contents rule: the review's probes", () => {
+  const plan = (W: number, H: number, uses: string, door: string, extra: string): string => `plan "F" {
+  units mm
+  grid 50
+  wall id=shell exterior thickness 200 { (0,0) (${W},0) (${W},${H + 3000}) (0,${H + 3000}) close }
+  wall id=w_mid partition thickness 100 { (0,${H}) (${W},${H}) }
+  room id=r_x at (0,0) size ${W}x${H} label "X" uses ${uses}
+  room id=r_h at (0,${H}) size ${W}x3000 label "Hall" uses hall
+  door id=d_in at (${W / 2},${H + 3000}) width 900 wall shell
+  ${door}
+${extra}}
+`;
+  const words = (src: string): string[] =>
+    finish(src, { only: "furnish" })
+      .changes.filter((c) => c.room === "r_x")
+      .map((c) => c.text.split(" ")[1]!);
+
+  it("kd-regress: a kitchen-diner whose table has no position keeps its kitchen run", () => {
+    const src = `plan "F" {
+  units mm
+  grid 50
+  wall id=shell exterior thickness 200 { (0,0) (2450,0) (2450,6600) (0,6600) close }
+  wall id=w_mid partition thickness 100 { (0,3600) (2450,3600) }
+  room id=r_x at (0,0) size 2450x3600 label "Kitchen / Dining" uses kitchen dining
+  room id=r_h at (0,3600) size 2450x3000 label "Hall" uses hall
+  door id=d_in at (1225,6600) width 900 wall shell
+  door id=d_x at (1150,3600) width 800 wall w_mid swing out
+  window at (1250,0) width 900 wall shell
+}
+`;
+    expect(words(src)).toEqual(["kitchen_sink", "stove", "fridge"]);
+    // The dining use is left out and says so; the lint then reports the room's missing table.
+    const r = finish(src, { only: "furnish" });
+    expect(r.unresolved.map((u) => u.reason)).toEqual([
+      'the dining pieces were left out of "r_x" — no position for the required `dining_table` in "r_x" clears its walls, its doors and the pieces before it',
+    ]);
+    expect(lint(r.source).map((d) => d.code)).toContain("W_ROOM_MISSING_DEFINING");
+  });
+
+  it("fz-kitchen-1650x2600 and fz-kitchen-4000x2550: the sink and the stove are written", () => {
+    expect(
+      words(
+        plan(
+          1650,
+          2600,
+          "kitchen",
+          "door id=d_x at (1050,2600) width 800 wall w_mid swing in",
+          "  window at (450,0) width 900 wall shell\n  window at (0,1850) width 600 wall shell\n",
+        ),
+      ),
+    ).toEqual(["kitchen_sink", "stove"]);
+    expect(
+      words(
+        plan(
+          4000,
+          2550,
+          "kitchen",
+          "door id=d_x at (3450,2550) width 800 wall w_mid swing in",
+          "  window at (2600,0) width 900 wall shell\n  window at (0,800) width 600 wall shell\n",
+        ),
+      ),
+    ).toEqual(["kitchen_sink", "stove"]);
+  });
+
+  it("fz-bath-1800x4200: no position for a bathtub or shower beside the WC and basin, so the bath is left empty", () => {
+    // The only free wall run is the west wall, and its middle carries the window: the stage
+    // never stands a tall piece (a shower) in front of a window, and the corners are taken by
+    // the door's swing and the WC's front clearance. `main` wrote the WC and basin alone.
+    const src = plan(
+      1800,
+      4200,
+      "bath",
+      "door id=d_x at (800,4200) width 800 wall w_mid swing in",
+      "  window at (0,1950) width 600 wall shell\n",
+    );
+    expect(words(src)).toEqual([]);
+    const r = finish(src, { only: "furnish" });
+    expect(r.unresolved.map((u) => u.reason)).toEqual([
+      '"r_x" was left empty — no position for its `bathtub` or `shower`, the piece that defines a bath room (`W_ROOM_MISSING_DEFINING`)',
+    ]);
   });
 });

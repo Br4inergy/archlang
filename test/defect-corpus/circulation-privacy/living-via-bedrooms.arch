@@ -1,7 +1,7 @@
 # class: circulation-privacy
 # origin: evidence.md section 1 row 4; repro/family-apartment.arch (kitchen, bedroom 1, bedroom 2, living; reduced)
 # expect: W_ROOM_VIA_PRIVATE
-# status: todo
+# status: done
 # fact: access depths kitchen 1, bedroom 1 2, bedroom 2 3, living 4; removing either bedroom leaves the
 #   living room unreachable
 plan "Living through two bedrooms" {

@@ -1,7 +1,7 @@
 # class: circulation-privacy
 # origin: audits/showcase-and-examples.md X12 (examples/garden-house.arch L1: open WC in the utility room that is the hall-to-garage passage)
 # expect: W_WET_ROOM_DOOR
-# status: todo
+# status: done
 # fact: the utility room (uses utility wc, holds a WC and basin) has two doors, from the hall and into the
 #   garage, and is the only internal route from the hall to the garage
 plan "WC in the passage to the garage" {

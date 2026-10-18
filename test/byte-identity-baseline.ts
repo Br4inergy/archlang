@@ -1032,6 +1032,42 @@
  * `while-byte-identity-baseline.ts`, `import-module-lets.test.ts` (with
  * `test/recovery-corpus/themed.arch`) and `garage-byte-identity.test.ts`. No other row moved.
  *
+ * ## `two-bed` (both rows) and `garden-house` (both rows): the circulation-and-privacy rules
+ *
+ * 2026-10-18, plan-soundness cards PS2.5–PS2.7: three advisory rules appended to `LINT_RULES`
+ * (`W_ROOM_VIA_PRIVATE`, `W_WET_ROOM_DOOR`, `W_ENTRANCE_INTO_PRIVATE`, `src/lint/rules/privacy.ts`).
+ *
+ *   - `two-bed` — case (1), `lint()` only. It gains three `W_ROOM_VIA_PRIVATE`, the defect the
+ *     plan-soundness audit found (X1): "Master Bedroom" is reached only through "Bathroom"
+ *     (depth 3), "Kitchen / Living" through "Bathroom" then "Master Bedroom" (depth 4), and
+ *     "Bedroom 2" through both (depth 5). The example is left as it is: the hall shares no edge
+ *     with the kitchen/living room, so no door re-hosting fixes it, and card PS3.6 rewrites it.
+ *     Hashing the NEW SVG, `describe()` and `compile().diagnostics` with `lint()` minus the three
+ *     new codes reproduces both previous rows here and the rows in
+ *     `while-byte-identity-baseline.ts`, `import-module-lets.test.ts` and
+ *     `garage-byte-identity.test.ts`.
+ *   - `garden-house` — case (2)'s sibling, the example SOURCE changed. The new
+ *     `W_WET_ROOM_DOOR` found the WC-bearing utility room used as the hall-to-garage passage
+ *     (audit X12), and the door its own comment calls "Kitchen to garage" in fact opened into
+ *     the utility room. `d_gar` moves along `w_gar` from 1800 to 4750 and swings into
+ *     `r_kitchen` (+3 bytes). Field by field: the drawing moves only at that door (the wall cut,
+ *     leaf and swing) and the "Kitchen/Dining" label, which steps 720 mm west off the new swing;
+ *     `describe()` moves `d_gar`'s `between` `r_util` → `r_kitchen`, the access edge and
+ *     `input_graph` with it, and `r_util`'s bottleneck 840 → 740 (its one way in is now its 800 mm
+ *     pocket door); `lint()` keeps its one `W_ROOM_NOT_EQUATOR_FACING`, its span shifted by
+ *     exactly 3. The PRE-edit source under the NEW compiler, with the three new codes filtered
+ *     out of `lint()`, reproduces both previous rows here, the rows in
+ *     `while-byte-identity-baseline.ts` and `import-module-lets.test.ts`, and the
+ *     `finish-furnish.test.ts` digest. No other row in this table moved.
+ *
+ * `two-bed`'s two rows were re-measured once more in the same branch, after its adversarial
+ * review: case (3), the TEXT of the new warnings. The hints now measure the longest single
+ * straight run of a shared edge (never two runs added together), say "a straight N mm" and
+ * leave 100 mm of wall at each jamb, and a dining room's accept-if names the room. Every
+ * storey's SVG and `describe()` are byte-identical to the first commit's, and hashing with the
+ * first commit's `lint()` reproduces its rows. The same holds for the rows in
+ * `while-byte-identity-baseline.ts`, `import-module-lets.test.ts` (with the three eval goldens
+ * whose warnings carry these hints) and `garage-byte-identity.test.ts`.
  * ## Seven examples: both rows re-measured — the room-contents rules, and the defects they found
  *
  * 2026-10-18, plan-soundness PS2.8 + PS2.9. Two steps, each measured on its own.
@@ -1039,8 +1075,9 @@
  * (1) The compiler: `W_HABITABLE_NO_WINDOW` and `W_ROOM_MISSING_DEFINING` are appended to
  * `LINT_RULES`, and `W_ROOM_NO_FIXTURE`'s hint now quotes the room's defining pieces (one
  * fixture alone would leave the room raising the new code). Swept per payload before (a `git
- * archive` of `da9b47b`) and after, over `examples/` (incl. `lib`), `test/**`, `eval/**` and
- * every `arch` fence in `docs/`, README and spec (205 files + 184 fences): every storey's SVG,
+ * archive` of `da9b47b`, and again after merging PS2.5–PS2.7 against `a7a1ac3`) and after, over
+ * `examples/` (incl. `lib`), `test/**`, `eval/**` and every `arch` fence in `docs/`, README and
+ * spec (205 files + 184–189 fences): every storey's SVG,
  * `describe()` and `compile().diagnostics` byte-identical everywhere; `lint()` moved on 81, and
  * on each the new list with the two new codes removed equals the old list element by element
  * except `W_ROOM_NO_FIXTURE`'s `hints`. Hashing the new SVG + `describe()` (+ diagnostics) with
@@ -1051,11 +1088,14 @@
  *   - `accessible`: the 14 m² "Living" had no window → `window at (0,2000) width 1200` on its
  *     west wall. SVG gains the window and the wall's cut; `describe()` gains `windows[1]`.
  *   - `relational`: the 20 m² label-only "Living" had no window → `window at (3300,0) width
- *     1800` on its north wall (header sentence updated). SVG: window + cut; `describe()`: window.
+ *     1800` on its north wall, appended after the existing windows so the generated ids keep
+ *     their numbers (header sentence updated). SVG: window + cut; `describe()`: window.
  *   - `hillside-villa`: the 28.8 m² "Living"'s arc bay was solid → `window on shell at 34950
  *     width 1500` glazes the bay, plus `dim (0,10800)->(3000,10800) offset 300` (an opening on a
- *     curve is on no `dims auto` chain, `W_OPENING_NOT_DIMENSIONED`); header prose trimmed so
- *     the playground's chat link still fits. The rule reads a window on an arc edge as
+ *     curve is on no `dims auto` chain, `W_OPENING_NOT_DIMENSIONED`); one header sentence ("`site` draws
+ *     nothing; it only names directions.") dropped and "one manual dim" → "two manual dims", so
+ *     the playground's chat link still fits (7912 of 7920). `compile().diagnostics` keeps its one
+ *     `W_DRAWING_OVERFLOW`, its span shifted by the bytes removed above it. The rule reads a window on an arc edge as
  *     attribution unknown (PS0.12) and skips the room. SVG: the bay wall's cut, the window
  *     glyph and the dim; `describe()`: the window (`room: null`). Its `lint()` is the previous
  *     seven codes, field by field, spans shifted by the bytes added above them.
@@ -1086,10 +1126,10 @@ export const BASELINE: [string, string][] = [
   ["courtyard-house", "3d43b0dddae961c405f3bf81dc584ad1b4a0c9b6eaca2661cf54a50aa00eb340"],
   ["furnished-flat", "8812151f95e82fafcb3d21a23dede24e71944d9962e1b33c046727869f04d947"],
   ["gallery-l", "ef97490e9b951d76396df52427ba6673b0cce29489dfdf4232dc4d0876fe691d"],
-  ["garden-house", "0532109ebf9869b2ebddfa229823f6c08f8aa50572af0da44e50fa80e7bbd749"], // re-measured, see header
+  ["garden-house", "345f9dd2552ea9165326cab1b33825bcb85eab1a9b4fdea7e566b485985447d3"], // re-measured, see header
   ["garden-loft", "7161ddddda40ba6f520128b2196fdbba997e5f3b82674dbf2ee09495d763dc1d"],
   ["hexagon-pavilion", "92d343afbb62315ad0014b95de9f4a8b26ccffbc14093b04c5956b689f850252"],
-  ["hillside-villa", "d4ddf71e76b73e66049404ce7798d9fb4d7283115be8f3b1414f2641ef013930"], // re-measured, see header
+  ["hillside-villa", "d3949dea3b07a3cbd7f6debb1f4227d935896476acd60d2653d4c39c2172d051"], // re-measured, see header
   ["imports", "4b0151513963a656e52ac84c6fd80eb35c9820ae101921420cb8d5c9c13c0b70"],
   ["laneway-house", "62b3fdb835ccc7eb565f982ed7930d99cfced87bbf4ae9d6bb5410e4945d255c"],
   ["library", "b1afe29423122d4d161d5ba51c8d4af703f47efd8299fdfb265df1d8f8e402fd"],
@@ -1100,7 +1140,7 @@ export const BASELINE: [string, string][] = [
   ["one-room", "9519d5c396d8644e840a1520e6d84f75a8306d1309abebcbd61aa59560fda364"],
   ["parametric", "0300b6e01a4a0f10827b84dfaa21c9a89a4bfa15c008ce01ab6900118b6bc60a"],
   ["practice-office", "f5c1021b3038aebf47428842c16949862466cb6ef309be181329b34f4f0ae848"], // added with the example, re-measured for net area, see header
-  ["relational", "390319b4ab2d817229e675140d949c2ae1d7d12170435916112b3e9f23fcdc9e"],
+  ["relational", "eb88e4d74a8fd93cd72943f6beb95452feda9f9914916f610c0c853d8d3dad84"],
   ["sheet-notes", "f4ab64ec80be43d25a5949c971b07b00696f8fc2ab3927af72442ab70e8f551f"], // re-measured, see header
   ["studio", "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f"],
   ["terrace-row", "8b176a5090823c70c7286de4d9092053feba691fd0b6cc0a7976b63ec4b55c75"], // re-measured, see header
@@ -1108,7 +1148,7 @@ export const BASELINE: [string, string][] = [
   ["tiny-house", "a78e4e99cb1d18bd4aae38e8b8927ec6b765274a3db3b5c63652e9fb189d045a"],
   ["townhouse", "8744ddfa200945bfcf6d119b150d974ef352041248cdc7735d72b94973840431"], // re-measured, see header
   ["transit-hall", "82e5125b88a008eb4831e84156d5981fe031c9496178006d2a1adcb4738f4762"],
-  ["two-bed", "0baff3c3180db3627cf51adfd69dfa0d1e0eee8050ffb1f96c1872be8a9475a4"],
+  ["two-bed", "cd4cfa738aaec6019d4b39f81b69f8f9a3a69327c62f890c3b4f5d35e66b7fef"],
   ["two-storey", "475f3d23606874cd4e0a3a0ed1ac47119500a771a64adee7fc06107af2d68f5f"], // re-measured, see header
 ];
 
@@ -1134,10 +1174,10 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["courtyard-house", "9594aa8e0be5cf3d24cc74fc6c2100b8b18293308ce39c3de002e9fd61edecac"],
   ["furnished-flat", "dab3b998a75ba65679021c8ae9282cb785d8daf69e6c0d64c39aea0c35a36fa5"],
   ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
-  ["garden-house", "fee030c619c813af20a581665bc6366f66f511f8c8e6a035cca3fb344acab128"], // re-measured, see header
+  ["garden-house", "5f880862d0261a5f892ad0aa5b37e728961b887eb129ce33304ab1af470c0c54"], // re-measured, see header
   ["garden-loft", "77bddbf7b08d49b0845e5268bb267a602b93002dfa20175e9218e5156dc435d1"],
   ["hexagon-pavilion", "6e8005c3a0af9b80598574e77141301a957b4a293ba8d5de6cc1effb00693494"],
-  ["hillside-villa", "01a7f18f5e992f8380f5aef92f207537d15c2e5add7598e19450d0632136d1e6"], // re-measured, see header
+  ["hillside-villa", "a28084f7492574f5ae3769a8db33638a1018db7afbcf8860e144c3e53bdefab1"], // re-measured, see header
   ["imports", "183bf4ec261e6650b21c4771b64fe924bf5c6eabd3ea1b8d3bbdac71b2900ac3"],
   ["laneway-house", "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0"],
   ["library", "b2032b46514e9563ba3106e23869db32fef49e8241e65b7c84f6108a2cf4af08"],
@@ -1148,7 +1188,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["one-room", "fbbd7f194ce4ff25444b4a5e58d32ae1919f01a25e20f9ab8bf6aa9d7475def5"],
   ["parametric", "d84db7c3f3d204692228fbec364808644f6f5c9bbb5b6a4d2a44347ad388dad3"],
   ["practice-office", "fc365df8e34d7b28347c0e01631fb59d2cd3348404a7715110d178ed5aa000c1"], // added with the example, re-measured for net area, see header
-  ["relational", "c7c67bbdb36496a40f24e9a5641866f0941dc9ce360f88c24d520cea76e628a9"],
+  ["relational", "1790561ae6b44e5a656a0e8584aab226322c20379b4a123c340f89047d633167"],
   ["sheet-notes", "8a72d4737654ecebe5fa7cce4590d84c70d3c73556115298e2a1c2eadde7d0f9"], // added with the example, see header
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["terrace-row", "8228de0305c5bcc041263a4290378e36995c3a5432352d9cdd271fdc032d983d"],
@@ -1156,7 +1196,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["tiny-house", "bc489f37715328a03b841ffe5b2bd19875a02aa94c8b3d0d827f86e4516fb215"],
   ["townhouse", "a647c239f56e135f28f1febb91ee3099258fa3bcad4babfafd53e2e3d158aed4"], // re-measured, see header
   ["transit-hall", "ab123a7c7d3e506baf72db007ad465f1d2bba591a65cbed2f1973cbe950b9f08"],
-  ["two-bed", "a3299f04779b7a23b99ac6efafb98a3ee7f8a96f28f13bd080421ed8d85d8ae8"],
+  ["two-bed", "71e5d0155b94377968f056dd8efdaf2fd49553d8f3ab7ebb02134c025f99b64b"],
   ["two-storey", "b9a969ca783922bb87e7c5a041fca43fcbbb0246dc477728bb6805cb3cf5df02"], // re-measured, see header
 ];
 

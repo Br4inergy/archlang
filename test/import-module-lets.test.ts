@@ -388,6 +388,17 @@ suite("a module `let` that fails reports as it does in the module", () => {
  *     whose edge for that door goes from `living`→`bath`, `interior` to `exterior`→`living`,
  *     `front`; and `lint()` under `accessibility-advisory`, which gains `W_PATH_TOO_NARROW` twice
  *     (one walk per room, 840 and 740 mm clear against the 900 mm minimum) now that a route exists.
+ *   - 2026-10-18, plan-soundness PS2.5–PS2.7 (three circulation-and-privacy lint rules
+ *     appended): `examples/two-bed`, `examples/garden-house`, `test/fixtures/axes-grid` and
+ *     `chain30` as in `./while-byte-identity-baseline.ts`; and four eval plans, `lint()` only, each
+ *     reproduced by hashing with `lint()` minus the three new codes:
+ *     `eval/goldens/reception-suite` (`W_WET_ROOM_DOOR`: the WC door opens into "Kitchenette"),
+ *     `relational-studio` (`W_WET_ROOM_DOOR`: the bathroom door opens into "Kitchen"),
+ *     `strip-attach-clean` (`W_ROOM_VIA_PRIVATE`: "Bedroom 2" is reached only through
+ *     "Bathroom", depth 3) and `eval/fidelity-plans/four-bed-cap.laundered` (three
+ *     `W_ROOM_VIA_PRIVATE`: bedrooms 2 and 3 only through bedroom 1, bedroom 4 through 1 then 3).
+ *     After the rules' review, `two-bed` and the three goldens moved again on their hint wording
+ *     alone (see `./byte-identity-baseline.ts`): the first commit's `lint()` reproduces each row.
  *
  * Thirty-two rows re-measured on 2026-10-18 (plan-soundness PS2.8 + PS2.9), with this test's own
  * digest body: the eleven of `./while-byte-identity-baseline.ts` (same reason), plus rows that
@@ -417,13 +428,13 @@ const BASELINE: [string, string][] = [
   // Re-measured because the EXAMPLE changed (backlog D.1, its doubled chairs removed), and again
   // for the legend's ground swatches (backlog D.3, level 1's SVG only): the same row, with the
   // same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/garden-house.arch", "ffe33b785e9b5d6a2d2b83b0c5fe416bb1df75e9cfe2755cd9721df2e424f85d"],
+  ["examples/garden-house.arch", "32889de233fcb6d33704ff9daa31a098ec33f0febdc14bf0ea74f52e2fe93976"],
   ["examples/garden-loft.arch", "eb6ba7bdcd33231cd0cfd2072a1a99e2b416be039e6efc2cc0a5ea76129738f2"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
   // Re-measured for the facade-probe fix (level 2's `dims auto` chains only), and again because
   // the EXAMPLE changed (backlog D.2, its piano turned and moved): the same row, with the same
   // digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/hillside-villa.arch", "9a3feb40e1e7044671d8ed57e56377dc42487a73adace08780835d67fa7e07b8"], // re-measured, see header
+  ["examples/hillside-villa.arch", "caf0bb3ec1414ab5d4d59922a5ce518c95b75af5d6492e3f38972b15fa5d9d7d"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
   ["examples/laneway-house.arch", "d87dea46b06ea13b539e0a7c03674038e15762d15948a7bc27632e1b8afd11e2"],
   ["examples/library.arch", "cd5e1d08ae576e6303bc71ededc689e3033456929ffa3bee1568bafc01d45c33"],
@@ -436,7 +447,7 @@ const BASELINE: [string, string][] = [
   ["examples/practice-office.arch", "a6310425ec4359b49ead590d8b34c56cf3e938e16484e377482b75580b6df7ab"], // added with the example, re-measured for net area, see header
   // Re-measured 2026-10-18 (PS0.7, the label classifier emits living; `describe()` only): the
   // same row, with the same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/relational.arch", "6d8868fa2af06d7696b7b5c4c51f663def84fc5d2130c31857dc14a0f4db866a"],
+  ["examples/relational.arch", "f1c37e433fca8d5618a3558ebd48865933ca2f7ede0a836df13a1e09ab213a60"],
   // ADDED with the new example (the issued-sheet statements), then re-measured once when the
   // thickness call-out change met it (drawing only): the same row, with the same digest body,
   // as `./while-byte-identity-baseline.ts`, whose header has both.
@@ -451,13 +462,13 @@ const BASELINE: [string, string][] = [
   ["examples/transit-hall.arch", "b8ec53697030c76a35fdd875115c89cedca4e5ff591837eab5b1fb1209024ad9"],
   // Re-measured 2026-10-18 (PS0.7, the label classifier emits living; `describe()` only): the
   // same row, with the same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/two-bed.arch", "a805e3baa9df0117a2216af7fda83174706ca4d47f38a13c5eb1e77bea89285c"],
+  ["examples/two-bed.arch", "7a99d973cc7db9e33f46534d4abf6cc879fb32559b13d4459606242e8687dec8"],
   ["examples/two-storey.arch", "b54c7c9c9fdb5c6e1ce1b6e656424871d6c0299d9af61286f074eaa19313e6c9"],
   ["examples/lib/doors.arch", "232f7d4cf35f3d44678b3e3641c4815139f9412a9fd079f99639026b99f005b6"],
   ["examples/lib/fixtures.arch", "25e792ed80e5571a57ac00323283b58af9ffd96646008637646f99600f4716f8"],
   ["examples/lib/furniture.arch", "0b3f57be12defbd32e7dd349a5c81619acc3c2650bcf2e2bffaff1669b7a112a"],
-  ["test/fixtures/axes-grid.arch", "bf15439e40c442b499b4b43025cea4827954e3fd2c2e89102e7d6c527d7375b3"],
-  ["test/fixtures/chain30.arch", "13411e1dbffca14e73601338837daf6517ddf9fc2447695021101fc051073cb6"], // new fixture, see header
+  ["test/fixtures/axes-grid.arch", "49752f14f01d4cfcc15239783cd0e231dfd3b0cdfe018991386268f87c1d7d28"],
+  ["test/fixtures/chain30.arch", "858da6001d3d8032a10d372a3dac4c4eae453ad898c4f930ec4dd09ad4d9c54a"], // new fixture, see header
   ["test/fixtures/dense-bays.arch", "01ec7328bb74d5e67b80e9c2301db4bdf6734542b398ba714a3c19807b1bfa57"],
   ["test/fixtures/diff-a.arch", "e959d4815f6bd4272fb20c9fe33b9f3bb0ebb678ff4992167ad473436094fbf0"],
   ["test/fixtures/diff-b.arch", "36af79705f9dcbf671117c2d0cb263d309ec0540d7e689bcc6cc3bfaee4c6a8e"],
@@ -490,14 +501,14 @@ const BASELINE: [string, string][] = [
   ["eval/goldens/l-shaped-flat.arch", "9634e0daba1977009de1013018e4f774212ae7632c2079600864ef25fa972255"],
   ["eval/goldens/office.arch", "d41de65cecffa58bbb655304278fee8143bfb2100b3d9177512ffebbd3729eab"],
   ["eval/goldens/open-plan-loft.arch", "2efcf0fdc611e4c017621e8de25030ea3a7afed4069a6816217ba2f7cfca762a"],
-  ["eval/goldens/reception-suite.arch", "2f4d275539f1880e6ab3f3a05ff2af77aafa87323380e402d6e8a1473353e821"],
-  ["eval/goldens/relational-studio.arch", "d0fae9dbd171c2b6c342ef220e4b966fd756ad37ebf71bc23001a488e7ce02e7"],
+  ["eval/goldens/reception-suite.arch", "2d52aba12f849f3dc957f45d1ec9b615ef180c66c82008b3e36e4ea77b0ce21b"],
+  ["eval/goldens/relational-studio.arch", "845f133cddc2eb0f98d363b611c4bccfc87a69ca5554cdd316350030d2883bd5"],
   ["eval/goldens/scripting-units.arch", "6f64fd2f54b9684990933bd56df84b800c97074564c18baf6402cfedd9837c2b"],
   ["eval/goldens/sized-bedrooms.arch", "a828ac8af20e216f6b2fed310695e253dfb0fa33b34f1a9dcfcfd4dc8a979b10"],
   ["eval/goldens/sized-kitchen-flat.arch", "36f1dc563dfbc0f10190bcc2ad2435ac100f00f3e7d2729db9781a87cf1b847f"],
   ["eval/goldens/sized-office-mix.arch", "019a62d8f35753d13b4e8747c03c126395a683b4e19a5ba5553a817b76685926"],
   ["eval/goldens/sized-wet-room.arch", "b73b7c5a2ad1eedf1a402331c6c0991ac3a985adf8b23c9b73fa5d4a4c46129a"],
-  ["eval/goldens/strip-attach-clean.arch", "d1db261cb6d81842ad6a43bbf045049392b751ecebed1f9f3e2ddf5108e09bba"], // re-measured, see header
+  ["eval/goldens/strip-attach-clean.arch", "ca5c07769e0f121dca7fd599134b5ddfcce1c8481ef7da228dcdbdb9246a2e68"], // re-measured, see header
   ["eval/goldens/strip-corridor.arch", "2b471514e89a72253310c75cff0c6589938f3f1d9bb39e97235b95cc2d7aa17e"],
   ["eval/goldens/three-bed-2bath.arch", "c1cf107a1e2c22198336c05c3f50c79895c9313d92d3296349caa83a5f80ba84"],
   ["eval/goldens/two-bath-flat.arch", "4238d0b5c2d363d15809a6fd3357bd5d97fdbfe02be2caa76022ad7b5e32a305"],
@@ -508,7 +519,7 @@ const BASELINE: [string, string][] = [
   ],
   [
     "eval/fidelity-plans/four-bed-cap.laundered.arch",
-    "e33991f8e4628e12c8a3251bcb566cee2f742c001424e40b7c089c0e342ef260",
+    "f429aedaf782d49151055a261b869c2225423b23b46e943d1bf1eb8d56ae639a",
   ],
   [
     "eval/fidelity-plans/min-bedroom-flat.faithful.arch",

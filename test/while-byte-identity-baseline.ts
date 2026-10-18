@@ -247,6 +247,17 @@
  * Hashing the new SVG, `lint()` and `compile().diagnostics` with the previous `describe()`
  * reproduces each previous row.
  *
+ * Four rows re-measured on 2026-10-18 (plan-soundness PS2.5–PS2.7) when three circulation-and-
+ * privacy lint rules were appended. `lint()` only, on `examples/two-bed.arch` (three
+ * `W_ROOM_VIA_PRIVATE`), `test/fixtures/axes-grid.arch` (`W_ENTRANCE_INTO_PRIVATE`: its one
+ * door from outside opens into "Right", a bedroom, beside a living room) and
+ * `test/fixtures/chain30.arch` (28 `W_ROOM_VIA_PRIVATE`: rooms 2–29 are reached only through
+ * the bedrooms before them, which is what the fixture is). Hashing each with `lint()` minus the
+ * three new codes reproduces its previous row. `examples/garden-house.arch` moved because its
+ * source changed (one door re-hosted, +3 bytes; field by field in
+ * `./byte-identity-baseline.ts`, "the circulation-and-privacy rules"); its pre-edit source
+ * under the new compiler, minus the new codes, reproduces its previous row. `two-bed`'s row moved
+ * once more after the rules' review (their hint wording only; see `./byte-identity-baseline.ts`).
  * Eleven rows re-measured on 2026-10-18 (plan-soundness PS2.8 + PS2.9), with this test's own
  * digest body. The room-contents rules move `lint()` only: hashing the new SVG, `describe()` and
  * `compile().diagnostics` with the previous `lint()` reproduces every previous row (the sweep and
@@ -271,10 +282,10 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/courtyard-house.arch", "464e42474edfc5d02502ccd9d14d314cd2943687b2a07fb928096235d82d4ecc"],
   ["examples/furnished-flat.arch", "83dea7656305cfdd95df0eb33cb6f509b66f1930a3c58e6da8a7a0db8bb36181"],
   ["examples/gallery-l.arch", "cc37c7d8d73b535358978674f3c5da26af87af4d066e6cd67a8bd1f8506e7f5f"],
-  ["examples/garden-house.arch", "ffe33b785e9b5d6a2d2b83b0c5fe416bb1df75e9cfe2755cd9721df2e424f85d"], // re-measured, see header
+  ["examples/garden-house.arch", "32889de233fcb6d33704ff9daa31a098ec33f0febdc14bf0ea74f52e2fe93976"], // re-measured, see header
   ["examples/garden-loft.arch", "eb6ba7bdcd33231cd0cfd2072a1a99e2b416be039e6efc2cc0a5ea76129738f2"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
-  ["examples/hillside-villa.arch", "9a3feb40e1e7044671d8ed57e56377dc42487a73adace08780835d67fa7e07b8"], // re-measured, see header
+  ["examples/hillside-villa.arch", "caf0bb3ec1414ab5d4d59922a5ce518c95b75af5d6492e3f38972b15fa5d9d7d"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
   ["examples/laneway-house.arch", "d87dea46b06ea13b539e0a7c03674038e15762d15948a7bc27632e1b8afd11e2"],
   ["examples/library.arch", "cd5e1d08ae576e6303bc71ededc689e3033456929ffa3bee1568bafc01d45c33"],
@@ -285,7 +296,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/one-room.arch", "e12596f5401f097b5cf431fda952e96fc6523d7ca6a97c1518ffe6dd64e72cbe"],
   ["examples/parametric.arch", "982d09bc2018a495ca4c50d1cf5a99dcbb92f235b86f9cb722c4e931c839e921"],
   ["examples/practice-office.arch", "a6310425ec4359b49ead590d8b34c56cf3e938e16484e377482b75580b6df7ab"], // added with the example, re-measured for net area, see header
-  ["examples/relational.arch", "6d8868fa2af06d7696b7b5c4c51f663def84fc5d2130c31857dc14a0f4db866a"],
+  ["examples/relational.arch", "f1c37e433fca8d5618a3558ebd48865933ca2f7ede0a836df13a1e09ab213a60"],
   ["examples/sheet-notes.arch", "0104550fc3b3a39a71c1a005da79c3db5ea10ae21d9739e11a6d1f18ee7b7420"], // re-measured, see header
   ["examples/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
   ["examples/terrace-row.arch", "365c542abd7103adbf6837f87b25dd0bb635549173ae1b4f7b6882711c7655a9"],
@@ -293,10 +304,10 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/tiny-house.arch", "cbd44f2c14aa28ea42f1fac0c7029f6257e6d7bcaab42c21ec290cecc3bd1933"],
   ["examples/townhouse.arch", "a3252455577b780dfed37d5eebeea1f8725c2df9d5c538b0e61c091418022f94"],
   ["examples/transit-hall.arch", "b8ec53697030c76a35fdd875115c89cedca4e5ff591837eab5b1fb1209024ad9"],
-  ["examples/two-bed.arch", "a805e3baa9df0117a2216af7fda83174706ca4d47f38a13c5eb1e77bea89285c"],
+  ["examples/two-bed.arch", "7a99d973cc7db9e33f46534d4abf6cc879fb32559b13d4459606242e8687dec8"],
   ["examples/two-storey.arch", "b54c7c9c9fdb5c6e1ce1b6e656424871d6c0299d9af61286f074eaa19313e6c9"],
-  ["test/fixtures/axes-grid.arch", "bf15439e40c442b499b4b43025cea4827954e3fd2c2e89102e7d6c527d7375b3"],
-  ["test/fixtures/chain30.arch", "13411e1dbffca14e73601338837daf6517ddf9fc2447695021101fc051073cb6"], // new fixture, see header
+  ["test/fixtures/axes-grid.arch", "49752f14f01d4cfcc15239783cd0e231dfd3b0cdfe018991386268f87c1d7d28"],
+  ["test/fixtures/chain30.arch", "858da6001d3d8032a10d372a3dac4c4eae453ad898c4f930ec4dd09ad4d9c54a"], // new fixture, see header
   ["test/fixtures/dense-bays.arch", "01ec7328bb74d5e67b80e9c2301db4bdf6734542b398ba714a3c19807b1bfa57"],
   ["test/fixtures/diff-a.arch", "e959d4815f6bd4272fb20c9fe33b9f3bb0ebb678ff4992167ad473436094fbf0"], // re-measured, see header
   ["test/fixtures/diff-b.arch", "36af79705f9dcbf671117c2d0cb263d309ec0540d7e689bcc6cc3bfaee4c6a8e"], // re-measured, see header
