@@ -256,7 +256,8 @@
  * three new codes reproduces its previous row. `examples/garden-house.arch` moved because its
  * source changed (one door re-hosted, +3 bytes; field by field in
  * `./byte-identity-baseline.ts`, "the circulation-and-privacy rules"); its pre-edit source
- * under the new compiler, minus the new codes, reproduces its previous row.
+ * under the new compiler, minus the new codes, reproduces its previous row. `two-bed`'s row moved
+ * once more after the rules' review (their hint wording only; see `./byte-identity-baseline.ts`).
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "dd7d71ebb95715ca666f7a087af5456436cba420936c111d20cb497159715529"],
@@ -291,7 +292,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/tiny-house.arch", "cbd44f2c14aa28ea42f1fac0c7029f6257e6d7bcaab42c21ec290cecc3bd1933"],
   ["examples/townhouse.arch", "a3252455577b780dfed37d5eebeea1f8725c2df9d5c538b0e61c091418022f94"],
   ["examples/transit-hall.arch", "b8ec53697030c76a35fdd875115c89cedca4e5ff591837eab5b1fb1209024ad9"],
-  ["examples/two-bed.arch", "05c7ef3accfebd421a5c9f49ce7035be62e6f56c8f0f65383b01f6552fc71d1d"],
+  ["examples/two-bed.arch", "7a99d973cc7db9e33f46534d4abf6cc879fb32559b13d4459606242e8687dec8"],
   ["examples/two-storey.arch", "17402c97f15a8aeb54ded52a2460ced472e1788d7d5415fa83b1c91042ce59d6"],
   ["test/fixtures/axes-grid.arch", "49752f14f01d4cfcc15239783cd0e231dfd3b0cdfe018991386268f87c1d7d28"],
   ["test/fixtures/chain30.arch", "858da6001d3d8032a10d372a3dac4c4eae453ad898c4f930ec4dd09ad4d9c54a"], // new fixture, see header

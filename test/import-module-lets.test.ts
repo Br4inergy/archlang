@@ -397,6 +397,8 @@ suite("a module `let` that fails reports as it does in the module", () => {
  *     `strip-attach-clean` (`W_ROOM_VIA_PRIVATE`: "Bedroom 2" is reached only through
  *     "Bathroom", depth 3) and `eval/fidelity-plans/four-bed-cap.laundered` (three
  *     `W_ROOM_VIA_PRIVATE`: bedrooms 2 and 3 only through bedroom 1, bedroom 4 through 1 then 3).
+ *     After the rules' review, `two-bed` and the three goldens moved again on their hint wording
+ *     alone (see `./byte-identity-baseline.ts`): the first commit's `lint()` reproduces each row.
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "dd7d71ebb95715ca666f7a087af5456436cba420936c111d20cb497159715529"],
@@ -446,7 +448,7 @@ const BASELINE: [string, string][] = [
   ["examples/transit-hall.arch", "b8ec53697030c76a35fdd875115c89cedca4e5ff591837eab5b1fb1209024ad9"],
   // Re-measured 2026-10-18 (PS0.7, the label classifier emits living; `describe()` only): the
   // same row, with the same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/two-bed.arch", "05c7ef3accfebd421a5c9f49ce7035be62e6f56c8f0f65383b01f6552fc71d1d"],
+  ["examples/two-bed.arch", "7a99d973cc7db9e33f46534d4abf6cc879fb32559b13d4459606242e8687dec8"],
   ["examples/two-storey.arch", "17402c97f15a8aeb54ded52a2460ced472e1788d7d5415fa83b1c91042ce59d6"],
   ["examples/lib/doors.arch", "232f7d4cf35f3d44678b3e3641c4815139f9412a9fd079f99639026b99f005b6"],
   ["examples/lib/fixtures.arch", "25e792ed80e5571a57ac00323283b58af9ffd96646008637646f99600f4716f8"],
@@ -485,14 +487,14 @@ const BASELINE: [string, string][] = [
   ["eval/goldens/l-shaped-flat.arch", "d30c51f32a98dcad06472c9d69ce0d42506c24de079b4cfa86325313060080eb"],
   ["eval/goldens/office.arch", "2aa4b26730b2f4104f7464abab0012f6f1861ab21e7e55da416256e99d84fd10"],
   ["eval/goldens/open-plan-loft.arch", "2efcf0fdc611e4c017621e8de25030ea3a7afed4069a6816217ba2f7cfca762a"],
-  ["eval/goldens/reception-suite.arch", "110a68465dd289fe039c7b70e3956dcd195e8be033f088bd09b25cd58b74d24a"],
-  ["eval/goldens/relational-studio.arch", "3285ab87c522c760d1b07b4e4c34c3f06b4f293f7c725fdbbb817966826d8be1"],
+  ["eval/goldens/reception-suite.arch", "1b1b7ca31e112ee57d2814a2ae19db90e26c27e92233c56486591c4b8c88f6c8"],
+  ["eval/goldens/relational-studio.arch", "d2afc557024bcc7c1a7bfbcdd2e69e2719415844f4416e120727afe4806b12f5"],
   ["eval/goldens/scripting-units.arch", "6f64fd2f54b9684990933bd56df84b800c97074564c18baf6402cfedd9837c2b"],
   ["eval/goldens/sized-bedrooms.arch", "7282d52c3265cb20f67e27f445e7fdd42ceb56912133bb36c845048a9ddf164f"],
   ["eval/goldens/sized-kitchen-flat.arch", "d53a6f4fef770d801976b2368ff9ce3c828b33085f82616803e3517927aa2bf2"],
   ["eval/goldens/sized-office-mix.arch", "a393fe780123bcc94a86e642874c87863c4f7a6d38528c13e34108e864b3975a"],
   ["eval/goldens/sized-wet-room.arch", "b73b7c5a2ad1eedf1a402331c6c0991ac3a985adf8b23c9b73fa5d4a4c46129a"],
-  ["eval/goldens/strip-attach-clean.arch", "ff9e0c263a862c1f6f0c9ff9d301ea57f6758e4ffb569a4be53b65f1feb4d39c"], // re-measured, see header
+  ["eval/goldens/strip-attach-clean.arch", "ca5c07769e0f121dca7fd599134b5ddfcce1c8481ef7da228dcdbdb9246a2e68"], // re-measured, see header
   ["eval/goldens/strip-corridor.arch", "2b471514e89a72253310c75cff0c6589938f3f1d9bb39e97235b95cc2d7aa17e"],
   ["eval/goldens/three-bed-2bath.arch", "c1cf107a1e2c22198336c05c3f50c79895c9313d92d3296349caa83a5f80ba84"],
   ["eval/goldens/two-bath-flat.arch", "4238d0b5c2d363d15809a6fd3357bd5d97fdbfe02be2caa76022ad7b5e32a305"],

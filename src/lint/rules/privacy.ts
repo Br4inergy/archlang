@@ -25,7 +25,7 @@
  * rule by cutting a room down to a sliver.
  */
 
-import type { UseKind } from "../../ast.js";
+import type { Point, UseKind } from "../../ast.js";
 import {
   accessDigraph,
   type AccessEdge,
@@ -43,7 +43,7 @@ import type { Digraph } from "../../algebra/paths.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import type { WallSegment } from "../../geometry.js";
 import { collinearOverlapLength, polygonEdges } from "../../geometry/polygon.js";
-import type { RDoor, ROutdoor, RRoom } from "../../ir.js";
+import type { RDoor, ROpening, ROutdoor, RRoom } from "../../ir.js";
 import { fmt2 } from "../../num-format.js";
 import type { LintContext, LintRule } from "../context.js";
 
@@ -107,57 +107,92 @@ const hasAny = (uses: ReadonlySet<UseKind>, of: ReadonlySet<UseKind>): boolean =
 /** Does the edge join two spaces (not ambiguous, both ends named)? */
 const joins = (e: AccessEdge): boolean => !e.ambiguous && e.between[0] !== "" && e.between[1] !== "";
 
-/** Length (mm) of boundary two room floors share, measured on their rings (centrelines). */
-function sharedEdgeMm(a: RoomBox, b: RoomBox, tol: number): number {
-  if (!roomsAdjacent(a, b, tol)) return 0;
-  let total = 0;
-  const eb = polygonEdges(roomRing(b));
-  for (const [a1, a2] of polygonEdges(roomRing(a))) {
-    for (const [b1, b2] of eb) total += collinearOverlapLength(a1, a2, b1, b2, tol);
+/**
+ * The longest single straight run (mm) along which an edge of `ring` lies on one of `segs`
+ * (within `tol` of it, on centrelines). Overlaps on one line are merged where they touch, and
+ * separate runs are never added together: a door has to fit in ONE run.
+ */
+function longestRunMm(ring: readonly Point[], segs: ReadonlyArray<readonly [Point, Point]>, tol: number): number {
+  const lines = new Map<string, Array<[number, number]>>();
+  for (const [a1, a2] of polygonEdges(ring)) {
+    const len = Math.hypot(a2.x - a1.x, a2.y - a1.y);
+    if (len === 0) continue;
+    let ux = (a2.x - a1.x) / len;
+    let uy = (a2.y - a1.y) / len;
+    if (ux < 0 || (ux === 0 && uy < 0)) {
+      ux = -ux;
+      uy = -uy;
+    }
+    const t = (q: Point): number => q.x * ux + q.y * uy;
+    const key = `${fmt2(ux)},${fmt2(uy)},${Math.round(a1.y * ux - a1.x * uy)}`;
+    for (const [b1, b2] of segs) {
+      if (collinearOverlapLength(a1, a2, b1, b2, tol) <= 0) continue;
+      const lo = Math.max(Math.min(t(a1), t(a2)), Math.min(t(b1), t(b2)));
+      const hi = Math.min(Math.max(t(a1), t(a2)), Math.max(t(b1), t(b2)));
+      if (hi <= lo) continue;
+      const list = lines.get(key) ?? [];
+      list.push([lo, hi]);
+      lines.set(key, list);
+    }
   }
-  return total;
+  let best = 0;
+  for (const list of lines.values()) {
+    list.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+    let [lo, hi] = list[0]!;
+    for (const [a, b] of list.slice(1)) {
+      if (a <= hi + 1e-6) hi = Math.max(hi, b);
+      else {
+        best = Math.max(best, hi - lo);
+        [lo, hi] = [a, b];
+      }
+    }
+    best = Math.max(best, hi - lo);
+  }
+  return best;
 }
 
-/** Length (mm) of the room's ring that runs along a straight exterior wall's centreline. */
+/** The longest single run (mm) of boundary two room floors share, on centrelines. */
+function sharedEdgeMm(a: RoomBox, b: RoomBox, tol: number): number {
+  if (!roomsAdjacent(a, b, tol)) return 0;
+  return longestRunMm(roomRing(a), polygonEdges(roomRing(b)), tol);
+}
+
+/** The longest single run (mm) of the room's ring along a straight exterior wall's centreline. */
 function exteriorRunMm(box: RoomBox, segs: readonly WallSegment[], tol: number): number {
-  let total = 0;
-  const ext = segs.filter((s) => s.category === "exterior" && !s.arc);
-  if (ext.length === 0) return 0;
-  for (const [a, b] of polygonEdges(roomRing(box))) {
-    for (const s of ext) total += collinearOverlapLength(a, b, s.a, s.b, tol);
-  }
-  return total;
+  const ext = segs.filter((s) => s.category === "exterior" && !s.arc).map((s) => [s.a, s.b] as const);
+  return ext.length === 0 ? 0 : longestRunMm(roomRing(box), ext, tol);
+}
+
+/** The connector joining rooms `a` and `b`, if one already does. */
+function connectorBetween(edges: readonly AccessEdge[], a: string, b: string): string | undefined {
+  return edges.find(
+    (e) => joins(e) && ((e.between[0] === a && e.between[1] === b) || (e.between[0] === b && e.between[1] === a)),
+  )?.doorId;
 }
 
 /**
- * Door hops from the way in, never entering a node `avoid` names: the exterior is 0, and a
- * room a shaft lands in is 1 (`extra`), so on a grounded storey this is exactly
- * `describe().access.rooms[].depthFromEntrance`. The keys are the reachable set
- * {@link reachFrom} answers for the same sources.
+ * Door hops from the given sources (`[room, hops]`), never entering a node `avoid` names and
+ * never walking THROUGH {@link EXTERIOR_NODE}: the ways in are the sources themselves (a room
+ * with a door to the ground is 1, so is a room a shaft lands in), and the one exterior node
+ * every door to the outside shares, balcony doors included, must not join two rooms.
  */
 function hops(
   g: Digraph<string, AccessEdge>,
-  extra: readonly string[],
+  sources: ReadonlyArray<readonly [string, number]>,
   avoid?: (id: string) => boolean,
-  from: readonly string[] = [EXTERIOR_NODE],
 ): Map<string, number> {
   const dist = new Map<string, number>();
   const queue: string[] = [];
-  for (const s of from) {
-    if (avoid?.(s) || dist.has(s)) continue;
-    dist.set(s, 0);
-    queue.push(s);
-  }
-  for (const s of extra) {
-    if (avoid?.(s) || dist.has(s)) continue;
-    dist.set(s, 1);
-    queue.push(s);
+  for (const [id, d] of [...sources].sort((x, y) => x[1] - y[1])) {
+    if (id === EXTERIOR_NODE || avoid?.(id) || dist.has(id)) continue;
+    dist.set(id, d);
+    queue.push(id);
   }
   for (let i = 0; i < queue.length; i++) {
     const n = queue[i]!;
     const d = dist.get(n)!;
     for (const { to } of g.out(n)) {
-      if (dist.has(to) || avoid?.(to)) continue;
+      if (to === EXTERIOR_NODE || dist.has(to) || avoid?.(to)) continue;
       dist.set(to, d + 1);
       queue.push(to);
     }
@@ -168,8 +203,14 @@ function hops(
 /** What the three rules read about one storey, computed once per rule run. */
 interface Facts {
   g: Digraph<string, AccessEdge>;
+  /** Joining access edges (not ambiguous, both ends named). */
+  edges: AccessEdge[];
   arrivals: string[];
-  /** Is there a way in (an exterior connector, or a shaft from a reachable storey)? */
+  /** Rooms a connector to the ground opens into (a balcony door is not one), in edge order. */
+  ground: Array<{ room: string; doorId: string; kind: AccessEdge["kind"] }>;
+  /** The ways in, each at depth 1: the ground rooms, then the shaft arrivals. */
+  sources: Array<readonly [string, number]>;
+  /** Is there a way in (a door to the ground, or a shaft from a reachable storey)? */
   wayIn: boolean;
   uses: Map<string, Set<UseKind>>;
   priv: Map<string, PrivateKind>;
@@ -181,10 +222,12 @@ interface Facts {
 
 function factsOf(ctx: LintContext): Facts {
   const { rooms, roomRects, building, access } = ctx;
+  const all = access().edges;
   const g = accessDigraph(
     rooms.map((r) => r.id),
-    access().edges,
+    all,
   );
+  const edges = all.filter(joins);
   const arrivals = building.arrivalRooms.filter((id) => roomRects.has(id));
   const uses = new Map<string, Set<UseKind>>(rooms.map((r) => [r.id, roomUses(r)]));
   const priv = new Map<string, PrivateKind>();
@@ -192,22 +235,38 @@ function factsOf(ctx: LintContext): Facts {
     const k = privateKind(uses.get(r.id)!);
     if (k) priv.set(r.id, k);
   }
+  const balconies = ctx.ir.elements.filter((e): e is ROutdoor => e.kind === "outdoor" && e.surface === "balcony");
+  const connectors = new Map<string, RDoor | ROpening>(ctx.connectors.map((c) => [c.id, c]));
+  const ground: Facts["ground"] = [];
+  for (const e of edges) {
+    const [a, b] = e.between;
+    if ((a === EXTERIOR_NODE) === (b === EXTERIOR_NODE)) continue;
+    const room = a === EXTERIOR_NODE ? b : a;
+    const c = connectors.get(e.doorId);
+    if (!roomRects.has(room) || (c && doorFacesBalcony(c, rooms, balconies))) continue;
+    ground.push({ room, doorId: e.doorId, kind: e.kind });
+  }
+  const sources = [...ground.map((w) => [w.room, 1] as const), ...arrivals.map((id) => [id, 1] as const)];
   return {
     g,
+    edges,
     arrivals,
-    wayIn: g.out(EXTERIOR_NODE).length > 0 || arrivals.length > 0,
+    ground,
+    sources,
+    wayIn: sources.length > 0,
     uses,
     priv,
     byId: new Map(rooms.map((r) => [r.id, r])),
-    depth: hops(g, arrivals),
-    depthNoPrivate: hops(g, arrivals, (id) => priv.has(id)),
+    depth: hops(g, sources),
+    depthNoPrivate: hops(g, sources, (id) => priv.has(id)),
   };
 }
 
 /**
  * For every room that removing one private room P cuts off from the way in, the private
  * rooms that do so, in order of their depth. P is a bedroom, bath or WC that is reached and
- * has two or more neighbours (a room with one neighbour cuts nothing off).
+ * has two or more ways out, a door to the ground and a shaft landing in it counting one each
+ * (a room with one way out cuts nothing off).
  */
 function privateDominators(ctx: LintContext, f: Facts): Map<string, string[]> {
   const out = new Map<string, string[]>();
@@ -215,10 +274,15 @@ function privateDominators(ctx: LintContext, f: Facts): Map<string, string[]> {
   const order = new Map(ctx.rooms.map((r, i) => [r.id, i]));
   const ps = ctx.rooms
     .filter((r) => f.priv.has(r.id) && f.depth.has(r.id))
-    .filter((r) => new Set(f.g.out(r.id).map((x) => x.to)).size >= 2)
+    .filter((r) => {
+      const inside = new Set(f.g.out(r.id).map((x) => x.to));
+      inside.delete(EXTERIOR_NODE);
+      const ground = f.ground.some((w) => w.room === r.id) ? 1 : 0;
+      return inside.size + ground + (f.arrivals.includes(r.id) ? 1 : 0) >= 2;
+    })
     .sort((a, b) => f.depth.get(a.id)! - f.depth.get(b.id)! || order.get(a.id)! - order.get(b.id)!);
   for (const p of ps) {
-    const without = hops(f.g, f.arrivals, (id) => id === p.id);
+    const without = hops(f.g, f.sources, (id) => id === p.id);
     for (const r of ctx.rooms) {
       if (r.id === p.id || !f.depth.has(r.id) || without.has(r.id)) continue;
       const list = out.get(r.id) ?? [];
@@ -237,6 +301,11 @@ function chain(names: readonly string[]): string {
   return shown.length <= 2 ? shown.join(" then ") : shown.join(", then ");
 }
 
+/** `"A"`, `"A" and "B"`, `"A", "B" and "C"`. */
+function listed(names: readonly string[]): string {
+  return names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
 /** At most four items: past four, the first two, a count of the rest but one, and the last. */
 function shorten(items: readonly string[], rest: (n: number) => string): string[] {
   if (items.length <= 4) return [...items];
@@ -249,10 +318,18 @@ function shorten(items: readonly string[], rest: (n: number) => string): string[
  * through P. One warning per such room, naming every private room on its only route and its
  * access depth.
  *
+ * The question is one room at a time: a room every route to which crosses SOME private room,
+ * but no single one (Living reached through Bedroom 1 OR Bedroom 2), is not reported. That is
+ * a known limit of the single-removal test, not a judgement that the plan is sound.
+ *
+ * The ways in are the doors to the ground and the shaft arrivals; a door onto an `outdoor
+ * balcony` is not one, so it cannot hide a route through a bedroom. When the front door itself
+ * opens into the private room, `W_ENTRANCE_INTO_PRIVATE` reports that one fault and the rooms
+ * behind it are not reported again.
+ *
  * Not reported, because the room legitimately belongs behind P: a bath or WC (an en-suite, or
  * a WC compartment behind a bathroom) and a storage room (a wardrobe or dressing room).
- * Balconies and other `outdoor` surfaces are not rooms: a door onto one is an exterior edge, so
- * they are never cut off. A wet room `W_BATH_VIA_BEDROOM` already reports (the storey's only
+ * Balconies and other `outdoor` surfaces are not rooms, so they are never cut off. A wet room `W_BATH_VIA_BEDROOM` already reports (the storey's only
  * bathroom, behind a bedroom) is not reported again. Rooms with no classified use are skipped
  * silently for now (PS2.13 reports coverage).
  */
@@ -274,10 +351,12 @@ export const roomViaPrivate: LintRule = {
       },
     });
     const viaBedroom = wetRoomsOnlyViaBedroom(ctx.rooms, reachAll, reachNoBed);
+    // One fault, one warning: behind a front door into a private room, W_ENTRANCE_INTO_PRIVATE.
+    const entered = new Set(privateEntrances(ctx, f).map((w) => w.room.id));
     const order = new Map(ctx.rooms.map((r, i) => [r.id, i]));
     for (const d of ctx.rooms) {
-      const ps = doms.get(d.id);
-      if (!ps) continue;
+      const ps = doms.get(d.id)?.filter((p) => !entered.has(p));
+      if (!ps || ps.length === 0) continue;
       const uses = f.uses.get(d.id)!;
       if (uses.size === 0) continue; // unclassified: skipped (PS2.13)
       const kind = f.priv.get(d.id);
@@ -326,8 +405,9 @@ function viaPrivateHints(
   cands.sort((a, b) => a.depth - b.depth || b.shared - a.shared || order.get(a.r.id)! - order.get(b.r.id)!);
   for (const c of cands.slice(0, 3)) {
     hints.push(
-      `${quoted(ctx, c.r)} (${c.r.id}) shares ${mm(c.shared)} mm of edge with ${quoted(ctx, d)} (${d.id}), on centrelines: ` +
-        `a door at least ${floor} mm wide there reaches it at depth ${c.depth} without passing a bedroom, bathroom or WC.`,
+      `${quoted(ctx, c.r)} (${c.r.id}) shares a straight ${mm(c.shared)} mm of edge with ${quoted(ctx, d)} (${d.id}), on ` +
+        `centrelines: a door at least ${floor} mm wide there, with 100 mm of wall left at each jamb, reaches it at depth ` +
+        `${c.depth} without passing a bedroom, bathroom or WC.`,
     );
   }
   let outside = false;
@@ -336,8 +416,8 @@ function viaPrivateHints(
     outside = run >= FRONT_DOOR_MM + NIBS_MM;
     if (outside)
       hints.push(
-        `${quoted(ctx, d)} (${d.id}) has ${mm(run)} mm of exterior wall, on centrelines: a door from outside at least ` +
-          `${FRONT_DOOR_MM} mm wide there reaches it at depth 1.`,
+        `${quoted(ctx, d)} (${d.id}) has a straight run of ${mm(run)} mm of exterior wall, on centrelines: a door from ` +
+          `outside at least ${FRONT_DOOR_MM} mm wide there, with 100 mm of wall left at each jamb, reaches it at depth 1.`,
       );
   }
   if (cands.length === 0 && !outside)
@@ -381,7 +461,7 @@ export const wetRoomDoor: LintRule = {
       return k === "bath" || k === "wc";
     });
     if (wets.length === 0) return out;
-    const edges = ctx.access().edges.filter(joins);
+    const edges = f.edges;
     const doms = privateDominators(ctx, f);
     const tol = ctx.rules.tolMm;
     const order = new Map(ctx.rooms.map((r, i) => [r.id, i]));
@@ -400,7 +480,7 @@ export const wetRoomDoor: LintRule = {
         reported.add(only.doorId);
         const hints = [
           `Hang a leaf in it: write \`door\` in place of \`opening\` for ${only.doorId}, at the same position, at least 700 mm wide.`,
-          ...movesOnto(ctx, f, w, wBox, CIRCULATION_USES, new Set([onlyTo.id]), order, tol, only.doorId),
+          ...movesOnto(ctx, f, w, wBox, new Set([onlyTo.id]), order, tol, only.doorId),
           f.priv.get(onlyTo.id) === "bedroom"
             ? `Accept if an open en-suite inside the bedroom suite of ${onlyTo.id} is the design intent. The warning is advisory.`
             : "Accept if an open wash area is the design intent and it is screened from view. The warning is advisory.",
@@ -427,7 +507,7 @@ export const wetRoomDoor: LintRule = {
         if (f.priv.has(to.id)) continue;
         reported.add(e.doorId);
         const what = u.has("kitchen") ? "a kitchen" : "a dining room";
-        const moves = movesOnto(ctx, f, w, wBox, CIRCULATION_USES, new Set([to.id]), order, tol, e.doorId);
+        const moves = movesOnto(ctx, f, w, wBox, new Set([to.id]), order, tol, e.doorId);
         out.push({
           severity: "warning",
           code: "W_WET_ROOM_DOOR",
@@ -444,7 +524,8 @@ export const wetRoomDoor: LintRule = {
                     `${CORRIDOR_MM} mm clear between ${quoted(ctx, to)} (${to.id}) and it keeps the door off the ${what.slice(2)}.`,
                 ]
               : []),
-            "Accept if the plan follows a code that allows it, or the kitchen is the only room the bathroom can open from. The warning is advisory.",
+            `Accept if the plan follows a code that allows it, or ${quoted(ctx, to)} is the only room the ${noun} can ` +
+              "open from. The warning is advisory.",
           ],
         });
       }
@@ -464,14 +545,33 @@ export const wetRoomDoor: LintRule = {
       if (farRooms.length < 2) continue;
       if (farRooms.some((r) => doms.get(r.id)?.includes(w.id))) continue; // W_ROOM_VIA_PRIVATE's
       const names = farRooms.map((r) => quoted(ctx, r));
+      // Every room the connectors join, by label, whether or not it counts toward the passage.
+      const joined: string[] = [];
+      for (const e of mine) {
+        const to = room(far(e));
+        const name = to ? quoted(ctx, to) : "outside";
+        if (!joined.includes(name)) joined.push(name);
+      }
       // The far room nearest the way in stays; each other one is offered a door from a room
-      // it is reached from without the wet room, sharing a door-wide edge with it.
-      const without = hops(f.g, f.arrivals, (id) => id === w.id);
+      // it is reached from without the wet room, sharing a door-wide edge with it. A room that
+      // already has its own door to such a room needs only the wet room's door taken away.
+      const without = hops(f.g, f.sources, (id) => id === w.id);
       const hop = (id: string): number => without.get(id) ?? Number.MAX_SAFE_INTEGER;
       const near = [...farRooms].sort((a, b) => hop(a.id) - hop(b.id) || order.get(a.id)! - order.get(b.id)!);
       const hints: string[] = [];
       for (const b of near.slice(1)) {
         if (hints.length >= 2) break;
+        const direct = ctx.rooms.find(
+          (h) =>
+            h.id !== w.id && h.id !== b.id && without.has(h.id) && connectorBetween(edges, h.id, b.id) !== undefined,
+        );
+        if (direct) {
+          hints.push(
+            `${quoted(ctx, b)} (${b.id}) already opens onto ${quoted(ctx, direct)} (${direct.id}) through ` +
+              `${connectorBetween(edges, direct.id, b.id)}: remove ${doorTo.get(b.id)}, and the ${noun} is no longer on the way.`,
+          );
+          continue;
+        }
         const floor = doorFloorMm(f.uses.get(b.id)!);
         const bBox = ctx.roomRects.get(b.id)!;
         const cands: Array<{ r: RRoom; shared: number }> = [];
@@ -493,9 +593,9 @@ export const wetRoomDoor: LintRule = {
         const c = cands[0];
         if (!c) continue;
         hints.push(
-          `${quoted(ctx, c.r)} (${c.r.id}) shares ${mm(c.shared)} mm of edge with ${quoted(ctx, b)} (${b.id}), on ` +
-            `centrelines: re-host ${doorTo.get(b.id)} onto it, at least ${floor} mm wide, so ${quoted(ctx, b)} is ` +
-            `reached without crossing the ${noun}.`,
+          `${quoted(ctx, c.r)} (${c.r.id}) shares a straight ${mm(c.shared)} mm of edge with ${quoted(ctx, b)} (${b.id}), ` +
+            `on centrelines: re-host ${doorTo.get(b.id)} onto it, at least ${floor} mm wide with 100 mm of wall left at ` +
+            `each jamb, so ${quoted(ctx, b)} is reached without crossing the ${noun}.`,
         );
       }
       if (hints.length === 0)
@@ -514,8 +614,8 @@ export const wetRoomDoor: LintRule = {
         code: "W_WET_ROOM_DOOR",
         ...ctx.at(w),
         message:
-          `${quoted(ctx, w)} is a passage: its ${mine.length} connectors join ${names.join(" and ")}, so the way between ` +
-          `them runs through a ${noun}. A ${noun} should be a dead end off circulation, not a route between rooms ` +
+          `${quoted(ctx, w)} is a passage: its ${mine.length} connectors join ${listed(joined)}, so the way between ` +
+          `${names.join(" and ")} runs through a ${noun}. A ${noun} should be a dead end off circulation, not a route between rooms ` +
           "(Ching's pass-through rule; privacy and hygiene).",
         hints,
       });
@@ -524,13 +624,16 @@ export const wetRoomDoor: LintRule = {
   },
 };
 
-/** Options moving a wet room's connector onto a room of `uses` it shares a door-wide edge with. */
+/**
+ * Options taking a wet room's connector off a room: when the wet room already opens onto a hall
+ * or corridor, remove the connector; otherwise re-host it onto a hall or corridor it shares a
+ * door-wide straight edge with (700 mm plus 100 mm of wall at each jamb).
+ */
 function movesOnto(
   ctx: LintContext,
   f: Facts,
   w: RRoom,
   wBox: RoomBox,
-  uses: ReadonlySet<UseKind>,
   except: ReadonlySet<string>,
   order: ReadonlyMap<string, number>,
   tol: number,
@@ -538,7 +641,13 @@ function movesOnto(
 ): string[] {
   const cands: Array<{ r: RRoom; shared: number }> = [];
   for (const h of ctx.rooms) {
-    if (h.id === w.id || except.has(h.id) || !hasAny(f.uses.get(h.id)!, uses)) continue;
+    if (h.id === w.id || except.has(h.id) || !hasAny(f.uses.get(h.id)!, CIRCULATION_USES)) continue;
+    const existing = connectorBetween(f.edges, h.id, w.id);
+    if (existing !== undefined)
+      return [
+        `${quoted(ctx, w)} (${w.id}) already opens onto ${quoted(ctx, h)} (${h.id}) through ${existing}: remove ` +
+          `${connectorId}.`,
+      ];
     const shared = sharedEdgeMm(ctx.roomRects.get(h.id)!, wBox, tol);
     if (shared >= 700 + NIBS_MM) cands.push({ r: h, shared });
   }
@@ -547,9 +656,31 @@ function movesOnto(
     .slice(0, 2)
     .map(
       (c) =>
-        `${quoted(ctx, c.r)} (${c.r.id}) shares ${mm(c.shared)} mm of edge with ${quoted(ctx, w)} (${w.id}), on ` +
-        `centrelines: re-host ${connectorId} onto it as a door at least 700 mm wide.`,
+        `${quoted(ctx, c.r)} (${c.r.id}) shares a straight ${mm(c.shared)} mm of edge with ${quoted(ctx, w)} (${w.id}), ` +
+        `on centrelines: re-host ${connectorId} onto it as a door at least 700 mm wide, with 100 mm of wall left at each jamb.`,
     );
+}
+
+/**
+ * The doors `W_ENTRANCE_INTO_PRIVATE` reports, with the private room each opens into: every
+ * connector to the ground (not a balcony door) opens into a private room, the storey is not
+ * reached by a shaft, and it has a classified room that is not private. Empty otherwise.
+ */
+function privateEntrances(ctx: LintContext, f: Facts): Array<{ door: RDoor; room: RRoom }> {
+  if (ctx.building.arrivalRooms.length > 0) return [];
+  if (f.ground.length === 0 || f.ground.some((w) => !f.priv.has(w.room))) return [];
+  // A storey of private rooms alone (a bedroom drawn by itself) is a fragment of a dwelling,
+  // not one: its "outside" stands for the rest of the flat, and there is no room to move the
+  // front door to.
+  if (!ctx.rooms.some((r) => f.uses.get(r.id)!.size > 0 && !f.priv.has(r.id))) return [];
+  const doors = new Map<string, RDoor>(ctx.doors.map((d) => [d.id, d]));
+  const out: Array<{ door: RDoor; room: RRoom }> = [];
+  for (const w of f.ground) {
+    const door = doors.get(w.doorId);
+    const room = f.byId.get(w.room);
+    if (w.kind === "door" && door && room) out.push({ door, room });
+  }
+  return out;
 }
 
 /**
@@ -558,38 +689,22 @@ function movesOnto(
  * such door.
  *
  * Only a storey's real ways in count: a door onto an `outdoor balcony` is not one, and a storey
- * reached by a shaft (it has no front door of its own) is not checked. When any door from
+ * reached by a shaft (it has no front door of its own) is not checked. When any connector from
  * outside lands in a room that is not private (a hall, living space, kitchen, or a room with
  * no classified use), the plan has a front door elsewhere and a private room's door to the
  * outside (a bedroom's garden door) is not reported. Kitchen entry is NOT reported: whether a
  * front door may open into a kitchen is culture-dependent, so a profile may add it later.
  * A storey whose classified rooms are all private (a bedroom drawn alone, a fragment of a
- * dwelling whose "outside" is the rest of the flat) is not reported either.
+ * dwelling whose "outside" is the rest of the flat) is not reported either. The rooms behind
+ * such an entrance are not also reported by `W_ROOM_VIA_PRIVATE`: one fault, one warning.
  * Rooms with no classified use are skipped silently for now (PS2.13 reports coverage).
  */
 export const entranceIntoPrivate: LintRule = {
   name: "entrance-into-private",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
-    if (ctx.building.arrivalRooms.length > 0) return out;
     const f = factsOf(ctx);
-    const doors = new Map<string, RDoor>(ctx.doors.map((d) => [d.id, d]));
-    const balconies = ctx.ir.elements.filter((e): e is ROutdoor => e.kind === "outdoor" && e.surface === "balcony");
-    const ways: Array<{ door: RDoor; room: RRoom }> = [];
-    for (const e of ctx.access().edges) {
-      if (!joins(e) || e.kind !== "door") continue;
-      const [a, b] = e.between;
-      if ((a === EXTERIOR_NODE) === (b === EXTERIOR_NODE)) continue;
-      const room = f.byId.get(a === EXTERIOR_NODE ? b : a);
-      const door = doors.get(e.doorId);
-      if (!room || !door || doorFacesBalcony(door, ctx.rooms, balconies)) continue;
-      ways.push({ door, room });
-    }
-    if (ways.length === 0 || ways.some((w) => !f.priv.has(w.room.id))) return out;
-    // A storey of private rooms alone (a bedroom drawn by itself) is a fragment of a dwelling,
-    // not one: its "outside" stands for the rest of the flat, and there is no room to move the
-    // front door to.
-    if (!ctx.rooms.some((r) => f.uses.get(r.id)!.size > 0 && !f.priv.has(r.id))) return out;
+    const ways = privateEntrances(ctx, f);
     const tol = ctx.rules.tolMm;
     const order = new Map(ctx.rooms.map((r, i) => [r.id, i]));
     for (const { door, room } of ways) {
@@ -604,8 +719,7 @@ export const entranceIntoPrivate: LintRule = {
         if (h.id === room.id || !hasAny(f.uses.get(h.id)!, PUBLIC_USES) || f.priv.has(h.id)) continue;
         const run = exteriorRunMm(ctx.roomRects.get(h.id)!, ctx.wallSegs, tol);
         if (run < FRONT_DOOR_MM + NIBS_MM) continue;
-        const inside = hops(f.g, [], (id) => id === EXTERIOR_NODE, [h.id]);
-        const k = inside.get(room.id);
+        const k = hops(f.g, [[h.id, 0]]).get(room.id);
         if (k === undefined) continue;
         cands.push({ r: h, run, depth: k + 1 });
       }
@@ -614,8 +728,9 @@ export const entranceIntoPrivate: LintRule = {
         .slice(0, 3)
         .map(
           (c) =>
-            `Move ${door.id} onto ${quoted(ctx, c.r)} (${c.r.id}), which has ${mm(c.run)} mm of exterior wall on ` +
-            `centrelines, at least ${FRONT_DOOR_MM} mm wide: ${quoted(ctx, room)} (${room.id}) is then at depth ${c.depth}.`,
+            `Move ${door.id} onto ${quoted(ctx, c.r)} (${c.r.id}), which has a straight run of ${mm(c.run)} mm of ` +
+            `exterior wall on centrelines, at least ${FRONT_DOOR_MM} mm wide with 100 mm of wall left at each jamb: ` +
+            `${quoted(ctx, room)} (${room.id}) is then at depth ${c.depth}.`,
         );
       hints.push(
         `${cands.length > 0 ? "Or put" : "Put"} an entrance hall or lobby at least ${ENTRY_LOBBY_MM} mm clear ` +
