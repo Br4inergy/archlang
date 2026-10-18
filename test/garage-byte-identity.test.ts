@@ -175,8 +175,9 @@ const BASELINE: Readonly<Record<string, string>> = {
   "furnished-flat.arch": "8812151f95e82fafcb3d21a23dede24e71944d9962e1b33c046727869f04d947",
   // Re-measured 2026-10-18 (PS0.7): "Kitchen / Living" now classifies as `kitchen living`, so
   // `describe()` moves (uses + room_type) and nothing else; see ./byte-identity-baseline.ts,
-  // "the label classifier emits living", for the swap-back proof.
-  "two-bed.arch": "0baff3c3180db3627cf51adfd69dfa0d1e0eee8050ffb1f96c1872be8a9475a4",
+  // "the label classifier emits living", for the swap-back proof. Re-measured again the same day
+  // (PS2.5): `lint()` gains three W_ROOM_VIA_PRIVATE; see "the circulation-and-privacy rules".
+  "two-bed.arch": "cd4cfa738aaec6019d4b39f81b69f8f9a3a69327c62f890c3b4f5d35e66b7fef",
 };
 
 /**
@@ -206,8 +207,8 @@ const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
   // `lint()` still returns ONE diagnostic, the same `W_PATH_TOO_NARROW` with the same
   // message and hints, its byte span shifted by the comment lines added above it.
   "furnished-flat.arch": "dab3b998a75ba65679021c8ae9282cb785d8daf69e6c0d64c39aea0c35a36fa5",
-  // Re-measured 2026-10-18 (PS0.7), the same cause as BASELINE's two-bed row.
-  "two-bed.arch": "a3299f04779b7a23b99ac6efafb98a3ee7f8a96f28f13bd080421ed8d85d8ae8",
+  // Re-measured 2026-10-18 (PS0.7, then PS2.5), the same causes as BASELINE's two-bed row.
+  "two-bed.arch": "71e5d0155b94377968f056dd8efdaf2fd49553d8f3ab7ebb02134c025f99b64b",
 };
 
 suite("the outdoor tranche — the byte-identity law", () => {

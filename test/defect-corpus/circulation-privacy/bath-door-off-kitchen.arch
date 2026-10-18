@@ -1,7 +1,7 @@
 # class: circulation-privacy
 # origin: repro/family-apartment.arch d_kitchen_bath2 (reduced); README PS2.6 (GB 50096 5.4.3)
 # expect: W_WET_ROOM_DOOR
-# status: todo
+# status: done
 # fact: the bathroom's only door, d_kitchen_bath, joins it to the kitchen
 plan "Bath off the kitchen" {
   units mm
