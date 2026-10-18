@@ -53,6 +53,7 @@ import { frontGapMm, mm, shortfall } from "../measure.js";
  *  another at the same height is a drawing mistake whatever height that is. */
 export const furnitureOverlap: LintRule = {
   name: "furniture-overlap",
+  family: "furniture",
   check({ furniture, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (let i = 0; i < furniture.length; i++) {
@@ -91,6 +92,7 @@ export const furnitureOverlap: LintRule = {
  */
 export const furnClearance: LintRule = {
   name: "furn-clearance",
+  family: "furniture",
   check({ furniture, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const f of furniture) {
@@ -137,6 +139,7 @@ export const furnClearance: LintRule = {
  *  no wall behind any edge — it floats in the room. */
 export const fixtureFloating: LintRule = {
   name: "fixture-floating",
+  family: "furniture",
   check({ furniture, ir, rules, wallSegs, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const f of furniture) {
@@ -205,6 +208,7 @@ function sizeTurnHint(
  */
 export const fixtureBackToRoom: LintRule = {
   name: "fixture-back-to-room",
+  family: "furniture",
   check({ furniture, ir, rooms, rules, wallSegs, at, frameOf }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     // A POLYGON room has no north/south/east/west sides, so "which edge is the back?"
@@ -260,6 +264,7 @@ export const fixtureBackToRoom: LintRule = {
  */
 export const fixtureWrongRoom: LintRule = {
   name: "fixture-wrong-room",
+  family: "furniture",
   check({ furniture, roomRects, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const f of furniture) {
@@ -287,6 +292,7 @@ export const fixtureWrongRoom: LintRule = {
  *  wall it hits, in source order. */
 export const furnitureWallCollision: LintRule = {
   name: "furniture-wall-collision",
+  family: "furniture",
   check(ctx: LintContext): Diagnostic[] {
     const { furniture, wallSegs, wallOpenings, at } = ctx;
     const out: Diagnostic[] = [];

@@ -8,8 +8,8 @@
  *  - `W_ENTRANCE_INTO_PRIVATE`: the way in from outside lands in a bedroom, bathroom or WC.
  *
  * A room's use is {@link roomUses}: its authored `uses` first, then the label vocabulary.
- * A room with no classified use is skipped silently by all three rules for now; card PS2.13
- * of the plan-soundness programme reports that coverage.
+ * A room with no classified use is skipped by all three rules and declared to the lint coverage
+ * report (`ctx.skip`, PS2.13).
  *
  * "Private" is a bedroom, bath or WC use with no public use beside it. A room that is
  * also a living space, dining room, kitchen, hall, circulation or entry (a bedsit authored
@@ -220,6 +220,16 @@ interface Facts {
   depthNoPrivate: Map<string, number>;
 }
 
+/**
+ * {@link factsOf} for a rule that reads every room's use, declaring each room with none to the
+ * coverage report (PS2.13): none of the three rules can tell whether such a room is private.
+ */
+function classifiedFactsOf(ctx: LintContext): Facts {
+  const f = factsOf(ctx);
+  for (const r of ctx.rooms) if (f.uses.get(r.id)!.size === 0) ctx.skip("no-uses", r);
+  return f;
+}
+
 function factsOf(ctx: LintContext): Facts {
   const { rooms, roomRects, building, access } = ctx;
   const all = access().edges;
@@ -331,14 +341,19 @@ function shorten(items: readonly string[], rest: (n: number) => string): string[
  * a WC compartment behind a bathroom) and a storage room (a wardrobe or dressing room).
  * Balconies and other `outdoor` surfaces are not rooms, so they are never cut off. A wet room `W_BATH_VIA_BEDROOM` already reports (the storey's only
  * bathroom, behind a bedroom) is not reported again. Rooms with no classified use are skipped
- * silently for now (PS2.13 reports coverage).
+ * and declared to the coverage report (PS2.13).
  */
 export const roomViaPrivate: LintRule = {
   name: "room-via-private",
+  family: "privacy",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
-    const f = factsOf(ctx);
-    if (!f.wayIn) return out;
+    const f = classifiedFactsOf(ctx);
+    if (!f.wayIn) {
+      // No way in, so no room is "reached only through" anything.
+      if (ctx.rooms.length > 0) ctx.skip("no-entrance");
+      return out;
+    }
     const doms = privateDominators(ctx, f);
     if (doms.size === 0) return out;
     // W_BATH_VIA_BEDROOM's own question, asked exactly as `reachability.ts` asks it.
@@ -449,13 +464,14 @@ function viaPrivateHints(
  *     rooms is reached ONLY through the wet room, `W_ROOM_VIA_PRIVATE` already reports it and
  *     this sub-case stays silent.
  *
- * Rooms with no classified use are skipped silently for now (PS2.13 reports coverage).
+ * Rooms with no classified use are skipped and declared to the coverage report (PS2.13).
  */
 export const wetRoomDoor: LintRule = {
   name: "wet-room-door",
+  family: "privacy",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
-    const f = factsOf(ctx);
+    const f = classifiedFactsOf(ctx);
     const wets = ctx.rooms.filter((r) => {
       const k = f.priv.get(r.id);
       return k === "bath" || k === "wc";
@@ -697,13 +713,14 @@ function privateEntrances(ctx: LintContext, f: Facts): Array<{ door: RDoor; room
  * A storey whose classified rooms are all private (a bedroom drawn alone, a fragment of a
  * dwelling whose "outside" is the rest of the flat) is not reported either. The rooms behind
  * such an entrance are not also reported by `W_ROOM_VIA_PRIVATE`: one fault, one warning.
- * Rooms with no classified use are skipped silently for now (PS2.13 reports coverage).
+ * Rooms with no classified use are skipped and declared to the coverage report (PS2.13).
  */
 export const entranceIntoPrivate: LintRule = {
   name: "entrance-into-private",
+  family: "privacy",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
-    const f = factsOf(ctx);
+    const f = classifiedFactsOf(ctx);
     const ways = privateEntrances(ctx, f);
     const tol = ctx.rules.tolMm;
     const order = new Map(ctx.rooms.map((r, i) => [r.id, i]));

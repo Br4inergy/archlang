@@ -27,7 +27,8 @@ import type { LintContext, LintRule } from "../context.js";
 
 export const reachability: LintRule = {
   name: "reachability",
-  check({ rooms, connectors, roomRects, rules, labelOf, at, building, access }: LintContext): Diagnostic[] {
+  family: "reachability",
+  check({ rooms, connectors, roomRects, rules, labelOf, at, building, access, skip }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const g = accessDigraph(
       rooms.map((r) => r.id),
@@ -75,7 +76,7 @@ export const reachability: LintRule = {
           });
         }
       }
-    }
+    } else if (rooms.length > 0) skip("no-entrance"); // W_NO_ENTRANCE reports the plan itself
     return out;
   },
 };

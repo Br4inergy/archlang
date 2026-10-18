@@ -696,7 +696,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
   - example: `archlang score plan.arch --brief brief.json --json` — continuous intent satisfaction as the refine-loop reward; always exits 0 on a measurement
 
 **`archlang lint`** — architectural soundness warnings
-  - input: <file.arch|-> → output: W_* warnings (narrowed by --code/--severity; `filtered`/`total_diagnostics` mark a filtered result)
+  - input: <file.arch|-> → output: W_* warnings (narrowed by --code/--severity; `filtered`/`total_diagnostics` mark a filtered result), then a `coverage` block naming the rule families skipped and why
   - flags: `--profile <residential-basic|accessibility-advisory>` advisory ruleset · `--strict|--fail-on-warning` warnings fail (exit 2) · `--code <CODE[,CODE…]>` show only diagnostics with these codes — a DISPLAY filter: the exit code and `ok` still come from the unfiltered set · `--severity <error|warning>` show only diagnostics of this severity — a DISPLAY filter, like --code (never changes the exit code) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
   - example: `archlang lint plan.arch --json` — architectural soundness warnings as data, each with a fix
 

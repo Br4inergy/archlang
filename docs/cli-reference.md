@@ -355,7 +355,7 @@ $ archlang score plan.arch --brief brief.json --json
 
 architectural soundness warnings
 
-**Input:** `<file.arch|->` · **Output:** W_* warnings (narrowed by --code/--severity; `filtered`/`total_diagnostics` mark a filtered result)
+**Input:** `<file.arch|->` · **Output:** W_* warnings (narrowed by --code/--severity; `filtered`/`total_diagnostics` mark a filtered result), then a `coverage` block naming the rule families skipped and why
 
 | Flag | Does |
 | --- | --- |

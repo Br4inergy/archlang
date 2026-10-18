@@ -21,8 +21,13 @@ import type { LintContext, LintRule } from "../context.js";
 
 export const stairUnmatched: LintRule = {
   name: "stair-unmatched",
-  check({ verticals, building, at }: LintContext): Diagnostic[] {
-    if (!building.multiStorey) return [];
+  family: "vertical",
+  check({ verticals, building, at, skip }: LintContext): Diagnostic[] {
+    if (!building.multiStorey) {
+      // A run drawn on a one-storey plan: whether it meets its other end is not asked.
+      if (verticals.length > 0) skip("single-storey");
+      return [];
+    }
     const out: Diagnostic[] = [];
     for (const v of verticals) {
       if (building.verticalPeerIds.has(v.id)) continue;

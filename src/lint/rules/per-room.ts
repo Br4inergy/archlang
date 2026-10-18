@@ -125,6 +125,7 @@ export function pasteFailureWhy(ctx: LintContext, failure: PasteFailure): string
 
 export const perRoomRules: LintRule = {
   name: "per-room",
+  family: "rooms",
   check(ctx: LintContext): Diagnostic[] {
     const { rules, rooms, furniture, connectors, roomRects, wallSegs, labelOf, at, ir } = ctx;
     const out: Diagnostic[] = [];
@@ -132,6 +133,9 @@ export const perRoomRules: LintRule = {
     for (const r of rooms) {
       const rect = roomRects.get(r.id)!;
       const onEdge = (p: { x: number; y: number }): boolean => pointOnRoomEdge(p, rect, rules.tolMm);
+      // The bedroom, wet-room, kitchen and garage checks below ask a room's use; a room with
+      // none is not asked (coverage, PS2.13).
+      if (roomUses(r).size === 0) ctx.skip("no-uses", r);
 
       // Implausibly tiny room.
       const a = areaM2(r);
@@ -211,6 +215,7 @@ export const perRoomRules: LintRule = {
       // width, and a derived measurement taken from a shape's box instead of the shape is
       // the defect class this repository has already shipped six of. A garage is a rectangle
       // in practice; an L-shaped one gets no warning rather than a wrong one.
+      if (isGarage(r) && r.poly) ctx.skip("non-rectangular-room", r);
       if (isGarage(r) && !r.poly) {
         const cars = furniture.filter((f) => {
           const fr = rectOf(f);

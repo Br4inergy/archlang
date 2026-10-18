@@ -984,6 +984,54 @@ archlang validate plan.arch --severity error --json                      # only 
 > `filtered: true` and a `total_diagnostics` count. Reading less can never make a broken
 > plan look sound.
 
+### Coverage: what lint did not check
+
+A clean lint is only as good as what the rules could see. `lint --json` appends a
+`coverage` block after `diagnostics` that says which rule families ran, which skipped and
+why, and which rooms no use-reading rule could judge. It is additive: the keys before it,
+and the `diagnostics` array, are exactly what they would be without it, and a filter
+(`--code`, `--severity`) narrows only the diagnostics. The block is absent when the plan has
+errors, because no rule ran. In the library it is `lintCoverage(src)` (or
+`lintWithCoverage(src)` for both at once); `lint()` itself returns only the diagnostics, and
+`describe()` never reads any of it.
+
+```json
+"coverage": {
+  "families": [
+    { "family": "rooms", "status": "ran" },
+    { "family": "orientation", "status": "skipped",
+      "skipped": [{ "reason": "no-site", "why": "the plan declares no site" }] },
+    { "family": "daylight", "status": "partial",
+      "skipped": [{ "reason": "arc-window-unattributed",
+                    "why": "a window on a curved wall is attributed to no room",
+                    "rooms": ["Living"], "roomIds": ["r_living"], "level": 1 }] }
+  ],
+  "unclassifiedRooms": [{ "name": "Terrace", "id": "r_terrace", "level": 1 }]
+}
+```
+
+Every family is listed once, in the order its first rule runs. `status` is `ran` (nothing
+skipped), `skipped` (every rule of the family declined the whole plan, on every storey) or
+`partial` (some rooms, or some of its rules). A skip names its rooms the way a message does,
+by label, with the ids only in `roomIds`. The reasons:
+
+| `reason` | Filed by | When |
+|---|---|---|
+| `no-uses` | room, privacy, daylight, contents and orientation checks | a room with no `uses` whose label classifies to no use |
+| `no-site` | orientation | the plan declares no `site`, so no window has a compass facing |
+| `single-storey` | storey matching | a `stair`, `elevator` or `escalator` on a plan with one storey |
+| `arc-window-unattributed` | daylight | a room bounded by a curved wall edge whose window is attributed to no room |
+| `non-rectangular-room` | room checks | a `uses garage` polygon room, which the garage-width check declines |
+| `no-entrance` | reachability, circulation walk, privacy checks | a storey with rooms and no way in (`W_NO_ENTRANCE` still runs) |
+
+Three more reasons are reserved for families that do not exist yet: `no-brief`,
+`no-dwelling` and `no-operable-window-data`. In human mode `lint` prints one line on stderr
+when anything was skipped, and nothing when nothing was:
+
+```
+  lint coverage: skipped orientation (the plan declares no site).
+```
+
 ### Profiles
 
 A **profile** is a named bundle of thresholds, applied with `--profile` (CLI) or

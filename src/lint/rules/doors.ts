@@ -42,6 +42,7 @@ import { approachGapMm, deficitMm, distPointToRect, mm, shortfall } from "../mea
  */
 export const swingObstructed: LintRule = {
   name: "swing-obstructed",
+  family: "doors",
   check({ ir, doors, furniture, rules, at, frameOf }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const swings: Array<{ d: RDoor; s: DoorSwing }> = [];
@@ -188,6 +189,7 @@ export function widestClearingWidth(
  *  bathroom door. Built as an AABB straddling the opening on orthogonal host walls. */
 export const doorwayBlocked: LintRule = {
   name: "doorway-blocked",
+  family: "doors",
   check({ doors, furniture, rules, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const d of doors) {
@@ -248,6 +250,7 @@ export const doorwayBlocked: LintRule = {
  */
 export const pocketRun: LintRule = {
   name: "pocket-run",
+  family: "doors",
   check({ doors, ir, rules, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const d of doors) {
@@ -327,6 +330,7 @@ function pocketRunMm(
 /** Door too narrow to pass comfortably. */
 export const doorClearance: LintRule = {
   name: "door-clearance",
+  family: "doors",
   check({ doors, rules, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const d of doors) {
@@ -404,6 +408,7 @@ export const doorClearance: LintRule = {
  */
 export const doorNearCorner: LintRule = {
   name: "door-near-corner",
+  family: "doors",
   check({ doors, wallSegs, rules, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const d of doors) {
