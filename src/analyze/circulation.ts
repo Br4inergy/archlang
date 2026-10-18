@@ -269,9 +269,10 @@ export interface BlockedRoom {
   widestWayInMm: number;
 }
 
-/** Rooms that read as a living or dining space (declared use, else a label match —
- *  analyze.roomUses only infers bedroom/bath/kitchen/hall/entry from a label, so the
- *  living/dining label check is the shared `living` use vocabulary). */
+/** Rooms that read as a living or dining space: their uses ({@link roomUses}: authored, else
+ *  classified from the label), OR the same label classification even when the room authored
+ *  other uses — so a "Kitchen / Dining" tagged only `uses kitchen` still counts here. The
+ *  label half is {@link matchesLivingDining}, which is `classifyLabelUses` itself. */
 const isLivingOrDining = (r: RRoom): boolean => {
   const u = roomUses(r);
   return u.has("living") || u.has("dining") || matchesLivingDining(r.label ?? r.id);

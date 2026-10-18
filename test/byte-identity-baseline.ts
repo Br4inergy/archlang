@@ -998,6 +998,23 @@
  * the NEW compile + `describe()` with the PREVIOUS `lint()` reproduces both previous rows, and
  * the rows in `while-byte-identity-baseline.ts` and `import-module-lets.test.ts`. No diagnostic
  * was added or withdrawn, and no other row in this table moved.
+ *
+ * ## `relational`, `themed`, `two-bed`: both rows re-measured — the label classifier emits living
+ *
+ * 2026-10-18, plan-soundness card PS0.7. Case (1), the compiler changed, in `describe()` only.
+ * `classifyLabelUses` (`src/vocabulary.ts`) used to leave `living`/`dining` out, so a room
+ * labelled "Living" with no authored `uses` read as `uses: []`; it now emits them, appended
+ * after every older kind. Field by field, two keys of one room per plan and nothing else:
+ * `relational`'s `living` "Living" and `themed`'s `a` "Living" go `uses` `[]` → `["living"]` and
+ * `room_type` `Room` → `LivingRoom`; `two-bed`'s `r_kitchen` "Kitchen / Living" goes `uses`
+ * `["kitchen"]` → `["kitchen", "living"]` and `room_type` `Kitchen` → `LivingRoom` (the type an
+ * authored `uses kitchen living` already got). Every storey's SVG, `lint()` (default and
+ * `accessibility-advisory`), `compile().diagnostics` and the circulation overlay are
+ * byte-identical, swept over the whole corpus before (a `git archive` of `8d1e13e`) and after.
+ * Hashing the NEW SVG + `lint()` (+ `compile().diagnostics`) with the PREVIOUS `describe()`
+ * reproduces both previous rows of all three plans here, and their rows in
+ * `while-byte-identity-baseline.ts`, `import-module-lets.test.ts` (with
+ * `test/recovery-corpus/themed.arch`) and `garage-byte-identity.test.ts`. No other row moved.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -1026,15 +1043,15 @@ export const BASELINE: [string, string][] = [
   ["one-room", "9519d5c396d8644e840a1520e6d84f75a8306d1309abebcbd61aa59560fda364"],
   ["parametric", "0300b6e01a4a0f10827b84dfaa21c9a89a4bfa15c008ce01ab6900118b6bc60a"],
   ["practice-office", "db072312caf789f50ad413166edee3485ec5e5137f3339ff0c7126faecbf925e"], // added with the example, re-measured for net area, see header
-  ["relational", "32c6a6e02ff16dcbdb146aa87e5e8176e38cbb5d00f972a2cd8849619c13db93"],
+  ["relational", "4f5e98eb058c94ada529784cf78cbe9c360d444b77a0c74fb2839be40af48c10"],
   ["sheet-notes", "f4ab64ec80be43d25a5949c971b07b00696f8fc2ab3927af72442ab70e8f551f"], // re-measured, see header
   ["studio", "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f"],
   ["terrace-row", "392d8940246551ac543bf2d661dd2b8f9c0160070b44062e57b666cad747ac82"], // re-measured, see header
-  ["themed", "419afa87c1e188f69426e652cd3dfb295a543bd0ee19de5f282a5380e78f2891"],
+  ["themed", "e7cc1e958ff139bff24cef4caa6f0b357d370d8a48c4f0921bc8e122c4607028"],
   ["tiny-house", "a78e4e99cb1d18bd4aae38e8b8927ec6b765274a3db3b5c63652e9fb189d045a"],
   ["townhouse", "8744ddfa200945bfcf6d119b150d974ef352041248cdc7735d72b94973840431"], // re-measured, see header
   ["transit-hall", "82e5125b88a008eb4831e84156d5981fe031c9496178006d2a1adcb4738f4762"],
-  ["two-bed", "83db33c0b0b8322c06643658b574cfd5fc0e320d7ddbe22c815cf0d7a3ae94f4"],
+  ["two-bed", "0baff3c3180db3627cf51adfd69dfa0d1e0eee8050ffb1f96c1872be8a9475a4"],
   ["two-storey", "811bc40e41e54a485e1ca53eb7de32dc48c2d4096ed8792f2504c99eb0be5c6a"], // re-measured, see header
 ];
 
@@ -1074,15 +1091,15 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["one-room", "fbbd7f194ce4ff25444b4a5e58d32ae1919f01a25e20f9ab8bf6aa9d7475def5"],
   ["parametric", "d84db7c3f3d204692228fbec364808644f6f5c9bbb5b6a4d2a44347ad388dad3"],
   ["practice-office", "95bf67a8406919ee17a76470368b99afd378a7fadce8e8ad0de7cc55f1ba642c"], // added with the example, re-measured for net area, see header
-  ["relational", "52f6dce0ca7398b5763db5ac499680cdce39aa19f69eedf43eab80a191479552"],
+  ["relational", "a8ddbfeccc735cd4f4a6d79ebc24e0c5afc1500ed665ae39cc99e6181700f71b"],
   ["sheet-notes", "8a72d4737654ecebe5fa7cce4590d84c70d3c73556115298e2a1c2eadde7d0f9"], // added with the example, see header
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["terrace-row", "6fdf87a871af31b1395ab07db68c8d03dd9d2aba1df62488ef9e466d175a5a23"],
-  ["themed", "31e41ad123c02836badf682f82e0adc7c224f482574b74d2ee82d9a0e9654843"],
+  ["themed", "2dafc151c52978fdfe3c8ca4be92f7187b785c919349c9eee5fe6bb29518ee67"],
   ["tiny-house", "bc489f37715328a03b841ffe5b2bd19875a02aa94c8b3d0d827f86e4516fb215"],
   ["townhouse", "a647c239f56e135f28f1febb91ee3099258fa3bcad4babfafd53e2e3d158aed4"], // re-measured, see header
   ["transit-hall", "ab123a7c7d3e506baf72db007ad465f1d2bba591a65cbed2f1973cbe950b9f08"],
-  ["two-bed", "956cb006115d475428a5eaed61fb01cf5ec47bcdf08899a4cd5bca56e5d72725"],
+  ["two-bed", "a3299f04779b7a23b99ac6efafb98a3ee7f8a96f28f13bd080421ed8d85d8ae8"],
   ["two-storey", "4c451bf36bb69f6a49ecd413c1e3008bc632adce8b9656ebf7d8766286426768"], // re-measured, see header
 ];
 

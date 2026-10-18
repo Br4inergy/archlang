@@ -472,6 +472,8 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
       ["r_meet2", "office: `desk`"],
       ["r_break", "kitchen: `stove`"],
     ],
+    // 2026-10-18 (PS0.7): "Living" with no `uses` now classifies as living, so its missing sofa is named.
+    themed: [["a", "living: `sofa`"]],
     "tiny-house": [["r_main", "living: `sofa`"]],
     "transit-hall": [
       ["r_shop1", "office: `desk`"],

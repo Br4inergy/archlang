@@ -173,7 +173,10 @@ const BASELINE: Readonly<Record<string, string>> = {
   // and both its digests move. See the SEMANTIC_BASELINE note for the proof that the CODE
   // is innocent: the pre-`overhead` source reproduces the OLD hexes exactly under the NEW compiler.
   "furnished-flat.arch": "8812151f95e82fafcb3d21a23dede24e71944d9962e1b33c046727869f04d947",
-  "two-bed.arch": "83db33c0b0b8322c06643658b574cfd5fc0e320d7ddbe22c815cf0d7a3ae94f4",
+  // Re-measured 2026-10-18 (PS0.7): "Kitchen / Living" now classifies as `kitchen living`, so
+  // `describe()` moves (uses + room_type) and nothing else; see ./byte-identity-baseline.ts,
+  // "the label classifier emits living", for the swap-back proof.
+  "two-bed.arch": "0baff3c3180db3627cf51adfd69dfa0d1e0eee8050ffb1f96c1872be8a9475a4",
 };
 
 /**
@@ -203,7 +206,8 @@ const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
   // `lint()` still returns ONE diagnostic, the same `W_PATH_TOO_NARROW` with the same
   // message and hints, its byte span shifted by the comment lines added above it.
   "furnished-flat.arch": "dab3b998a75ba65679021c8ae9282cb785d8daf69e6c0d64c39aea0c35a36fa5",
-  "two-bed.arch": "956cb006115d475428a5eaed61fb01cf5ec47bcdf08899a4cd5bca56e5d72725",
+  // Re-measured 2026-10-18 (PS0.7), the same cause as BASELINE's two-bed row.
+  "two-bed.arch": "a3299f04779b7a23b99ac6efafb98a3ee7f8a96f28f13bd080421ed8d85d8ae8",
 };
 
 suite("the outdoor tranche — the byte-identity law", () => {

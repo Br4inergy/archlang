@@ -15,6 +15,24 @@
  * pin should be regenerated. Never `-u` this table to green a red suite; a real
  * classification change here is a behavior change and must be intended and
  * reviewed, then the fixture edited deliberately.
+ *
+ * ## Three rows re-derived on 2026-10-18 (plan-soundness PS0.7): the label classifier emits living
+ *
+ * `classifyLabelUses` used to leave `living`/`dining` out, so a label-only "Living" room read as
+ * `uses: []` while circulation and the equator-aspect rule classified the same label as living
+ * through a second function. It now emits them (appended after every older kind), and exactly
+ * three rows moved, each a room with no authored `uses`:
+ *
+ *   - `examples/relational.arch` `living` "Living": `[]`/`Room` → `["living"]`/`LivingRoom`
+ *   - `examples/themed.arch` `a` "Living": `[]`/`Room` → `["living"]`/`LivingRoom`
+ *   - `examples/two-bed.arch` `r_kitchen` "Kitchen / Living": `["kitchen"]`/`Kitchen` →
+ *     `["kitchen", "living"]`/`LivingRoom`
+ *
+ * The `room_type` change is the one an authored `uses` already gets: `roomTypeForUses` ranks
+ * `living` first, and every pinned room that authored `uses living kitchen` (e.g.
+ * `eval/goldens/accessible-bath.arch`'s "Living / Kitchen") was `LivingRoom` before this change,
+ * so a label-only room now agrees with an authored one. No other row, field or order moved. The
+ * three rows were edited by hand to the values the corpus sweep measured, nothing else.
  */
 
 import { readFileSync, readdirSync } from "node:fs";
