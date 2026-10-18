@@ -127,7 +127,7 @@ plan "Reading Room Library" {
   # The rest of the public route.
   door id=d_main at (25000,32000) width 2400 wall shell swing into r_hall
   opening id=o_hall_children on w_west at 28000 width 3000
-  opening id=o_hall_lobby    on w_east at 25500 width 3000
+  opening id=o_hall_lobby    on w_east at 25500 width 2600
   opening id=o_ref_stacks    on w_west at 4000  width 2400
   opening id=o_stacks_aisle  on w_waisle_n at 50% width 3000
   opening id=o_children_aisle on w_waisle_s at 50% width 3000

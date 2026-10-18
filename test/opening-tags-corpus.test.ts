@@ -45,8 +45,7 @@ const ALLOWED: Record<string, string> = {
     "every candidate place is taken: the exit closes a 2 m corridor end, so no clear wall remains beside either jamb; the tag keeps its first choice (doors:arc,doors:polygon,poche)",
   "courtyard-house.arch:W06":
     "every candidate place is taken; the tag keeps its first choice (furniture:circle,furniture:path)",
-  "courtyard-house.arch:W11":
-    "every candidate place is taken; the tag keeps its first choice (furniture:line,furniture:path,poche)",
+  "courtyard-house.arch:W11": "every candidate place is taken; the tag keeps its first choice (furniture:path,poche)",
   "hexagon-pavilion.arch:D01":
     "a room name the label pass left under the tag (it moves a label only once buried past its threshold)",
   "hillside-villa.arch#L1:W06": "every candidate place is taken; the tag keeps its first choice (furniture:line)",
@@ -65,10 +64,9 @@ const ALLOWED: Record<string, string> = {
   "terrace-row.arch:D02":
     "every candidate place is taken; the tag keeps its first choice (furniture:line,furniture:path,poche)",
   "terrace-row.arch:W03":
-    "every candidate place is taken; the tag keeps its first choice (furniture:circle,furniture:line,furniture:path)",
-  "terrace-row.arch:W04": "every candidate place is taken; the tag keeps its first choice (poche)",
-  "terrace-row.arch:W05":
     "a room name the label pass left under the tag (it moves a label only once buried past its threshold)",
+  "terrace-row.arch:W04":
+    "every candidate place is taken; the tag keeps its first choice (furniture:circle,furniture:path,poche)",
   "terrace-row.arch:W06": "every candidate place is taken; the tag keeps its first choice (furniture:path,poche)",
   "terrace-row.arch:W08":
     "a room name the label pass left under the tag (it moves a label only once buried past its threshold)",

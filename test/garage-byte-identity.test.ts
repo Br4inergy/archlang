@@ -172,7 +172,10 @@ const BASELINE: Readonly<Record<string, string>> = {
   // the missing flag had kept out of the flagship — so this plan is a different building
   // and both its digests move. See the SEMANTIC_BASELINE note for the proof that the CODE
   // is innocent: the pre-`overhead` source reproduces the OLD hexes exactly under the NEW compiler.
-  "furnished-flat.arch": "8812151f95e82fafcb3d21a23dede24e71944d9962e1b33c046727869f04d947",
+  // Re-measured again 2026-10-18 (PS2.1): its bedroom-2 south window moved 4400 → 4450, off a
+  // 50 mm nib beside the partition, so only the SVG moved; the previous SVG with the new
+  // describe() + lint() reproduces the previous row (./byte-identity-baseline.ts, "Six examples").
+  "furnished-flat.arch": "0d00a6d601630e8bbfa2f15a0536bcbf8ccbb82fbfcea50b21b6586339a851d7",
   // Re-measured 2026-10-18 (PS0.7): "Kitchen / Living" now classifies as `kitchen living`, so
   // `describe()` moves (uses + room_type) and nothing else; see ./byte-identity-baseline.ts,
   // "the label classifier emits living", for the swap-back proof.

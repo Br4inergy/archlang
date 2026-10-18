@@ -79,7 +79,7 @@ plan "Furnished Flat" {
   window on w_west  at 1800 width 1400
   window on w_west  at 4300 width 1200
   window on w_south at 2600 width 1400
-  window on w_south at 4400 width 1400
+  window on w_south at 4450 width 1400
 
   # --- Living / Dining --------------------------------------------------------
   # The rug is an UNDERLAY: the coffee table and the L-sofa stand on it, so that overlap
