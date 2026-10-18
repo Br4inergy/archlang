@@ -22,7 +22,13 @@
  * are always at least two (either direction, or the other wall).
  */
 
-import { connectorConnection, connectorFaces, EXTERIOR_NODE } from "../../analyze.js";
+import {
+  type AccessGraph,
+  buildDoorAccessGraph,
+  connectorConnection,
+  connectorFaces,
+  EXTERIOR_NODE,
+} from "../../analyze.js";
 import type { Point } from "../../ast.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import { doorSwing, isDoubleDoorPair, segmentLength, segmentPointAlong, type WallSegment } from "../../geometry.js";
@@ -39,6 +45,8 @@ type Hosted = RDoor | RWindow | ROpening;
 const PARALLEL_SIN = Math.sin((5 * Math.PI) / 180);
 /** Float dust on whole-millimetre geometry. */
 const EPS = 1e-6;
+/** A jamb this close to a meeting wall's face is flush with it (whole-millimetre geometry). */
+const FLUSH_MM = 0.5;
 /** How far past a face a meeting wall's centreline may stop and still count as meeting it. */
 const MEET_TOL_MM = 1;
 
@@ -284,6 +292,9 @@ function openingName(ctx: LintContext, el: Hosted): string {
   return el.host ? `the ${word} on ${wallPhrase(el.host)}` : `the ${word}`;
 }
 
+/** The rooms an access graph reaches from outside. */
+const reached = (g: AccessGraph): Set<string> => new Set(g.rooms.filter((r) => r.reachable).map((r) => r.id));
+
 const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** `half of` / `all of` / `0.75 ×` — the thickness limb's ratio, as prose. */
@@ -519,6 +530,11 @@ export const openingAtJunction: LintRule = {
       const mine = junctionsFor(o, js);
       if (mine.length === 0) continue;
       const need = nibNeed(ctx, o.seg);
+      // A cased opening whose jamb lands FLUSH on a meeting wall's face uses that face as its
+      // jamb: there is no sliver of wall to carry anything, because there is no wall there at
+      // all (a hall that opens its full width into a room). A door's frame, or a window's,
+      // still needs a nib, so only a leaf-less opening is excused, and only at 0 mm.
+      const short = (nib: number): boolean => nib < need - EPS && !(o.el.kind === "opening" && nib <= FLUSH_MM);
       const inside = mine.filter((j) => j.lo < o.hi - EPS && j.hi > o.lo + EPS);
       let left: { j: Junction; nib: number } | null = null;
       let right: { j: Junction; nib: number } | null = null;
@@ -526,10 +542,10 @@ export const openingAtJunction: LintRule = {
         if (inside.includes(j)) continue;
         if (j.hi <= o.lo + EPS) {
           const nib = Math.max(0, o.lo - j.hi);
-          if (nib < need - EPS && (!left || nib < left.nib)) left = { j, nib };
+          if (short(nib) && (!left || nib < left.nib)) left = { j, nib };
         } else {
           const nib = Math.max(0, j.lo - o.hi);
-          if (nib < need - EPS && (!right || nib < right.nib)) right = { j, nib };
+          if (short(nib) && (!right || nib < right.nib)) right = { j, nib };
         }
       }
       if (inside.length === 0 && !left && !right) continue;
@@ -731,15 +747,25 @@ export const connectorAmbiguous: LintRule = {
       const reading = e.ambiguous
         ? "so the plan does not say which two spaces it joins and the access graph leaves it out of every route"
         : `so which room it opens into is a guess (the access graph reads it as between ${list(e.between.filter((x) => x !== ""))})`;
-      // A move is quoted only when the moved connector reads one room per face and is not ambiguous.
+      // A move is quoted only when the moved connector reads one room per face, is not
+      // ambiguous, joins only rooms it touches now, and leaves no room unreachable that the
+      // access graph reaches today (moving a straddling door wholly onto one room can take
+      // the only way into the other with it).
       const o = all.find((x) => x.el === c);
       const near = new Set<string>([
         EXTERIOR_NODE,
         ...faces.flatMap((f) => [...f.holders, ...f.cover.map((x) => x.id)]),
       ]);
+      const reachedNow = reached(ctx.access());
       const checkMove = (at: Point): boolean => {
         const r = connectorConnection({ ...c, at }, ctx.roomRects, ctx.rules.tolMm);
-        return !r.ambiguous && r.straddles === undefined && r.between.every((x) => near.has(x));
+        if (r.ambiguous || r.straddles !== undefined || !r.between.every((x) => near.has(x))) return false;
+        const moved = <T extends { id: string }>(xs: readonly T[]): T[] =>
+          xs.map((x) => (x.id === c.id ? { ...x, at } : x));
+        const after = reached(
+          buildDoorAccessGraph(ctx.rooms, moved(ctx.doors), ctx.rules.tolMm, undefined, moved(ctx.openings)),
+        );
+        return [...reachedNow].every((id) => after.has(id));
       };
       const moves = o ? moveHints(ctx, o, all, junctionsOn(o.seg, ctx.wallSegs), `the ${word}`, checkMove) : [];
       const wallInside =

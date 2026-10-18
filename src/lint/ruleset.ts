@@ -115,10 +115,14 @@ export interface LintRuleset {
    * that point, so for two walls of one thickness the same requirement read at the face is
    * half the thickness. The plan-soundness audit proposed the same `max(100, H.thickness/2)`
    * at the face (`docs/plans/plan-soundness/audits/showcase-and-examples.md`, proposed check
-   * 1) and found no false positive on its corpus. A full thickness at the face (ratio 1.0)
-   * flagged 100-150 mm returns beside windows on 200-300 mm walls across the shipped examples:
-   * returns inside the 100-150 mm trade range, so not defects. A profile that wants the
-   * stricter reading sets 1.0.
+   * 1) and found no false positive on its corpus.
+   *
+   * **Measured against the plan's first reading, a full thickness (ratio 1.0).** The PS2.1
+   * card states `max(100 mm, host thickness)`. Read at the face, that raised 38 more
+   * warnings than 0.5 does, in 11 of the shipped examples, and every one was a nib of
+   * 100-250 mm, mostly beside a window on a 200-300 mm wall. Those returns sit inside or above
+   * the 100-150 mm trade range, so they are not defects, and 0.5 is the default. A profile that
+   * wants the stricter reading sets 1.0.
    */
   junctionNibThicknessRatio: number;
   /**

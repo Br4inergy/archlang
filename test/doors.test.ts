@@ -436,11 +436,19 @@ suite("doors — W_POCKET_RUN", () => {
     // `door-near-corner`: it needs no new syntax beyond `dims auto all`, so an older plan
     // can trip it, and it is appended after everything for exactly that reason. Across the
     // shipped examples it found two real gaps, which those examples now dimension by hand.
+    //
+    // The three opening rules (plan-soundness PS2.1–PS2.3) are in the same position again:
+    // no new syntax, so an older plan can trip them, and appended last. Across the shipped
+    // examples they found real defects (audit rows X3, X10, X19, X26), which those examples
+    // now fix; every example lints as before.
     expect(names.slice(i + 1)).toEqual([
       "outdoor-overlaps-room",
       "balcony-no-door",
       "door-near-corner",
       "opening-not-dimensioned",
+      "opening-at-junction",
+      "opening-overlap",
+      "connector-ambiguous",
     ]);
   });
 
@@ -448,8 +456,15 @@ suite("doors — W_POCKET_RUN", () => {
     const { LINT_RULES } = await import("../src/lint/rules/index.js");
     // `door-near-corner` was last when this pin was written; `opening-not-dimensioned`
     // now follows it, and only fires under `dims auto all`, which this
-    // plan does not write.
-    expect(LINT_RULES.map((r) => r.name).slice(-2)).toEqual(["door-near-corner", "opening-not-dimensioned"]);
+    // plan does not write; the three opening rules follow that, and none fires here (a door
+    // at a corner is `W_DOOR_NEAR_CORNER`'s alone).
+    expect(LINT_RULES.map((r) => r.name).slice(-5)).toEqual([
+      "door-near-corner",
+      "opening-not-dimensioned",
+      "opening-at-junction",
+      "opening-overlap",
+      "connector-ambiguous",
+    ]);
     // A plan carrying an unrelated pre-existing warning (a sub-passable door width) AND
     // tripping the new rule: the old diagnostic must still be first, byte-for-byte.
     // centre 4500 on a 250 mm wall whose corner is at 5000: a 600 mm leaf leaves a

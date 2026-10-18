@@ -1312,6 +1312,18 @@ run that carries straight past it, and a **tangent** arc/straight hand-over are 
 of them corners. On a curve the nib is an **arc length**, not a chord, measured at
 the wall's centreline between the radial jambs.
 
+The same holds where a wall **tees into or crosses** the run, for doors, windows and
+cased openings alike, and for windows and cased openings at a corner too: a jamb must leave
+at least the larger of 100 mm and half the wall's thickness between it and the meeting
+wall's **face**, and no wall may stand inside the span, or
+[`W_OPENING_AT_JUNCTION`](error-codes.md#w_opening_at_junction). (A door at a corner stays
+`W_DOOR_NEAR_CORNER`'s alone: one defect, one warning.) Two openings on one run may not
+share wall or leave less than a 100 mm mullion between them
+([`W_OPENING_OVERLAP`](error-codes.md#w_opening_overlap)), and a door or cased opening whose
+side spans two rooms is
+[`W_CONNECTOR_AMBIGUOUS`](error-codes.md#w_connector_ambiguous): which room it opens into
+is then a guess. Each warning quotes only moves it has checked along the run.
+
 ```arch
 plan "Door kinds" {
   units mm

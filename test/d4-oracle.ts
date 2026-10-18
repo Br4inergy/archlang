@@ -411,6 +411,9 @@ export const RULE_CLASS: Readonly<Record<string, RuleClass>> = {
   "balcony-no-door": "invariant",
   "door-near-corner": "invariant",
   "opening-not-dimensioned": "invariant",
+  "opening-at-junction": "invariant",
+  "opening-overlap": "invariant",
+  "connector-ambiguous": "invariant",
 };
 
 export const ruleClass = (name: string): RuleClass => {
