@@ -133,6 +133,32 @@ The owner delegated these on 2026-10-18. Each records what would reverse it.
 - Cards land and are deleted here as `docs/backlog.md` does (cite the closing commit).
   `CHANGELOG.md` stays the only record of what shipped.
 
+**D5. The headline relation-first form derives every wall from the room tiling, not one wall per
+pair.** (2026-10-18, amends D1; does not reverse it.)
+- D1's pairwise forms (`wall … between A and B`, `wall … around […]`) still ship, but they are the
+  mixed-authoring forms. The form an agent reaches for first is one statement that derives the whole
+  wall set from the rooms: the exterior ring is the outline of the room union, every shared room
+  edge becomes a partition, and an open-plan join is stated as an exception
+  (`walls from rooms exterior 200 partition 100 { open between kitchen and living }`; grammar
+  settled in PS3.1).
+- *Why:* with pairwise forms the author must still enumerate every pair, so the most frequent
+  "space not enclosed" defect (a shared edge with no wall) is still writable by omission. With a
+  whole-tiling derivation it is unrepresentable: a wall exists on every shared edge unless the
+  author wrote `open`. That is the HypergraphFormer/BSP property (`research/prior-art.md` §1.1),
+  reached in closed form. It also removes "unassigned floor" and "room outside the shell" by
+  construction, because the shell *is* the room union.
+- *Measured premise* (`research/2026-10-18-room-tiling.md`): in 26 of the 34 top-level examples
+  the rooms' area sum equals the plan's centreline bbox area exactly, i.e. rooms already tile the
+  building, and 236 of 246 rooms are rectangles. The form therefore fits how plans are written
+  today, not a hoped-for style.
+- *Preconditions it refuses on* (ADR 0005: refuse, never choose): rooms that overlap, a union
+  with a hole or more than one component, a non-rectilinear room in the set, a room not snapped
+  to the grid. Each is an `E_*` with the offending rooms named. A plan with corridors written as
+  rooms satisfies them; a plan whose corridor is "the leftover" does not, and that is the point.
+- *Reverse if:* the PS3.1 ADR finds that the exception list (`open between …`, thickness per edge,
+  a load-bearing line) grows past three clauses, or the tiling preconditions reject more than a
+  quarter of the corpus. Then the pairwise forms stay the headline and this one is dropped.
+
 ## 4. Principles: what "professional rules and taste" means here
 
 **Four layers, treated differently:**
@@ -146,9 +172,16 @@ The owner delegated these on 2026-10-18. Each records what would reverse it.
 
 **The hold-fixed ladder: what stays when a number changes.** Higher tiers hold, and lower tiers follow:
 
-> site and lot → structural axes → stair and lift shafts → wet stacks → façade opening rhythm →
-> entrance → partitions → room sizes → doors → furniture
+> the brief's given numbers → site and lot → party walls and unit boundaries → structural axes →
+> stair and lift shafts → wet stacks → façade opening rhythm → entrance → partitions → room sizes →
+> doors → furniture → annotations
 
+- Three rungs were missing from the first draft (2026-10-18): the **brief's given numbers** sit
+  above everything else because they are the one thing the user said (PS4.4 makes them checkable);
+  **party walls and unit boundaries** sit between the lot and the structure, because a wall shared
+  with a neighbour never moves to widen a room (the multi-dwelling work in §8 needs this rung);
+  **annotations** sit at the bottom, because a dimension or label follows what it measures and
+  never holds anything (`W_DIM_TEXT_MISMATCH` is the check that it did follow).
 - An edit that crosses tiers (moving a wet stack to widen a room) must be explicit.
 - The ladder is enforced by hosting (openings follow their wall, furniture its anchor), by `keep`
   declarations, and by `impact`'s ordering. It is never enforced by prompt text.
@@ -225,7 +258,7 @@ owner's audit scratch. Re-derive them from this text rather than asking for them
 |---|---|---|---|
 | PS2.1 | `W_OPENING_AT_JUNCTION` | For every opening kind (door, window, cased opening): another wall's body intersects the opening's clear span on the host run, or either jamb's nib to a meeting wall face is under max(100 mm, host thickness), configurable by profile. Supersedes the door-only, L-corner-only scope of `W_DOOR_NEAR_CORNER`; decide whether to widen that rule or add this one beside it (byte-identity of existing output matters) | todo |
 | PS2.2 | `W_OPENING_OVERLAP` | Two openings on one host run whose along-run spans intersect, or whose separating pier is thinner than a mullion (100 mm) | todo |
-| PS2.3 | `W_CONNECTOR_AMBIGUOUS` | An access edge with `ambiguous: true`, or (after PS0.1) jamb probes that disagree. The message names the rooms on each side | todo |
+| PS2.3 | `W_CONNECTOR_AMBIGUOUS` | An access edge with `ambiguous: true`, or (after PS0.1) one whose clear span covers more than one room on a face (PS0.1 reports this as an additive `straddles` list; the edge stays in the graph with a measured `between`). The message names the rooms on each side | todo |
 | PS2.4 | `W_BOUNDARY_NO_WALL` | Two rooms share an edge run longer than a doorway with no wall or opening on it, unless both rooms' authored `uses` form an open-plan pair (kitchen/dining/living). Plus its dual: a walled face with no room covering ≥ 95 % (unassigned floor), and rooms outside the closed exterior ring (`W_ROOM_OUTSIDE_SHELL`). Generalises `largestPerimeterGap` beyond wet rooms. After it lands, a test pins that circulation-reachable implies access-reachable | todo |
 | PS2.5 | `W_ROOM_VIA_PRIVATE` | Remove a bedroom or bath/WC from the access graph: does any other room (not its own ensuite, wardrobe, storage or balcony) become unreachable? Generalises `W_BATH_VIA_BEDROOM` (keep that code; this is the general case). ResPlan: 0.03–0.06 % of real dwellings do this, so a warning is safe | todo |
 | PS2.6 | `W_WET_ROOM_DOOR` | A bath/WC whose only connector is a leaf-less opening to a habitable room; a bath/WC door onto a kitchen or dining room (GB 50096 5.4.3); a bath with two or more connectors acting as a passage (the PS2.5 test covers part of this) | todo |
@@ -237,14 +270,30 @@ owner's audit scratch. Re-derive them from this text rather than asking for them
 | PS2.12 | Annotation collisions | Auto-dimension text inside a room floor, over a symbol or over a label; title-block text wider than its row. Extend `W_DIM_INSIDE` to `dims auto`; drafting only, never `describe()` | todo |
 | PS2.13 | Lint coverage report | `lint --json` gains an appended `coverage` block: rule families run, skipped (with why: no `uses`, no brief, no `site`, no multi-storey) and unclassified rooms. Human output prints one line when something was skipped. Purely additive JSON | todo |
 
-### PS3 · Relation-first authoring (D1; needs an ADR)
+### PS3 · Relation-first authoring (D1 + D5; needs an ADR)
 
 **PS3.1 · ADR: rooms may be primary; walls and openings may be derived from room relations.** `todo`
 - Settle: grammar; datum names (`north/south/east/west` plus aliases, `cx/cy`, `axis n`);
   refusal codes (`E_WALL_BETWEEN_NOT_ADJACENT`, `E_WALL_BETWEEN_AMBIGUOUS`, polygon/circle rooms
   refused like relational placement); `place`-frame semantics; grid snapping; how `around` treats
   holes and multiple components (refuse).
-- Design input: `research/associativity.md` §4 P1/P6/P7.
+- D5's whole-tiling form: its grammar, its exception clauses (`open between A and B` at least;
+  decide whether a per-edge thickness or a `bearing` line is worth a clause), its refusal codes
+  (`E_ROOMS_OVERLAP`, `E_ROOMS_NOT_TILING` for a hole or a second component, non-rectilinear room,
+  unsnapped edge), and how a hand-written wall coexists with the derived set (proposal: a derived
+  partition that coincides with an authored wall is dropped, an authored wall elsewhere is kept;
+  pin both by test).
+- Design input: `research/associativity.md` §4 P1/P6/P7; `research/2026-10-18-room-tiling.md`.
+
+**PS3.0 · `walls from rooms` (D5).** `todo` (after PS3.1 and PS3.2; may land before or with PS3.3)
+- Closed-form: rectilinear union outline for the exterior ring; every shared edge run of two rooms
+  becomes one partition segment unless an `open between` clause names the pair. Steps charged per
+  room pair and per sweep before allocating.
+- Derived walls carry ids an opening can host on (`partition between A and B` as the hint name;
+  settle the scheme in PS3.1 so `door between A and B` and `on <wall>` both work).
+- Acceptance: the defect-corpus cases of class 2 (space not enclosed/assigned) are unwritable in
+  this form (a test tries each and gets the refusal or a wall); the widening drill moves every wall
+  and door with the room; byte identity for plans not using the form.
 
 **PS3.2 · Resolve order and room-edge datums.** `todo` (after PS3.1)
 - Resolve rooms and relational placement before walls, then freeze a datum table.
@@ -363,9 +412,9 @@ owner's audit scratch. Re-derive them from this text rather than asking for them
 
 | Order | Cards | Done when |
 |---|---|---|
-| 1 | PS0.1, PS0.7, PS1.1 | The corpus exists and reports a catch rate; the two fact bugs are fixed |
+| 1 | PS0.1, PS0.7, PS1.1 (`doing` since 2026-10-18) | The corpus exists and reports a catch rate; the two fact bugs are fixed |
 | 2 | PS2.1–PS2.9, PS2.13 | Defect-corpus catch rate ≥ 90 % for classes 1–6, with no false positive on the clean twins; every corpus `lint()` movement is explained (two-bed is expected to start warning: fix the example, see PS3.6) |
-| 3 | PS3.1–PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room |
+| 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form |
 | 4 | PS0.4, PS4.1, PS4.2 | The widening drill's `impact` names every moved, held and broken item correctly |
 | 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically |
 | 6 | PS4.3, PS4.4, PS3.5, PS3.6, PS5.4, PS7.x | — |
@@ -381,7 +430,9 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
 **Open questions worth a fresh investigation:**
 1. **Are rooms or walls the better primary for LLM authors?** D1 bets on rooms. A small, unpaid
    experiment can test it: author the corpus briefs both ways with the CLI loop and compare defect
-   counts on the PS1 corpus. Do not run or cite the paid eval.
+   counts on the PS1 corpus. Do not run or cite the paid eval. *Scheduled:* it needs the PS3 forms
+   to exist, so it runs after row 3 of §7. Until then the first-contact experiment under question 8
+   measures the wall-first baseline (`audits/2026-10-18-first-contact.md`, once written).
 2. **Where is the boundary between a fact and taste in each culture?** For example, a kitchen as the
    entry room is normal in some housing stocks. Profiles may need a `residential-generic` that is
    deliberately quiet.
@@ -428,6 +479,7 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
 - `research/design-taste.md`: 37 sourced rules, ResPlan priors (16,317 plans) and the score design.
 - `research/adai-sketchup.md`: lessons from a staged, evidence-gated SketchUp agent (ideas only;
   CPAL licence).
+- `research/2026-10-18-room-tiling.md`: do rooms already tile the building? (the D5 premise).
 - `audits/archcanvas-public-examples.md`, `audits/showcase-and-examples.md`: per-plan defects with
   coordinates.
 - `repro/`: minimal reproductions (see its README).
