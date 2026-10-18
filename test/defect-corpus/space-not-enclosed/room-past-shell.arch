@@ -1,7 +1,7 @@
 # class: space-not-enclosed
 # origin: evidence.md section 3 class 2 ("a room outside the shell"), the absolute-coordinate form of repro/widen-after.arch
 # expect: W_ROOM_OUTSIDE_SHELL
-# status: todo
+# status: done
 # fact: room b is authored at x 4000-8600, so 600 mm of it lies past the shell's east wall at x=8000
 plan "Room drawn past the shell" {
   units mm

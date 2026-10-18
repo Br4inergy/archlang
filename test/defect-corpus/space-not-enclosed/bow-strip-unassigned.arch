@@ -1,7 +1,7 @@
 # class: space-not-enclosed
 # origin: audits/archcanvas-public-examples.md GW1, GW2 (gallery-wing partition stopping at the chord of a bowed facade)
 # expect: W_FLOOR_UNASSIGNED
-# status: todo
+# status: done
 # fact: the south facade bows out from the chord y=4000 (R9000, chord 10000, sagitta about 1517 mm); both
 #   rooms stop at the chord and the partition ends there, so the bow segment (about 10.3 m2) is in no room
 #   and joins Shop to Cafe

@@ -19,6 +19,7 @@ import {
   furnitureOverlap,
   furnitureWallCollision,
 } from "./furniture.js";
+import { boundaryNoWall, floorUnassigned, roomOutsideShell } from "./enclosure.js";
 import { connectorAmbiguous, openingAtJunction, openingOverlap } from "./openings.js";
 import { perRoomRules } from "./per-room.js";
 import { entranceIntoPrivate, roomViaPrivate, wetRoomDoor } from "./privacy.js";
@@ -104,6 +105,12 @@ export const LINT_RULES: readonly LintRule[] = [
   // LAST, in this order, so no existing diagnostic moves within the array.
   habitableNoWindow,
   roomMissingDefining,
+  // Space-enclosure advisories (plan-soundness PS2.4): two rooms with no wall between them,
+  // walled floor in no room, and a room outside the building's walls. Appended LAST, in this
+  // order, so no existing diagnostic moves within the array.
+  boundaryNoWall,
+  floorUnassigned,
+  roomOutsideShell,
 ];
 
 export type { LintContext, LintRule } from "../context.js";

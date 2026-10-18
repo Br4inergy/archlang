@@ -1037,21 +1037,39 @@ export function largestPerimeterGapRing(
   for (const [a, b] of polygonEdges(ring)) {
     const len = Math.hypot(b.x - a.x, b.y - a.y);
     if (len === 0) continue;
-    const ux = (b.x - a.x) / len;
-    const uy = (b.y - a.y) / len;
-    const covered: Array<[number, number]> = [];
-    for (const s of segs) {
-      if (collinearOverlapLength(a, b, s.a, s.b, tol) <= 0) continue;
-      const t1 = (s.a.x - a.x) * ux + (s.a.y - a.y) * uy;
-      const t2 = (s.b.x - a.x) * ux + (s.b.y - a.y) * uy;
-      const lo = Math.max(0, Math.min(t1, t2));
-      const hi = Math.min(len, Math.max(t1, t2));
-      if (hi > lo) covered.push([lo, hi]);
-    }
-    const gap = len - mergedLength(covered);
+    const gap = len - mergedLength(edgeWallCover(a, b, segs, tol));
     if (gap > worst) worst = gap;
   }
   return worst;
+}
+
+/**
+ * The runs of the edge `a`→`b` that a wall centreline backs: every segment of `segs`
+ * parallel to the edge with its line within `tol` ({@link collinearOverlapLength}), clipped
+ * to the edge, as intervals in mm from `a` (unmerged, in `segs` order). The measure behind
+ * {@link largestPerimeterGapRing} for one edge, and behind `W_BOUNDARY_NO_WALL` for the run
+ * two rooms share — which passes only straight segments, since an arc's chord is not a wall.
+ */
+export function edgeWallCover(
+  a: Point,
+  b: Point,
+  segs: readonly Pick<WallSegment, "a" | "b">[],
+  tol: number,
+): Array<[number, number]> {
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  if (len === 0) return [];
+  const ux = (b.x - a.x) / len;
+  const uy = (b.y - a.y) / len;
+  const covered: Array<[number, number]> = [];
+  for (const s of segs) {
+    if (collinearOverlapLength(a, b, s.a, s.b, tol) <= 0) continue;
+    const t1 = (s.a.x - a.x) * ux + (s.a.y - a.y) * uy;
+    const t2 = (s.b.x - a.x) * ux + (s.b.y - a.y) * uy;
+    const lo = Math.max(0, Math.min(t1, t2));
+    const hi = Math.min(len, Math.max(t1, t2));
+    if (hi > lo) covered.push([lo, hi]);
+  }
+  return covered;
 }
 
 /**

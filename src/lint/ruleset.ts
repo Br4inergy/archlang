@@ -150,6 +150,33 @@ export interface LintRuleset {
    * centreline, so half its thickness counts as floor that nobody can stand on.
    */
   minStraddleCoverMm: number;
+  /**
+   * The longest stretch of a run two rooms share that may have no wall, door, cased opening
+   * or fixed counter on it before `W_BOUNDARY_NO_WALL` fires. Default 900: a doorway, the
+   * width the plan-soundness card names (`docs/plans/plan-soundness/README.md`, PS2.4) and a
+   * standard single leaf's nominal width. A gap no wider than a door is the missing door's
+   * report (`W_ROOM_DISCONNECTED`, `W_ROOM_UNREACHABLE`), not a missing wall.
+   */
+  maxBoundaryGapMm: number;
+  /**
+   * The share of a walled face the rooms must cover before `W_FLOOR_UNASSIGNED` is quiet.
+   * Default 0.95, the card's threshold (PS2.4): a plan whose rooms are drawn on the wall
+   * centrelines covers its faces completely, so 5 % is room for rooms drawn to a wall's face
+   * or a little short of it, never a strip a person could stand in.
+   */
+  minFaceCoverRatio: number;
+  /**
+   * The least floor (m²) a walled face must leave in no room for `W_FLOOR_UNASSIGNED` to
+   * report it, whatever its share. Default 0.5: below it the walls enclose a riser, a duct or
+   * the sliver a room drawn a little short of its wall leaves, not floor anyone forgot.
+   */
+  minUnassignedM2: number;
+  /**
+   * The least floor (m²) of a room outside every walled face and wall before
+   * `W_ROOM_OUTSIDE_SHELL` reports it. Default 0.1: a 100 mm strip a metre long. A room drawn
+   * on the wall centrelines, or to the outer face, has none outside at all.
+   */
+  minOutsideShellM2: number;
 }
 
 export const DEFAULT_RULESET: LintRuleset = {
@@ -169,6 +196,10 @@ export const DEFAULT_RULESET: LintRuleset = {
   junctionNibThicknessRatio: 0.5,
   minMullionMm: 100,
   minStraddleCoverMm: 100,
+  maxBoundaryGapMm: 900,
+  minFaceCoverRatio: 0.95,
+  minUnassignedM2: 0.5,
+  minOutsideShellM2: 0.1,
 };
 
 /**

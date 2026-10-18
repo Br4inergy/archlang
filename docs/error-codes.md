@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**103 errors** · **60 warnings**
+**103 errors** · **63 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -116,6 +116,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_BALCONY_NO_DOOR`](#w_balcony_no_door) | warning | A balcony with no way onto it. |
 | [`W_BATH_VIA_BEDROOM`](#w_bath_via_bedroom) | warning | Bathroom is reachable only through a bedroom. |
 | [`W_BEDROOM_NO_WINDOW`](#w_bedroom_no_window) | warning | Bedroom has no window. |
+| [`W_BOUNDARY_NO_WALL`](#w_boundary_no_wall) | warning | Two rooms meet with no wall between them. |
 | [`W_CIRCUITOUS_PATH`](#w_circuitous_path) | warning | A room is reached by a very roundabout path. |
 | [`W_CJK_FONT_MISSING`](#w_cjk_font_missing) | warning | PDF/PNG text has CJK characters, but the optional CJK font package is not installed. |
 | [`W_CONNECTOR_AMBIGUOUS`](#w_connector_ambiguous) | warning | A door or cased opening does not join two rooms cleanly. |
@@ -133,6 +134,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_FIXTURE_BACK_TO_ROOM`](#w_fixture_back_to_room) | warning | A fixture stands against a wall but faces the wrong way. |
 | [`W_FIXTURE_FLOATING`](#w_fixture_floating) | warning | A plumbing/kitchen fixture is not against a wall. |
 | [`W_FIXTURE_WRONG_ROOM`](#w_fixture_wrong_room) | warning | Fixture is not inside its declared room. |
+| [`W_FLOOR_UNASSIGNED`](#w_floor_unassigned) | warning | Walled floor is in no room. |
 | [`W_FURNITURE_OVERLAP`](#w_furniture_overlap) | warning | Two pieces of furniture overlap. |
 | [`W_FURNITURE_WALL_COLLISION`](#w_furniture_wall_collision) | warning | Furniture penetrates a wall. |
 | [`W_FURN_CLEARANCE`](#w_furn_clearance) | warning | A fixture's use-space is blocked. |
@@ -157,6 +159,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_ROOM_NOT_EQUATOR_FACING`](#w_room_not_equator_facing) | warning | A habitable room has windows, but none faces the equator side. |
 | [`W_ROOM_NO_CLEAR_PATH`](#w_room_no_clear_path) | warning | A room cannot be entered or crossed. |
 | [`W_ROOM_NO_FIXTURE`](#w_room_no_fixture) | warning | Bathroom or kitchen has no fixtures. |
+| [`W_ROOM_OUTSIDE_SHELL`](#w_room_outside_shell) | warning | A room lies partly outside the building's walls. |
 | [`W_ROOM_OVERLAP`](#w_room_overlap) | warning | Rooms overlap. |
 | [`W_ROOM_TOO_SMALL`](#w_room_too_small) | warning | Room is implausibly small. |
 | [`W_ROOM_UNREACHABLE`](#w_room_unreachable) | warning | Room cannot be reached from the entrance. |
@@ -1492,6 +1495,20 @@ door id=d_bath at (5200,4000) width 800 wall partition   # lint: bath only off t
 room at (0,0) size 3000x4000 label "Bedroom"   # lint: no window
 ```
 
+## W_BOUNDARY_NO_WALL
+
+*warning* — Two rooms meet with no wall between them.
+
+**Cause.** Two rooms share an edge run, and a stretch of it longer than a doorway (`maxBoundaryGapMm`, 900 mm by default) has no wall, door or cased opening on it, and no fixed counter (`counter`, `bar_counter`, `island`) standing across it. The run is read off the two rooms' own shapes: a pair of parallel edges within `tolMm` of each other, with one room's floor on each side just past them; what stands on it is measured along the line midway between the edges (a straight wall centreline within `tolMm`, the span of a door or opening, a counter's extent along it). A curved wall's chord backs no straight run. Two rooms whose uses (their `uses`, else their labels) are each kitchen, dining or living are an open-plan pair and are never reported. **Why:** without a wall the two rooms are one space that anyone walks through, but the plan joins them with no door or opening, so the access graph, the privacy rules and every enclosure check read them as walled apart. The message names the rooms by label and the line the run is on; the ids are in the hints.
+
+**Fix.** Draw the missing partition along the run (the hint quotes a `wall partition` statement over the open stretch) and put a `door` in it if the rooms connect. If they are one space by design, draw that wall with a cased `opening` across the gap so the plan says how they join. Accept it only if something the plan does not draw closes the boundary (a fixed screen, a balustrade, a level change). There is no machine fix.
+
+```arch static
+wall exterior thickness 200 { (0,0) (6000,0) (6000,7000) (0,7000) close }
+room at (0,0) size 6000x4000 label "Living" uses living
+room at (0,4000) size 6000x3000 label "Bedroom" uses bedroom   # lint: no wall on y 4000
+```
+
 ## W_CIRCUITOUS_PATH
 
 *warning* — A room is reached by a very roundabout path.
@@ -1713,6 +1730,19 @@ furniture wc at (3000,3000) size 400x700   # lint: no wall behind it
 
 ```arch static
 furniture wc at (100,100) size 400x700 in bath   # lint: not inside "bath"
+```
+
+## W_FLOOR_UNASSIGNED
+
+*warning* — Walled floor is in no room.
+
+**Cause.** A closed region of floor the walls enclose (a walled face: a hole of the union of every wall's body, doors and windows not cut, so a room with a door is still closed) is covered by rooms less than `minFaceCoverRatio` (95 % by default), leaving at least `minUnassignedM2` (0.5 m²) in no room. Floor under an `outdoor` surface, a `void` or a stair, lift or escalator counts as assigned. Every area is measured in closed form from the shapes, curved walls and circle rooms included (a partition that stops at the chord of a bowed facade leaves the bow in no room; a round room in a square walled box leaves the corners). A sealed face, with no door or cased opening into it and no room on its empty floor, is not reported: it is a duct or a pocket behind a curved wall, not floor anyone forgot. **Why:** floor inside the walls that no room claims has no use, no area in the schedule and no route the plan can check. The message gives the area in no room, the face's area and the share covered, and names the rooms that border the empty floor (or those behind its walls).
+
+**Fix.** Extend the bordering rooms over the empty floor, draw a room on it, or move the walls in to the rooms' edges. If the floor is open ground (a courtyard, a light well) draw it as an `outdoor` surface; if it is a void or a shaft, draw that `void` or vertical run. There is no machine fix.
+
+```arch static
+wall exterior thickness 200 { (0,0) (3800,0) (3800,2400) (0,2400) close }
+room circle at (2500,1200) radius 1200 label "Snug" uses living   # lint: the corners are in no room
 ```
 
 ## W_FURNITURE_OVERLAP
@@ -2017,6 +2047,19 @@ furniture shower at (5000,3000) size 2000x2000   # lint: fills the bathroom agai
 
 ```arch static
 room at (4000,4000) size 3000x2000 label "Bath"   # lint: no fixtures inside
+```
+
+## W_ROOM_OUTSIDE_SHELL
+
+*warning* — A room lies partly outside the building's walls.
+
+**Cause.** At least `minOutsideShellM2` (0.1 m² by default) of the room's floor is off every walled face and every wall body: outside the building. A room drawn on the wall centrelines, or to the outer face, has none outside. The area is measured in closed form from the room's shape and the joined wall bands; the message also gives how far the farthest corner stands past the walls' outer face. A storey whose walls close no region has no shell, and the rule is silent there rather than guessing one. **Why:** a room past the outside wall has floor no wall encloses, usually because the room was resized or moved while its walls stayed put.
+
+**Fix.** Bring the room back inside the walls (resize or move it so its edge meets the outside wall), or move the outside wall out to the room's edge. If that part is meant to be outside (a terrace, a balcony, a porch), draw it as an `outdoor` surface rather than a room. There is no machine fix.
+
+```arch static
+wall exterior thickness 200 { (0,0) (8000,0) (8000,5000) (0,5000) close }
+room at (4000,0) size 4600x5000 label "Bedroom" uses bedroom   # lint: 600 mm past the east wall
 ```
 
 ## W_ROOM_OVERLAP
