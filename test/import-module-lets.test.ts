@@ -405,6 +405,15 @@ suite("a module `let` that fails reports as it does in the module", () => {
  *     and `eval/fidelity-plans/two-bed-min-area.faithful.arch` (holdout, never edited). The new
  *     SVG, `describe()` and `compile().diagnostics` with the previous `lint()` reproduce each
  *     previous row.
+ *
+ * Five of them re-measured again in the opening rules' review round, against `bc5c55f`, each
+ * with a held swap-back proof: `examples/terrace-row.arch` (`win_bath` moved, the drawing only,
+ * see `./byte-identity-baseline.ts`), and four whose `lint()` alone moved. The move hints now say
+ * what the move was measured to open into ("still opens between …"), which rewords the hints
+ * of `test/recovery-corpus/terrace-row.arch`, `eval/goldens/against-wall-bath.arch` and
+ * `anchor-furniture.arch`; and `strip-attach-clean.arch` loses its `W_CONNECTOR_AMBIGUOUS`
+ * (each straddled sliver is 100 mm, 50 mm net of the partition's body, under the 100 mm a
+ * jamb's nib needs), keeping its `W_OPENING_AT_JUNCTION`.
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "dd7d71ebb95715ca666f7a087af5456436cba420936c111d20cb497159715529"],
@@ -445,7 +454,7 @@ const BASELINE: [string, string][] = [
   // as `./while-byte-identity-baseline.ts`, whose header has both.
   ["examples/sheet-notes.arch", "0104550fc3b3a39a71c1a005da79c3db5ea10ae21d9739e11a6d1f18ee7b7420"],
   ["examples/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
-  ["examples/terrace-row.arch", "b41286fa02fb352e688073b687e789f1c811288606b5c848a2fbb4c8f2baada0"],
+  ["examples/terrace-row.arch", "3863de52cc4fa5d87ae2f9f90b3edbb5d9db8ecc31b2343d2280b00b9c62a02c"],
   // Re-measured 2026-10-18 (PS0.7, the label classifier emits living; `describe()` only): the
   // same row, with the same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
   ["examples/themed.arch", "083872e0955d587897a87084c2f0bfe395856b02c643d7a8920e02f4bde870c1"],
@@ -476,14 +485,14 @@ const BASELINE: [string, string][] = [
   ["test/recovery-corpus/materials.arch", "29bb896c24060364f51b4cbad9d4065a21dc40444e6e95024bc85cf276b54e9c"],
   ["test/recovery-corpus/parametric.arch", "982d09bc2018a495ca4c50d1cf5a99dcbb92f235b86f9cb722c4e931c839e921"],
   ["test/recovery-corpus/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
-  ["test/recovery-corpus/terrace-row.arch", "6bb53db406f634d11d89128e797782fa37f7f4716c94e36539c596a9981ec525"],
+  ["test/recovery-corpus/terrace-row.arch", "ee6cd23a4480fdb010ea7bfc2c60880525d414ec3fa9368133a637b6c12f2e42"],
   // Re-measured 2026-10-18 (PS0.7): a copy of `examples/themed.arch`, the same cause and value.
   ["test/recovery-corpus/themed.arch", "083872e0955d587897a87084c2f0bfe395856b02c643d7a8920e02f4bde870c1"],
   ["test/recovery-corpus/two-storey.arch", "eba4790df12c90e7bbde6a34df2c1d4e025c3ed6746f883e7f2055fb1faba163"],
   ["eval/goldens/accessible-bath.arch", "0f2e47f8b1a0afe5e110117ea229b829861353fe1d115b9a8af1ec2085774d14"],
   ["eval/goldens/accessible-flat.arch", "721d479d06915e309d209c1c84dbb4a5b1c40b7c8195891499ed5078c650fe3e"],
-  ["eval/goldens/against-wall-bath.arch", "af8902e2e579bcf7a856a1f9a5c0697432c01eed13df41b792524196c86f0607"],
-  ["eval/goldens/anchor-furniture.arch", "c2bed91911938efb9bcdc205a24e08176b32da08c2d34f6ab0f882b4a483dfae"],
+  ["eval/goldens/against-wall-bath.arch", "ac2e0d68f0a7c26fb188d46959b9247c52ba7d65a256a77034c0b78b45673f1c"],
+  ["eval/goldens/anchor-furniture.arch", "5ae5239f1fceec9d9021bcdee198503bd9edb4f92ad21bf887dc6c6777fec2fa"],
   ["eval/goldens/attach-openings.arch", "d9d0546ad4f314c22b2bee8ceec59241505744b822a903756c2d8b44386ac1f8"],
   ["eval/goldens/bungalow.arch", "2205e6505a37378b5d3e54f64066abfafb1bea07a67b62d5f08c724162842168"],
   ["eval/goldens/compact-studio.arch", "92281f423de9e161598f55bce297bc4bb38fb693cce92b230141e78491d7f56f"],
@@ -500,7 +509,7 @@ const BASELINE: [string, string][] = [
   ["eval/goldens/sized-kitchen-flat.arch", "d53a6f4fef770d801976b2368ff9ce3c828b33085f82616803e3517927aa2bf2"],
   ["eval/goldens/sized-office-mix.arch", "a393fe780123bcc94a86e642874c87863c4f7a6d38528c13e34108e864b3975a"],
   ["eval/goldens/sized-wet-room.arch", "b73b7c5a2ad1eedf1a402331c6c0991ac3a985adf8b23c9b73fa5d4a4c46129a"],
-  ["eval/goldens/strip-attach-clean.arch", "9f16230bae362bdf1102746cd0f3e146e78808db2905c746362e011c804a258d"], // re-measured, see header
+  ["eval/goldens/strip-attach-clean.arch", "a3b90c54c53c617dd4e59eea0875ddd0c739a14475ba5d0458fd6dd38a597fd9"], // re-measured, see header
   ["eval/goldens/strip-corridor.arch", "2b471514e89a72253310c75cff0c6589938f3f1d9bb39e97235b95cc2d7aa17e"],
   ["eval/goldens/three-bed-2bath.arch", "41a6646380327d878c4bc2ee25d722009069750024a3b8e3521ed9d818ef06ca"],
   ["eval/goldens/two-bath-flat.arch", "4238d0b5c2d363d15809a6fd3357bd5d97fdbfe02be2caa76022ad7b5e32a305"],

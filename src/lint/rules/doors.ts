@@ -409,18 +409,8 @@ export const doorNearCorner: LintRule = {
     for (const d of doors) {
       const seg = d.host;
       if (!seg) continue;
-      const runs = jambRuns(d, seg);
-      if (!runs) continue;
       const need = seg.thickness * rules.minCornerNibRatio;
-      if (!(need > 0)) continue;
-      /** The tightest CORNER of the two ends — the one the warning is about. */
-      let worst: { have: number; corner: Point } | null = null;
-      for (const end of ["a", "b"] as const) {
-        const have = Math.max(0, end === "a" ? runs.toA : runs.toB);
-        if (have >= need) continue;
-        if (!isCorner(seg, end, wallSegs)) continue;
-        if (!worst || have < worst.have) worst = { have, corner: seg[end] };
-      }
+      const worst = tightestCorner(d, seg, wallSegs, need);
       if (!worst) continue;
       const short = shortfall(need, worst.have);
       out.push({
@@ -442,6 +432,29 @@ export const doorNearCorner: LintRule = {
     return out;
   },
 };
+
+/**
+ * The tightest CORNER end of a door's host run whose nib is under `need` (the one
+ * `W_DOOR_NEAR_CORNER` reports), or null when that rule is silent for the door. Exported so
+ * `W_OPENING_AT_JUNCTION` defers to this rule by the same test, never a restatement of it.
+ */
+export function tightestCorner(
+  d: Pick<RDoor, "at" | "width">,
+  seg: WallSegment,
+  wallSegs: readonly WallSegment[],
+  need: number,
+): { have: number; corner: Point } | null {
+  const runs = jambRuns(d, seg);
+  if (!runs || !(need > 0)) return null;
+  let worst: { have: number; corner: Point } | null = null;
+  for (const end of ["a", "b"] as const) {
+    const have = Math.max(0, end === "a" ? runs.toA : runs.toB);
+    if (have >= need) continue;
+    if (!isCorner(seg, end, wallSegs)) continue;
+    if (!worst || have < worst.have) worst = { have, corner: seg[end] };
+  }
+  return worst;
+}
 
 /**
  * Below this turn two runs are one straight wall. 5 degrees — at a wall's half-thickness

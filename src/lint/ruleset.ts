@@ -134,6 +134,22 @@ export interface LintRuleset {
    * has a frame to carry.
    */
   minMullionMm: number;
+  /**
+   * The least length of a SECOND room a straddling connector's face must cover, net of the
+   * body of any wall meeting the host there, before `W_CONNECTOR_AMBIGUOUS` reads it as
+   * opening into that room. The threshold is `max(minStraddleCoverMm, host thickness ×
+   * junctionNibThicknessRatio)`. Default 100.
+   *
+   * **Why the junction nib.** A sliver of the other room beside a meeting wall is the same
+   * length of wall `W_OPENING_AT_JUNCTION` measures as the jamb's nib: below the nib a jamb
+   * needs, it is a jamb set against the meeting wall, not a way into the room beyond it, and
+   * that warning already reports it. One defect gets one warning, so below this length only
+   * the junction warning speaks. At or above it the doorway really does open onto two rooms,
+   * and both warnings stand: one about the wall in the opening, one about which rooms it
+   * serves. The meeting wall's body is taken out because the rooms are drawn to its
+   * centreline, so half its thickness counts as floor that nobody can stand on.
+   */
+  minStraddleCoverMm: number;
 }
 
 export const DEFAULT_RULESET: LintRuleset = {
@@ -152,6 +168,7 @@ export const DEFAULT_RULESET: LintRuleset = {
   minJunctionNibMm: 100,
   junctionNibThicknessRatio: 0.5,
   minMullionMm: 100,
+  minStraddleCoverMm: 100,
 };
 
 /**

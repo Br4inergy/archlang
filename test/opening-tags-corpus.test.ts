@@ -65,13 +65,9 @@ const ALLOWED: Record<string, string> = {
     "every candidate place is taken; the tag keeps its first choice (furniture:line,furniture:path,poche)",
   "terrace-row.arch:W03":
     "a room name the label pass left under the tag (it moves a label only once buried past its threshold)",
-  "terrace-row.arch:W04":
-    "every candidate place is taken; the tag keeps its first choice (furniture:circle,furniture:path,poche)",
   "terrace-row.arch:W06": "every candidate place is taken; the tag keeps its first choice (furniture:path,poche)",
   "terrace-row.arch:W08":
     "a room name the label pass left under the tag (it moves a label only once buried past its threshold)",
-  "terrace-row.arch:W13":
-    "every candidate place is taken; the tag keeps its first choice (furniture:circle,furniture:path,poche)",
   "terrace-row.arch:W16":
     "a room name the label pass left under the tag (it moves a label only once buried past its threshold)",
   "tiny-house.arch:D01":

@@ -421,6 +421,25 @@ function alongHost(host: NonNullable<AccessConnector["host"]>, at: Point, along:
 }
 
 /**
+ * The length (mm) of `box`'s floor along one face of a connector's host, between the run
+ * offsets `from` and `to` (mm from `at`): the probe path {@link connectorFaces} measures a
+ * face's `cover` over, cut to a sub-range of it. `W_CONNECTOR_AMBIGUOUS` uses it to take a
+ * meeting wall's body out of a straddled room's cover.
+ */
+export function faceLengthInRoom(
+  host: NonNullable<AccessConnector["host"]>,
+  at: Point,
+  from: number,
+  to: number,
+  side: "minus" | "plus",
+  box: RoomBox,
+): number {
+  const dist = Math.max(host.thickness, 1);
+  const path = [from, (from + to) / 2, to].map((s) => wallFaceProbes(host, alongHost(host, at, s), dist)[side]);
+  return pathLengthInRoom(path, box);
+}
+
+/**
  * The two sides of a connector's host wall, `[minus, plus]` ({@link wallFaceProbes}),
  * each probed one wall thickness from the host's centreline (half a thickness past the
  * face) at the centre and a little inside both jambs ({@link JAMB_PROBE_INSET_MM}). `null`

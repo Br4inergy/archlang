@@ -496,6 +496,8 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
    * junctions fixed in their SOURCE (`./byte-identity-baseline.ts`, "Six examples fixed for the
    * opening rules"). `finish` writes nothing different: the previous runs with the same edits
    * applied to their `source` equal the new runs exactly, `changes[]` and notes included.
+   * `terrace-row` again in the review round (`win_bath` at w − 700, was w − 500): the `bc5c55f`
+   * runs with that edit applied to `source` equal the new runs exactly.
    */
   // Digest first: a name-keyed row reads to a secret scanner as `<key-ish word>: <opaque value>`.
   const FINISH_DIGESTS: ReadonlyMap<string, string> = new Map(
@@ -528,7 +530,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["d58bfbf0a25a5b70b7bdfdd1a8ef7b0fb8912f88ebb5cf631da3efe8268015e4", "sheet-notes"], // first measurement, added with the example
         ["2ee5f9d3aba27fe4db572ab912c46013a452f4edf0cbbfd1066a3561fd84019b", "practice-office"], // first measurement, added with the example
         ["147ce7e23f6f2a403d2d269cc0e68b678cab850e0d3a641287ef50bced7c76d3", "studio"],
-        ["3e0b31899e52359f058e701ca2ef84f518c0687ae2557b6ce45e01e69729285a", "terrace-row"],
+        ["227cc156aaa908ab73c1e7c7cd248358589fc6772ee5772a518acb884975b0ff", "terrace-row"],
         ["9da982b56530f0ec0c1b313fe8be64e5346f71bc4d098244664f164a02029a09", "themed"],
         ["c8c89f7f1db78626ab2620d113675e146a63c80461d978ce15b968a6aff581f5", "tiny-house"],
         ["ec6046117fe68a7329ef5aded15217195ecbd3d0108153d5e7b5d56e602e43a2", "townhouse"],

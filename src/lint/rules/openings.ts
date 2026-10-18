@@ -20,6 +20,20 @@
  * position is the one checked. A direction with no such position is said to have none.
  * No fix is machine-applicable: every remedy moves something the author placed, and there
  * are always at least two (either direction, or the other wall).
+ *
+ * The two leaves of a double door move as one opening (the pair `W_OPENING_OVERLAP` does not
+ * report): the search keeps them together and the hint quotes a clause for each leaf.
+ *
+ * **Known limits**, each measured and left as it is:
+ *  - Two walls that meet END TO END on one line are two runs, never one, so openings either
+ *    side of that joint are not paired (doors at 3200–4000 and 4000–4800, a 0 mm pier
+ *    between them, raise nothing).
+ *  - `W_OPENING_OVERLAP` reports per PAIR, so N openings stacked on one run raise O(N²)
+ *    warnings (300 windows at one point: about 30,000 warnings, 3 s).
+ *  - A curved host is measured only at its two ends ({@link junctionsOn}).
+ *  - A move hint for an opening drawn by a placed component gives world coordinates and no
+ *    clause; the edit is in the component's own frame.
+ *  - The leaves of a double door move together only when both sit on one segment.
  */
 
 import {
@@ -28,6 +42,9 @@ import {
   connectorConnection,
   connectorFaces,
   EXTERIOR_NODE,
+  type FaceReading,
+  faceLengthInRoom,
+  JAMB_PROBE_INSET_MM,
 } from "../../analyze.js";
 import type { Point } from "../../ast.js";
 import type { Diagnostic } from "../../diagnostics.js";
@@ -37,7 +54,7 @@ import { arcTangentAt } from "../../geometry/arc.js";
 import type { RDoor, ROpening, RWindow } from "../../ir.js";
 import type { LintContext, LintRule } from "../context.js";
 import { mm } from "../measure.js";
-import { isCorner } from "./doors.js";
+import { isCorner, tightestCorner } from "./doors.js";
 
 type Hosted = RDoor | RWindow | ROpening;
 
@@ -227,10 +244,20 @@ function junctionLookup(ctx: LintContext): (seg: WallSegment) => Junction[] {
   };
 }
 
-/** The junctions an opening of this kind is measured against: a door's corners are
- *  `W_DOOR_NEAR_CORNER`'s, so a door is not reported twice for one corner. */
-const junctionsFor = (o: OnRun, js: readonly Junction[]): Junction[] =>
-  o.el.kind === "door" ? js.filter((j) => j.corner === null) : [...js];
+/** Does `W_DOOR_NEAR_CORNER` report this door? Its own test ({@link tightestCorner}). */
+const cornerReported = (ctx: LintContext, o: OnRun): boolean =>
+  o.el.kind === "door" &&
+  tightestCorner(o.el, o.seg, ctx.wallSegs, o.seg.thickness * ctx.rules.minCornerNibRatio) !== null;
+
+/**
+ * The junctions an opening is REPORTED against. A door that `W_DOOR_NEAR_CORNER` reports is
+ * not measured at its host's corners here (one defect, one warning). A door that rule passes
+ * is: its one thickness to the corner's CENTRELINE point can leave less than this rule's nib
+ * at the FACE (a 100 mm partition asks 100 mm to the corner point, 50 mm at the face, against
+ * this rule's 100), and that door would otherwise fall through both rules.
+ */
+const junctionsFor = (ctx: LintContext, o: OnRun, js: readonly Junction[]): Junction[] =>
+  cornerReported(ctx, o) ? js.filter((j) => j.corner === null) : [...js];
 
 /** The nib an opening of this host needs: `max(minJunctionNibMm, host thickness × ratio)`. */
 const nibNeed = (ctx: LintContext, seg: WallSegment): number =>
@@ -308,21 +335,47 @@ const distinct = (xs: readonly string[]): string[] => xs.filter((x, i) => xs.ind
 /** An along-run interval the moved span must not enter (open intervals). */
 type Keepout = { lo: number; hi: number };
 
+/** What a move carries: one opening, or both leaves of a double door, as one along-run span
+ *  in `leaves[0]`'s coordinates (`leaves[0]` is the opening the hint is about). */
+interface MoveUnit {
+  leaves: OnRun[];
+  lo: number;
+  hi: number;
+}
+
+/** `o`, with the other leaf of its double door when that leaf is on the same segment: the
+ *  pair `W_OPENING_OVERLAP` treats as one opening, so a move never splits it. */
+function moveUnit(o: OnRun, all: readonly OnRun[]): MoveUnit {
+  const leaves = [
+    o,
+    ...all.filter(
+      (p) =>
+        p !== o &&
+        sameSeg(p.seg, o.seg) &&
+        Math.min(o.hi, p.hi) - Math.max(o.lo, p.lo) <= EPS &&
+        doubleDoor(o.el, p.el),
+    ),
+  ];
+  return { leaves, lo: Math.min(...leaves.map((l) => l.lo)), hi: Math.max(...leaves.map((l) => l.hi)) };
+}
+
 /**
- * Every along-run keep-out for moving `o` along its run: the run's ends, each meeting wall
- * grown by the nib (`max(minJunctionNibMm, thickness)`), each other opening on the run grown
- * by a mullion, and for a door the corner nib `W_DOOR_NEAR_CORNER` asks for.
+ * Every along-run keep-out for moving `u` along its run: the run's ends; each meeting wall,
+ * corners included, grown by the nib (`max(minJunctionNibMm, host thickness ×
+ * junctionNibThicknessRatio)`), since a quoted position must pass this rule whatever
+ * `W_DOOR_NEAR_CORNER` says; each other opening on the run grown by a mullion; and for a door
+ * the corner nib `W_DOOR_NEAR_CORNER` asks for.
  */
-function keepouts(ctx: LintContext, o: OnRun, all: readonly OnRun[], js: readonly Junction[]): Keepout[] {
+function keepouts(ctx: LintContext, o: OnRun, u: MoveUnit, all: readonly OnRun[], js: readonly Junction[]): Keepout[] {
   const len = segmentLength(o.seg);
   const need = nibNeed(ctx, o.seg);
   const out: Keepout[] = [
     { lo: -Infinity, hi: 0 },
     { lo: len, hi: Infinity },
   ];
-  for (const j of junctionsFor(o, js)) out.push({ lo: j.lo - need, hi: j.hi + need });
+  for (const j of js) out.push({ lo: j.lo - need, hi: j.hi + need });
   for (const p of all) {
-    if (p === o || !sameRun(o, p)) continue;
+    if (u.leaves.includes(p) || !sameRun(o, p)) continue;
     const q = alongOf(o, p);
     out.push({ lo: q.lo - ctx.rules.minMullionMm, hi: q.hi + ctx.rules.minMullionMm });
   }
@@ -353,39 +406,49 @@ function snappedCentre(ctx: LintContext, o: OnRun, shift: number): { s: number; 
   return { s: dot(sub(at, o.seg.a), u), at };
 }
 
+/** Where one leaf of a moved unit lands: its grid-snapped point and along-run centre. */
+interface Placed {
+  leaf: OnRun;
+  at: Point;
+  s: number;
+}
+
 /**
- * The smallest move of `o` in direction `dir` (towards `seg.b` for +1) that clears every
+ * The smallest move of `u` in direction `dir` (towards `seg.b` for +1) that clears every
  * keep-out, or null. Walks the keep-outs it collides with, at most once each, then checks the
- * grid-snapped position; a count, never a time.
+ * grid-snapped position (every leaf moved by the same snapped amount); a count, never a time.
  */
 function clearMove(
   ctx: LintContext,
-  o: OnRun,
+  u: MoveUnit,
   ks: readonly Keepout[],
   dir: 1 | -1,
-): { shift: number; at: Point; lo: number; hi: number } | null {
-  const w = o.hi - o.lo;
+): { shift: number; lo: number; hi: number; placed: Placed[] } | null {
   const g = ctx.ir.grid > 0 ? ctx.ir.grid : 1;
+  const centre = (l: OnRun): number => (l.lo + l.hi) / 2;
   let shift = 0;
   for (let step = 0; step <= 2 * ks.length + 4; step++) {
-    const lo = o.lo + shift;
-    const hi = o.hi + shift;
+    const lo = u.lo + shift;
+    const hi = u.hi + shift;
     const blocking = ks.filter((k) => hits(k, lo, hi));
     if (blocking.length === 0) {
       if (shift === 0) return null; // nothing to clear
       const q = Math.ceil(Math.abs(shift) / g - EPS) * g * dir;
-      const { s, at } = snappedCentre(ctx, o, q);
-      if (Number.isNaN(s)) return null;
-      const nlo = s - w / 2;
-      const nhi = s + w / 2;
-      if (ks.some((k) => hits(k, nlo, nhi))) {
+      const placed: Placed[] = u.leaves.map((leaf) => ({ leaf, ...snappedCentre(ctx, leaf, q) }));
+      if (placed.some((p) => Number.isNaN(p.s))) return null;
+      const d = placed[0]!.s - centre(u.leaves[0]!);
+      const nlo = u.lo + d;
+      const nhi = u.hi + d;
+      // A leaf that snaps by a different amount would pull the pair apart.
+      const apart = placed.some((p) => Math.abs(p.s - centre(p.leaf) - d) > EPS);
+      if (apart || ks.some((k) => hits(k, nlo, nhi))) {
         shift = q + dir * g;
         continue;
       }
-      return { shift: Math.abs(s - (o.lo + o.hi) / 2), at, lo: nlo, hi: nhi };
+      return { shift: Math.abs(d), lo: nlo, hi: nhi, placed };
     }
     const edge =
-      dir > 0 ? Math.max(...blocking.map((k) => k.hi)) - o.lo : Math.min(...blocking.map((k) => k.lo)) - o.hi;
+      dir > 0 ? Math.max(...blocking.map((k) => k.hi)) - u.lo : Math.min(...blocking.map((k) => k.lo)) - u.hi;
     if (!Number.isFinite(edge)) return null; // ran off the end of the run
     shift = edge;
   }
@@ -427,21 +490,46 @@ const towards = (seg: WallSegment, dir: 1 | -1): string => {
 };
 
 /**
- * Does `el`, moved to `at`, still serve exactly the rooms it serves now, with each side of it
- * in one room? The adjacency precondition every quoted move is held to: a move that clears
- * the junction by carrying a door into a different room is a different plan, not a fix.
+ * A quoted move's precondition. Given where each moved leaf lands, it returns what was
+ * measured there as a phrase (`still opens between "A" and "B"`), or null for a move not to
+ * quote. The hint says exactly that phrase, so it never claims more than the check measured.
  */
-function servesSame(ctx: LintContext, el: Hosted): (at: Point) => boolean {
+type MoveCheck = (moved: ReadonlyArray<{ el: Hosted; at: Point }>) => string | null;
+
+/** The spaces a connection joins, by label: `"A" and "B"`, `the outside and "B"`. */
+function joined(ctx: LintContext, between: readonly string[]): string {
+  const names = between
+    .filter((x) => x !== "")
+    .map((id) => {
+      if (id === EXTERIOR_NODE) return "the outside";
+      const r = ctx.rooms.find((x) => x.id === id);
+      return r ? `"${ctx.labelOf(r)}"` : "no room";
+    });
+  if (names.length <= 1) return names[0] ?? "no room";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]!}`;
+}
+
+/**
+ * Does each moved leaf still serve exactly the rooms it serves now, with each side of it in
+ * one room? The adjacency precondition every quoted move is held to: a move that clears the
+ * junction by carrying a door into a different room is a different plan, not a fix.
+ */
+function servesSame(ctx: LintContext): MoveCheck {
   const key = (b: readonly string[]): string => [...b].sort().join("|");
-  const before = key(connectorConnection(el, ctx.roomRects, ctx.rules.tolMm).between);
-  return (at) => {
-    const r = connectorConnection({ ...el, at }, ctx.roomRects, ctx.rules.tolMm);
-    return !r.ambiguous && r.straddles === undefined && key(r.between) === before;
+  return (moved) => {
+    let first: readonly string[] | null = null;
+    for (const { el, at } of moved) {
+      const before = key(connectorConnection(el, ctx.roomRects, ctx.rules.tolMm).between);
+      const r = connectorConnection({ ...el, at }, ctx.roomRects, ctx.rules.tolMm);
+      if (r.ambiguous || r.straddles !== undefined || key(r.between) !== before) return null;
+      first ??= r.between;
+    }
+    return first ? `still opens between ${joined(ctx, first)}` : null;
   };
 }
 
 /** The longest stretch of the run free of every keep-out, among those the span overlaps. */
-function widestStretch(o: OnRun, ks: readonly Keepout[]): number {
+function widestStretch(o: { lo: number; hi: number }, ks: readonly Keepout[]): number {
   const cuts = ks.map((k) => ({ lo: k.lo, hi: k.hi })).sort((a, b) => a.lo - b.lo || a.hi - b.hi);
   let best = 0;
   let from = -Infinity;
@@ -459,7 +547,9 @@ function widestStretch(o: OnRun, ks: readonly Keepout[]): number {
  * The checked moves for `o`, as hints: one per direction that has a clearing position, each
  * with the span it lands on, the nib it leaves and the source clause; or, when neither
  * direction has one, the measured stretch of wall that is free and how wide an opening it
- * holds. `check` is the adjacency precondition ({@link servesSame} by default).
+ * holds. `check` is the adjacency precondition ({@link servesSame} by default), and its
+ * phrase is what the hint says the moved opening does. A double door moves as one: the hint
+ * names both leaves and quotes a clause for each.
  */
 function moveHints(
   ctx: LintContext,
@@ -467,27 +557,37 @@ function moveHints(
   all: readonly OnRun[],
   js: readonly Junction[],
   what: string,
-  check: (at: Point) => boolean = servesSame(ctx, o.el),
+  check: MoveCheck = servesSame(ctx),
 ): string[] {
-  const ks = keepouts(ctx, o, all, js);
+  const u = moveUnit(o, all);
+  const pair = u.leaves.length > 1;
+  const subject = pair ? `${what} with its other leaf (one double door)` : what;
+  const ks = keepouts(ctx, o, u, all, js);
   const out: string[] = [];
-  const mine = junctionsFor(o, js);
   for (const dir of [-1, 1] as const) {
-    const m = clearMove(ctx, o, ks, dir);
-    if (!m || !check(m.at)) continue;
-    const nib = nearestNib(m.lo, m.hi, mine);
+    const m = clearMove(ctx, u, ks, dir);
+    if (!m) continue;
+    const result = check(m.placed.map((p) => ({ el: p.leaf.el, at: p.at })));
+    if (result === null) continue;
+    const nib = nearestNib(m.lo, m.hi, js);
     const leaves = nib === null ? "" : `, ${mm(nib)} mm from the nearest meeting wall's face`;
-    const edit = o.el._instance === undefined ? ` — \`${placeClause(ctx, o, m.at, (m.lo + m.hi) / 2)}\`` : "";
+    const clause = (p: Placed): string => `\`${placeClause(ctx, p.leaf, p.at, p.s)}\``;
+    const edit =
+      o.el._instance !== undefined
+        ? ""
+        : pair
+          ? ` — ${m.placed.map((p) => `${clause(p)} for "${p.leaf.el.id}"`).join(" and ")}`
+          : ` — ${clause(m.placed[0]!)}`;
     out.push(
-      `Move ${what} ${mm(m.shift)} mm along the wall ${towards(o.seg, dir)}, to ${runSpan(o.seg, m.lo, m.hi)}${leaves}; that position was checked clear of every junction and opening on the run, and it still serves the same rooms${edit}.`,
+      `Move ${subject} ${mm(m.shift)} mm along the wall ${towards(o.seg, dir)}, to ${runSpan(o.seg, m.lo, m.hi)}${leaves}; that position was checked clear of every junction and opening on the run, and ${pair ? "the pair" : "it"} ${result}${edit}.`,
     );
   }
   if (out.length === 0) {
-    const free = widestStretch(o, ks);
+    const free = widestStretch(u, ks);
     out.push(
       `No position along this run clears it and still serves the same rooms. ${
         free > 0
-          ? `The longest clear stretch of wall it overlaps, after the nibs and mullions, is ${mm(free)} mm, against its ${mm(o.hi - o.lo)} mm span.`
+          ? `The longest clear stretch of wall it overlaps, after the nibs and mullions, is ${mm(free)} mm, against its ${mm(u.hi - u.lo)} mm span.`
           : "No stretch of wall it overlaps is clear once the nibs and mullions are kept."
       } Move it to another wall the same rooms share, or move the wall that meets it.`,
     );
@@ -514,10 +614,12 @@ const idHint = (el: Hosted): string => `The ${KIND_WORD[el.kind]} is "${el.id}" 
  * {@link import("../ruleset.js").LintRuleset.junctionNibThicknessRatio} have the sources).
  *
  * **Relation to `W_DOOR_NEAR_CORNER`.** That rule already measures a DOOR at a corner (to
- * the corner point, against the wall's thickness). One defect gets one warning, so a door is
- * never measured here against a wall forming a corner with its host; it is measured against
- * tees and crossings only. Windows and cased openings, which that rule does not cover, are
- * measured at corners too. Every plan's existing `W_DOOR_NEAR_CORNER` output is unchanged.
+ * the corner's centreline point, against the wall's thickness). One defect gets one warning:
+ * a door that rule reports is measured here only against tees and crossings. A door it passes
+ * is measured at corners too, because on a thin wall one thickness to the corner point leaves
+ * less than this rule's nib at the face (a 100 mm partition: 50 mm, against 100). Windows
+ * and cased openings, which that rule does not cover, are always measured at corners. Every
+ * plan's existing `W_DOOR_NEAR_CORNER` output is unchanged.
  */
 export const openingAtJunction: LintRule = {
   name: "opening-at-junction",
@@ -527,7 +629,7 @@ export const openingAtJunction: LintRule = {
     const jsOf = junctionLookup(ctx);
     for (const o of all) {
       const js = jsOf(o.seg);
-      const mine = junctionsFor(o, js);
+      const mine = junctionsFor(ctx, o, js);
       if (mine.length === 0) continue;
       const need = nibNeed(ctx, o.seg);
       // A cased opening whose jamb lands FLUSH on a meeting wall's face uses that face as its
@@ -690,11 +792,51 @@ export const openingOverlap: LintRule = {
 // ─── PS2.3 ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Does a straddling connector really open onto two rooms on one face? At least two rooms
+ * must each cover `max(minStraddleCoverMm, host thickness × junctionNibThicknessRatio)` of
+ * that face's clear span (the access graph's `cover`), net of the body of every wall meeting
+ * the host there. Less than that is a jamb set against a meeting wall, which is
+ * `W_OPENING_AT_JUNCTION`'s report ({@link import("../ruleset.js").LintRuleset.minStraddleCoverMm}).
+ */
+function straddlesRooms(
+  ctx: LintContext,
+  o: OnRun,
+  faces: readonly [FaceReading, FaceReading],
+  js: readonly Junction[],
+): boolean {
+  const need = Math.max(ctx.rules.minStraddleCoverMm, o.seg.thickness * ctx.rules.junctionNibThicknessRatio);
+  const w = o.el.width;
+  // The clear span's probe path, as `connectorFaces` lays it: inset from both jambs.
+  const half = Math.max(0, w / 2 - Math.min(JAMB_PROBE_INSET_MM, w / 4));
+  const mid = (o.lo + o.hi) / 2;
+  const cuts = js
+    .map((j) => ({ lo: Math.max(j.lo - mid, -half), hi: Math.min(j.hi - mid, half) }))
+    .filter((b) => b.hi > b.lo + EPS)
+    .sort((a, b) => a.lo - b.lo);
+  const bodies: Keepout[] = [];
+  for (const b of cuts) {
+    const last = bodies[bodies.length - 1];
+    if (last && b.lo <= last.hi) last.hi = Math.max(last.hi, b.hi);
+    else bodies.push({ ...b });
+  }
+  return ([0, 1] as const).some((i) => {
+    const side = i === 0 ? "minus" : "plus";
+    const rooms = faces[i].cover.filter((x) => {
+      const box = ctx.roomRects.get(x.id);
+      const body = box ? bodies.reduce((a, b) => a + faceLengthInRoom(o.seg, o.el.at, b.lo, b.hi, side, box), 0) : 0;
+      return x.mm - body >= need - EPS;
+    });
+    return rooms.length >= 2;
+  });
+}
+
+/**
  * `W_CONNECTOR_AMBIGUOUS`: a door or cased opening whose access edge cannot name the two
  * spaces it joins — the edge is `ambiguous` (three or more rooms at its point, and the face
  * probe cannot decide), or a face of its host has more than one room along the connector's
- * clear span (`straddles`). The message names the rooms on each side by label; ids are in the
- * hints.
+ * clear span (`straddles`) by at least a jamb's nib, net of the meeting wall's body
+ * ({@link straddlesRooms}). The message names the rooms on each side by label; ids are in
+ * the hints.
  */
 export const connectorAmbiguous: LintRule = {
   name: "connector-ambiguous",
@@ -716,6 +858,9 @@ export const connectorAmbiguous: LintRule = {
       if (!e.ambiguous && !e.straddles) return;
       const faces = connectorFaces(c, ctx.roomRects);
       if (!faces || !c.host) return;
+      const o = all.find((x) => x.el === c);
+      const js = o ? junctionsOn(o.seg, ctx.wallSegs) : [];
+      if (!e.ambiguous && o && !straddlesRooms(ctx, o, faces, js)) return;
       const word = KIND_WORD[c.kind];
       const exteriorHost = c.host.category === "exterior";
       // Which face is the outside one, when one face holds no room behind an exterior wall.
@@ -751,25 +896,31 @@ export const connectorAmbiguous: LintRule = {
       // ambiguous, joins only rooms it touches now, and leaves no room unreachable that the
       // access graph reaches today (moving a straddling door wholly onto one room can take
       // the only way into the other with it).
-      const o = all.find((x) => x.el === c);
       const near = new Set<string>([
         EXTERIOR_NODE,
         ...faces.flatMap((f) => [...f.holders, ...f.cover.map((x) => x.id)]),
       ]);
       const reachedNow = reached(ctx.access());
-      const checkMove = (at: Point): boolean => {
-        const r = connectorConnection({ ...c, at }, ctx.roomRects, ctx.rules.tolMm);
-        if (r.ambiguous || r.straddles !== undefined || !r.between.every((x) => near.has(x))) return false;
-        const moved = <T extends { id: string }>(xs: readonly T[]): T[] =>
-          xs.map((x) => (x.id === c.id ? { ...x, at } : x));
+      const checkMove: MoveCheck = (moved) => {
+        let mineAfter: readonly string[] | null = null;
+        for (const { el, at } of moved) {
+          const r = connectorConnection({ ...el, at }, ctx.roomRects, ctx.rules.tolMm);
+          if (r.ambiguous || r.straddles !== undefined || !r.between.every((x) => near.has(x))) return null;
+          if (el === c) mineAfter = r.between;
+        }
+        const move = <T extends { id: string }>(xs: readonly T[]): T[] =>
+          xs.map((x) => {
+            const m = moved.find((y) => y.el.id === x.id);
+            return m ? { ...x, at: m.at } : x;
+          });
         const after = reached(
-          buildDoorAccessGraph(ctx.rooms, moved(ctx.doors), ctx.rules.tolMm, undefined, moved(ctx.openings)),
+          buildDoorAccessGraph(ctx.rooms, move(ctx.doors), ctx.rules.tolMm, undefined, move(ctx.openings)),
         );
-        return [...reachedNow].every((id) => after.has(id));
+        if (![...reachedNow].every((id) => after.has(id))) return null;
+        return mineAfter ? `then opens between ${joined(ctx, mineAfter)}` : null;
       };
-      const moves = o ? moveHints(ctx, o, all, junctionsOn(o.seg, ctx.wallSegs), `the ${word}`, checkMove) : [];
-      const wallInside =
-        o !== undefined && junctionsFor(o, junctionsOn(o.seg, ctx.wallSegs)).some((j) => j.lo < o.hi && j.hi > o.lo);
+      const moves = o ? moveHints(ctx, o, all, js, `the ${word}`, checkMove) : [];
+      const wallInside = o !== undefined && junctionsFor(ctx, o, js).some((j) => j.lo < o.hi && j.hi > o.lo);
       const straddled = e.straddles ?? [];
       const hints = [
         ...moves.filter((h) => h.startsWith("Move")),

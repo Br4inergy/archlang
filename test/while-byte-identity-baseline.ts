@@ -251,7 +251,8 @@
  * examples and two fixtures whose SOURCE was fixed with same-length edits, so `lint()` did not
  * move (field by field in `./byte-identity-baseline.ts`, "Six examples fixed for the opening
  * rules", and `import-module-lets.test.ts` for the fixtures). The new `lint()` with the previous
- * SVG, `describe()` and `compile().diagnostics` reproduces each previous row.
+ * SVG, `describe()` and `compile().diagnostics` reproduces each previous row. `terrace-row` again
+ * in the review round (`win_bath` moved, the drawing only, against `bc5c55f`, same proof).
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "dd7d71ebb95715ca666f7a087af5456436cba420936c111d20cb497159715529"],
@@ -281,7 +282,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/relational.arch", "d27362e8dec9b595eaff227c2ea7978f311634fd22dfd7ac54c2bd12f002a918"],
   ["examples/sheet-notes.arch", "0104550fc3b3a39a71c1a005da79c3db5ea10ae21d9739e11a6d1f18ee7b7420"], // re-measured, see header
   ["examples/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
-  ["examples/terrace-row.arch", "b41286fa02fb352e688073b687e789f1c811288606b5c848a2fbb4c8f2baada0"],
+  ["examples/terrace-row.arch", "3863de52cc4fa5d87ae2f9f90b3edbb5d9db8ecc31b2343d2280b00b9c62a02c"],
   ["examples/themed.arch", "083872e0955d587897a87084c2f0bfe395856b02c643d7a8920e02f4bde870c1"],
   ["examples/tiny-house.arch", "cbd44f2c14aa28ea42f1fac0c7029f6257e6d7bcaab42c21ec290cecc3bd1933"],
   ["examples/townhouse.arch", "a3252455577b780dfed37d5eebeea1f8725c2df9d5c538b0e61c091418022f94"],

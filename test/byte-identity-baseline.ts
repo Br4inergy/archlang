@@ -1059,7 +1059,10 @@
  *     partitions. `openings[7].width` and `access.edges[15]` widths 3000 → 2600.
  *   - `terrace-row`: in `unit()`, `win_liv` (650,d) width 800 (was (600,d) width 900, a 25 mm nib)
  *     and `win_bed` at BEDW − 600 (was − 450, flush on the partition face). `windows[0,5,9,13]`
- *     width 900 → 800.
+ *     width 900 → 800. In the review round `win_bath` moved to w − 700 (was w − 500), so its
+ *     `schedule openings` tag finds a clear place (`opening-tags-corpus.test.ts` loses its W04
+ *     and W13 rows): the drawing moved, `describe()` and `lint()` did not, and the previous
+ *     `describe()` and `lint()` with the new SVG reproduce `bc5c55f`'s row.
  *   - `two-storey` (X10, level 2): `d_bed2` filled the gap between two tees with 0 mm nibs;
  *     `bath_w` moves 4600 → 4900 and the door 4100 → 4250 (150 mm nibs). Landing 10.12 → 10.78
  *     m², Bath 5.28 → 4.62 m² (net 4.61 → 4), the caption with them, three walks +200 mm, net
@@ -1100,7 +1103,7 @@ export const BASELINE: [string, string][] = [
   ["relational", "4f5e98eb058c94ada529784cf78cbe9c360d444b77a0c74fb2839be40af48c10"],
   ["sheet-notes", "f4ab64ec80be43d25a5949c971b07b00696f8fc2ab3927af72442ab70e8f551f"], // re-measured, see header
   ["studio", "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f"],
-  ["terrace-row", "99face47042ab1e01dbea2996bf2ca691afe4b58cd328f170c17004691fde06c"], // re-measured, see header
+  ["terrace-row", "388b2a220f8e6aaf9a6e05096fccce86faf5b5ea9f63ef3a4feddbfacfb51929"], // re-measured, see header
   ["themed", "e7cc1e958ff139bff24cef4caa6f0b357d370d8a48c4f0921bc8e122c4607028"],
   ["tiny-house", "a78e4e99cb1d18bd4aae38e8b8927ec6b765274a3db3b5c63652e9fb189d045a"],
   ["townhouse", "8744ddfa200945bfcf6d119b150d974ef352041248cdc7735d72b94973840431"], // re-measured, see header

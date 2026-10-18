@@ -1646,7 +1646,7 @@
     {
       "id": "strip-attach-clean",
       "valid": true,
-      "lintWarnings": 2,
+      "lintWarnings": 1,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
