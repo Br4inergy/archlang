@@ -23,7 +23,8 @@
  *
  * The classifier's BEHAVIOUR changed once since the oracle was copied: it now emits `living` and
  * `dining` (the vocabulary's `living` row split in two), appended after `garage`, and a living
- * ALIAS word is dropped when a canonical word of another kind matched. The oracle was advanced by
+ * ALIAS word is dropped when the label matched any other kind but `dining`, canonical or alias.
+ * The oracle was advanced by
  * exactly that, written in its own per-word style (the `old*` matcher answers every word), and
  * `oldMatchesLivingDining` now reads its classification, as the new `matchesLivingDining` does.
  * Every other kind's lines are untouched, so the gate on them is as strong as it was.
@@ -103,8 +104,6 @@ function oldClassifyLabelUses(text: string): { uses: UseKind[]; aliases: AliasMa
     uses.push(kind);
     if (!m.canonical) aliases.push({ kind, word: m.word });
   };
-  // PS0.7: was any kind emitted from a canonical word? (the alias-suppression rule below)
-  const canonicalEmitted = (): boolean => uses.length > aliases.length;
 
   const bedroom = oldMatchVocabulary(text, USE_VOCABULARY.bedroom);
   if (bedroom) add("bedroom", bedroom);
@@ -127,10 +126,11 @@ function oldClassifyLabelUses(text: string): { uses: UseKind[]; aliases: AliasMa
   const garage = oldMatchVocabulary(text, USE_VOCABULARY.garage);
   if (garage) add("garage", garage);
 
-  // PS0.7 (2026-10-18): living, then dining, appended; a living alias yields to a canonical word.
+  // PS0.7 (2026-10-18): living, then dining, appended; a living alias yields to any earlier kind.
+  const others = [bedroom, wc ?? bath, kitchen, entry ?? oldMatchVocabulary(text, USE_VOCABULARY.hall), garage];
   const living = oldMatchVocabulary(text, USE_VOCABULARY.living);
+  if (living && (living.canonical || others.every((m) => m === null))) add("living", living);
   const dining = oldMatchVocabulary(text, USE_VOCABULARY.dining);
-  if (living && (living.canonical || !(canonicalEmitted() || dining?.canonical === true))) add("living", living);
   if (dining) add("dining", dining);
 
   return { uses, aliases };

@@ -222,17 +222,16 @@ export interface LabelClassification {
  * and the equator-aspect rule classified it from the same table through a second function —
  * two classifiers for one fact. They are emitted after `garage`, so no kind that existed
  * before them changes position in the `uses` array. One rule is theirs alone: a living
- * ALIAS word is dropped when a canonical word of another kind matched the same label
- * ("Family Bathroom" is `[bath]`, "Family Room" is `[living]` with the alias flagged).
+ * ALIAS word is dropped when the label matched any other kind except `dining`, by a canonical
+ * word or an alias ("Family Bathroom" is `[bath]`, "Family Foyer" `[entry]`, "Family Room"
+ * `[living]` with the alias flagged).
  */
 export function classifyLabelUses(text: string): LabelClassification {
   const uses: UseKind[] = [];
   const aliases: AliasMatch[] = [];
-  let canonicalSeen = false;
   const add = (kind: UseKind, m: VocabMatch): void => {
     uses.push(kind);
-    if (m.canonical) canonicalSeen = true;
-    else aliases.push({ kind, word: m.word });
+    if (!m.canonical) aliases.push({ kind, word: m.word });
   };
   // Normalised and split once for every entry below, not once per word.
   const toks = tokensOf(text);
@@ -266,13 +265,13 @@ export function classifyLabelUses(text: string): LabelClassification {
   // After `garage`, for the same reason: appended, so every earlier position holds.
   //
   // A living ALIAS ("family", "sitting") is a qualifier as often as a room name: a "Family
-  // Bathroom" is a bathroom, a "Bed-sitting Room" a bedroom. So it is dropped when the label
-  // already reads as another kind by a CANONICAL word (any kind emitted above from a canonical
-  // word, or a canonical dining word). Only the alias is ever dropped: a canonical living or
-  // dining word always classifies ("Kitchen / Living" is kitchen AND living).
+  // Bathroom" is a bathroom, a "Family Foyer" an entry, a "Bed-sitting Room" a bedroom. So it is
+  // dropped when the label matched ANY other kind above, canonical or alias. `dining`, the living
+  // row's sibling, does not count: "Sitting / Dining" is living AND dining. Only the alias is
+  // ever dropped: a canonical living word always classifies ("Kitchen / Living" is both).
   const living = matchPrepared(toks, PREPARED_USE.living);
+  if (living && (living.canonical || uses.length === 0)) add("living", living);
   const dining = matchPrepared(toks, PREPARED_USE.dining);
-  if (living && (living.canonical || !(canonicalSeen || dining?.canonical === true))) add("living", living);
   if (dining) add("dining", dining);
 
   return { uses, aliases };

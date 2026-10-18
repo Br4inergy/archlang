@@ -4,8 +4,8 @@
  * It used to leave them out: a label-only "Living Room" read as `uses: []` in `describe()`, while
  * circulation and the equator-aspect rule classified the same label as living through a second
  * function, `matchesLivingDining`. There is one classifier now. These cases pin what it answers
- * for the living/dining words, the one rule a living ALIAS obeys (it yields to a canonical word
- * of another kind), and that `matchesLivingDining` is that classifier's answer over every room
+ * for the living/dining words, the one rule a living ALIAS obeys (it yields to any other kind
+ * the label matched, canonical or alias, except its sibling `dining`), and that `matchesLivingDining` is that classifier's answer over every room
  * label and id of the corpus and every vocabulary word.
  */
 
@@ -54,21 +54,27 @@ describe("classifyLabelUses — living and dining", () => {
     });
   });
 
-  it("drops a living alias when a canonical word of another kind matched", () => {
+  it("drops a living alias when the label matched any other kind, except dining", () => {
     expect(classifyLabelUses("Family Bathroom")).toEqual({ uses: ["bath"], aliases: [] });
     expect(classifyLabelUses("Family Kitchen")).toEqual({ uses: ["kitchen"], aliases: [] });
     expect(classifyLabelUses("Bed-sitting Room")).toEqual({ uses: ["bedroom"], aliases: [] });
-    expect(classifyLabelUses("Family Dining")).toEqual({ uses: ["dining"], aliases: [] });
-    // A canonical living word is never dropped; neither is an alias beside a canonical living word.
-    expect(classifyLabelUses("Family Lounge")).toEqual({ uses: ["living"], aliases: [] });
-    // Another kind matched only by ITS alias does not suppress: both are guesses, both flagged.
+    // Another kind matched only by ITS alias suppresses too; that alias is flagged once, for its kind.
     expect(classifyLabelUses("Family Foyer")).toEqual({
-      uses: ["entry", "living"],
-      aliases: [
-        { kind: "entry", word: "foyer" },
-        { kind: "living", word: "family" },
-      ],
+      uses: ["entry"],
+      aliases: [{ kind: "entry", word: "foyer" }],
     });
+    // `dining` is the living row's sibling and does not suppress: both kinds, the alias flagged.
+    expect(classifyLabelUses("Sitting / Dining")).toEqual({
+      uses: ["living", "dining"],
+      aliases: [{ kind: "living", word: "sitting" }],
+    });
+    expect(classifyLabelUses("Family Room")).toEqual({
+      uses: ["living"],
+      aliases: [{ kind: "living", word: "family" }],
+    });
+    // A canonical living word is never dropped ("lounge" is tried before the "family" alias).
+    expect(classifyLabelUses("Family Lounge")).toEqual({ uses: ["living"], aliases: [] });
+    expect(classifyLabelUses("Kitchen / Living")).toEqual({ uses: ["kitchen", "living"], aliases: [] });
   });
 
   it("is token-bounded, and no more than that", () => {
