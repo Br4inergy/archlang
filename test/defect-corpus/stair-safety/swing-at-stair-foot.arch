@@ -1,11 +1,12 @@
 # class: stair-safety
 # origin: audits/2026-10-18-first-contact.md T1 (first-contact-plans/5-townhouse.arch L0: stair st entered at y 9600,
-#   275 mm from the front wall face, beside the g_front swing)
+#   275 mm from the front wall face, with no landing; the g_front swing covers the only floor there; reduced with the
+#   front door in front of the foot)
 # expect: W_SWING_OVER_STAIR
 # status: todo
 # fact: st (x 150-1050, y 200-3600, dir up) is entered at its south end y 3600 and the shell's inner face is y 3875: 275
-#   mm of floor at the foot. d_front is hinged at (1050,4000) and sweeps x 1050-1950, y 3100-4000, so its open leaf
-#   lies along the flight's side and the only floor beside the foot is its swing
+#   mm of floor at the foot. d_front (x 300-1100) is hinged at (300,4000) and swings in with an 800 mm leaf, sweeping
+#   x 300-1100, y 3200-4000: over the whole foot strip x 300-1050, y 3600-3875 and the flight's last 400 mm
 plan "Front door swinging at the foot of the stair" {
   units mm
   grid 50
@@ -13,7 +14,7 @@ plan "Front door swinging at the foot of the stair" {
   wall id=w_v partition thickness 100 { (2200,0) (2200,4000) }
   room id=r_hall at (0,0) size 2200x4000 label "Hall" uses hall
   room id=r_liv at (2200,0) size 3300x4000 label "Living" uses living
-  door id=d_front at (1500,4000) width 900 wall shell hinge near end swing into r_hall
+  door id=d_front at (700,4000) width 800 wall shell hinge near end swing into r_hall
   door id=d_liv at (2200,1500) width 900 wall w_v swing into r_liv
   window at (3800,4000) width 1800 wall shell
   window at (3800,0) width 1800 wall shell
