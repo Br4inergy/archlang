@@ -21,8 +21,9 @@
  * room. Otherwise the next candidate is tried; when a required piece cannot be placed its
  * use is left out whole, and a room with no use left is left empty. Both are reported. The one
  * code the gate does not count is `W_ROOM_MISSING_DEFINING`, which every partial state of a
- * room raises; a use is judged on its finished pieces instead, and left out whole when the
- * piece that defines it found no position (a bath with no room for a bathtub or shower).
+ * room raises; a use is judged on its finished pieces instead. A defining piece the stage's own
+ * candidates cannot place is tried once more with the lint's placement search (the statement the
+ * rule's hint quotes); a use whose defining piece neither places is left out whole, and reported.
  *
  * **Bounded.** The candidate order is fixed, and the number of compile checks is at most
  * {@link furnishCheckBound} — linear in the rooms. There is no search loop and no randomness.
@@ -48,7 +49,8 @@ import { type BBox, doorLandingRect, rectsOverlap } from "./geometry/rect.js";
 import type { RDoor, RFurniture, ROpening, ResolvedPlan, RRoom, RWall, RWindow } from "./ir.js";
 import { lex } from "./lexer.js";
 import { DEFAULT_RULESET, LINT_PROFILES } from "./lint.js";
-import { definingItems } from "./lint/defining.js";
+import { buildLintContext } from "./lint/context.js";
+import { definingItems, pasteSet, useNoun } from "./lint/defining.js";
 import { fmtSource } from "./num-format.js";
 import { parse } from "./parser.js";
 import { BUILTIN_REGISTRY, createRegistry } from "./registry.js";
@@ -373,10 +375,45 @@ export function furnishStage(
      * Accept `placed`, judging each use it furnishes by the pieces that define it
      * (`definingItems`, the reading `W_ROOM_MISSING_DEFINING` lints). The gate does not count
      * that code (see {@link JUDGED_BY_PIECES}); it is judged here, per use, on the finished
-     * set: a use whose defining piece has no position in the room at all (a bath too tight for
-     * a bathtub or a shower beside its WC and basin) is left out whole, and what remains is
-     * checked once more before it is kept.
+     * set. A defining piece the stage's candidates have no position for is tried with the lint's
+     * own placement search ({@link hinted}); a use whose defining piece neither search places is
+     * left out whole, and what remains is checked once more before it is kept.
      */
+    /**
+     * One defining piece placed by the lint's own search (`pasteSet`, the statement the
+     * `W_ROOM_MISSING_DEFINING` hint quotes), measured on the plan with `placed` written, and
+     * kept only when the gate accepts it. A statement in the `at (x,y)` form (a relational room)
+     * is not taken: the stage never writes one. One resolve and one compile check, charged to
+     * the room's budget.
+     */
+    const hinted = (room: RRoom, placed: Placed[], use: UseKind, item: FurnishItem): Placed | null => {
+      if (budget === 0) return null;
+      const src = render(placed.map((p) => p.text));
+      const ir = resolvePlan(src, env).ir;
+      const here = ir?.elements.find((e): e is RRoom => e.kind === "room" && e.id === room.id);
+      if (!ir || !here) return null;
+      const paste = pasteSet(buildLintContext(ir, DEFAULT_RULESET), here, [item]);
+      const text = "stmts" in paste ? paste.stmts[0] : undefined;
+      if (text === undefined || text.includes(" at (")) return null;
+      budget--;
+      if (refusal(render([...placed.map((p) => p.text), text])) !== null) return null;
+      // Only `text` and `use` are read from here on (accept, and the next settle question);
+      // the geometry fields describe no candidate of the stage's own and are left empty.
+      return {
+        item,
+        use,
+        text,
+        rect: { x: 0, y: 0, w: 0, h: 0 },
+        strip: null,
+        edge: null,
+        middle: false,
+        against: false,
+        lo: 0,
+        hi: 0,
+        depth: 0,
+      };
+    };
+
     const settle = (room: RRoom, uses: UseKind[], placed: Placed[], leftOutNotes: () => void): void => {
       const families = new Set(placed.flatMap((p) => servedBy(p.text.split(" ")[1] ?? "")));
       const holds = (i: FurnishItem): boolean => [i.category, ...(i.or ?? [])].some((w) => families.has(familyOf(w)));
@@ -386,7 +423,14 @@ export function furnishStage(
       // as it was (the lint then reports the room).
       for (const use of [...new Set(placed.map((p) => p.use))])
         for (const item of definingItems(use))
-          if (!holds(item) && site.candidates(item, use, placed).length === 0) lacking.push({ use, item });
+          if (!holds(item) && site.candidates(item, use, placed).length === 0) {
+            // The stage's own candidates (corners and wall middles, beside the run it already
+            // placed) have none: ask the lint's placement search, the one the rule's hint
+            // quotes, before giving the use up.
+            const extra = hinted(room, placed, use, item);
+            if (extra) placed = [...placed, extra];
+            else lacking.push({ use, item });
+          }
       if (lacking.length === 0) {
         accept(room, uses, placed);
         leftOutNotes();
@@ -396,7 +440,7 @@ export function furnishStage(
       const remaining = placed.filter((p) => !out.has(p.use));
       const words = (i: FurnishItem): string => [i.category, ...(i.or ?? [])].map((w) => `\`${w}\``).join(" or ");
       const why = (l: { use: UseKind; item: FurnishItem }): string =>
-        `no position for its ${words(l.item)}, the piece that defines a ${l.use} room (\`${JUDGED_BY_PIECES}\`)`;
+        `furnish found no position for its ${words(l.item)}, the piece that defines a ${useNoun(l.use)} (\`${JUDGED_BY_PIECES}\`)`;
       let keep = remaining.length > 0 && budget > 0;
       if (keep) {
         budget--;

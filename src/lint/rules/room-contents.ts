@@ -15,7 +15,7 @@ import { distPointToWallSegment } from "../../geometry.js";
 import type { RFurniture, RRoom } from "../../ir.js";
 import { fmt2 } from "../../num-format.js";
 import type { LintContext, LintRule } from "../context.js";
-import { definingItems, itemWords, pasteSet } from "../defining.js";
+import { definingItems, itemWords, pasteSet, useNoun } from "../defining.js";
 import { areaM2, lacksZoneFixture, pasteFailureWhy, roomHasWindow } from "./per-room.js";
 
 // ---------------------------------------------------------------------------
@@ -126,15 +126,6 @@ export const habitableNoWindow: LintRule = {
 // W_ROOM_MISSING_DEFINING
 // ---------------------------------------------------------------------------
 
-/** The room nouns a message names a use by. */
-const NOUN: Partial<Record<UseKind, string>> = {
-  bedroom: "bedroom",
-  dining: "dining room",
-  kitchen: "kitchen",
-  bath: "bathroom",
-  wc: "WC",
-};
-
 const spoken = (category: string): string => category.replace(/_/g, " ");
 
 /**
@@ -174,7 +165,7 @@ export const roomMissingDefining: LintRule = {
       const items = missing.flatMap((m) => m.items);
       const pieces = [...new Set(held.map((f) => spoken(f.category)))].join(", ");
       const lacks = items.map((i) => `no ${itemWords(i).map(spoken).join(" or ")}`).join(" and ");
-      const nouns = missing.map((m) => `a ${NOUN[m.use] ?? m.use}`).join(" and ");
+      const nouns = missing.map((m) => `a ${useNoun(m.use)}`).join(" and ");
       const paste = pasteSet(ctx, r, items);
       const add =
         "stmts" in paste

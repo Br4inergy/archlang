@@ -480,10 +480,12 @@ ${extra}}
     ).toEqual(["kitchen_sink", "stove"]);
   });
 
-  it("fz-bath-1800x4200: no position for a bathtub or shower beside the WC and basin, so the bath is left empty", () => {
-    // The only free wall run is the west wall, and its middle carries the window: the stage
-    // never stands a tall piece (a shower) in front of a window, and the corners are taken by
-    // the door's swing and the WC's front clearance. `main` wrote the WC and basin alone.
+  it("fz-bath-1800x4200: the stage's own candidates have no bathtub position, the lint's search has one", () => {
+    // The stage tries a bathtub along the run it already placed (WC, basin on the east wall)
+    // and at corners and wall middles; the west wall's middle carries the window, where it never
+    // stands a tall piece. The lint's placement search (the statement the W_ROOM_MISSING_DEFINING
+    // hint quotes) finds the west wall for a bathtub, and the gate accepts it. `main` wrote the
+    // WC and basin alone.
     const src = plan(
       1800,
       4200,
@@ -491,10 +493,23 @@ ${extra}}
       "door id=d_x at (800,4200) width 800 wall w_mid swing in",
       "  window at (0,1950) width 600 wall shell\n",
     );
+    expect(words(src)).toEqual(["wc", "basin", "bathtub"]);
+    const r = finish(src, { only: "furnish" });
+    expect(r.changes.at(-1)!.text).toBe("furniture bathtub in r_x anchor left flush size 700x1700");
+    expect(r.unresolved).toEqual([]);
+    expect(lint(r.source).map((d) => d.code)).not.toContain("W_ROOM_MISSING_DEFINING");
+  });
+
+  it("a bath where neither search finds a bathtub or shower position is left empty, and the note says so", () => {
+    // From the review's fuzz corpus A: 1.95 x 2.25 m, its door swinging out. `main` wrote a WC
+    // and a basin; neither the stage's candidates nor the lint's search place a bathtub or
+    // shower beside them without a new code.
+    const src = plan(1950, 2250, "bath", "door id=d_x at (1400,2250) width 800 wall w_mid swing out", "");
     expect(words(src)).toEqual([]);
     const r = finish(src, { only: "furnish" });
     expect(r.unresolved.map((u) => u.reason)).toEqual([
-      '"r_x" was left empty — no position for its `bathtub` or `shower`, the piece that defines a bath room (`W_ROOM_MISSING_DEFINING`)',
+      '"r_x" was left empty — furnish found no position for its `bathtub` or `shower`, the piece that defines a bathroom (`W_ROOM_MISSING_DEFINING`)',
     ]);
+    expect(lint(r.source).map((d) => d.code)).toContain("W_ROOM_NO_FIXTURE");
   });
 });

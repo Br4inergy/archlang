@@ -64,6 +64,16 @@ export function roomDefiningItems(r: RRoom): FurnishItem[] {
   return out;
 }
 
+/** The room noun a message names a use by: "a bathroom", not "a bath room". */
+const NOUN: Partial<Record<UseKind, string>> = {
+  bedroom: "bedroom",
+  dining: "dining room",
+  kitchen: "kitchen",
+  bath: "bathroom",
+  wc: "WC",
+};
+export const useNoun = (use: UseKind): string => NOUN[use] ?? use;
+
 /** An item's words: its category, then the ones tried in its place. */
 export const itemWords = (i: FurnishItem): string[] => [i.category, ...(i.or ?? [])];
 

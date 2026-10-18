@@ -285,7 +285,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/garden-house.arch", "32889de233fcb6d33704ff9daa31a098ec33f0febdc14bf0ea74f52e2fe93976"], // re-measured, see header
   ["examples/garden-loft.arch", "eb6ba7bdcd33231cd0cfd2072a1a99e2b416be039e6efc2cc0a5ea76129738f2"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
-  ["examples/hillside-villa.arch", "caf0bb3ec1414ab5d4d59922a5ce518c95b75af5d6492e3f38972b15fa5d9d7d"], // re-measured, see header
+  ["examples/hillside-villa.arch", "5b873cf35d668baac100a1624f6374bdaed53354fbbc585b81e67944d572ce12"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
   ["examples/laneway-house.arch", "d87dea46b06ea13b539e0a7c03674038e15762d15948a7bc27632e1b8afd11e2"],
   ["examples/library.arch", "cd5e1d08ae576e6303bc71ededc689e3033456929ffa3bee1568bafc01d45c33"],

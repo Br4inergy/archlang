@@ -1092,11 +1092,11 @@
  *     their numbers (header sentence updated). SVG: window + cut; `describe()`: window.
  *   - `hillside-villa`: the 28.8 m² "Living"'s arc bay was solid → `window on shell at 34950
  *     width 1500` glazes the bay, plus `dim (0,10800)->(3000,10800) offset 300` (an opening on a
- *     curve is on no `dims auto` chain, `W_OPENING_NOT_DIMENSIONED`); one header sentence ("`site` draws
- *     nothing; it only names directions.") dropped and "one manual dim" → "two manual dims", so
- *     the playground's chat link still fits (7912 of 7920). `compile().diagnostics` keeps its one
- *     `W_DRAWING_OVERFLOW`, its span shifted by the bytes removed above it. The rule reads a window on an arc edge as
- *     attribution unknown (PS0.12) and skips the room. SVG: the bay wall's cut, the window
+ *     curve is on no `dims auto` chain, `W_OPENING_NOT_DIMENSIONED`); the header's door sentence is
+ *     reworded more tightly (every claim kept) and "one manual dim" reads "two manual dims", so the
+ *     playground's chat link still fits (7918 of 7920). `compile().diagnostics` keeps its one
+ *     `W_DRAWING_OVERFLOW`, and `describe()` one source span, shifted by the bytes the header
+ *     edit moved. The rule reads a window on an arc edge as attribution unknown (PS0.12) and skips the room. SVG: the bay wall's cut, the window
  *     glyph and the dim; `describe()`: the window (`room: null`). Its `lint()` is the previous
  *     seven codes, field by field, spans shifted by the bytes added above them.
  *   - `practice-office`: the "Break Room" (`uses kitchen dining`) had a sink and no hob →
@@ -1129,7 +1129,7 @@ export const BASELINE: [string, string][] = [
   ["garden-house", "345f9dd2552ea9165326cab1b33825bcb85eab1a9b4fdea7e566b485985447d3"], // re-measured, see header
   ["garden-loft", "7161ddddda40ba6f520128b2196fdbba997e5f3b82674dbf2ee09495d763dc1d"],
   ["hexagon-pavilion", "92d343afbb62315ad0014b95de9f4a8b26ccffbc14093b04c5956b689f850252"],
-  ["hillside-villa", "d3949dea3b07a3cbd7f6debb1f4227d935896476acd60d2653d4c39c2172d051"], // re-measured, see header
+  ["hillside-villa", "062ac3d003c0c5e39f0be9df6f39f37f23bf5c6b6fd9dde1813071ad540c9300"], // re-measured, see header
   ["imports", "4b0151513963a656e52ac84c6fd80eb35c9820ae101921420cb8d5c9c13c0b70"],
   ["laneway-house", "62b3fdb835ccc7eb565f982ed7930d99cfced87bbf4ae9d6bb5410e4945d255c"],
   ["library", "b1afe29423122d4d161d5ba51c8d4af703f47efd8299fdfb265df1d8f8e402fd"],
@@ -1177,7 +1177,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["garden-house", "5f880862d0261a5f892ad0aa5b37e728961b887eb129ce33304ab1af470c0c54"], // re-measured, see header
   ["garden-loft", "77bddbf7b08d49b0845e5268bb267a602b93002dfa20175e9218e5156dc435d1"],
   ["hexagon-pavilion", "6e8005c3a0af9b80598574e77141301a957b4a293ba8d5de6cc1effb00693494"],
-  ["hillside-villa", "a28084f7492574f5ae3769a8db33638a1018db7afbcf8860e144c3e53bdefab1"], // re-measured, see header
+  ["hillside-villa", "76711e12045008ce0037b8ec2a0088cbdc82a5503494695f836dba57f82ffa0b"], // re-measured, see header
   ["imports", "183bf4ec261e6650b21c4771b64fe924bf5c6eabd3ea1b8d3bbdac71b2900ac3"],
   ["laneway-house", "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0"],
   ["library", "b2032b46514e9563ba3106e23869db32fef49e8241e65b7c84f6108a2cf4af08"],

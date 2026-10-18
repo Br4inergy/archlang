@@ -519,7 +519,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["088bafd17d2c504adc4aa7690a14cc295b02337099787f3e2111c5e91f133e33", "garden-house"],
         ["33a8fdea6f6aaab2ef4b42bdcf137312ac3b0b63818c9a3bc347cbb176a829ef", "garden-loft"],
         ["57d4237846d3b666c6806da6ee2bf4cadeb68a2e1d39723c6a024e5b415d5faf", "hexagon-pavilion"],
-        ["be057b348026108b74852402f077001f97af7523674f8035b3055128ab2b7538", "hillside-villa"], // PS2.9 source edit, see above
+        ["f2d2ebe4b35b6656f8b937c49777a12a0945e66fb741d264db6d21b7df2a4cf5", "hillside-villa"], // PS2.9 source edit, see above
         ["d90d58c40a4068427ef23c066acba5d50d8e99a801b6ce890da3ac9dc01a9554", "imports"],
         ["d04b5112a75e5f493257685ab80f161288f82a78eedbb47ec0bc92950ed928e3", "laneway-house"],
         ["825e5a65cedc04cca28384d9c6ec5bf79c9ed7efff56be8a20b36208c2bc5cd7", "library"],
