@@ -5,6 +5,9 @@ import { compile, describe as describePlan, ERROR_CATALOG, lint } from "../src/i
 import { DEFAULT_RULESET, LINT_PROFILES } from "../src/lint.js";
 import { KITCHEN_FIX, WET_FIX } from "../src/lint/rules/per-room.js";
 import type { World } from "../src/world.js";
+import { resolvePlan } from "../src/analyze.js";
+import { computeCirculation } from "../src/analyze/circulation.js";
+import { buildLintContext } from "../src/lint/context.js";
 
 /**
  * Four lint diagnostics whose text an agent must be able to act on WITHOUT a second guess.
@@ -439,6 +442,40 @@ function widenIn(src: string, hints: readonly string[]): string | null {
 }
 
 /** How many rooms labelled `label` read under `min` (or are blocked), over every storey. */
+/**
+ * Each storey's `describe()` facts (rooms + circulation), with the circulation replaced by the
+ * walk `W_PATH_TOO_NARROW` reads where the two differ: on a storey that names a main entrance
+ * and keeps fewer ways in (plan-soundness PS0.10, `src/analyze/entrance.ts`), the rule judges
+ * the walk from the main entrance, while `describe().circulation` measures each room from its
+ * nearest entrance. Such a storey has a front door of its own, so no shaft arrival enters it.
+ */
+function ruleStoreys(src: string, world: World | undefined): unknown[] {
+  type S = { circulation?: unknown };
+  const facts = describePlan(src, world ? { world } : {}) as S & { levels?: S[] };
+  const storeys = facts.levels ?? [facts];
+  const { ir, levels } = resolvePlan(src, world ? { world } : {});
+  const irs = levels.length > 0 ? levels.map((l) => l.ir) : ir ? [ir] : [];
+  return storeys.map((s, i) => {
+    const st = irs[i];
+    if (!st || !s.circulation) return s;
+    const ctx = buildLintContext(st, DEFAULT_RULESET);
+    if (ctx.walkAccess() === ctx.access()) return s;
+    const walk = computeCirculation(
+      ctx.rooms,
+      ctx.ir.walls,
+      ctx.doors,
+      ctx.openings,
+      ctx.furniture,
+      ctx.walkAccess(),
+      ctx.rules.tolMm,
+      undefined,
+      ctx.verticals,
+      ctx.voids,
+    );
+    return { ...s, circulation: walk };
+  });
+}
+
 function narrowRooms(src: string, world: World | undefined, label: string, min: number): number {
   type Storey = {
     rooms?: { id: string; label?: string }[];
@@ -447,9 +484,8 @@ function narrowRooms(src: string, world: World | undefined, label: string, min: 
       blocked?: { roomId: string }[];
     } | null;
   };
-  const facts = describePlan(src, world ? { world } : {}) as Storey & { levels?: Storey[] };
   let n = 0;
-  for (const s of facts.levels ?? [facts]) {
+  for (const s of ruleStoreys(src, world) as Storey[]) {
     const c = s.circulation;
     if (!c) continue;
     for (const r of s.rooms ?? []) {
@@ -680,10 +716,9 @@ describe("W_PATH_TOO_NARROW — names only doors whose widening clears the room,
             blocked?: { roomId: string }[];
           } | null;
         };
-        const facts = describePlan(src, { world }) as Storey & { levels?: Storey[] };
         const allowed = new Map<string, number>();
         const bump = (k: string) => allowed.set(k, (allowed.get(k) ?? 0) + 1);
-        for (const s of facts.levels ?? [facts]) {
+        for (const s of ruleStoreys(src, world) as Storey[]) {
           const c = s.circulation;
           if (!c) continue;
           const label = (id: string) => s.rooms?.find((r) => r.id === id)?.label ?? id;

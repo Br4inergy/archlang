@@ -421,6 +421,16 @@ export const RULE_CLASS: Readonly<Record<string, RuleClass>> = {
   "room-missing-defining": "invariant",
 };
 
+/**
+ * Rules that judge a route from the storey's MAIN entrance (plan-soundness PS0.10,
+ * `src/analyze/entrance.ts`) on top of their {@link RuleClass}. With a `site`, the main entrance
+ * is the door whose wall faces `site.street`, a compass fact: turning the building under a
+ * fixed `north` can make another door the one on the street. So these rules are compared only
+ * when the entrance gate holds (no `site`, north co-rotated, or a translation), as
+ * `describe().access.mainEntrance` is.
+ */
+export const ENTRANCE_RULES: ReadonlySet<string> = new Set(["path-too-narrow", "room-via-private", "wet-room-door"]);
+
 export const ruleClass = (name: string): RuleClass => {
   const cls = RULE_CLASS[name];
   if (cls === undefined) throw new Error(`lint rule "${name}" has no RULE_CLASS — classify it`);
@@ -570,7 +580,7 @@ function keyed<T>(items: readonly T[] | undefined, idOf: (t: T) => string): [str
 export function summaryFacts(
   s: SceneSummary,
   src: string,
-  gate: { sheet: boolean; scale: boolean } = { sheet: true, scale: true },
+  gate: { sheet: boolean; scale: boolean; entrance?: boolean } = { sheet: true, scale: true },
 ): Facts {
   const f: Facts = new Map();
   const inv = (k: string, value: unknown): void => void f.set(k, { kind: "inv", value });
@@ -681,7 +691,18 @@ export function summaryFacts(
 
   inv("fences", s.fences ?? null);
   inv("heights", s.heights ?? null);
-  inv("access", s.access);
+  {
+    // The main entrance is a compass fact when the plan has a `site` (the street-side door),
+    // so it is its own fact, compared under the entrance gate (`ENTRANCE_RULES`); the rest of
+    // the access graph is invariant.
+    const { mainEntrance, rooms, ...access } = s.access;
+    inv("access", { ...access, rooms: rooms.map(({ depthFromMainEntrance: _d, ...r }) => r) });
+    if (gate.entrance !== false)
+      inv("access.mainEntrance", {
+        mainEntrance: mainEntrance ?? null,
+        depths: rooms.map((r) => [r.id, r.depthFromMainEntrance]),
+      });
+  }
   {
     const { net_floor_area_m2, ...totals } = s.totals;
     inv("totals", totals);
@@ -732,12 +753,13 @@ function sheetStatementSpans(src: string): Set<string> {
  */
 export function lintFacts(
   obs: Observation,
-  gate: { raster: boolean; compass: boolean; scale: boolean },
+  gate: { raster: boolean; compass: boolean; scale: boolean; entrance?: boolean },
   src: string = obs.src,
 ): Facts {
   const f: Facts = new Map();
   for (const r of obs.lint) {
     const cls = ruleClass(r.name);
+    if (ENTRANCE_RULES.has(r.name) && gate.entrance === false) continue;
     if (cls === "raster" && !gate.raster) continue;
     if (cls === "compass" && !gate.compass) continue;
     if (cls === "scale" && !gate.scale) continue;
@@ -1107,6 +1129,9 @@ export interface Comparison {
   sheet: boolean;
   /** Compare the operative scale and scale-class rules (fixed scale, or axes kept)? */
   scale: boolean;
+  /** Compare the main-entrance facts and {@link ENTRANCE_RULES} (no `site`, north co-rotated,
+   *  or a translation)? */
+  entrance: boolean;
 }
 
 /**
@@ -1118,20 +1143,22 @@ export interface Comparison {
 export function gateFor(
   g: GroupElement,
   f: Frame,
-  opts: { aligned: boolean; coNorth?: boolean; autoScale?: boolean },
+  opts: { aligned: boolean; coNorth?: boolean; autoScale?: boolean; site?: boolean },
 ): Comparison {
   return {
     raster: opts.aligned || g.translate === true,
     compass: opts.coNorth === true || g.translate === true,
     sheet: !swapsAxes(f),
     scale: !swapsAxes(f) || opts.autoScale !== true,
+    entrance: opts.site !== true || opts.coNorth === true || g.translate === true,
   };
 }
 
 /** Everything {@link gateFor} needs to know about P₀. */
-export const gateFacts = (obs0: Observation): { aligned: boolean; autoScale: boolean } => ({
+export const gateFacts = (obs0: Observation): { aligned: boolean; autoScale: boolean; site: boolean } => ({
   aligned: latticeAligned(obs0.ir),
   autoScale: obs0.summary.sheet?.scale_auto === true,
+  site: obs0.summary.site !== undefined,
 });
 
 /**

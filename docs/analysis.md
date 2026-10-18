@@ -275,6 +275,15 @@ openings) and walks it from the exterior. For the studio:
 | `rooms[].depthFromEntrance` | how many connectors you pass through from the nearest entrance (`1` = opens straight off it); `null` if you can't get there |
 | `rooms[].reachable` | can this room be reached from the exterior at all? |
 | `rooms[].bottleneckClearWidth` | the **narrowest clear width** along the widest path in from the entrance — the real constraint for moving furniture or a wheelchair (a widest-path search, so it reports the best route's worst pinch) |
+| `mainEntrance` | which entrance is the **front door**: `{ door, basis, candidates }`. **Present only on a storey with more than one entrance.** The candidates are the exterior doors with a leaf that are not a `garage` door and do not open onto an `outdoor balcony`. With `site`, the one whose wall faces `site.street` (`basis: "street"`; of several, the widest). Otherwise the widest (`"widest"`). The choice is refused, `door: null`, when it is not plain: two equally wide (`"tie"`), a widest door that is not a hinged leaf while a hinged one exists (`"kind-conflict"`: a patio slider wider than the front door reads the same as a sliding shop front), or no candidate (`"no-candidate"`). `candidates` lists the doors the deciding step compared |
+| `rooms[].depthFromMainEntrance` | connectors passed from the main entrance (its room is `1`) **without going outside**; `null` for a room reached only through another door from outside. Present only when `mainEntrance.door` names a door. `depthFromEntrance` is unchanged beside it |
+
+When a main entrance is named, lint's `W_PATH_TOO_NARROW` and `W_ROOM_VIA_PRIVATE` judge a
+route from it: another door from outside counts as a way in only into a room the main entrance
+cannot reach from inside, or when it is a `garage` door. So a patio or balcony door no longer
+hides a route blocked from the front door. Which rooms are reachable at all does not change.
+`circulation` below, and `W_CIRCUITOUS_PATH`'s ratio, still measure each room from its nearest
+entrance.
 
 This is what makes a sealed-off room or a wheelchair-impassable corridor visible as
 *data* — the playground's Describe tab draws it as a reachability diagram.

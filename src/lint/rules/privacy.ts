@@ -29,7 +29,6 @@ import type { Point, UseKind } from "../../ast.js";
 import {
   accessDigraph,
   type AccessEdge,
-  doorFacesBalcony,
   EXTERIOR_NODE,
   isBedroom,
   reachFrom,
@@ -39,11 +38,12 @@ import {
   roomUses,
   wetRoomsOnlyViaBedroom,
 } from "../../analyze.js";
+import { entranceInputs, entranceWays } from "../../analyze/entrance.js";
 import type { Digraph } from "../../algebra/paths.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import type { WallSegment } from "../../geometry.js";
 import { collinearOverlapLength, polygonEdges } from "../../geometry/polygon.js";
-import type { RDoor, ROpening, ROutdoor, RRoom } from "../../ir.js";
+import type { RDoor, RRoom } from "../../ir.js";
 import { fmt2 } from "../../num-format.js";
 import type { LintContext, LintRule } from "../context.js";
 
@@ -208,7 +208,8 @@ interface Facts {
   arrivals: string[];
   /** Rooms a connector to the ground opens into (a balcony door is not one), in edge order. */
   ground: Array<{ room: string; doorId: string; kind: AccessEdge["kind"] }>;
-  /** The ways in, each at depth 1: the ground rooms, then the shaft arrivals. */
+  /** The ways in, each at depth 1: the ground rooms the walk keeps (`LintContext.walkWays`,
+   *  PS0.10), then the shaft arrivals. */
   sources: Array<readonly [string, number]>;
   /** Is there a way in (a door to the ground, or a shaft from a reachable storey)? */
   wayIn: boolean;
@@ -235,18 +236,19 @@ function factsOf(ctx: LintContext): Facts {
     const k = privateKind(uses.get(r.id)!);
     if (k) priv.set(r.id, k);
   }
-  const balconies = ctx.ir.elements.filter((e): e is ROutdoor => e.kind === "outdoor" && e.surface === "balcony");
-  const connectors = new Map<string, RDoor | ROpening>(ctx.connectors.map((c) => [c.id, c]));
-  const ground: Facts["ground"] = [];
-  for (const e of edges) {
-    const [a, b] = e.between;
-    if ((a === EXTERIOR_NODE) === (b === EXTERIOR_NODE)) continue;
-    const room = a === EXTERIOR_NODE ? b : a;
-    const c = connectors.get(e.doorId);
-    if (!roomRects.has(room) || (c && doorFacesBalcony(c, rooms, balconies))) continue;
-    ground.push({ room, doorId: e.doorId, kind: e.kind });
-  }
-  const sources = [...ground.map((w) => [w.room, 1] as const), ...arrivals.map((id) => [id, 1] as const)];
+  // The storey's ways in, classified once for every rule that reads them
+  // (`src/analyze/entrance.ts`): a door onto an `outdoor balcony` is not a way in from the ground.
+  const ground: Facts["ground"] = entranceWays(access(), entranceInputs(ctx.ir, roomRects))
+    .filter((w) => roomRects.has(w.room) && !w.balcony)
+    .map((w) => ({ room: w.room, doorId: w.doorId, kind: w.kind }));
+  // A route is judged from the main entrance (PS0.10): another door from outside is a way in only
+  // into a room the main entrance does not reach without going outside, so a garden door cannot
+  // hide a route through a bedroom. Every way in, when the storey names no main entrance.
+  const keep = ctx.walkWays();
+  const sources = [
+    ...ground.filter((w) => keep === null || keep.has(w.doorId)).map((w) => [w.room, 1] as const),
+    ...arrivals.map((id) => [id, 1] as const),
+  ];
   return {
     g,
     edges,

@@ -57,6 +57,7 @@ import {
 import { outerFaceBounds, segmentsOfWall, type WallSegment } from "./geometry.js";
 import type { PaperOrientation, PaperSize } from "./sheet.js";
 import { computeCirculation, type CirculationModel } from "./analyze/circulation.js";
+import { entranceInputs, withMainEntrance } from "./analyze/entrance.js";
 import { symmetryFacts, type SymmetryFacts } from "./analyze/symmetry.js";
 import { syntaxFacts, type SyntaxFacts } from "./analyze/syntax.js";
 import { roomTypeForUses, buildInputGraph } from "./plan-json.js";
@@ -110,7 +111,7 @@ export type { SyntaxFacts, SyntaxRoom } from "./analyze/syntax.js";
 // `describe()` is the only public value that surfaces them ({@link SceneSummary.access}),
 // so they leave through the same door they arrive by. Without this a consumer could read
 // `summary.access.rooms[0].reachable` but never *name* the type of the thing it holds.
-export type { AccessEdge, AccessGraph, AccessRoomNode } from "./analyze.js";
+export type { AccessEdge, AccessGraph, AccessRoomNode, MainEntranceBasis, MainEntranceFact } from "./analyze.js";
 
 // Likewise for the door kind: it is a grammar token type, but {@link DoorSummary.kind} is
 // where a consumer of the facts channel meets it.
@@ -1301,7 +1302,12 @@ function summarize(
     return { id: f.id, style: f.style, length_mm: r2(len), closed: f.closed };
   });
 
-  const access = buildDoorAccessGraph(roomEls, doorEls, tol, undefined, openingEls);
+  // The main entrance (PS0.10) rides on the access graph, appended, only on a storey with more
+  // than one entrance. Circulation keeps measuring each room from its nearest entrance.
+  const access = withMainEntrance(
+    buildDoorAccessGraph(roomEls, doorEls, tol, undefined, openingEls),
+    entranceInputs(ir, roomRects),
+  );
   const circulation = computeCirculation(
     roomEls,
     ir.walls,

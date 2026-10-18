@@ -14,28 +14,48 @@
  * way in MEASURED rather than printed as a zero, because a fabricated 0 mm is the same
  * defect 5.8 was filed over, one digit smaller.
  *
- * Both rules read the same circulation model, so it is built once per `lint()` run and
+ * The models are built at most once per `lint()` run and
  * memoised on the (per-run) LintContext identity.
+ *
+ * `W_PATH_TOO_NARROW` judges the walk from the storey's MAIN entrance when it names one
+ * (plan-soundness PS0.10, `src/analyze/entrance.ts`): its model, the door attribution and its
+ * re-measures all read `LintContext.walkAccess()`, the access graph with only the ways in the
+ * walk keeps, so a patio or balcony door no longer hides a route blocked from the front door.
+ * `W_CIRCUITOUS_PATH` keeps the nearest-entrance model `describe().circulation` reports (backlog
+ * C.3); the two are one model whenever the storey keeps every way in.
  */
 
 import { type CirculationModel, computeCirculation, roomBottlenecks } from "../../analyze/circulation.js";
 import { type AccessEdge, buildDoorAccessGraph, EXTERIOR_NODE } from "../../analyze.js";
+import { walkAccessGraph } from "../../analyze/entrance.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import type { LintContext, LintRule } from "../context.js";
 import { mm, shortfall } from "../measure.js";
 import { passableDoorWidthMm } from "./doors.js";
 
 const modelCache = new WeakMap<LintContext, CirculationModel | null>();
+const nearestCache = new WeakMap<LintContext, CirculationModel | null>();
 
-function circulationOf(ctx: LintContext): CirculationModel | null {
-  if (modelCache.has(ctx)) return modelCache.get(ctx) ?? null;
+/**
+ * The circulation model a rule reads: `"walk"` is judged from the ways in the walk keeps
+ * (`LintContext.walkAccess()`, the main entrance's, PS0.10), which `W_PATH_TOO_NARROW` reads;
+ * `"nearest"` from every entrance, each room from its nearest, which `W_CIRCUITOUS_PATH` reads
+ * (owner decision, backlog C.3: one record, one route, the ratio taken from the nearest
+ * entrance, as `describe().circulation` reports it). The same model when the storey keeps every
+ * way in, so it is built once.
+ */
+function circulationOf(ctx: LintContext, from: "walk" | "nearest" = "walk"): CirculationModel | null {
+  const access = from === "walk" ? ctx.walkAccess() : ctx.access();
+  if (from === "nearest" && access === ctx.walkAccess()) return circulationOf(ctx, "walk");
+  const cache = from === "walk" ? modelCache : nearestCache;
+  if (cache.has(ctx)) return cache.get(ctx) ?? null;
   const model = computeCirculation(
     ctx.rooms,
     ctx.ir.walls,
     ctx.doors,
     ctx.openings,
     ctx.furniture,
-    ctx.access(),
+    access,
     ctx.rules.tolMm,
     undefined,
     ctx.verticals,
@@ -45,7 +65,7 @@ function circulationOf(ctx: LintContext): CirculationModel | null {
     // landings as the storey's way in.
     ctx.building.arrivalShafts,
   );
-  modelCache.set(ctx, model);
+  cache.set(ctx, model);
   return model;
 }
 
@@ -59,7 +79,34 @@ function circulationOf(ctx: LintContext): CirculationModel | null {
  * intrusions, swings, doorway landings and overlaps, not a route pinch, and pointing at a
  * tool that would report "nothing to do" is worse than silence.
  */
-const narrowHints = (min: number, doors: readonly AccessEdge[] | null, ctx: LintContext): string[] =>
+const narrowHints = (min: number, doors: readonly AccessEdge[] | null, ctx: LintContext): string[] => [
+  ...narrowRemedies(min, doors, ctx),
+  ...mainEntranceHint(ctx),
+];
+
+/**
+ * The line saying where the walk was measured from, when the storey names a main entrance and
+ * another door from outside is not a way in for it (PS0.10, `src/analyze/entrance.ts`), so a
+ * reader who sees a patio door on the drawing knows why the walk does not start there. Ids are
+ * hints-only; nothing on a storey whose ways in are all kept.
+ */
+function mainEntranceHint(ctx: LintContext): string[] {
+  const fact = ctx.mainEntrance();
+  const keep = ctx.walkWays();
+  if (fact === null || fact.door === null || keep === null) return [];
+  const dropped = ctx.access().entrances.filter((id) => !keep.has(id));
+  if (dropped.length === 0) return [];
+  const why =
+    fact.basis === "street"
+      ? "the door on the `site` street side"
+      : "the widest door from outside, garage and balcony doors aside";
+  const list = dropped.map((id) => `\`${id}\``).join(", ");
+  return [
+    `Measured from the main entrance \`${fact.door}\` (${why}). ${dropped.length === 1 ? "The other door from outside" : "The other doors from outside"}, ${list}, ${dropped.length === 1 ? "is" : "are"} not counted as a way in, because the main entrance reaches ${dropped.length === 1 ? "its room" : "their rooms"} from inside.`,
+  ];
+}
+
+const narrowRemedies = (min: number, doors: readonly AccessEdge[] | null, ctx: LintContext): string[] =>
   doors === null
     ? [
         `Widen the tightest door/opening on the way to at least ${mm(min)} mm.`,
@@ -244,7 +291,7 @@ function attributeBottlenecks(
   warnedRooms: readonly string[],
 ): Map<string, AccessEdge[]> {
   const min = ctx.rules.minPathClearWidthMm;
-  const edges = ctx.access().edges.filter((e) => !e.ambiguous && e.between[0] !== "" && e.between[1] !== "");
+  const edges = ctx.walkAccess().edges.filter((e) => !e.ambiguous && e.between[0] !== "" && e.between[1] !== "");
   const tree = bottleneckDoors(ctx, widthOf, edges);
   const candidates = new Map<string, AccessEdge[][]>();
   for (const roomId of warnedRooms) {
@@ -284,7 +331,11 @@ function attributeBottlenecks(
   const measure = (wider: ReadonlyMap<string, number>, own: ReadonlyMap<string, readonly AccessEdge[]>): Measured => {
     const doors = ctx.doors.map((d) => (wider.has(d.id) ? { ...d, width: wider.get(d.id)! } : d));
     const openings = ctx.openings.map((o) => (wider.has(o.id) ? { ...o, width: wider.get(o.id)! } : o));
-    const access = buildDoorAccessGraph(ctx.rooms, doors, ctx.rules.tolMm, undefined, openings);
+    // Judged from the same ways in as the reading it re-measures (PS0.10).
+    const access = walkAccessGraph(
+      buildDoorAccessGraph(ctx.rooms, doors, ctx.rules.tolMm, undefined, openings),
+      ctx.walkWays(),
+    );
     const request = new Map<string, Set<string>>();
     for (const [roomId, set] of own) {
       const mine = new Set(set.map((e) => e.doorId));
@@ -423,7 +474,7 @@ const hopsCache = new WeakMap<LintContext, ReadonlyMap<string, number>>();
 function hopsOf(ctx: LintContext): ReadonlyMap<string, number> {
   const memo = hopsCache.get(ctx);
   if (memo) return memo;
-  const edges = ctx.access().edges.filter((e) => !e.ambiguous);
+  const edges = ctx.walkAccess().edges.filter((e) => !e.ambiguous);
   const hops = new Map<string, number>();
   let frontier = ctx.access().hasEntrance ? [EXTERIOR_NODE] : [...ctx.building.arrivalRooms];
   for (const n of frontier) hops.set(n, 0);
@@ -573,7 +624,7 @@ export const pathTooNarrow: LintRule = {
 export const circuitousPath: LintRule = {
   name: "circuitous-path",
   check(ctx: LintContext): Diagnostic[] {
-    const circ = circulationOf(ctx);
+    const circ = circulationOf(ctx, "nearest");
     if (!circ) return [];
     const { rooms, labelOf, at } = ctx;
     const max = ctx.rules.maxDetourRatio;

@@ -5,8 +5,9 @@
  */
 
 import { type D4, D4_IDENTITY, fromSpelling } from "../algebra/d4.js";
-import type { AccessGraph, RoomBox } from "../analyze.js";
+import type { AccessGraph, MainEntranceFact, RoomBox } from "../analyze.js";
 import { buildDoorAccessGraph, roomBox } from "../analyze.js";
+import { entranceInputs, mainEntranceOf, walkAccessGraph, walkWays } from "../analyze/entrance.js";
 import type { Diagnostic } from "../diagnostics.js";
 import { segmentsOfWall, type WallSegment } from "../geometry.js";
 import type { RDoor, RFurniture, ROpening, RRoom, RVoid, RWindow, ResolvedPlan } from "../ir.js";
@@ -86,6 +87,18 @@ export interface LintContext {
    * a plan `describe().access.hasEntrance` called shut.
    */
   access(): AccessGraph;
+  /** The storey's main entrance, as `describe().access.mainEntrance` reports it (PS0.10), or
+   *  `null` on a storey with one entrance or none. Memoised. */
+  mainEntrance(): MainEntranceFact | null;
+  /**
+   * The ways in a WALK is judged from (plan-soundness PS0.10, `src/analyze/entrance.ts`): the
+   * main entrance and every other entrance whose room the main entrance does not reach without
+   * going outside, or `null` (every way in) when the storey names no main entrance. Memoised.
+   */
+  walkWays(): ReadonlySet<string> | null;
+  /** {@link access} with only the {@link walkWays} entrance edges: the graph the circulation
+   *  rules walk. {@link access} itself when `walkWays()` is `null`. Memoised. */
+  walkAccess(): AccessGraph;
   labelOf(r: RRoom): string;
   /**
    * The location half of a diagnostic raised ON an element: its byte `span` **and the
@@ -139,7 +152,24 @@ export function buildLintContext(
   const openings = ir.elements.filter((e): e is ROpening => e.kind === "opening");
   const furniture = ir.elements.filter((e): e is RFurniture => e.kind === "furniture");
   let accessMemo: AccessGraph | null = null;
+  let waysMemo: { fact: MainEntranceFact | null; keep: ReadonlySet<string> | null } | null = null;
+  let walkMemo: AccessGraph | null = null;
   let framesMemo: Map<string, D4> | null = null;
+  const roomRects = new Map<string, RoomBox>(rooms.map((r) => [r.id, roomBox(r)]));
+  const access = (): AccessGraph =>
+    (accessMemo ??= buildDoorAccessGraph(rooms, doors, rules.tolMm, undefined, openings));
+  const mainOf = (): MainEntranceFact | null => {
+    if (waysMemo === null) {
+      const inp = entranceInputs(ir, roomRects);
+      const fact = mainEntranceOf(access(), inp);
+      waysMemo = { fact, keep: walkWays(access(), inp, fact) };
+    }
+    return waysMemo.fact;
+  };
+  const walkWaysOf = (): ReadonlySet<string> | null => {
+    mainOf();
+    return waysMemo!.keep;
+  };
   return {
     ir,
     rules,
@@ -152,10 +182,13 @@ export function buildLintContext(
     voids: ir.elements.filter((e): e is RVoid => e.kind === "void"),
     building,
     connectors: [...doors, ...openings],
-    roomRects: new Map<string, RoomBox>(rooms.map((r) => [r.id, roomBox(r)])),
+    roomRects,
     wallSegs: ir.walls.flatMap((w) => segmentsOfWall(w).map((s) => ({ ...s }))),
     wallOpenings: ir.walls.flatMap((w) => w.openings),
-    access: () => (accessMemo ??= buildDoorAccessGraph(rooms, doors, rules.tolMm, undefined, openings)),
+    access,
+    mainEntrance: mainOf,
+    walkWays: walkWaysOf,
+    walkAccess: () => (walkMemo ??= walkAccessGraph(access(), walkWaysOf())),
     labelOf: (r) => r.label ?? r.id,
     at: (el) => ({
       ...(el.span ? { span: el.span } : {}),

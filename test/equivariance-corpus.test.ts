@@ -159,7 +159,7 @@ describe("the oracle's own construction", () => {
     const obs0 = observe(wrapperSource(rel, null));
     const obsG = observe(wrapperSource(rel, elementNamed("r270")));
     const wrong = frameFor(elementNamed("r90"), astOf(rel).grid);
-    const gate = { raster: false, compass: false, sheet: true, scale: true };
+    const gate = { raster: false, compass: false, sheet: true, scale: true, entrance: true };
     const vs = compareObservations(obs0, obsG, wrong, "up", gate).map((v) => v.path);
     expect(vs).toContain("rooms[].bbox");
     expect(vs).toContain("windows[].facing");

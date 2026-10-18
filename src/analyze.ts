@@ -759,6 +759,27 @@ export interface AccessRoomNode {
   reachable: boolean;
   /** Narrowest clear width (mm) along the widest path from the exterior; null if unreachable. */
   bottleneckClearWidth: number | null;
+  /** Door hops from the MAIN entrance (its room is 1) without going outside; `null` for a room
+   *  reached only through another door from outside, or not at all. Present only in
+   *  `describe().access` when {@link AccessGraph.mainEntrance} names a door (PS0.10). */
+  depthFromMainEntrance?: number | null;
+}
+
+/** How {@link MainEntranceFact.door} was chosen, or why the choice was refused. */
+export type MainEntranceBasis = "street" | "widest" | "tie" | "kind-conflict" | "no-candidate";
+
+/**
+ * Which exterior door is the storey's front door (plan-soundness PS0.10), when the plan says so
+ * unambiguously: `src/analyze/entrance.ts` holds the rule and its refusals.
+ */
+export interface MainEntranceFact {
+  /** The main entrance's id, or `null` when the choice is refused. */
+  door: string | null;
+  basis: MainEntranceBasis;
+  /** The doors the deciding step compared, in entrance order: the street-side doors; the tied
+   *  widest doors; the widest door, then the hinged doors it conflicts with; or every
+   *  candidate the widest was chosen from. Empty with `no-candidate`. */
+  candidates: string[];
 }
 
 /**
@@ -774,6 +795,9 @@ export interface AccessGraph {
   hasEntrance: boolean;
   edges: AccessEdge[];
   rooms: AccessRoomNode[];
+  /** The storey's main entrance: present only in `describe().access`, and only on a storey
+   *  with more than one entrance (PS0.10; `src/analyze/entrance.ts`). */
+  mainEntrance?: MainEntranceFact;
 }
 
 /**
@@ -908,10 +932,20 @@ export function buildDoorAccessGraph(
   const roomRects = new Map<string, RoomBox>(rooms.map((r) => [r.id, roomBox(r)]));
   // Doors and cased openings are both connectors, doors first.
   const edges = connectorEdges(roomRects, [...doors, ...openings], tol, clearAllowanceMm, "probe");
-  const g = accessDigraph(
+  return accessGraphOf(
     rooms.map((r) => r.id),
     edges,
   );
+}
+
+/**
+ * The {@link AccessGraph} over given connector edges: its entrances, and each room's depth,
+ * reachability and bottleneck from {@link EXTERIOR_NODE}. {@link buildDoorAccessGraph} is this
+ * over every connector of the storey; the walk's graph (`walkAccessGraph`,
+ * `src/analyze/entrance.ts`) is this over the edges it keeps.
+ */
+export function accessGraphOf(roomIds: readonly string[], edges: AccessEdge[]): AccessGraph {
+  const g = accessDigraph(roomIds, edges);
   const entrances: string[] = [];
   for (const e of edges) {
     const [a, b] = e.between;
@@ -921,7 +955,7 @@ export function buildDoorAccessGraph(
   // Door hops from the exterior (1 = a room opening directly outside).
   const depth = bestPaths(g, { s: MIN_PLUS, weight: () => 1, sources: [[EXTERIOR_NODE, 0]], rank: () => 0 }).value;
   // Widest path: the max over paths of the min clear width.
-  const order = [EXTERIOR_NODE, ...rooms.map((r) => r.id)];
+  const order = [EXTERIOR_NODE, ...roomIds];
   const rank = new Map<string, number>(order.map((id, i) => [id, i]));
   const best = bestPaths(g, {
     s: MAX_MIN,
@@ -930,13 +964,13 @@ export function buildDoorAccessGraph(
     rank: (id) => rank.get(id) ?? order.length,
   }).value;
 
-  const roomNodes: AccessRoomNode[] = rooms.map((r) => {
-    const reachable = depth.has(r.id);
+  const roomNodes: AccessRoomNode[] = roomIds.map((id) => {
+    const reachable = depth.has(id);
     return {
-      id: r.id,
-      depthFromEntrance: reachable ? depth.get(r.id)! : null,
+      id,
+      depthFromEntrance: reachable ? depth.get(id)! : null,
       reachable,
-      bottleneckClearWidth: reachable ? (best.get(r.id) ?? null) : null,
+      bottleneckClearWidth: reachable ? (best.get(id) ?? null) : null,
     };
   });
 
