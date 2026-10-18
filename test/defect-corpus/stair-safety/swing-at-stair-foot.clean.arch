@@ -1,0 +1,19 @@
+# class: stair-safety
+# twin-of: swing-at-stair-foot
+# origin: audits/2026-10-18-first-contact.md T1 with an 800 mm shorter flight
+# expect: none
+# fact: st spans y 200-2800, so its foot has 1075 mm of landing to the face y 3875 across the flight's 900 mm width,
+#   clear of d_front's swing (x 1050-1950)
+plan "Front door swinging at the foot of the stair" {
+  units mm
+  grid 50
+  wall id=shell exterior thickness 250 { (0,0) (5500,0) (5500,4000) (0,4000) close }
+  wall id=w_v partition thickness 100 { (2200,0) (2200,4000) }
+  room id=r_hall at (0,0) size 2200x4000 label "Hall" uses hall
+  room id=r_liv at (2200,0) size 3300x4000 label "Living" uses living
+  door id=d_front at (1500,4000) width 900 wall shell hinge near end swing into r_hall
+  door id=d_liv at (2200,1500) width 900 wall w_v swing into r_liv
+  window at (3800,4000) width 1800 wall shell
+  window at (3800,0) width 1800 wall shell
+  stair id=st at (150,200) size 900x2600 dir up
+}
