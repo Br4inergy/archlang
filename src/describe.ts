@@ -189,8 +189,13 @@ export interface DoorSummary {
   /**
    * The one or two spaces this door connects: room ids, and/or the literal
    * `"exterior"` when the door sits on an outer wall with open space on one side.
+   * Read off the host wall: the space one wall thickness either side of its centreline.
    */
   between: string[];
+  /** Every room the door's clear span covers on one face of its host wall, when that is
+   *  more than one — a partition runs into the doorway. Absent otherwise
+   *  (`AccessEdge.straddles`). */
+  straddles?: string[];
   width: number;
   /**
    * The door's kind — emitted **only when it is not the default `hinged`**,
@@ -260,6 +265,8 @@ export interface OpeningSummary {
   id: string;
   /** The one or two spaces this cased opening connects (room ids and/or `"exterior"`). */
   between: string[];
+  /** As {@link DoorSummary.straddles}: rooms one face of the opening spans, when more than one. */
+  straddles?: string[];
   width: number;
   /** Top of the cased opening above this storey's floor, in mm — by default the
    *  host wall's own height. Present only when the plan authored a height somewhere. */
@@ -1171,14 +1178,18 @@ function summarize(
   // declares a height reports heights on every page.
   const heights = ir._heightsAuthored;
 
-  const doors: DoorSummary[] = doorEls.map((d) => ({
-    id: d.id,
-    ...(d._instance !== undefined ? { instance: d._instance } : {}),
-    between: connectorConnection(d, roomRects, tol).between,
-    width: d.width,
-    ...(d.doorKind !== undefined ? { kind: d.doorKind } : {}),
-    ...(heights ? { head: d.head } : {}),
-  }));
+  const doors: DoorSummary[] = doorEls.map((d) => {
+    const { between, straddles } = connectorConnection(d, roomRects, tol);
+    return {
+      id: d.id,
+      ...(d._instance !== undefined ? { instance: d._instance } : {}),
+      between,
+      ...(straddles ? { straddles } : {}),
+      width: d.width,
+      ...(d.doorKind !== undefined ? { kind: d.doorKind } : {}),
+      ...(heights ? { head: d.head } : {}),
+    };
+  });
 
   // Plan centre (bounding-box midpoint of the union of room rectangles). Its ONLY reader
   // is `windowFacingPage`, and only as the stated tie-break for when the outward-face
@@ -1211,12 +1222,16 @@ function summarize(
     };
   });
 
-  const openings: OpeningSummary[] = openingEls.map((o) => ({
-    id: o.id,
-    between: connectorConnection(o, roomRects, tol).between,
-    width: o.width,
-    ...(heights ? { head: o.head } : {}),
-  }));
+  const openings: OpeningSummary[] = openingEls.map((o) => {
+    const { between, straddles } = connectorConnection(o, roomRects, tol);
+    return {
+      id: o.id,
+      between,
+      ...(straddles ? { straddles } : {}),
+      width: o.width,
+      ...(heights ? { head: o.head } : {}),
+    };
+  });
 
   const furniture: FurnitureSummary[] = furnEls.map((f) => ({
     id: f.id,

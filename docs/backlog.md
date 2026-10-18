@@ -623,12 +623,12 @@ reopening) without any of those values being the opening's. Close by carving alo
 opening's own axis (the host's normal at the connector) through the band, bounded by the opening's
 width — a measured change for every oblique or curved doorway.
 
-### C.4 · An exterior door at the corner of two rooms joins them and gives no entrance — `todo`
+### C.4 · An exterior door at the corner of two rooms joins them and gives no entrance — closed by 1e0c2d9
 
-A connector touching TWO rooms keeps `doorConnections`' answer (the ≤2-room carve-out of the
-`probe` policy), and that answer is the two rooms — so an exterior door whose point is within the
-adjacency tolerance of a partition's end joins the rooms to each other and the plan reports
-`W_NO_ENTRANCE`. The probe would say "exterior" on the outer face. Repro:
+A connector touching TWO rooms kept `doorConnections`' answer (the ≤2-room carve-out of the
+`probe` policy), and that answer was the two rooms — so an exterior door whose point was within the
+adjacency tolerance of a partition's end joined the rooms to each other and the plan reported
+`W_NO_ENTRANCE`, though a probe would have said "exterior" on the outer face. Repro:
 
 ```arch static
 plan "corner" {
@@ -642,9 +642,16 @@ plan "corner" {
 }
 ```
 
-`describe().doors[d].between` is `["a", "b"]`, `access.entrances` is `[]`, lint: `W_NO_ENTRANCE`.
-Close by probing a two-room connector on an EXTERIOR host too (a measured change for any plan
-with a door that close to a partition end).
+It was `describe().doors[d].between` `["a", "b"]`, `access.entrances` `[]`, lint `W_NO_ENTRANCE`.
+The same cause covered a door CENTRED on an exterior T-junction (plan-soundness PS0.1). The fix is
+wider than the one proposed here: every connector with a host wall, on any wall category, now
+joins the space probed one wall thickness either side of that wall's centreline (`connectorConnection`,
+`src/analyze.ts`), at the centre and just inside both jambs, when the point touches that room. A centre probe on a boundary two
+rooms share takes the room covering more of the clear span on that face. A connector with no
+host, or whose faces do not name two spaces, keeps `doorConnections`; the 3+-room policy is
+unchanged. The repro now reads `between ["exterior", "b"]`, `access.entrances ["d"]`, no
+`W_NO_ENTRANCE`, and the door carries the new additive `straddles ["a", "b"]` (its inner face
+spans the partition). `test/between-face-probes.test.ts` pins it.
 
 ### C.6 · `W_PATH_TOO_NARROW` names fewer doors than it could, to stay inside its re-measure budget — `todo`
 

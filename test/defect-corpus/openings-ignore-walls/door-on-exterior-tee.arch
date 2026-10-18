@@ -3,8 +3,8 @@
 # expect: W_CONNECTOR_AMBIGUOUS
 # status: todo
 # fact: d_front spans x 3550-4450 on the north run, centred on the tee where partition p (faces 3950-4050)
-#   meets the shell; describe reports it as an interior door between [a, b] with exterior:false,
-#   ambiguous:false, and access.entrances is []
+#   meets the shell; describe reads it as the entrance, between [exterior, a] with straddles [a, b] and
+#   ambiguous:false, so the door lands on the junction and no code reports it
 plan "Door on an exterior tee" {
   units mm
   grid 50

@@ -365,6 +365,29 @@ suite("a module `let` that fails reports as it does in the module", () => {
  *   - `W_FURNITURE_WALL_COLLISION` names the wall by its kind and line:
  *     `eval/faults/furniture-through-wall.arch`, `penetrates partition wall "partition_2" at
  *     x 4000` → `penetrates the partition wall at x 4000`.
+ *
+ * Three rows re-measured when a connector on a wall began to join the space off each face of
+ * that wall, with an additive `straddles` (backlog C.4, plan-soundness PS0.1; field by field
+ * in `./byte-identity-baseline.ts`, "read off the host wall's faces"). Hashing the new
+ * `compile()` with the previous `describe()` and `lint()` reproduces each previous row: every
+ * storey's SVG and `compile().diagnostics` are byte-identical.
+ *   - `examples/hillside-villa.arch`: `describe()` gains `straddles` on `o_entry_dining` only.
+ *   - `eval/goldens/strip-attach-clean.arch`: `d_bath` (800 mm at y 3750 on `w_bath`, which
+ *     starts at y 3500) runs 150 mm past its host's end across the `w_mid` T, so `doors[4]`
+ *     and `access.edges[4]` gain `straddles: ["r_live", "r_bed2", "r_hall", "r_bath"]`.
+ *     `between` and `lint()` unchanged.
+ *   - `test/fixtures/schedule-sheet.arch`: `door on shell at 20%` is centred on the T where
+ *     `part` meets the shell, (4000, 0). It used to join `living` and `bath` and the plan had no
+ *     entrance. It is now `between ["exterior", "living"]` (each room covers 400 mm of the inner
+ *     face's clear span, so room order breaks the tie), `exterior: true`, `straddles ["living",
+ *     "bath"]`; `access` gains the entrance, both rooms' depths and bottlenecks, `circulation`
+ *     is measured (it was `null`) and the caption names the entrance. `lint()` withdraws
+ *     `W_NO_ENTRANCE`, its only diagnostic, and gains nothing.
+ *     Two surfaces no digest here pins move with it, on this row and on
+ *     `docs/plans/plan-soundness/repro/door-on-tee.arch` (no row): Plan JSON (`compile -f json`),
+ *     whose edge for that door goes from `living`→`bath`, `interior` to `exterior`→`living`,
+ *     `front`; and `lint()` under `accessibility-advisory`, which gains `W_PATH_TOO_NARROW` twice
+ *     (one walk per room, 840 and 740 mm clear against the 900 mm minimum) now that a route exists.
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "dd7d71ebb95715ca666f7a087af5456436cba420936c111d20cb497159715529"],
@@ -386,7 +409,7 @@ const BASELINE: [string, string][] = [
   // Re-measured for the facade-probe fix (level 2's `dims auto` chains only), and again because
   // the EXAMPLE changed (backlog D.2, its piano turned and moved): the same row, with the same
   // digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/hillside-villa.arch", "6ed0aaedb565b86b967a79d57c63a065d6f96c457bde328f308dbb31ac86c87d"],
+  ["examples/hillside-villa.arch", "5b0e09055cd843b9bf4dab057beb6281ba095b5c4cf76a7a79a68733c34aabd2"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
   ["examples/laneway-house.arch", "d87dea46b06ea13b539e0a7c03674038e15762d15948a7bc27632e1b8afd11e2"],
   ["examples/library.arch", "cd5e1d08ae576e6303bc71ededc689e3033456929ffa3bee1568bafc01d45c33"],
@@ -427,7 +450,7 @@ const BASELINE: [string, string][] = [
   ["test/fixtures/diff-circ-a.arch", "272184ab44393f0f5cf74f5ad7a41c65ee2e16fbaf837dd9d0a1fb40ab71a335"],
   ["test/fixtures/diff-circ-b.arch", "68ba4e31f6e1bcb57fda4bc7eefc2afba407b1e0038497fb4a65079be210864d"],
   ["test/fixtures/off-path-bypass.arch", "b8123c5f00d6ce700209f6c5f6a479847f0e5218cf99c8bb2d4af66006289415"], // new fixture, see header
-  ["test/fixtures/schedule-sheet.arch", "10506aac800b77d2a5e579f5bebcdb8d35d72d882ef0b92d7200a1e7a6bdacfa"],
+  ["test/fixtures/schedule-sheet.arch", "474794afd827a6a73d0c0103b9945b5d8ab57be3f2c5aff75910715499d930d4"], // re-measured, see header
   ["test/fixtures/star30.arch", "eb21a2460d3cd302bc0b470184924cb46c947fa9ca95a7d8d7cbda839f791761"], // new fixture, see header
   ["test/fixtures/zones-levels.arch", "3bcbe8f909a76528732dc309234e17526c80030e7baff7605e1879dd328ab10b"],
   ["test/fixtures/zones-wings.arch", "a709a63178d723d6ceff5b39103b35dd16823449fd87200523c43a848a77cda2"],
@@ -460,7 +483,7 @@ const BASELINE: [string, string][] = [
   ["eval/goldens/sized-kitchen-flat.arch", "d53a6f4fef770d801976b2368ff9ce3c828b33085f82616803e3517927aa2bf2"],
   ["eval/goldens/sized-office-mix.arch", "a393fe780123bcc94a86e642874c87863c4f7a6d38528c13e34108e864b3975a"],
   ["eval/goldens/sized-wet-room.arch", "b73b7c5a2ad1eedf1a402331c6c0991ac3a985adf8b23c9b73fa5d4a4c46129a"],
-  ["eval/goldens/strip-attach-clean.arch", "d43e1525ad6648c1610235866bb9bf58160c745c833a55de7d5668082348aac8"],
+  ["eval/goldens/strip-attach-clean.arch", "d1db261cb6d81842ad6a43bbf045049392b751ecebed1f9f3e2ddf5108e09bba"], // re-measured, see header
   ["eval/goldens/strip-corridor.arch", "2b471514e89a72253310c75cff0c6589938f3f1d9bb39e97235b95cc2d7aa17e"],
   ["eval/goldens/three-bed-2bath.arch", "c1cf107a1e2c22198336c05c3f50c79895c9313d92d3296349caa83a5f80ba84"],
   ["eval/goldens/two-bath-flat.arch", "4238d0b5c2d363d15809a6fd3357bd5d97fdbfe02be2caa76022ad7b5e32a305"],

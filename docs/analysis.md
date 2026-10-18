@@ -87,7 +87,8 @@ matter — run it yourself for the full object):
 | `rooms[].floor_polygon` | the room's floor as a closed ring: a rectangle's four corners, or the polygon's own vertices. This — not `bbox` — is the room's shape |
 | `rooms[].bbox` | the room's **vertex extent**. For a polygon room it is the box the ring fits in, which is bigger than the floor |
 | `rooms[].adjacent` | ids of rooms whose walls touch this one within tolerance (a shared corner alone doesn't count) |
-| `doors[].between` / `openings[].between` | the two spaces the connector joins — a room id or the literal `"exterior"` |
+| `doors[].between` / `openings[].between` | the two spaces the connector joins — a room id or the literal `"exterior"`. For a connector on a wall it is the space probed one wall thickness either side of that wall's centreline, half a thickness past each face (on no floor behind an exterior wall: `"exterior"`), not which room edges the connector's centre point touches. A probe that lands on the boundary two rooms share picks the room covering more of the opening on that side. A side counts only for a room the connector's point touches, so behind a thick wall a probe that reaches a room beyond a shallow one decides nothing |
+| `doors[].straddles` / `openings[].straddles` | every room the opening covers on one side of its wall when that is more than one: a wall runs into the opening (measured just inside each jamb). Listed even when those rooms are the `between` pair. **Present only then** |
 | `windows[].room` | the room the window lights |
 | `windows[].facing` | the **true compass** direction the window's wall faces (`N`/`S`/`E`/`W`), read against the plan's [`north`](language-reference.md#plan-settings) setting. Under the default `north up` the top of the drawing is north, so a top-edge window faces `N`; under `north right` compass north points at the page's right edge, so a right-edge window faces `N` and a top-edge one faces `W`. A `north <deg>` bearing snaps to the nearest cardinal (an exact 45° tie rounds clockwise) |
 | `windows[].facingPage` | the same direction **before** `north` is applied — `N` = toward the top of the drawing. **Present only when the declared `north` actually turns the answer**, so a plan on the default `north up` is unchanged |
@@ -269,7 +270,8 @@ openings) and walks it from the exterior. For the studio:
 | `edges[].nominalWidth` | the connector's drawn width |
 | `edges[].estimatedClearWidth` | the usable opening: a **door** loses ~60 mm to its leaf and stop, an **opening** keeps its full width |
 | `edges[].exterior` | whether this connector reaches the outside |
-| `edges[].ambiguous` | the connector sits where three or more rooms meet, and probing one wall thickness off each face of its host wall could not say which two it joins (a probe landed on a room boundary). It is listed but joins nothing, so it counts for no room's reachability. When the probe does decide, `between` is the room on each face, and lint, circulation and `suggest` all read that same pair |
+| `edges[].straddles` | as `doors[].straddles` |
+| `edges[].ambiguous` | the connector sits where three or more rooms meet, and probing one wall thickness either side of its host wall's centreline could not say which two it joins (a probe landed on a room boundary). It is listed but joins nothing, so it counts for no room's reachability. When the probe does decide, `between` is the room on each face, and lint, circulation and `suggest` all read that same pair |
 | `rooms[].depthFromEntrance` | how many connectors you pass through from the nearest entrance (`1` = opens straight off it); `null` if you can't get there |
 | `rooms[].reachable` | can this room be reached from the exterior at all? |
 | `rooms[].bottleneckClearWidth` | the **narrowest clear width** along the widest path in from the entrance — the real constraint for moving furniture or a wheelchair (a widest-path search, so it reports the best route's worst pinch) |

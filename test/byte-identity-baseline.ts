@@ -999,6 +999,22 @@
  * the rows in `while-byte-identity-baseline.ts` and `import-module-lets.test.ts`. No diagnostic
  * was added or withdrawn, and no other row in this table moved.
  *
+ * ## `hillside-villa`: both rows re-measured — `between` is read off the host wall's faces
+ *
+ * Case (1), a compiler change, in `describe()` only (backlog C.4, plan-soundness PS0.1;
+ * `test/between-face-probes.test.ts`). A connector on a wall now joins the space probed one wall
+ * thickness either side of that wall's centreline, not the rooms whose edges its centre point touches,
+ * and one whose clear span covers more than one room on a face carries an additive
+ * `straddles` list. Field by field, `describe()` gains that one key and nothing else moves:
+ * `o_entry_dining` (2400 mm on `w_l1_band_w`, x 4300..6700) spans the end of `w_liv_din`
+ * (x 4800), so `openings[2]` and `access.edges[15]`, and their copies under `levels[0]`, gain
+ * `straddles: ["r_living", "r_dining"]`. Its `between` stays `["r_entry", "r_dining"]`.
+ * Hashing the NEW `compile()` with the PREVIOUS `describe()` reproduces both previous rows
+ * (with the new `lint()` as well as the old: `lint()` did not move), and the rows in
+ * `while-byte-identity-baseline.ts` and `import-module-lets.test.ts`. Every storey's SVG and
+ * `compile().diagnostics` are byte-identical, and so are its Plan JSON (`compile -f json`) and its
+ * `lint()` under `accessibility-advisory`. No other row in this table moved.
+ *
  * ## `relational`, `themed`, `two-bed`: both rows re-measured — the label classifier emits living
  *
  * 2026-10-18, plan-soundness card PS0.7. Case (1), the compiler changed, in `describe()` only.
@@ -1032,7 +1048,7 @@ export const BASELINE: [string, string][] = [
   ["garden-house", "0532109ebf9869b2ebddfa229823f6c08f8aa50572af0da44e50fa80e7bbd749"], // re-measured, see header
   ["garden-loft", "7161ddddda40ba6f520128b2196fdbba997e5f3b82674dbf2ee09495d763dc1d"],
   ["hexagon-pavilion", "92d343afbb62315ad0014b95de9f4a8b26ccffbc14093b04c5956b689f850252"],
-  ["hillside-villa", "8a2769c87a237afe454ab8cb0eb37d31f703162722b5bf515050c07b40e2ae76"], // re-measured, see header
+  ["hillside-villa", "f10009748e03119ddafad4d5bc358515e750ccea54a5f4564e35fca3c98ea3cc"], // re-measured, see header
   ["imports", "4b0151513963a656e52ac84c6fd80eb35c9820ae101921420cb8d5c9c13c0b70"],
   ["laneway-house", "62b3fdb835ccc7eb565f982ed7930d99cfced87bbf4ae9d6bb5410e4945d255c"],
   ["library", "b1afe29423122d4d161d5ba51c8d4af703f47efd8299fdfb265df1d8f8e402fd"],
@@ -1080,7 +1096,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["garden-house", "fee030c619c813af20a581665bc6366f66f511f8c8e6a035cca3fb344acab128"], // re-measured, see header
   ["garden-loft", "77bddbf7b08d49b0845e5268bb267a602b93002dfa20175e9218e5156dc435d1"],
   ["hexagon-pavilion", "6e8005c3a0af9b80598574e77141301a957b4a293ba8d5de6cc1effb00693494"],
-  ["hillside-villa", "32ca3aba5e381e1bc7374d084211d6e9b503824ecc2444f6a499bf992389cb4c"], // re-measured, see header
+  ["hillside-villa", "629315459d7674ea1337f474f92dfdb0ceb2df6f77fbc2fd462656df6c37880a"], // re-measured, see header
   ["imports", "183bf4ec261e6650b21c4771b64fe924bf5c6eabd3ea1b8d3bbdac71b2900ac3"],
   ["laneway-house", "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0"],
   ["library", "b2032b46514e9563ba3106e23869db32fef49e8241e65b7c84f6108a2cf4af08"],
