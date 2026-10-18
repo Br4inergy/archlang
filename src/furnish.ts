@@ -418,15 +418,14 @@ export function furnishStage(
       const families = new Set(placed.flatMap((p) => servedBy(p.text.split(" ")[1] ?? "")));
       const holds = (i: FurnishItem): boolean => [i.category, ...(i.or ?? [])].some((w) => families.has(familyOf(w)));
       const lacking: Array<{ use: UseKind; item: FurnishItem }> = [];
-      // Only a defining piece the room has NO position for: one with a position that the gate
-      // refused, or that the fallback's bounded tries never reached, keeps the stage's output
-      // as it was (the lint then reports the room).
+      // A defining piece the stage did not place: its own candidates (corners and wall middles,
+      // beside the run it already placed) had no position the gate accepts, or its bounded tries
+      // never reached one. Ask the lint's placement search, the one the rule's hint quotes,
+      // before giving the use up: a use is never written without the piece that defines it,
+      // so `finish` raises no W_ROOM_MISSING_DEFINING on a use it furnished.
       for (const use of [...new Set(placed.map((p) => p.use))])
         for (const item of definingItems(use))
-          if (!holds(item) && site.candidates(item, use, placed).length === 0) {
-            // The stage's own candidates (corners and wall middles, beside the run it already
-            // placed) have none: ask the lint's placement search, the one the rule's hint
-            // quotes, before giving the use up.
+          if (!holds(item)) {
             const extra = hinted(room, placed, use, item);
             if (extra) placed = [...placed, extra];
             else lacking.push({ use, item });

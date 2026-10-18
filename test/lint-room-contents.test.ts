@@ -500,6 +500,35 @@ ${extra}}
     expect(lint(r.source).map((d) => d.code)).not.toContain("W_ROOM_MISSING_DEFINING");
   });
 
+  it("fuzz counterexample: a bath whose bathtub positions the gate refuses is left empty, never written without one", () => {
+    // `test/fuzz.test.ts` (finish is never worse) shrank to this: the stage HAD bathtub
+    // candidates in the 2 x 2 m bath, the gate refused them, and writing the WC and basin alone
+    // raised W_ROOM_MISSING_DEFINING. A use is now never written without its defining piece.
+    const src = `plan "P" {
+  units mm
+  wall id=w_shell exterior thickness 100 { (0,0) (6000,0) (6000,4000) (0,4000) close }
+  wall id=w_v1 partition thickness 80 { (2000,0) (2000,4000) }
+  wall id=w_v2 partition thickness 80 { (4000,0) (4000,4000) }
+  wall id=w_h1 partition thickness 80 { (0,2000) (6000,2000) }
+  room id=r0 at (0,0) size 2000x2000
+  room id=r1 at (2000,0) size 2000x2000 uses bath
+  room id=r2 at (4000,0) size 2000x2000
+  room id=r3 at (0,2000) size 2000x2000
+  room id=r4 at (2000,2000) size 2000x2000
+  room id=r5 at (4000,2000) size 2000x2000
+  door id=o0 hinged on w_shell at 5% width 700
+  door id=o1 hinged on w_v2 at 5% width 700 swing out
+  door id=o2 hinged on w_v1 at 5% width 700
+  opening id=o3 on w_h1 at 67% width 700
+}
+`;
+    const codes = (s: string) => new Set(lint(s).map((d) => d.code));
+    const r = finish(src);
+    expect(r.changes.filter((c) => c.room === "r1")).toEqual([]);
+    const before = codes(src);
+    expect([...codes(r.source)].filter((c) => !before.has(c))).toEqual([]);
+  });
+
   it("a bath where neither search finds a bathtub or shower position is left empty, and the note says so", () => {
     // From the review's fuzz corpus A: 1.95 x 2.25 m, its door swinging out. `main` wrote a WC
     // and a basin; neither the stage's candidates nor the lint's search place a bathtub or
