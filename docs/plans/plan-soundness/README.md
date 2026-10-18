@@ -268,7 +268,10 @@ owner's audit scratch. Re-derive them from this text rather than asking for them
 | PS2.10 | `W_DIM_TEXT_MISMATCH` | A hand `dim … text "<number>"` whose number differs from the measured span beyond rounding. Non-numeric text is exempt | todo |
 | PS2.11 | Clearance family | WC centreline to side obstacle (default 400, `us` 381, accessible 450–500); front of a wardrobe ≥ 600; hob-to-fridge gap; tall unit (fridge, wardrobe, bookcase) covering a window; a door swing over a stair footprint or its landing; a void at a stair's arrival; stair pitch versus storey height; `W_DOORWAY_BLOCKED` extended to leaf-less openings; a single hinged leaf over 1200 mm. Each is a separate code; split into cards as they start | todo |
 | PS2.12 | Annotation collisions | Auto-dimension text inside a room floor, over a symbol or over a label; title-block text wider than its row. Extend `W_DIM_INSIDE` to `dims auto`; drafting only, never `describe()` | todo |
-| PS2.13 | Lint coverage report | `lint --json` gains an appended `coverage` block: rule families run, skipped (with why: no `uses`, no brief, no `site`, no multi-storey) and unclassified rooms. Human output prints one line when something was skipped. Purely additive JSON | todo |
+| PS2.13 | Lint coverage report | `lint --json` gains an appended `coverage` block: rule families run, skipped (with why: no `uses`, no brief, no `site`, no multi-storey, no dwelling declared, no operable-window data) and unclassified rooms. Human output prints one line when something was skipped. Purely additive JSON | todo |
+| PS2.14 | Dwelling declaration | A zone-level marker that groups rooms into a dwelling, `describe().dwellings`, common area, and the derived party wall (the ladder rung). Needs an ADR. Unblocks the across-dwellings rule (GB 50096 5.4.4 / GB 55038-2025 4.1.7: a WC over another household's bedroom, living, kitchen or dining) and the shared-corridor checks. Corrects `research/design-taste.md` R19's default of "one level = one dwelling": that fires inside a single house and misses flats, so R19 runs only where dwellings are declared and otherwise reports a coverage skip (`research/2026-10-18-furniture-and-multistorey.md` B1, B9, B12) | todo |
+| PS2.15 | `W_SHAFT_FOOTPRINT_MISMATCH` | Same-id stair/lift runs on adjacent storeys whose footprints do not overlap. The facts exist already; ship with PS2.11's arrival-void check (`…multistorey.md` B4) | todo |
+| PS2.16 | Egress necessary-condition checks | `uk-residential-advisory`: `W_INNER_ROOM` (ADB 2.11/2.12, 3.7/3.8: a habitable room whose only route to the exit passes through another room, with its exemptions). `us-residential-advisory`: bedroom escape-window failures provable from gross sizes (IRC R310: width < 508 mm, sill > 1118 mm, area < 0.33 m²); never a pass claim without an `openable` window fact (`…multistorey.md` B10–B11). Blocked on facts, not rules, and listed as such: wet-stack risers, fire ratings, protected-stair enclosure, sprinkler-dependent limits | todo |
 
 ### PS3 · Relation-first authoring (D1 + D5; needs an ADR)
 
@@ -321,6 +324,18 @@ owner's audit scratch. Re-derive them from this text rather than asking for them
 - Rewrite `examples/two-bed.arch` (after PS2.5 flags it) and `examples/relational.arch` (G.12's live
   repro) in the new forms.
 - Respect the `spec.llm.md` size cap rules (trim duplication first).
+
+**PS3.7 · Furniture relations: `facing <id>`, `against <wall|room.edge>`, `clear front|sides <mm>`.**
+`todo` (after PS3.2; needs an ADR 0017 amendment)
+- Declared by the author, derived in closed form, reported as facts, checked by lint, never solved.
+  `facing` takes the quarter-turn whose front ray first enters the target rectangle; no hit or a
+  tie is refused. `facing` excludes `rotate`/`against wall` on the same piece. `clear front|sides`
+  are opt-in declarations measured against solid pieces, wall faces and swings; never a catalogue
+  default (a 550 mm wardrobe default once warned on `examples/garden-loft.arch`, so PS2.11's
+  "front of a wardrobe ≥ 600" becomes a declaration or profile value, re-measured first).
+- Facts appear in `describe()` only when declared (byte identity). Output set is D4 turns only, so
+  no glyph gains handedness; add a mirror-equivariance test.
+- Design: `research/2026-10-18-furniture-and-multistorey.md` §A.4.
 
 ### PS4 · The change model: what follows, what stays, what breaks
 
@@ -444,10 +459,16 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
    keep every `keep` true".
 6. **Multi-dwelling and multi-storey rules.** Toilet over habitable room below (GB 50096 5.4.4,
    mandatory), wet-stack alignment, and units sharing a corridor. These need a dwelling concept
-   ArchLang lacks.
+   ArchLang lacks. *Researched 2026-10-18* (`research/2026-10-18-furniture-and-multistorey.md`
+   Part B): became cards PS2.14–PS2.16. Still open: wet-stack rules need a riser fact and no
+   authoritative spacing number was found; several clause texts were read only from secondary
+   sources (the file's verification log says which) and must be read in the standard before a
+   number ships in a message (D3).
 7. **Furniture semantics.** Facing targets (a TV faces the sofa or bed, a bed head is against a wall,
    dining chairs face the table) as relations rather than rotations (ADAI's semantic reconstruction,
-   `research/adai-sketchup.md` idea 7).
+   `research/adai-sketchup.md` idea 7). *Researched 2026-10-18* (same file, Part A): became card
+   PS3.7. Still open: no evidence on how often agents get a furniture turn wrong; the first-contact
+   audit should count it.
 8. **Anything the audits missed.** Run a fresh audit on new plans after PS2 lands. The defect classes
    in §1 came from about 30 plans and are surely incomplete.
 
@@ -480,6 +501,9 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
 - `research/adai-sketchup.md`: lessons from a staged, evidence-gated SketchUp agent (ideas only;
   CPAL licence).
 - `research/2026-10-18-room-tiling.md`: do rooms already tile the building? (the D5 premise).
+- `research/2026-10-18-furniture-and-multistorey.md`: furniture relations in Holodeck, Infinigen,
+  LayoutVLM, IFC, Revit and Sweet Home 3D, plus twelve multi-storey/multi-dwelling rules with clause
+  numbers and a fact-sufficiency table (cards PS3.7, PS2.14–PS2.16).
 - `audits/archcanvas-public-examples.md`, `audits/showcase-and-examples.md`: per-plan defects with
   coordinates.
 - `repro/`: minimal reproductions (see its README).
