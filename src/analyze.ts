@@ -203,13 +203,13 @@ export function rectInRoomBox(fr: BBox, b: RoomBox, slack: number = ROOM_CONTAIN
 /**
  * The function(s) a room is classified as. Explicit `uses …` are authored intent
  * and win; otherwise we fall back to a conservative keyword match on the label (or
- * id) — exactly the classification the lint rules used before `uses` existed, so an
- * untagged plan behaves identically. Returns a set (a studio is `living kitchen`).
+ * id). Returns a set (a studio is `living kitchen`).
  *
  * The keyword match is the shared closed vocabulary in `src/vocabulary.ts`
  * ({@link classifyLabelUses}) — the token-bounded, data-driven form of the label
- * regexes that used to live here. Behaviour on the committed corpus is pinned by
- * `test/vocabulary-equivalence.test.ts`.
+ * regexes that used to live here, and the only label classifier: it emits every kind
+ * it has a row for, `living` and `dining` included. Behaviour on the committed corpus
+ * is pinned by `test/vocabulary-equivalence.test.ts`.
  */
 export function roomUses(room: { label?: string; id: string; uses?: UseKind[] }): Set<UseKind> {
   if (room.uses && room.uses.length > 0) return new Set(room.uses);

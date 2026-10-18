@@ -151,7 +151,8 @@ function matchPrepared(labToks: readonly string[], vocab: PreparedEntry): VocabM
  *   - `kitchen`  ← `KITCHEN_RE`
  *   - `entry`    ← `ENTRY_RE` (`\bfoyer\b|vestibule|\bentry\b|\bentrance\b|mudroom`)
  *   - `hall`     ← `HALL_RE` (`\bhall\b|hallway|corridor|landing`)
- *   - `living`   ← `LIVING_DINING_RE` (circulation's living/dining classifier)
+ *   - `living`   ← the living half of `LIVING_DINING_RE` (circulation's former classifier)
+ *   - `dining`   ← its dining half, a {@link UseKind} of its own
  *
  * A wet room is detected when `bath` OR `wc` matches, then discriminated to a WC when
  * `wc` matches — exactly the former `WET_RE.test(...) ? (WC_RE.test(...) ? "wc" : "bath")`
@@ -172,7 +173,11 @@ export const USE_VOCABULARY = Object.freeze({
   kitchen: { canonical: ["kitchen", "kitchenette"], aliases: [] },
   entry: { canonical: ["entry", "entrance"], aliases: ["foyer", "vestibule", "mudroom"] },
   hall: { canonical: ["hall", "hallway", "corridor"], aliases: ["landing"] },
-  living: { canonical: ["living", "lounge", "dining"], aliases: ["sitting", "family"] },
+  // `living` and `dining` were once one row (`LIVING_DINING_RE`'s words); they are two because
+  // `dining` is a use of its own, so "Dining Room" classifies as `dining`, not `living`. The
+  // word set is unchanged; see {@link classifyLabelUses} for the one rule an alias obeys.
+  living: { canonical: ["living", "lounge"], aliases: ["sitting", "family"] },
+  dining: { canonical: ["dining"], aliases: [] },
   // The aliases are
   // aliases and not canonical words on purpose: a carport is not enclosed and a "Parking" room
   // in a large building is a floor, not a garage, so both are reasonable inferences that an
@@ -197,7 +202,8 @@ export interface AliasMatch {
 /** A label's inferred use kinds, plus any that came from an alias rather than a direct
  *  term (the advisory hook for `W_ALIAS_MATCH`). */
 export interface LabelClassification {
-  /** Inferred use kinds, in canonical emission order (bedroom, bath/wc, kitchen, entry/hall). */
+  /** Inferred use kinds, in emission order (bedroom, bath/wc, kitchen, entry/hall, garage,
+   *  living, dining). */
   uses: UseKind[];
   /** Classifications that were inferred from an alias word (empty when all are canonical). */
   aliases: AliasMatch[];
@@ -210,10 +216,15 @@ export interface LabelClassification {
  * precedence — and it additionally reports which classifications came from an alias
  * (indirect) word so lint can advise an explicit `uses` tag.
  *
- * Note the living/dining kind is intentionally NOT emitted here: the old `roomUses`
- * never produced `living`/`dining` from a label (they came only from an authored
- * `uses`, or the separate circulation classifier). {@link matchesLivingDining} keeps
- * that separate label check.
+ * `living` and `dining` are emitted like every other kind: a canonical word gives the use,
+ * an alias word ("Family Room", "Sitting Room") gives it plus an `aliases` entry. They were
+ * once left out, which made a label-only "Living Room" read as `uses: []` while circulation
+ * and the equator-aspect rule classified it from the same table through a second function —
+ * two classifiers for one fact. They are emitted after `garage`, so no kind that existed
+ * before them changes position in the `uses` array. One rule is theirs alone: a living
+ * ALIAS word is dropped when the label matched any other kind except `dining`, by a canonical
+ * word or an alias ("Family Bathroom" is `[bath]`, "Family Foyer" `[entry]`, "Family Room"
+ * `[living]` with the alias flagged).
  */
 export function classifyLabelUses(text: string): LabelClassification {
   const uses: UseKind[] = [];
@@ -251,11 +262,26 @@ export function classifyLabelUses(text: string): LabelClassification {
   const garage = matchPrepared(toks, PREPARED_USE.garage);
   if (garage) add("garage", garage);
 
+  // After `garage`, for the same reason: appended, so every earlier position holds.
+  //
+  // A living ALIAS ("family", "sitting") is a qualifier as often as a room name: a "Family
+  // Bathroom" is a bathroom, a "Family Foyer" an entry, a "Bed-sitting Room" a bedroom. So it is
+  // dropped when the label matched ANY other kind above, canonical or alias. `dining`, the living
+  // row's sibling, does not count: "Sitting / Dining" is living AND dining. Only the alias is
+  // ever dropped: a canonical living word always classifies ("Kitchen / Living" is both).
+  const living = matchPrepared(toks, PREPARED_USE.living);
+  if (living && (living.canonical || uses.length === 0)) add("living", living);
+  const dining = matchPrepared(toks, PREPARED_USE.dining);
+  if (dining) add("dining", dining);
+
   return { uses, aliases };
 }
 
-/** Whether a label's text reads as a living or dining space by the `living` use
- *  vocabulary — the circulation layer's classifier (former `LIVING_DINING_RE`). */
+/** Whether a label's text reads as a living or dining space: {@link classifyLabelUses}
+ *  emits `living` or `dining` for it. Not a second classifier — the same answer, as a
+ *  boolean, for a caller that reads the label even when the room authored its `uses`
+ *  (circulation). */
 export function matchesLivingDining(text: string): boolean {
-  return matchPrepared(tokensOf(text), PREPARED_USE.living) !== null;
+  const { uses } = classifyLabelUses(text);
+  return uses.includes("living") || uses.includes("dining");
 }

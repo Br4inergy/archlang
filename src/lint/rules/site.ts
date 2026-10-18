@@ -33,7 +33,6 @@ import type { Diagnostic } from "../../diagnostics.js";
 import type { RRoom } from "../../ir.js";
 import { deriveSite, planCenterOfRooms, toCompass, windowFacingPage } from "../../site.js";
 import { northQuarterTurns } from "../../describe.js";
-import { matchesLivingDining } from "../../vocabulary.js";
 import type { LintContext, LintRule } from "../context.js";
 
 /**
@@ -41,16 +40,13 @@ import type { LintContext, LintRule } from "../context.js";
  * the class the equator-aspect heuristic is about? Bedrooms and living/dining spaces;
  * never a bath, kitchen, hall, store or plant room.
  *
- * Authored `uses` always wins, exactly as {@link roomUses} has it: the label check only
- * runs for a room that declared none, because `classifyLabelUses` deliberately never
- * emits `living`/`dining` from a label ({@link matchesLivingDining} is that separate
- * check).
+ * Read from {@link roomUses} alone: authored `uses` wins, and a room that declared none is
+ * classified from its label by the one use vocabulary, which emits `living`/`dining` like
+ * every other kind.
  */
 function isHabitable(r: RRoom): boolean {
   const u = roomUses(r);
-  if (u.has("bedroom") || u.has("living") || u.has("dining")) return true;
-  if (r.uses && r.uses.length > 0) return false;
-  return matchesLivingDining(r.label ?? r.id);
+  return u.has("bedroom") || u.has("living") || u.has("dining");
 }
 
 export const roomNotEquatorFacing: LintRule = {

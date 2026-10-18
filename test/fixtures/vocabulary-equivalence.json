@@ -1713,8 +1713,8 @@
     {
       "id": "living",
       "label": "Living",
-      "uses": [],
-      "room_type": "Room"
+      "uses": ["living"],
+      "room_type": "LivingRoom"
     },
     {
       "id": "kitchen",
@@ -1939,8 +1939,8 @@
     {
       "id": "a",
       "label": "Living",
-      "uses": [],
-      "room_type": "Room"
+      "uses": ["living"],
+      "room_type": "LivingRoom"
     },
     {
       "id": "b",
@@ -2115,8 +2115,8 @@
     {
       "id": "r_kitchen",
       "label": "Kitchen / Living",
-      "uses": ["kitchen"],
-      "room_type": "Kitchen"
+      "uses": ["kitchen", "living"],
+      "room_type": "LivingRoom"
     },
     {
       "id": "r_bed1",

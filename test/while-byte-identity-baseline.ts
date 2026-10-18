@@ -239,6 +239,13 @@
  *     whose edge for that door goes from `living`→`bath`, `interior` to `exterior`→`living`,
  *     `front`; and `lint()` under `accessibility-advisory`, which gains `W_PATH_TOO_NARROW` twice
  *     (one walk per room, 840 and 740 mm clear against the 900 mm minimum) now that a route exists.
+ *
+ * Three rows re-measured on 2026-10-18 (plan-soundness PS0.7) when the label classifier began
+ * emitting `living`: `examples/relational.arch`, `themed.arch` and `two-bed.arch`. `describe()`
+ * only — one room per plan gains `living` in `uses` and its `room_type` becomes `LivingRoom`
+ * (field by field in `./byte-identity-baseline.ts`, "the label classifier emits living").
+ * Hashing the new SVG, `lint()` and `compile().diagnostics` with the previous `describe()`
+ * reproduces each previous row.
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "dd7d71ebb95715ca666f7a087af5456436cba420936c111d20cb497159715529"],
@@ -265,15 +272,15 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/one-room.arch", "e12596f5401f097b5cf431fda952e96fc6523d7ca6a97c1518ffe6dd64e72cbe"],
   ["examples/parametric.arch", "982d09bc2018a495ca4c50d1cf5a99dcbb92f235b86f9cb722c4e931c839e921"],
   ["examples/practice-office.arch", "1692d70a7c06b0ebd17a64b47004afd37fd98b0a65e79df3de8d2f110162073e"], // added with the example, re-measured for net area, see header
-  ["examples/relational.arch", "e152e9a813406d1188e87584acdb63bb4c4a48438006e33420db2c760bc8f9ec"],
+  ["examples/relational.arch", "d27362e8dec9b595eaff227c2ea7978f311634fd22dfd7ac54c2bd12f002a918"],
   ["examples/sheet-notes.arch", "0104550fc3b3a39a71c1a005da79c3db5ea10ae21d9739e11a6d1f18ee7b7420"], // re-measured, see header
   ["examples/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
   ["examples/terrace-row.arch", "514aa86e7acbac76a0c1a0c38c43f7f6cf6cf40bb9121576b2abacbe0344cfe8"],
-  ["examples/themed.arch", "6b6c68980f86565d82c396ee618dbe75ef5435bb4ad2be134822dc6d0aef6ead"],
+  ["examples/themed.arch", "083872e0955d587897a87084c2f0bfe395856b02c643d7a8920e02f4bde870c1"],
   ["examples/tiny-house.arch", "cbd44f2c14aa28ea42f1fac0c7029f6257e6d7bcaab42c21ec290cecc3bd1933"],
   ["examples/townhouse.arch", "a3252455577b780dfed37d5eebeea1f8725c2df9d5c538b0e61c091418022f94"],
   ["examples/transit-hall.arch", "b8ec53697030c76a35fdd875115c89cedca4e5ff591837eab5b1fb1209024ad9"],
-  ["examples/two-bed.arch", "63fdc9d0c77062228876013f4b0e8172f496fc80f4f943184a2bff3098dec5ad"],
+  ["examples/two-bed.arch", "a805e3baa9df0117a2216af7fda83174706ca4d47f38a13c5eb1e77bea89285c"],
   ["examples/two-storey.arch", "17402c97f15a8aeb54ded52a2460ced472e1788d7d5415fa83b1c91042ce59d6"],
   ["test/fixtures/axes-grid.arch", "bf15439e40c442b499b4b43025cea4827954e3fd2c2e89102e7d6c527d7375b3"],
   ["test/fixtures/chain30.arch", "13411e1dbffca14e73601338837daf6517ddf9fc2447695021101fc051073cb6"], // new fixture, see header

@@ -62,8 +62,9 @@ describe("classifyLabelUses — regex-cascade behavior, with alias reporting", (
     expect(classifyLabelUses("Wet Room")).toEqual({ uses: [], aliases: [] });
   });
 
-  it("living/dining stays out of the use classifier but is a separate label check", () => {
-    expect(classifyLabelUses("Living Room").uses).toEqual([]);
+  it("classifies living/dining like every other kind, and the boolean check agrees", () => {
+    // PS0.7: one classifier — a label-only "Living Room" is `living`, no longer `uses: []`.
+    expect(classifyLabelUses("Living Room")).toEqual({ uses: ["living"], aliases: [] });
     expect(matchesLivingDining("Living Room")).toBe(true);
     expect(matchesLivingDining("Studio")).toBe(false);
   });

@@ -898,6 +898,12 @@ parked `car` (an empty garage is measured against one bay). A room labelled "Gar
 classifies as one from its label alone; "Carport" and "Parking" classify through an alias,
 which is advisory [`W_ALIAS_MATCH`](error-codes.md) asking you to pin the tag.
 
+Living and dining rooms classify from their label the same way: "Living", "Living Room" and
+"Lounge" read as `living`, "Dining" as `dining`, and "Kitchen / Living" as `kitchen living`.
+"Family Room" and "Sitting Room" classify through an alias (`W_ALIAS_MATCH` again), and that
+alias yields to any other kind the label names, except dining: "Family Bathroom" is a bath and
+"Family Foyer" an entry, while "Sitting / Dining" is both living and dining.
+
 **Relational placement (v1.0).** Instead of an absolute `at (x,y)`, a room may be
 positioned **relative to another room** with `right-of` / `left-of` / `below` /
 `above`. The compiler resolves the absolute corner by pure arithmetic in
