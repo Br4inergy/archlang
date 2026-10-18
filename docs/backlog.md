@@ -47,6 +47,17 @@ is to be started until its question is answered; the entry named holds the evide
 
 ---
 
+## Programmes with their own card list
+
+A programme keeps its cards, decisions and evidence in its own folder, and this file only points
+at it. Its cards follow the same rules as entries here: stable ids, deleted when they land.
+
+| Programme | Folder | What it is for |
+|---|---|---|
+| Plan soundness (`PS*` cards) | `docs/plans/plan-soundness/` | Professional rules and taste: relation-first authoring, validity checks that read existing facts, a change model (`impact`, `keep`), a taste score. Takes over G.12 as card PS3 |
+
+---
+
 ## Wave 3 — hygiene, freshness, and the missing example
 
 ### 3.1 · Nightly is red — and NOT for the reason this entry said (issue #66) — `todo`
@@ -288,6 +299,9 @@ This item is the third case, and the answer is the same as the handedness one.
 
 
 ### G.12 · A wall cannot be derived from a resolved room boundary — `todo`
+
+**Planned as card PS3 of the plan-soundness programme** (`docs/plans/plan-soundness/README.md`):
+the owner decided relation-first forms as additive syntax.
 
 Found while closing G.6. It is why `examples/relational.arch` ships four warnings that cannot be
 repaired without giving up the thing the example exists to teach.
