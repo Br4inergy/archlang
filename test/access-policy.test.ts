@@ -121,11 +121,19 @@ describe("one access policy: every surface agrees on reachability", () => {
     );
     const o = ir!.elements.find((e): e is ROpening => e.kind === "opening")!;
     expect(roomsAtPoint(o.at, rooms, DEFAULT_TOL)).toEqual(["hall", "study", "den"]);
-    expect(connectorConnection(o, rooms, DEFAULT_TOL)).toEqual({ between: ["hall", "den"], ambiguous: false });
+    // The 900 mm opening's clear span (3650..4550) runs across the stem at x=4000, so its
+    // study/den face covers both rooms: `straddles` is that measured fact, under either
+    // policy, and leaves `between`/`ambiguous` exactly as the policy decides them.
+    expect(connectorConnection(o, rooms, DEFAULT_TOL)).toEqual({
+      between: ["hall", "den"],
+      ambiguous: false,
+      straddles: ["study", "den"],
+    });
     // The policy it replaced as the reference: drop joins nothing.
     expect(connectorConnection(o, rooms, DEFAULT_TOL, "drop")).toEqual({
       between: ["hall", "study"],
       ambiguous: true,
+      straddles: ["study", "den"],
     });
     const s = describePlan(src);
     expect(s.openings.find((x) => x.id === "o_t")?.between).toEqual(["hall", "den"]);
