@@ -1,7 +1,7 @@
 # class: daylight
 # origin: audits/showcase-and-examples.md X2 (examples/hillside-villa.arch L1: the 28.8 m2 living room's arc bay is solid; only the garden door)
 # expect: W_HABITABLE_NO_WINDOW
-# status: todo
+# status: done
 # fact: r_living (uses living, 4.8 x 6 m) has no window; its bowed bay is a solid arc and its only opening is the garden door
 plan "Living with a solid bay" {
   units mm

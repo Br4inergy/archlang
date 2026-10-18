@@ -939,7 +939,7 @@ is `0` and its `integration` is `null`: it is as integrated as a space can be.
 
 | Family | Example codes |
 |--------|---------------|
-| Room | `W_ROOM_TOO_SMALL`, `W_ROOM_DISCONNECTED`, `W_BEDROOM_NO_WINDOW`, `W_ROOM_OVERLAP`, `W_ROOM_NOT_EQUATOR_FACING` |
+| Room | `W_ROOM_TOO_SMALL`, `W_ROOM_DISCONNECTED`, `W_BEDROOM_NO_WINDOW`, `W_HABITABLE_NO_WINDOW`, `W_ROOM_MISSING_DEFINING`, `W_ROOM_OVERLAP`, `W_ROOM_NOT_EQUATOR_FACING` |
 | Placement | `W_DOOR_OFF_WALL`, `W_WINDOW_OFF_WALL`, `W_OPENING_OFF_WALL` |
 | Door / circulation | `W_DOOR_CLEARANCE`, `W_SWING_OBSTRUCTED`, `W_NO_ENTRANCE` |
 | Reachability | `W_ROOM_UNREACHABLE`, `W_BATH_VIA_BEDROOM` |

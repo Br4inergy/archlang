@@ -444,6 +444,9 @@ suite("doors — W_POCKET_RUN", () => {
     // The three opening rules (plan-soundness PS2.1–PS2.3) are in the same position, appended
     // after those. Across the shipped examples they found real defects (audit rows X3, X10,
     // X19, X26), which those examples now fix; every example lints as before.
+    // `habitable-no-window` and `room-missing-defining` (plan-soundness PS2.8, PS2.9) are in
+    // the same position again: no new syntax, appended last, every corpus movement listed in
+    // `test/byte-identity-baseline.ts`'s header.
     expect(names.slice(i + 1)).toEqual([
       "outdoor-overlaps-room",
       "balcony-no-door",
@@ -455,6 +458,8 @@ suite("doors — W_POCKET_RUN", () => {
       "opening-at-junction",
       "opening-overlap",
       "connector-ambiguous",
+      "habitable-no-window",
+      "room-missing-defining",
     ]);
   });
 
@@ -464,8 +469,9 @@ suite("doors — W_POCKET_RUN", () => {
     // now follows it, and only fires under `dims auto all`, which this
     // plan does not write. The three circulation-and-privacy rules follow those, and this
     // plan has no room for them to read; the three opening rules follow those, and none fires
-    // here (a door at a corner is `W_DOOR_NEAR_CORNER`'s alone).
-    expect(LINT_RULES.map((r) => r.name).slice(-8)).toEqual([
+    // here (a door at a corner is `W_DOOR_NEAR_CORNER`'s alone); the two room-contents rules
+    // follow those, and this plan has no room for them to read either.
+    expect(LINT_RULES.map((r) => r.name).slice(-10)).toEqual([
       "door-near-corner",
       "opening-not-dimensioned",
       "room-via-private",
@@ -474,6 +480,8 @@ suite("doors — W_POCKET_RUN", () => {
       "opening-at-junction",
       "opening-overlap",
       "connector-ambiguous",
+      "habitable-no-window",
+      "room-missing-defining",
     ]);
     // A plan carrying an unrelated pre-existing warning (a sub-passable door width) AND
     // tripping the new rule: the old diagnostic must still be first, byte-for-byte.

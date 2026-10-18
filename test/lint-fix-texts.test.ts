@@ -153,7 +153,11 @@ describe("W_ROOM_NO_FIXTURE — the hint's statement compiles, clears it, and ra
         expect(d).toBeDefined();
         const hint = d!.hints!.join(" ");
         expect(hint).not.toMatch(/`import|lib\/fixtures/);
-        const [stmt] = allQuoted(hint, /^furniture /);
+        // The hint quotes the room's defining pieces, placed together (a bath's bathtub or
+        // shower, a kitchen's sink AND hob): one fixture alone would leave the room furnished
+        // and still lacking its defining piece, which W_ROOM_MISSING_DEFINING reports.
+        const stmts = allQuoted(hint, /^furniture /);
+        const [stmt] = stmts;
         if (stmt === undefined) {
           // Only a room where nothing fits may decline, and it must say why.
           expect(name).toMatch(/grid 600|half-walled/);
@@ -165,8 +169,8 @@ describe("W_ROOM_NO_FIXTURE — the hint's statement compiles, clears it, and ra
           return;
         }
         if (src === POLY || src === L_SHAPE || src === RELATIONAL)
-          expect(stmt).toMatch(/^furniture wc at \(\d+,\d+\) size 400x700( rotate \d+)? in r_bath$|size 700x400/);
-        const fixed = insert(src, stmt);
+          expect(stmt).toMatch(/^furniture (bathtub|shower) at \(\d+,\d+\) size \d+x\d+( rotate \d+)? in r_bath$/);
+        const fixed = stmts.reduce((s, q) => insert(s, q), src);
         expect(errorsOf(fixed)).toEqual([]);
         expect(of(fixed, "W_ROOM_NO_FIXTURE", p)).toEqual([]);
         expect(gained(src, fixed, p)).toEqual([]);
@@ -175,8 +179,10 @@ describe("W_ROOM_NO_FIXTURE — the hint's statement compiles, clears it, and ra
   }
 
   it("the default cases each DO quote a statement (the clean-paste tests above are not vacuous)", () => {
-    for (const src of [BATH, KITCHEN, DOOR_ON_TOP, POLY, L_SHAPE, RELATIONAL])
+    for (const src of [BATH, DOOR_ON_TOP, POLY, L_SHAPE, RELATIONAL])
       expect(allQuoted(of(src, "W_ROOM_NO_FIXTURE")[0]!.hints!.join(" "), /^furniture /)).toHaveLength(1);
+    // A kitchen is defined by two pieces, its sink and its hob: both are quoted.
+    expect(allQuoted(of(KITCHEN, "W_ROOM_NO_FIXTURE")[0]!.hints!.join(" "), /^furniture /)).toHaveLength(2);
   });
 
   it("a room with no clear wall run gets the footprint, not a statement that would collide", () => {
@@ -194,7 +200,12 @@ describe("W_ROOM_NO_FIXTURE — the hint's statement compiles, clears it, and ra
   });
 
   it("a grid that snaps the footprint away quotes no `size 0x…`: it says to use a finer grid", () => {
-    const coarse = BATH.replace("units mm", "units mm\n  grid 1000");
+    // A WC: its defining piece is the 400 mm `wc`, which a 1000 mm grid snaps to nothing (a
+    // bath's bathtub, 1700 x 700, would survive the snap).
+    const coarse = BATH.replace("units mm", "units mm\n  grid 1000").replace(
+      'label "Bath" uses bath',
+      'label "WC" uses wc',
+    );
     const hint = of(coarse, "W_ROOM_NO_FIXTURE")[0]!.hints!.join(" ");
     expect(allQuoted(hint, /^furniture /)).toEqual([]);
     expect(hint).toContain("`grid 1000`");
@@ -759,6 +770,8 @@ describe("the four reworded hints' messages name things as a reader would; ids s
     "W_OPENING_AT_JUNCTION",
     "W_OPENING_OVERLAP",
     "W_CONNECTOR_AMBIGUOUS",
+    "W_HABITABLE_NO_WINDOW",
+    "W_ROOM_MISSING_DEFINING",
   ];
   type Storey = {
     rooms?: { id: string; label?: string }[];
@@ -801,6 +814,9 @@ describe("the four reworded hints' messages name things as a reader would; ids s
       // …and the privacy rules, which the corpus raises on `two-bed` and two fixtures.
       expect(seen.get("W_ROOM_VIA_PRIVATE") ?? 0).toBeGreaterThan(0);
       expect(seen.get("W_ENTRANCE_INTO_PRIVATE") ?? 0).toBeGreaterThan(0);
+      // And the two room-contents codes, which quote a room's label (test/fixtures raise both).
+      expect(seen.get("W_HABITABLE_NO_WINDOW") ?? 0).toBeGreaterThan(0);
+      expect(seen.get("W_ROOM_MISSING_DEFINING") ?? 0).toBeGreaterThan(0);
     });
   }
 

@@ -285,12 +285,14 @@ describe("W_FIXTURE_BACK_TO_ROOM", () => {
   // this block's subject is fixture ORIENTATION, so the door went wherever was handy.
   // (3000,4000) leaves 550 mm of nib, and keeps the WC clear of the doorway landing so
   // every assertion below is about the thing it was written for.
+  // A WC, not a bath: a bath holding only its WC also raises W_ROOM_MISSING_DEFINING (no
+  // bathtub or shower), and the round-trip below holds the fixed plan to an empty lint.
   const southWall = (furn: string) =>
     `plan "P" {
       units mm
       grid 50
       wall exterior thickness 200 { (0,0) (4000,0) (4000,4000) (0,4000) close }
-      room id=r at (0,0) size 4000x4000 label "Bath" uses bath
+      room id=r at (0,0) size 4000x4000 label "WC" uses wc
       door at (3000,4000) width 900 wall exterior hinge left swing out
       ${furn}
     }`;

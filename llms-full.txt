@@ -752,7 +752,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 
 **`archlang context`** — print the full bundled agent context (spec + workflow + CLI + errors)
   - input: none → output: the full agent context (llms-full.txt), or one --section of it
-  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 117 KB of it (spec = the language, 30 KB; workflow = the agent loop, 24 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 39 KB) · `--json` structured result on stdout, messages on stderr
+  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 118 KB of it (spec = the language, 30 KB; workflow = the agent loop, 24 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 40 KB) · `--json` structured result on stdout, messages on stderr
   - example: `archlang context` — the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 
 **`archlang new`** (aliases: `init`) — scaffold a starter .arch
@@ -770,7 +770,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 ## 4. Diagnostic catalog
 
 Every diagnostic carries a stable code and a `fix`. Look one up with `archlang explain <CODE>`.
-**103 errors** (abort rendering) · **58 warnings** (advisory; `validate --strict` fails on them too).
+**103 errors** (abort rendering) · **60 warnings** (advisory; `validate --strict` fails on them too).
 
 ### Errors
 
@@ -906,6 +906,7 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `archlang e
 - `W_FURN_CLEARANCE` — A fixture's use-space is blocked. **Fix:** Move or shrink the obstructing furniture by the shortfall the warning quotes, turn the fixture so its front faces clear floor (its back must stay on a wall), or move the fixture to a wall run with the clearance free in front of it.
 - `W_GARAGE_TOO_NARROW` — A garage is too narrow to park in. **Fix:** Widen the room to the figure the warning quotes, park fewer cars in it, or drop the `uses garage` tag if the room is not one (a store that happens to be called a garage classifies as one from its label alone — an explicit `uses storage` overrides that).
 - `W_GLYPH_UNSUPPORTED` — PDF/PNG text has characters no embedded font can draw. **Fix:** Render to SVG, which uses the viewer's fonts, or rewrite the label in a covered script.
+- `W_HABITABLE_NO_WINDOW` — A living room, dining room or kitchen has no window. **Fix:** Add a `window` on an exterior wall of the room; the hint names those walls. Accept the warning if the room is lit in a way the plan cannot draw, such as a roof light or a light well. There is no machine fix: where a window goes on a facade is a design decision.
 - `W_HATCH_SCALE` — Hatch scale must be positive; using 1. **Fix:** Use a positive `scale`.
 - `W_IMPORT_EMPTY_FILE` — Whole-file import binds an empty component. **Fix:** Draw in the module's plan body, or import one of its named components with `import "<file>": <name>`.
 - `W_NO_ENTRANCE` — The plan has no exterior door. **Fix:** Add a `door` on an `exterior` wall.
@@ -919,10 +920,11 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `archlang e
 - `W_REASSIGN_DEPRECATED` — Reassignment (`NAME = expr`) is deprecated and will be removed in a future major version. **Fix:** Bind a new name with `let` instead of reassigning it, or express the surrounding loop as `for NAME in A..B { … }` — `archlang fix` offers this on `W_WHILE_DEPRECATED` for the canonical shape, once proved against this file's own expansion (component sites need `--unsafe`).
 - `W_ROOM_DISCONNECTED` — Room has no door — it can't be entered. **Fix:** Add a `door` on one of the room's walls.
 - `W_ROOM_LABEL_OUTSIDE` — A room's explicit label anchor falls outside the room. **Fix:** Move the anchor inside the room, or drop the `at (…)` — automatic placement uses the rectangle's centre, the circle's centre, or a polygon's area centroid (falling back to the interior point furthest from any edge where a concave ring puts that centroid off its own floor), so it lands inside either way.
+- `W_ROOM_MISSING_DEFINING` — A furnished room is missing the piece that defines it. **Fix:** Add the missing piece; the hint quotes statements checked together, clear of the room's walls, doors and furniture, when they fit. If the room is not what its use says, change its `uses`. There is no machine fix: where the piece goes is a design decision.
 - `W_ROOM_NOT_ENCLOSED` — Bathroom is not fully enclosed. **Fix:** Extend the partition so the room's perimeter is walled on all sides (a door/window in the wall is fine — only a missing wall counts).
 - `W_ROOM_NOT_EQUATOR_FACING` — A habitable room has windows, but none faces the equator side. **Fix:** Move a window onto the room's equator-facing facade, or accept the aspect — an urban plot often has no equator-facing wall to spare. There is deliberately NO machine fix: the remedy is a geometric decision (which facade, which wall, what else it displaces) and the compiler does not make those (ADR 0005).
 - `W_ROOM_NO_CLEAR_PATH` — A room cannot be entered or crossed. **Fix:** Open up the layout: move or shrink the furniture nearest the door so there is a continuous walkable strip from each entrance into the room.
-- `W_ROOM_NO_FIXTURE` — Bathroom or kitchen has no fixtures. **Fix:** Place a fixture inside the room; the categories are built in, so nothing needs importing. A bathroom or WC takes a `wc`, `basin`, `shower` or `bathtub` (e.g. `furniture wc in bath anchor top flush size 400x700`); a kitchen takes a `kitchen_sink`, `counter`, `stove` or `fridge` (e.g. `furniture kitchen_sink in kitchen anchor top flush size 800x600`). A bare `sink` counts for either. A `polygon` or `circle` room cannot take `anchor`: place the piece `at (x,y)` with `in <roomId>` instead.
+- `W_ROOM_NO_FIXTURE` — Bathroom or kitchen has no fixtures. **Fix:** Place a fixture inside the room; the categories are built in, so nothing needs importing. A bathroom or WC takes a `wc`, `basin`, `shower` or `bathtub` (e.g. `furniture wc in bath anchor top flush size 400x700`); a kitchen takes a `kitchen_sink`, `counter`, `stove` or `fridge` (e.g. `furniture kitchen_sink in kitchen anchor top flush size 800x600`). A bare `sink` counts for either. A `polygon` or `circle` room cannot take `anchor`: place the piece `at (x,y)` with `in <roomId>` instead. The hint quotes the pieces that make the room what it is, checked together: a `bathtub` or `shower` for a bathroom, a `wc` for a WC, a sink and a hob for a kitchen, and the defining piece of any other use the room has. One fixture alone would leave a furnished room still missing its defining piece, which `W_ROOM_MISSING_DEFINING` reports.
 - `W_ROOM_OVERLAP` — Rooms overlap. **Fix:** Adjust positions/sizes if the overlap is unintended (it is allowed).
 - `W_ROOM_TOO_SMALL` — Room is implausibly small. **Fix:** Increase its `size`, or merge it into an adjacent space.
 - `W_ROOM_UNREACHABLE` — Room cannot be reached from the entrance. **Fix:** Add a door or cased `opening` linking it (directly or through a hall) to a space that reaches the entrance.

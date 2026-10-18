@@ -1,7 +1,7 @@
 # class: daylight
 # origin: audits/showcase-and-examples.md T1 (tweet-house: the 16 m2 "Living" has no window; the label is not classified); README PS0.7
 # expect: W_HABITABLE_NO_WINDOW
-# status: todo
+# status: done
 # fact: "Living" (4 x 4 m, describe uses []) has no window; the plan's one window (east wall, y 1500-2500) lights the bed room
 plan "Living without a window" {
   units mm

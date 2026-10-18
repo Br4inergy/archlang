@@ -21,6 +21,20 @@
 <circle cx="3400" cy="3989" r="28.47" fill="#ffffff" stroke="#a8a29a" stroke-width="6.5"/>
 <circle cx="3400" cy="3713" r="21" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
 <line x1="3400" y1="3734" x2="3400" y2="3857.6" stroke="#a8a29a" stroke-width="6.5"/>
+<polygon points="4100,3650 4700,3650 4700,4250 4100,4250" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
+<path d="M 4151,3686 L 4649,3686 A 15 15 0 0 1 4664,3701 L 4664,4079 A 15 15 0 0 1 4649,4094 L 4151,4094 A 15 15 0 0 1 4136,4079 L 4136,3701 A 15 15 0 0 1 4151,3686 Z" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
+<circle cx="4274.12" cy="3794.12" r="76.7" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
+<circle cx="4274.12" cy="3794.12" r="42.19" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
+<circle cx="4525.88" cy="3794.12" r="76.7" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
+<circle cx="4525.88" cy="3794.12" r="42.19" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
+<circle cx="4274.12" cy="3985.88" r="55.61" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
+<circle cx="4274.12" cy="3985.88" r="30.59" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
+<circle cx="4525.88" cy="3985.88" r="55.61" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
+<circle cx="4525.88" cy="3985.88" r="30.59" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
+<circle cx="4220" cy="4187" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="6.5"/>
+<circle cx="4340" cy="4187" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="6.5"/>
+<circle cx="4460" cy="4187" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="6.5"/>
+<circle cx="4580" cy="4187" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="6.5"/>
 </g>
 <g id="A-FLOR-STRS" inkscape:groupmode="layer" inkscape:label="A-FLOR-STRS">
 <polygon points="100,1500 1000,1500 1000,4100 100,4100" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>

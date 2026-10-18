@@ -22,6 +22,7 @@ plan "Flat 2B" {
   opening id=o_int  at (3500,2000) width 900  wall partition
 
   window at (5000,4000) width 1200 wall exterior
+  window at (0,2000)    width 1200 wall exterior
 
   # ---- fit-out ----------------------------------------------------------------
   # Kept clear of the entrance door's swing quarter-disc (radius 1000, hinge left

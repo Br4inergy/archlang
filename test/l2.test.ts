@@ -33,11 +33,12 @@ const ROOT = join(__dirname, "..");
 const read = (rel: string): string => readFileSync(join(ROOT, rel), "utf8");
 
 /** A lint-clean plan → `hasIssues` false (stops the loop early). Its wet fixtures stand
- *  `against wall` (compiler-derived orientation) and every opening keeps its nib to each
- *  meeting wall, so it lints clean under every rule. `against-wall-bath`, used here before
- *  `W_OPENING_AT_JUNCTION` shipped, leaves a 50 mm nib beside its cased opening;
- *  `two-bed-hall`, used before `W_FIXTURE_BACK_TO_ROOM` shipped, has fixtures that stand
- *  against a wall facing the room. */
+ *  `against wall` (compiler-derived orientation), every opening keeps its nib to each meeting
+ *  wall and every room holds the piece that defines it, so it lints clean under every rule.
+ *  `against-wall-bath`, used here before `W_OPENING_AT_JUNCTION` and `W_ROOM_MISSING_DEFINING`
+ *  shipped, leaves a 50 mm nib beside its cased opening and has a bathroom with no bathtub or
+ *  shower; `two-bed-hall`, used before `W_FIXTURE_BACK_TO_ROOM` shipped, has fixtures that
+ *  stand against a wall facing the room. */
 const CLEAN = read("eval/goldens/accessible-bath.arch");
 /** A valid plan carrying a lint warning (blocked doorway) → `hasIssues` true. */
 const WARN = read("eval/faults/blocked-doorway.arch");

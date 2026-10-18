@@ -19,7 +19,11 @@
  * and raises no diagnostic code (compile + lint under the default ruleset and under every
  * named profile, as multisets) and no hard furniture conflict it did not have before that
  * room. Otherwise the next candidate is tried; when a required piece cannot be placed its
- * use is left out whole, and a room with no use left is left empty. Both are reported.
+ * use is left out whole, and a room with no use left is left empty. Both are reported. The one
+ * code the gate does not count is `W_ROOM_MISSING_DEFINING`, which every partial state of a
+ * room raises; a use is judged on its finished pieces instead. A defining piece the stage's own
+ * candidates cannot place is tried once more with the lint's placement search (the statement the
+ * rule's hint quotes); a use whose defining piece neither places is left out whole, and reported.
  *
  * **Bounded.** The candidate order is fixed, and the number of compile checks is at most
  * {@link furnishCheckBound} — linear in the rooms. There is no search loop and no randomness.
@@ -37,14 +41,16 @@ import {
   type RectEdge,
   rotateForBackEdge,
 } from "./fixture-orientation.js";
-import { canonicalFixture } from "./elements/fixtures-glyphs.js";
-import { defaultFootprint, fixtureSpec, frontClearanceMm, zoneFixtureCategories } from "./fixtures-catalog.js";
+import { defaultFootprint, frontClearanceMm } from "./fixtures-catalog.js";
+import { FURNISH_TABLE, type FurnishItem, familyOf, servedBy } from "./furnish-table.js";
 import { doorSwing, normal, sectorIntersectsRect, segmentsOfWall, sub, unit, type WallSegment } from "./geometry.js";
 import { distToPolygonEdge, pointInPolygon, polygonsOverlap, rectRing } from "./geometry/polygon.js";
 import { type BBox, doorLandingRect, rectsOverlap } from "./geometry/rect.js";
 import type { RDoor, RFurniture, ROpening, ResolvedPlan, RRoom, RWall, RWindow } from "./ir.js";
 import { lex } from "./lexer.js";
 import { DEFAULT_RULESET, LINT_PROFILES } from "./lint.js";
+import { buildLintContext } from "./lint/context.js";
+import { definingItems, pasteSet, useNoun } from "./lint/defining.js";
 import { fmtSource } from "./num-format.js";
 import { parse } from "./parser.js";
 import { BUILTIN_REGISTRY, createRegistry } from "./registry.js";
@@ -54,115 +60,7 @@ import { sourceConflicts } from "./repair.js";
 // the table
 // ---------------------------------------------------------------------------
 
-/** How a piece is placed. */
-export type FurnishPlacement =
-  /** A services fixture on a wall: `against wall <id> offset <mm>`, the catalogued footprint. */
-  | "wall"
-  /** A free-standing piece with its back to a wall: `in <room> anchor <edge or corner> flush`. */
-  | "back"
-  /** In the middle of the room: `in <room> anchor center`. */
-  | "centre"
-  /** In front of the piece listed before it: the same edge anchor, `inset` past that piece. */
-  | "front";
-
-export interface FurnishItem {
-  /** The catalogue word that is written. */
-  category: string;
-  /** Catalogue words tried, in order, when `category` cannot be placed. */
-  or?: readonly string[];
-  /** A required piece that cannot be placed leaves the whole room empty; an optional one is left out. */
-  required: boolean;
-  place: FurnishPlacement;
-  /**
-   * Footprints tried in order, `along` the wall × `depth` into the room, in mm. Absent =
-   * the catalogue's own footprint. `finish` writes the one it used as an explicit `size`.
-   */
-  sizes?: readonly (readonly [along: number, depth: number])[];
-}
-
-const wet = zoneFixtureCategories("wet");
-const kitchen = zoneFixtureCategories("kitchen");
-/** A wet-room or kitchen fixture, admitted only when the catalogue lists it for that zone. */
-const zoned = (zone: ReadonlySet<string>, required: boolean, category: string, ...or: string[]): FurnishItem[] => {
-  const [first, ...rest] = [category, ...or].filter((c) => zone.has(c) && defaultFootprint(c) !== null);
-  return first === undefined
-    ? []
-    : [{ category: first, ...(rest.length > 0 ? { or: rest } : {}), required, place: "wall" }];
-};
-
-/**
- * What goes in a room, by use. Every word is one `src/fixtures-catalog.ts` already has; the
- * wet-room and kitchen rows are read through the catalogue's own zones. A use with no row
- * (`hall`, `circulation`, `entry`, `storage`, `garage`, `utility`) is never furnished.
- *
- * The rows describe the rooms of a DWELLING. `utility` has no row because the tag does not
- * say laundry: a plant room carries it too. A room larger than {@link MAX_ROOM_AREA_M2} is
- * not a dwelling room whatever its tag says, and is reported instead of furnished.
- */
-export const FURNISH_TABLE: Readonly<Partial<Record<UseKind, readonly FurnishItem[]>>> = Object.freeze({
-  bedroom: [
-    {
-      category: "bed",
-      required: true,
-      place: "back",
-      sizes: [
-        [1500, 2000],
-        [900, 2000],
-      ],
-    },
-    {
-      category: "wardrobe",
-      required: false,
-      place: "back",
-      sizes: [
-        [1800, 600],
-        [1200, 600],
-      ],
-    },
-  ],
-  living: [
-    {
-      category: "sofa",
-      required: true,
-      place: "back",
-      sizes: [
-        [2000, 900],
-        [1600, 900],
-      ],
-    },
-    { category: "coffee_table", required: false, place: "front", sizes: [[1000, 600]] },
-  ],
-  dining: [
-    {
-      category: "dining_table",
-      required: true,
-      place: "centre",
-      sizes: [
-        [1800, 1500],
-        [1400, 1300],
-      ],
-    },
-  ],
-  office: [
-    {
-      category: "desk",
-      required: true,
-      place: "back",
-      sizes: [
-        [1400, 700],
-        [1200, 600],
-      ],
-    },
-    { category: "office_chair", required: false, place: "front", sizes: [[500, 500]] },
-  ],
-  kitchen: [
-    ...zoned(kitchen, true, "kitchen_sink"),
-    ...zoned(kitchen, true, "stove"),
-    ...zoned(kitchen, false, "fridge"),
-  ],
-  bath: [...zoned(wet, true, "wc"), ...zoned(wet, true, "basin"), ...zoned(wet, false, "bathtub", "shower")],
-  wc: [...zoned(wet, true, "wc"), ...zoned(wet, true, "basin")],
-});
+export { FURNISH_TABLE, type FurnishItem, type FurnishPlacement } from "./furnish-table.js";
 
 /** Placement detail that is not part of the public table. */
 interface Detail {
@@ -206,6 +104,18 @@ export const furnishCheckBound = (rooms: number): number => 1 + rooms * MAX_CHEC
 
 /** The largest floor a room may have and still be furnished from the table, in m². */
 export const MAX_ROOM_AREA_M2 = 100;
+
+/**
+ * The one code the never-worse gate does not count. `W_ROOM_MISSING_DEFINING` reports a
+ * furnished room that lacks the piece its use is defined by, so it fires on every partial
+ * state the stage passes through: a kitchen holding its sink before its stove is placed, a
+ * bath holding its WC before its bathtub. Counted as a gained code it refused each piece of
+ * the piece-by-piece fallback in turn and emptied rooms the stage used to furnish. It is
+ * judged on the finished set instead, use by use, from the same reading the lint uses
+ * (`settle` in {@link furnishStage}): a use whose defining piece found no position is left
+ * out whole, and reported.
+ */
+const JUDGED_BY_PIECES = "W_ROOM_MISSING_DEFINING";
 
 /** The default ruleset and every named profile: a position is pruned by the strictest of them. */
 const RULESETS = [DEFAULT_RULESET, ...Object.values(LINT_PROFILES).map((p) => ({ ...DEFAULT_RULESET, ...p }))];
@@ -371,7 +281,7 @@ export function furnishStage(
   const refusal = (candidate: string): string[] | null => {
     checks++;
     const after = codesOf(candidate);
-    const gained = gainedCodes(before, after);
+    const gained = gainedCodes(before, after).filter((c) => c !== JUDGED_BY_PIECES);
     if (gained.length > 0) return gained;
     if (after.errors) return ["E_PARSE"];
     for (const k of sourceConflicts(candidate, env).conflicts.keys())
@@ -461,6 +371,90 @@ export function furnishStage(
         );
     };
 
+    /**
+     * Accept `placed`, judging each use it furnishes by the pieces that define it
+     * (`definingItems`, the reading `W_ROOM_MISSING_DEFINING` lints). The gate does not count
+     * that code (see {@link JUDGED_BY_PIECES}); it is judged here, per use, on the finished
+     * set. A defining piece the stage's candidates have no position for is tried with the lint's
+     * own placement search ({@link hinted}); a use whose defining piece neither search places is
+     * left out whole, and what remains is checked once more before it is kept.
+     */
+    /**
+     * One defining piece placed by the lint's own search (`pasteSet`, the statement the
+     * `W_ROOM_MISSING_DEFINING` hint quotes), measured on the plan with `placed` written, and
+     * kept only when the gate accepts it. A statement in the `at (x,y)` form (a relational room)
+     * is not taken: the stage never writes one. One resolve and one compile check, charged to
+     * the room's budget.
+     */
+    const hinted = (room: RRoom, placed: Placed[], use: UseKind, item: FurnishItem): Placed | null => {
+      if (budget === 0) return null;
+      const src = render(placed.map((p) => p.text));
+      const ir = resolvePlan(src, env).ir;
+      const here = ir?.elements.find((e): e is RRoom => e.kind === "room" && e.id === room.id);
+      if (!ir || !here) return null;
+      const paste = pasteSet(buildLintContext(ir, DEFAULT_RULESET), here, [item]);
+      const text = "stmts" in paste ? paste.stmts[0] : undefined;
+      if (text === undefined || text.includes(" at (")) return null;
+      budget--;
+      if (refusal(render([...placed.map((p) => p.text), text])) !== null) return null;
+      // Only `text` and `use` are read from here on (accept, and the next settle question);
+      // the geometry fields describe no candidate of the stage's own and are left empty.
+      return {
+        item,
+        use,
+        text,
+        rect: { x: 0, y: 0, w: 0, h: 0 },
+        strip: null,
+        edge: null,
+        middle: false,
+        against: false,
+        lo: 0,
+        hi: 0,
+        depth: 0,
+      };
+    };
+
+    const settle = (room: RRoom, uses: UseKind[], placed: Placed[], leftOutNotes: () => void): void => {
+      const families = new Set(placed.flatMap((p) => servedBy(p.text.split(" ")[1] ?? "")));
+      const holds = (i: FurnishItem): boolean => [i.category, ...(i.or ?? [])].some((w) => families.has(familyOf(w)));
+      const lacking: Array<{ use: UseKind; item: FurnishItem }> = [];
+      // A defining piece the stage did not place: its own candidates (corners and wall middles,
+      // beside the run it already placed) had no position the gate accepts, or its bounded tries
+      // never reached one. Ask the lint's placement search, the one the rule's hint quotes,
+      // before giving the use up: a use is never written without the piece that defines it,
+      // so `finish` raises no W_ROOM_MISSING_DEFINING on a use it furnished.
+      for (const use of [...new Set(placed.map((p) => p.use))])
+        for (const item of definingItems(use))
+          if (!holds(item)) {
+            const extra = hinted(room, placed, use, item);
+            if (extra) placed = [...placed, extra];
+            else lacking.push({ use, item });
+          }
+      if (lacking.length === 0) {
+        accept(room, uses, placed);
+        leftOutNotes();
+        return;
+      }
+      const out = new Set(lacking.map((l) => l.use));
+      const remaining = placed.filter((p) => !out.has(p.use));
+      const words = (i: FurnishItem): string => [i.category, ...(i.or ?? [])].map((w) => `\`${w}\``).join(" or ");
+      const why = (l: { use: UseKind; item: FurnishItem }): string =>
+        `furnish found no position for its ${words(l.item)}, the piece that defines a ${useNoun(l.use)} (\`${JUDGED_BY_PIECES}\`)`;
+      let keep = remaining.length > 0 && budget > 0;
+      if (keep) {
+        budget--;
+        keep = refusal(render(remaining.map((p) => p.text))) === null;
+      }
+      if (!keep) {
+        note(room, `"${room.id}" was left empty — ${lacking.map(why).join("; ")}`, [JUDGED_BY_PIECES]);
+        return;
+      }
+      accept(room, uses, remaining);
+      leftOutNotes();
+      for (const l of lacking)
+        note(room, `the ${l.use} pieces were left out of "${room.id}" — ${why(l)}`, [JUDGED_BY_PIECES]);
+    };
+
     // First proposal: use by use, the first candidate of every piece that clears the room's
     // geometry. A use whose required piece has no position is left out whole.
     const first: Placed[] = [];
@@ -486,8 +480,7 @@ export function furnishStage(
     budget--;
     let blocking = refusal(render(first.map((p) => p.text)));
     if (blocking === null) {
-      accept(room, uses, first);
-      leftOut(absent);
+      settle(room, uses, first, () => leftOut(absent));
       continue;
     }
 
@@ -532,8 +525,7 @@ export function furnishStage(
       );
       continue;
     }
-    accept(room, uses, kept);
-    leftOut(dropped);
+    settle(room, uses, kept, () => leftOut(dropped));
   }
 
   if (lines.length === 0) return none(reported(), checks, todo.length);
@@ -606,16 +598,6 @@ function footprints(category: string, item: FurnishItem): ReadonlyArray<readonly
   const fp = defaultFootprint(category);
   return fp ? [[fp.along, fp.depth]] : (item.sizes ?? []);
 }
-
-const familyOf = (word: string): string => canonicalFixture(word) ?? word;
-/**
- * The families a held piece does the job of: its own (`couch` is a `sofa`), and the one the
- * catalogue says it serves (`double_bed` serves `bed`, a bare `sink` serves `basin`).
- */
-const servedBy = (category: string): string[] => {
-  const serves = fixtureSpec(category)?.serves;
-  return serves === undefined ? [familyOf(category)] : [familyOf(category), familyOf(serves)];
-};
 
 /**
  * Does the piece stand on the room's floor? Its footprint is tested against the room's

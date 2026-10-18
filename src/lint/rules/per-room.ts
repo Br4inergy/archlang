@@ -18,14 +18,16 @@ import {
   pointOnRoomEdge,
   rectOf,
   roomAreaMm2,
+  roomUses,
 } from "../../analyze.js";
 import type { Diagnostic } from "../../diagnostics.js";
-import { defaultFootprint, zoneFixtureCategories } from "../../fixtures-catalog.js";
+import { zoneFixtureCategories } from "../../fixtures-catalog.js";
 import { fmt2 } from "../../num-format.js";
 import { mm, shortfall } from "../measure.js";
 import type { RRoom } from "../../ir.js";
 import type { LintContext, LintRule } from "../context.js";
-import { pasteFixture } from "../fixture-paste.js";
+import { itemWords, pasteSet, roomDefiningItems } from "../defining.js";
+import type { PasteFailure } from "../fixture-paste.js";
 
 /** Furniture categories that count as a plumbing fixture for a wet room — derived
  *  from the catalog's `zones` data (single source; membership drift-tested). */
@@ -34,7 +36,35 @@ export const WET_FIX = zoneFixtureCategories("wet");
 export const KITCHEN_FIX = zoneFixtureCategories("kitchen");
 
 /** Square metres of a room (exact for a polygon too), rounded to 2 decimals. */
-const areaM2 = (r: RRoom): number => Math.round((roomAreaMm2(r) / 1_000_000) * 100) / 100;
+export const areaM2 = (r: RRoom): number => Math.round((roomAreaMm2(r) / 1_000_000) * 100) / 100;
+
+/**
+ * Does any window sit on the room's perimeter? The one window-attribution fact the daylight
+ * rules read (`W_BEDROOM_NO_WINDOW`, `W_HABITABLE_NO_WINDOW`): {@link pointOnRoomEdge} on the
+ * room's own shape, the test `describe().windows[].room` is built from (`roomsAtPoint`).
+ */
+export function roomHasWindow(ctx: LintContext, r: RRoom): boolean {
+  const rect = ctx.roomRects.get(r.id)!;
+  return ctx.windows.some((win) => pointOnRoomEdge(win.at, rect, ctx.rules.tolMm));
+}
+
+/**
+ * Would `W_ROOM_NO_FIXTURE` report this room: a wet room or kitchen with no fixture of its
+ * zone whose footprint centre is on its floor? A wet room is asked for a wet fixture, else a
+ * kitchen for a kitchen fixture. False for every other room.
+ */
+export function lacksZoneFixture(ctx: LintContext, r: RRoom): boolean {
+  const isWet = isWetRoom(r);
+  if (!isWet && !isKitchen(r)) return false;
+  const rect = ctx.roomRects.get(r.id)!;
+  const want = isWet ? WET_FIX : KITCHEN_FIX;
+  return !ctx.furniture.some((f) => {
+    const fr = rectOf(f);
+    const cx = fr.x + fr.w / 2;
+    const cy = fr.y + fr.h / 2;
+    return want.has(f.category) && pointInRoomBox({ x: cx, y: cy }, rect);
+  });
+}
 
 /**
  * Clear width one parked car needs, in millimetres.
@@ -54,34 +84,49 @@ const PARKED_CATEGORIES: ReadonlySet<string> = new Set(["car"]);
 
 /**
  * The `W_ROOM_NO_FIXTURE` remedy: the fixture categories are built in (no import), and the
- * example is ONE statement placed from the room's own shape and checked clear of its walls,
- * doors and furniture before it is quoted ({@link pasteFixture}). A room with no clear wall
- * run gets the categories and the footprint instead of a statement that would trade this
- * warning for another.
+ * example is the room's defining pieces (`src/lint/defining.ts`), each placed from the room's
+ * own shape and checked clear of its walls, doors, furniture and the pieces quoted before it
+ * ({@link pasteSet}). A room where one has no clear wall run gets the categories and the
+ * footprint instead of statements that would trade this warning for another.
  */
-function noFixtureHint(ctx: LintContext, r: RRoom, isWet: boolean): string {
-  const [cat, others] = isWet
-    ? ["wc", "a `basin`, `shower` or `bathtub`"]
-    : ["kitchen_sink", "a `counter`, `stove` or `fridge`"];
-  const fp = defaultFootprint(cat)!;
-  const paste = pasteFixture(ctx, r, cat, fp.along, fp.depth);
-  if ("stmt" in paste)
-    return `Place a built-in fixture in it (nothing to import) — e.g. \`${paste.stmt}\`, or ${others}.`;
-  const why =
-    paste.failure === "grid"
-      ? `the plan's \`grid ${fmt2(ctx.ir.grid)}\` snaps that footprint away, so use a finer grid`
-      : paste.failure === "grid-offset"
-        ? `the plan's \`grid ${fmt2(ctx.ir.grid)}\` snaps an \`at (x,y)\` placement off the wall face here, so use a finer grid or a rectangular room with \`anchor … flush\``
-        : paste.failure === "no-wall"
-          ? "it has no straight wall running square to the page for one to back onto, so give it one or place the fixture with `at (x,y)` and `rotate`"
-          : "no wall of it has a run clear of its doors and furniture for one, so make room first";
-  return `Place a built-in fixture in it (nothing to import) — a \`${cat}\` (${fmt2(fp.along)} along a wall, ${fmt2(fp.depth)} deep), or ${others}; ${why}.`;
+function noFixtureHint(ctx: LintContext, r: RRoom): string {
+  // The pieces that DEFINE the room (a bath's bathtub or shower, a WC's WC, a kitchen's sink
+  // and hob), quoted together: one fixture alone would leave the room furnished and still
+  // lacking its defining piece, which `W_ROOM_MISSING_DEFINING` reports — a hint that trades
+  // one warning for another.
+  const items = roomDefiningItems(r);
+  const paste = pasteSet(ctx, r, items);
+  const named = items
+    .map((i) =>
+      itemWords(i)
+        .map((w) => `\`${w}\``)
+        .join(" or "),
+    )
+    .join(" and ");
+  if ("stmts" in paste)
+    return `Place the fixtures that make it a ${noun(r)} (nothing to import) — e.g. ${paste.stmts.map((s) => `\`${s}\``).join(" and ")}.`;
+  const fp = paste.footprint;
+  return `Place the fixtures that make it a ${noun(r)} (nothing to import), ${named}: a \`${paste.item.category}\`${fp ? ` (${fmt2(fp.along)} along a wall, ${fmt2(fp.depth)} deep)` : ""} does not fit, because ${pasteFailureWhy(ctx, paste.failure)}.`;
+}
+
+/** What a wet room or kitchen is called in the `W_ROOM_NO_FIXTURE` hint. */
+const noun = (r: RRoom): string => (isWetRoom(r) ? (roomUses(r).has("bath") ? "bathroom" : "WC") : "kitchen");
+
+/** Why {@link pasteFixture} could quote no statement, as the clause a hint ends with. */
+export function pasteFailureWhy(ctx: LintContext, failure: PasteFailure): string {
+  return failure === "grid"
+    ? `the plan's \`grid ${fmt2(ctx.ir.grid)}\` snaps that footprint away, so use a finer grid`
+    : failure === "grid-offset"
+      ? `the plan's \`grid ${fmt2(ctx.ir.grid)}\` snaps an \`at (x,y)\` placement off the wall face here, so use a finer grid or a rectangular room with \`anchor … flush\``
+      : failure === "no-wall"
+        ? "it has no straight wall running square to the page for one to back onto, so give it one or place the fixture with `at (x,y)` and `rotate`"
+        : "no wall of it has a run clear of its doors and furniture for one, so make room first";
 }
 
 export const perRoomRules: LintRule = {
   name: "per-room",
   check(ctx: LintContext): Diagnostic[] {
-    const { rules, rooms, windows, furniture, connectors, roomRects, wallSegs, labelOf, at, ir } = ctx;
+    const { rules, rooms, furniture, connectors, roomRects, wallSegs, labelOf, at, ir } = ctx;
     const out: Diagnostic[] = [];
 
     for (const r of rooms) {
@@ -112,7 +157,7 @@ export const perRoomRules: LintRule = {
       }
 
       // A bedroom needs natural light / egress.
-      if (isBedroom(r) && !windows.some((win) => onEdge(win.at))) {
+      if (isBedroom(r) && !roomHasWindow(ctx, r)) {
         out.push({
           severity: "warning",
           code: "W_BEDROOM_NO_WINDOW",
@@ -148,20 +193,13 @@ export const perRoomRules: LintRule = {
       const isWet = isWetRoom(r);
       const isKit = isKitchen(r);
       if (isWet || isKit) {
-        const want = isWet ? WET_FIX : KITCHEN_FIX;
-        const has = furniture.some((f) => {
-          const fr = rectOf(f);
-          const cx = fr.x + fr.w / 2;
-          const cy = fr.y + fr.h / 2;
-          return want.has(f.category) && pointInRoomBox({ x: cx, y: cy }, rect);
-        });
-        if (!has) {
+        if (lacksZoneFixture(ctx, r)) {
           out.push({
             severity: "warning",
             code: "W_ROOM_NO_FIXTURE",
             ...at(r),
             message: `${isWet ? "Bathroom" : "Kitchen"} "${labelOf(r)}" has no ${isWet ? "fixtures (WC, basin, shower…)" : "fixtures (sink, counter, stove…)"}.`,
-            hints: [noFixtureHint(ctx, r, isWet)],
+            hints: [noFixtureHint(ctx, r)],
           });
         }
       }

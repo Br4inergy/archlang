@@ -23,6 +23,7 @@ import { connectorAmbiguous, openingAtJunction, openingOverlap } from "./opening
 import { perRoomRules } from "./per-room.js";
 import { entranceIntoPrivate, roomViaPrivate, wetRoomDoor } from "./privacy.js";
 import { reachability } from "./reachability.js";
+import { habitableNoWindow, roomMissingDefining } from "./room-contents.js";
 import { balconyNoDoor, outdoorOverlapsRoom } from "./outdoor.js";
 import { roomNotEquatorFacing } from "./site.js";
 import { stairUnmatched } from "./vertical.js";
@@ -98,6 +99,11 @@ export const LINT_RULES: readonly LintRule[] = [
   openingAtJunction,
   openingOverlap,
   connectorAmbiguous,
+  // Room-contents advisories (plan-soundness PS2.8, PS2.9): a living room, dining room or
+  // kitchen with no window, and a furnished room missing the piece that defines it. Appended
+  // LAST, in this order, so no existing diagnostic moves within the array.
+  habitableNoWindow,
+  roomMissingDefining,
 ];
 
 export type { LintContext, LintRule } from "../context.js";

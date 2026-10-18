@@ -1,7 +1,7 @@
 # class: daylight
 # origin: audits/showcase-and-examples.md X25 (examples/accessible.arch: the living room has no window; accessibility metadata and furniture removed)
 # expect: W_HABITABLE_NO_WINDOW
-# status: todo
+# status: done
 # fact: r_living (uses living, 3.5 x 4 m) has the entrance door and no window; the one window (x 4400-5600 on the south wall) is the bedroom's
 plan "Flat 2B" {
   units mm

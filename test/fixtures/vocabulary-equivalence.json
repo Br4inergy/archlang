@@ -983,8 +983,8 @@
     {
       "id": "r_servery",
       "label": "Servery",
-      "uses": ["kitchen"],
-      "room_type": "Kitchen"
+      "uses": [],
+      "room_type": "Room"
     },
     {
       "id": "r_store",
@@ -1859,7 +1859,7 @@
     {
       "id": "u1.living",
       "label": "Living",
-      "uses": ["living", "dining", "kitchen"],
+      "uses": ["living", "kitchen"],
       "room_type": "LivingRoom"
     },
     {
@@ -1883,7 +1883,7 @@
     {
       "id": "u2.living",
       "label": "Living",
-      "uses": ["living", "dining", "kitchen"],
+      "uses": ["living", "kitchen"],
       "room_type": "LivingRoom"
     },
     {
@@ -1907,7 +1907,7 @@
     {
       "id": "u3.living",
       "label": "Living",
-      "uses": ["living", "dining", "kitchen"],
+      "uses": ["living", "kitchen"],
       "room_type": "LivingRoom"
     },
     {
@@ -1931,7 +1931,7 @@
     {
       "id": "u4.living",
       "label": "Living",
-      "uses": ["living", "dining", "kitchen"],
+      "uses": ["living", "kitchen"],
       "room_type": "LivingRoom"
     }
   ],

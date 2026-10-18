@@ -243,11 +243,14 @@ describe("repair — `in <room>` placements", () => {
     // (0,0) left a 50 mm nib on a 200 mm wall, which is not a buildable jamb. That was a
     // defect in the fixture, not in the new rule, and this test's closing
     // `expect(lint(...)).toEqual([])` is exactly the assertion that surfaced it.
+    //
+    // The room is a WC, not a bath: a bath holding a WC and no bathtub or shower raises
+    // `W_ROOM_MISSING_DEFINING`, which is not what this test is about.
     const src = `plan "Bath" {
   units mm
   grid 50
   wall exterior thickness 200 { (0,0) (5000,0) (5000,5000) (0,5000) close }
-  room id=r at (0,0) size 5000x5000 label "Bath" uses bath
+  room id=r at (0,0) size 5000x5000 label "WC" uses wc
   door id=entry at (1000,0) width 900 wall exterior hinge left swing in
   furniture chest at (2500,4200) size 1000x700
   furniture wc in r anchor bottom flush size 400x700
