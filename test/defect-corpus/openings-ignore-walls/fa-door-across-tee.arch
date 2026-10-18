@@ -1,7 +1,7 @@
 # class: openings-ignore-walls
 # origin: evidence.md section 1 row 1; repro/family-apartment.arch d_living_bed3 (reduced, mirrored to x=3000)
 # expect: W_OPENING_AT_JUNCTION
-# status: todo
+# status: done
 # fact: d_tee spans y 2100-2900 on p_v; p_h (faces 2350-2450) tees in from the west and dead-ends into the
 #   leaf; describe gives it between [bath2, hall] although bath1 is on the same side
 plan "Door across a partition tee" {

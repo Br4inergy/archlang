@@ -1,7 +1,7 @@
 # class: openings-ignore-walls
 # origin: audits/showcase-and-examples.md X10 (examples/two-storey.arch L2 d_bed2, reduced to one storey)
 # expect: W_OPENING_AT_JUNCTION
-# status: todo
+# status: done
 # fact: d_bed2 spans y 3650-4550 on hall_w; bed_w tees in from the east with its face at 3650 and bath_w from
 #   the west with its face at 4550, so both nibs are 0 mm
 plan "Door filling the gap between two tees" {

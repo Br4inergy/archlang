@@ -1,7 +1,7 @@
 # class: openings-ignore-walls
 # origin: audits/archcanvas-public-examples.md FH1 (family-house garden bifold x 1000-3400 over win_living)
 # expect: W_OPENING_OVERLAP
-# status: todo
+# status: done
 # fact: on the south run the bifold spans x 1000-3400 and the window x 800-1800: 800 mm of overlap
 plan "Bifold over a window" {
   units mm

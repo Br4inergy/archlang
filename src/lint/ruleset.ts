@@ -92,6 +92,44 @@ export interface LintRuleset {
    * constant would be invented rather than evidenced.
    */
   minCornerNibRatio: number;
+  /**
+   * The shortest nib of wall an opening's jamb may leave to the FACE of a wall that meets
+   * its host run (a tee, a crossing, or — for windows and cased openings — a corner).
+   * `W_OPENING_AT_JUNCTION` requires `max(minJunctionNibMm, host thickness ×
+   * junctionNibThicknessRatio)`. Default 100.
+   *
+   * **Source.** 100 mm is the low end of the trade practice (100-150 mm) for the return a
+   * frame and architrave or a lining need beside a jamb, recorded with its source in
+   * `docs/plans/plan-soundness/research/associativity.md` (the door-nib row, BuildHub
+   * "architrave offset") and `research/prior-art.md` (T5: an opening's span stays clear of
+   * wall junctions by at least a nib).
+   */
+  minJunctionNibMm: number;
+  /**
+   * The thickness limb of `W_OPENING_AT_JUNCTION`'s nib, as a multiple of the HOST wall's
+   * thickness, measured to the meeting wall's FACE. Default 0.5.
+   *
+   * **Why half, at the face.** It is `W_DOOR_NEAR_CORNER`'s own threshold restated at the
+   * datum this rule measures from. That rule asks for a nib of one wall thickness measured to
+   * the corner's CENTRELINE point; the meeting wall's face stands half its thickness short of
+   * that point, so for two walls of one thickness the same requirement read at the face is
+   * half the thickness. The plan-soundness audit proposed the same `max(100, H.thickness/2)`
+   * at the face (`docs/plans/plan-soundness/audits/showcase-and-examples.md`, proposed check
+   * 1) and found no false positive on its corpus. A full thickness at the face (ratio 1.0)
+   * flagged 100-150 mm returns beside windows on 200-300 mm walls across the shipped examples:
+   * returns inside the 100-150 mm trade range, so not defects. A profile that wants the
+   * stricter reading sets 1.0.
+   */
+  junctionNibThicknessRatio: number;
+  /**
+   * The thinnest pier of wall that may separate two openings on one run — a mullion.
+   * `W_OPENING_OVERLAP` fires when two openings' along-run spans intersect, or leave less
+   * than this between them. Default 100: the mullion width the plan-soundness audit used
+   * (`docs/plans/plan-soundness/audits/archcanvas-public-examples.md`, proposed check 1),
+   * the same 100 mm as {@link minJunctionNibMm}'s first limb, since either side of the pier
+   * has a frame to carry.
+   */
+  minMullionMm: number;
 }
 
 export const DEFAULT_RULESET: LintRuleset = {
@@ -107,6 +145,9 @@ export const DEFAULT_RULESET: LintRuleset = {
   maxDetourRatio: 3.0,
   pocketRunClearanceMm: 50,
   minCornerNibRatio: 1.0,
+  minJunctionNibMm: 100,
+  junctionNibThicknessRatio: 0.5,
+  minMullionMm: 100,
 };
 
 /**

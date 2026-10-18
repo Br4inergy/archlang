@@ -460,7 +460,7 @@ const COLLINEAR_TURN_RAD = (5 * Math.PI) / 180;
  * A negative result means the opening runs PAST that end; the caller floors it at zero,
  * so the warning reports the nib that exists rather than a negative length.
  */
-function jambRuns(d: RDoor, seg: WallSegment): { toA: number; toB: number } | null {
+export function jambRuns(d: Pick<RDoor, "at" | "width">, seg: WallSegment): { toA: number; toB: number } | null {
   if (seg.arc) {
     // `arcOpeningVoid` is the single existing answer for where an opening lands along a
     // curve — the same one the curved band measurement uses — so the jamb positions here
@@ -508,7 +508,7 @@ const angleBetween = (u: Point, v: Point): number => Math.abs(Math.atan2(u.x * v
  * that is close enough that the two solids overlap and the joinery draws one corner, so
  * the test matches what a reader sees rather than demanding byte-equal coordinates.
  */
-function isCorner(seg: WallSegment, end: "a" | "b", all: readonly WallSegment[]): boolean {
+export function isCorner(seg: WallSegment, end: "a" | "b", all: readonly WallSegment[]): boolean {
   const into = tangentInto(seg, end);
   if (!into) return false;
   const p = seg[end];

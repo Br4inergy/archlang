@@ -1,7 +1,7 @@
 # class: openings-ignore-walls
 # origin: audits/showcase-and-examples.md X3 (hillside o_entry_dining crossed by w_liv_din); FH2, X26 same shape
 # expect: W_OPENING_AT_JUNCTION
-# status: todo
+# status: done
 # fact: o_dining spans x 4300-6700 on the band wall; partition w_liv_din (faces 4725-4875) ends inside the
 #   span, a free-standing 150 mm pier in the opening
 plan "Opening crossed by a partition" {

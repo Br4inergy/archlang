@@ -1,7 +1,7 @@
 # class: openings-ignore-walls
 # origin: audits/showcase-and-examples.md M1 (mccallister o_hall_rear on p_spine)
 # expect: W_OPENING_AT_JUNCTION
-# status: todo
+# status: done
 # fact: o_rear spans x 3900-4900 on the spine; p_west face at 3850 and p_east face at 4950 leave 50 mm nibs
 #   at both jambs
 plan "Opening between two tees" {

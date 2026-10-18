@@ -349,8 +349,9 @@ export interface AccessConnector {
 export const JAMB_PROBE_INSET_MM = 50;
 
 /** What one side of a connector's host wall holds, probed one wall thickness from the
- *  host's CENTRELINE ({@link wallFaceProbes}) — half a thickness past that face. */
-interface FaceReading {
+ *  host's CENTRELINE ({@link wallFaceProbes}) — half a thickness past that face. Exported
+ *  for `W_CONNECTOR_AMBIGUOUS`, which names the rooms on each side from this reading. */
+export interface FaceReading {
   /** Rooms whose floor holds the CENTRE probe (closed bounds), in `roomRects` order. */
   holders: string[];
   /** Every room covering a positive length (mm) of the face's clear span — the path
@@ -429,7 +430,7 @@ function alongHost(host: NonNullable<AccessConnector["host"]>, at: Point, along:
  * skipped before its shape is asked: a room's box holds its whole floor, so this only
  * FILTERS candidates — every answer still comes from the shape.
  */
-function connectorFaces(
+export function connectorFaces(
   c: Pick<AccessConnector, "at" | "host"> & { width?: number },
   roomRects: Map<string, RoomBox>,
 ): [FaceReading, FaceReading] | null {

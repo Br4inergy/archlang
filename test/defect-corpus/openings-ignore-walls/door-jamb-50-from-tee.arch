@@ -1,7 +1,7 @@
 # class: openings-ignore-walls
 # origin: audits/archcanvas-public-examples.md CA5 (accessible-clinic d_staff, jamb 50 mm from the w_s2 face)
 # expect: W_OPENING_AT_JUNCTION
-# status: todo
+# status: done
 # fact: d_staff spans x 3100-4000 on the south run; partition p's face is at 3050, so the jamb nib is 50 mm
 plan "Door jamb at a tee" {
   units mm
