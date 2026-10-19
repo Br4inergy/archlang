@@ -174,7 +174,12 @@ non-residential, not by choosing a profile.** (2026-10-20, amends PS2.18's card;
   restaurant, shop, retail, clinic, consulting, waiting, reception, servery, staff room, classroom,
   lobby, meeting; measured against every corpus label before it ships). A non-residential plan files
   the typed skip `non-dwelling` for those arms; `residential-basic` asserts a dwelling and runs them
-  unconditionally. `describe()` never learns the reading; no `UseKind` is added.
+  unconditionally. `describe()` never learns the reading; no `UseKind` is added. *Refined the same
+  day:* `W_WET_ROOM_DOOR`'s kitchen arm (a bath or WC door onto a kitchen, or onto the fixture zone
+  of a kitchen+living room) stays on under every reading, because a WC opening onto a food-handling
+  area is a defect in any building; only its dining, living and leaf-less-opening arms decline. The
+  corpus case `wc-off-dining` (from 4-cafe) is re-cast as a dwelling and a café twin `wc-off-servery`
+  pins the arm that stays.
 - *Why:* the two first-contact plans the card cites (4-cafe, 6-clinic) both carry that evidence, and
   no residential example or eval golden does; the heuristic is therefore decided by measurement, and
   the acceptance for PS2.18 is that no residential corpus row loses a warning.
