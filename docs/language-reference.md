@@ -908,7 +908,11 @@ A label none of those words classifies falls back to a second list: "Store", "St
 "Closet", "Wardrobe", "Pantry" and "Larder" read as `storage`, "Office" and "Study" as `office`,
 "Utility" and "Laundry" as `utility`. "Dressing", "Linen", "Cellar", "Consulting", "Plant",
 "Boiler" and "Nursery" (a `bedroom`; "Day Nursery", a childcare room, stays unclassified) classify
-through an alias, and "Water Closet" is a `wc`.
+through an alias, and "Water Closet" is a `wc`. "Guest Room", "Kids Room", "Children's Room" and
+"Master Suite" read as `bedroom`, and a bare "Master" too (an alias) unless the label also names
+a store, office or utility room ("Master Closet" is storage). "Great Room", "Reception Room" and
+"Drawing Room" read as `living`, "Snug" and "Den" through an alias, only when nothing else in
+this list matched ("Den Store" is storage).
 The fallback never adds to a label that already classified: "Kitchen Store" is a kitchen.
 "Balcony", "Terrace", "Studio", "Gallery", "Meeting Room" and "Staff Room" classify to nothing
 (a balcony is an `outdoor` surface, and the others name more than one kind of room), so tag

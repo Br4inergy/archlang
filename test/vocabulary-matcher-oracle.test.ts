@@ -38,6 +38,14 @@
  * byte-identity claim itself. Where it is empty, the new answer must be the per-word reading
  * of the fallback rows (`oldFallback`, in the oracle's own style; "day nursery" keeps "nursery"
  * from giving a bedroom), so those lines are gated too.
+ *
+ * ## Advanced again on 2026-10-20 for plan-soundness PS2.18
+ *
+ * The fallback gained a `living` row (great room, reception room, drawing room; snug and den as
+ * aliases), read last and only when no other fallback row matched, and the `bedroom` row gained
+ * guest room, kids room, children's room and master suite, with a bare "master" as an alias that
+ * gives way to any other fallback row. `oldFallback` mirrors exactly that, per word; the new
+ * words reach the generated labels through `USE_WORDS`.
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -155,21 +163,27 @@ function oldFallback(text: string): { uses: UseKind[]; aliases: AliasMatch[] } {
     uses.push(kind);
     if (!m.canonical) aliases.push({ kind, word: m.word });
   };
-  const nursery = oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.bedroom);
-  if (nursery && !oldSynonymMatchesLabel("day nursery", text)) add("bedroom", nursery);
   const wc = oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.wc);
-  if (wc) add("wc", wc);
   const storage = wc ? null : oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.storage);
-  if (storage) add("storage", storage);
   const office = oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.office);
-  if (office) add("office", office);
   const utility = oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.utility);
+  // PS2.18: a bare "master" gives way to any other fallback row; living is read last, alone.
+  const other = [wc, storage, office, utility].some((m) => m !== null);
+  const bed = oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.bedroom);
+  if (bed && !oldSynonymMatchesLabel("day nursery", text) && !(bed.word === "master" && other)) add("bedroom", bed);
+  if (wc) add("wc", wc);
+  if (storage) add("storage", storage);
+  if (office) add("office", office);
   if (utility) add("utility", utility);
+  const living = uses.length === 0 && !other ? oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.living) : null;
+  if (living) add("living", living);
   return { uses, aliases };
 }
 
 function oldMatchesLivingDining(text: string): boolean {
-  const { uses } = oldClassifyLabelUses(text);
+  // PS2.18: the fallback's `living` row is part of the classification this reads.
+  const pre = oldClassifyLabelUses(text);
+  const { uses } = pre.uses.length > 0 ? pre : oldFallback(text);
   return uses.includes("living") || uses.includes("dining");
 }
 

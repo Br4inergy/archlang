@@ -108,10 +108,60 @@ describe("classifyLabelUses — the fallback kinds", () => {
 
   it("uses only existing use kinds, none of them a primary row's key twice over", () => {
     for (const k of Object.keys(FALLBACK_USE_VOCABULARY))
-      expect(["bedroom", "wc", "storage", "office", "utility"]).toContain(k);
+      expect(["bedroom", "wc", "storage", "office", "utility", "living"]).toContain(k);
     const primary = new Set(Object.values(USE_VOCABULARY).flatMap((v) => [...v.canonical, ...v.aliases]));
     for (const v of Object.values(FALLBACK_USE_VOCABULARY))
       for (const w of [...v.canonical, ...v.aliases]) expect(primary.has(w), w).toBe(false);
+  });
+});
+
+describe("PS2.18: a US/UK house's main rooms", () => {
+  it("reads great room, reception room and drawing room as living, snug and den as aliases", () => {
+    for (const l of ["Great room", "Great Room 1", "Reception room", "Drawing room"])
+      expect(classifyLabelUses(l), l).toEqual({ uses: ["living"], aliases: [] });
+    for (const [l, word] of [
+      ["Snug", "snug"],
+      ["Den", "den"],
+    ])
+      expect(classifyLabelUses(l), l).toEqual({ uses: ["living"], aliases: [{ kind: "living", word }] });
+  });
+
+  it("reads guest, kids', children's rooms and the master suite as bedrooms, and a bare master as an alias", () => {
+    for (const l of ["Guest room", "Kids room", "Children's room", "Master suite", "Master Suite 2"])
+      expect(classifyLabelUses(l), l).toEqual({ uses: ["bedroom"], aliases: [] });
+    expect(classifyLabelUses("Master")).toEqual({ uses: ["bedroom"], aliases: [{ kind: "bedroom", word: "master" }] });
+  });
+
+  it("a bare master gives way to another fallback room, and living is read only alone", () => {
+    expect(classifyLabelUses("Master Closet").uses).toEqual(["storage"]);
+    expect(classifyLabelUses("Master Study").uses).toEqual(["office"]);
+    expect(classifyLabelUses("Den Store").uses).toEqual(["storage"]);
+    expect(classifyLabelUses("Snug Study").uses).toEqual(["office"]);
+    expect(classifyLabelUses("Guest room Store").uses).toEqual(["bedroom", "storage"]);
+  });
+
+  it("leaves every label the primary table classifies as it was", () => {
+    for (const [l, uses] of [
+      ["Family room", ["living"]],
+      ["Lounge", ["living"]],
+      ["Sitting room", ["living"]],
+      ["Master Bedroom", ["bedroom"]],
+      ["Master Bath", ["bath"]],
+      ["Guest WC", ["wc"]],
+      ["Den / Kitchen", ["kitchen"]],
+    ] as const)
+      expect(classifyLabelUses(l).uses, l).toEqual(uses);
+    // Whole words only: "Garden" is not "den", "Masterpiece" is not "master".
+    for (const l of ["Garden", "Masterpiece", "Greatroom"]) expect(classifyLabelUses(l).uses, l).toEqual([]);
+  });
+
+  it("a Great room, Master and Study house reads as a dwelling, not an office", async () => {
+    const { dwellingReading } = await import("../src/analyze/dwelling.js");
+    const rooms = ["Great room", "Kitchen", "Master", "Dining", "Hall", "Study"].map((label, i) => ({
+      id: `r${i}`,
+      label,
+    }));
+    expect(dwellingReading(rooms)).toBe("dwelling");
   });
 });
 
