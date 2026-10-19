@@ -172,9 +172,11 @@ non-residential, not by choosing a profile.** (2026-10-20, amends PS2.18's card;
   read as a *dwelling* unless it carries positive non-residential evidence: a room with use `office`
   and no room with use `bedroom` or `living` (the living clause was added when an inline test
   fixture, Living + Office + Hall + Bath, would otherwise have read as an office), or a label from a
-  short non-residential word list (café,
-  restaurant, shop, retail, clinic, consulting, waiting, reception, servery, staff room, classroom,
-  lobby, meeting; measured against every corpus label before it ships). A non-residential plan files
+  short non-residential word list, measured against every corpus label before it shipped: café,
+  restaurant, clinic, consulting, servery, classroom and staff room read non-residential outright;
+  the ambiguous words lobby, reception, waiting, shop and meeting do so only when the plan has no
+  bedroom and no living room (review round 1 showed "Reception room", a UK sitting room, and
+  "Entrance Lobby" turning a house into an office). A non-residential plan files
   the typed skip `non-dwelling` for those arms; `residential-basic` asserts a dwelling and runs them
   unconditionally. `describe()` never learns the reading; no `UseKind` is added. *Refined the same
   day:* `W_WET_ROOM_DOOR`'s kitchen arm (a bath or WC door onto a kitchen, or onto the fixture zone
