@@ -16,23 +16,31 @@
  * rings, and circle rooms as true circles. No tessellation, sampling or bounding box enters a
  * figure; a box only skips a curve that cannot meet the region.
  *
- * **Bounds, all counts and all charged before the work they bound.** The joinery runs only
- * when the storey has at most {@link MAX_FACE_WALL_SEGMENTS} wall segments. The faces are then
- * COUNTED (one signed area per outline loop) before any is measured, and a storey with more
- * than {@link MAX_ENCLOSURE_FACES} is refused whole. Each region measurement reads at most
- * `MAX_NET_CURVES` curves (its pair loop is quadratic in them). Past any bound the face rules
- * say nothing. Under them, every point test ("which face holds this point?", "is it on a
- * wall?") asks only the loops whose cells of a uniform grid ({@link GridIndex}, a filter: the
- * winding number decides) hold the point, so the work per test does not grow with the number
- * of faces; {@link FaceWork} counts it, and a test pins the count.
+ * **The containment tree.** The outline's loops never cross, so they nest: each loop's parent
+ * is the smallest loop around it (one containment pass, smallest candidate first). Walking
+ * inward, outer loops and holes alternate, so a point is on a wall's solid exactly when the
+ * innermost loop around it is an outer loop, and in face `k` exactly when that loop is hole
+ * `k`. A point test therefore looks for the innermost loop holding the point, smallest
+ * candidate first, and stops at the first winding test that succeeds. A face's boundary is its
+ * hole and the hole's own children (the walls standing free inside it), never every loop inside
+ * its box.
+ *
+ * **Budgets: counts, all charged before the work they bound** ({@link FaceBudget}). The joinery
+ * runs only under {@link MAX_FACE_WALL_SEGMENTS} segments and {@link MAX_WALL_CONTACTS} wall
+ * contacts. The holes are then counted ({@link MAX_ENCLOSURE_FACES}), and the loops per grid
+ * cell (the candidates any point test can meet, {@link MAX_LOOPS_PER_CELL}). Once the tree is
+ * built, the curves every measurement will read are counted, and from them an upper bound on
+ * the point tests and the loop tests they cost; each is capped ({@link FACE_BUDGET_CAPS}).
+ * Past any cap the storey is refused whole, before any face or room is measured, and the face
+ * rules say nothing about it. Under the caps {@link FaceWork} counts the work actually done.
  *
  * Pure, synchronous, deterministic: the joinery's own determinism, then loops in its output
  * order (sorted, canonical), the grid's own deterministic order, and rooms in source order.
  */
 
 import type { Point } from "../ast.js";
-import { distPointToArc } from "../geometry/arc.js";
-import { type EdgeLoop, loopArea, loopBBox, loopWinding } from "../geometry/band.js";
+import { arcExtremes, distPointToArc } from "../geometry/arc.js";
+import { type EdgeLoop, edgeMid, loopArea, loopBBox, loopWinding } from "../geometry/band.js";
 import { type GridBox, GridIndex } from "../geometry/grid-index.js";
 import { segmentsOfWall } from "../geometry.js";
 import { distPointToSegment } from "../geometry/polygon.js";
@@ -60,9 +68,9 @@ export const MAX_FACE_WALL_SEGMENTS = 2000;
 /**
  * The most walled faces a storey may have for the face rules to measure it. Every face is
  * measured against the rooms near it, and a room against the faces near it, so the work grows
- * with the face count even with the grid; the largest shipped plan has 18 (`library`). Past
- * it the storey is refused whole, before any face is measured: a wall grid of thousands of
- * cells is a drawing of a lattice, not of rooms, and no answer is better than a slow one.
+ * with the face count; the largest shipped storey has 31. Past it the storey is refused whole,
+ * before any face is measured: a wall grid of hundreds of cells is a drawing of a lattice, not
+ * of rooms, and no answer is better than a slow one.
  */
 export const MAX_ENCLOSURE_FACES = 400;
 
@@ -72,10 +80,43 @@ export const MAX_ENCLOSURE_FACES = 400;
  * is a place the joinery splits edges, and every face of a wall lattice is bounded by such
  * pairs, so this bounds the joinery's work BEFORE it runs: a lattice of more than
  * {@link MAX_ENCLOSURE_FACES} cells is refused here, by counting, without being joined. Four
- * contacts per face is a square cell's own corners; the largest shipped plan has well under
- * a fifth of it.
+ * contacts per face is a square cell's own corners; the largest shipped storey has 131.
  */
 export const MAX_WALL_CONTACTS = 4 * MAX_ENCLOSURE_FACES;
+
+/**
+ * The most outline loops whose boxes may touch one grid cell: an upper bound on the candidates
+ * one point test can meet. Loops that nest (rings within rings) all touch the cells at their
+ * common centre, so this is the count that nesting raises; the largest shipped storey has 7.
+ */
+export const MAX_LOOPS_PER_CELL = 64;
+
+/**
+ * The caps on the counted work of one storey's face measurements ({@link FaceBudget}), each an
+ * upper bound computed before the work. Every shipped plan stays under a tenth of each (the
+ * corpus maxima are pinned beside them in `test/lint-space-enclosure.test.ts`).
+ */
+export const FACE_BUDGET_CAPS = {
+  /** Point tests × candidate loops per test, over every measurement. */
+  candidateTests: 200_000_000,
+  /** Σ over faces of the curves bounding the face (its hole and the hole's children). */
+  faceCurves: 20_000,
+  /** Σ over faces of the cover elements (rooms, surfaces, voids, runs) whose box meets it. */
+  faceRooms: 10_000,
+  /** Σ over rooms of the room's curves and the outline curves near it. */
+  roomCurves: 50_000,
+} as const;
+
+/** The counted bounds a storey's face measurements were charged before they ran. */
+export interface FaceBudget {
+  /** The most loops whose boxes touch one grid cell (candidates per point test). */
+  loopsPerCell: number;
+  /** Upper bound on point tests × candidates (see {@link FACE_BUDGET_CAPS}). */
+  candidateTests: number;
+  faceCurves: number;
+  faceRooms: number;
+  roomCurves: number;
+}
 
 /** One closed region of floor the walls enclose. */
 export interface WallFace {
@@ -85,7 +126,7 @@ export interface WallFace {
   box: GridBox;
   /** The face's floor area (mm²): the hole less any wall standing free inside it. */
   area: number;
-  /** The face's boundary curves: its own loop and every outline loop inside its box. */
+  /** The face's boundary curves: its own loop and its children (free-standing walls inside). */
   curves: Curve[];
 }
 
@@ -103,18 +144,27 @@ export interface FaceWork {
 export interface WallFaces {
   outline: EdgeLoop[];
   faces: WallFace[];
-  /** Is `p` on a wall's solid (nonzero winding over the whole outline)? */
+  /** Is `p` on a wall's solid (the innermost loop around it is an outer loop)? */
   solid(p: Point): boolean;
-  /** The face whose floor holds `p` (the innermost hole around it, off every solid), or -1. */
+  /** The face whose floor holds `p` (the innermost loop around it is that face's hole), or -1. */
   faceAt(p: Point): number;
   /** The outline loops whose box meets `box`, in outline order (a filter, never an answer). */
   loopsNear(box: GridBox): EdgeLoop[];
+  budget: FaceBudget;
   work: FaceWork;
 }
 
-/** Why a storey's faces were not measured: a count over its bound, charged before the work. */
+/** Why a storey's faces were not measured: a count over its cap, charged before the work. */
 export interface WallFacesRefused {
-  refused: "too-many-segments" | "too-many-wall-contacts" | "too-many-faces";
+  refused:
+    | "too-many-segments"
+    | "too-many-wall-contacts"
+    | "too-many-faces"
+    | "too-many-loops-per-cell"
+    | "too-many-candidate-tests"
+    | "too-many-face-curves"
+    | "too-many-face-rooms"
+    | "too-many-room-curves";
   count: number;
 }
 
@@ -123,34 +173,23 @@ const segmentCount = (walls: readonly RWall[]): number =>
 
 const inBox = (b: GridBox, p: Point): boolean => p.x >= b.minX && p.x <= b.maxX && p.y >= b.minY && p.y <= b.maxY;
 
-const boxInside = (inner: GridBox, outer: GridBox): boolean =>
-  inner.minX >= outer.minX && inner.maxX <= outer.maxX && inner.minY >= outer.minY && inner.maxY <= outer.maxY;
-
 /**
  * How many pairs of wall segments have bodies whose boxes meet, counted up to `limit + 1` and
- * no further (so the count costs at most that many hits beyond the box tests). A box is the
- * segment's centreline box (an arc's whole circle) grown by half its thickness.
+ * no further. A box is the segment's own extent grown by half its thickness: a straight run's
+ * ends, an arc's ends and the axis extremes inside its sweep (never its whole circle).
  */
-function wallContacts(walls: readonly RWall[], limit: number): number {
+export function wallContacts(walls: readonly RWall[], limit: number): number {
   const boxes: GridBox[] = [];
   for (const w of walls)
     for (const s of segmentsOfWall(w)) {
       const h = s.thickness / 2;
-      boxes.push(
-        s.arc
-          ? {
-              minX: s.arc.center.x - s.arc.r - h,
-              minY: s.arc.center.y - s.arc.r - h,
-              maxX: s.arc.center.x + s.arc.r + h,
-              maxY: s.arc.center.y + s.arc.r + h,
-            }
-          : {
-              minX: Math.min(s.a.x, s.b.x) - h,
-              minY: Math.min(s.a.y, s.b.y) - h,
-              maxX: Math.max(s.a.x, s.b.x) + h,
-              maxY: Math.max(s.a.y, s.b.y) + h,
-            },
-      );
+      const pts = s.arc ? arcExtremes(s.arc) : [s.a, s.b];
+      boxes.push({
+        minX: Math.min(...pts.map((p) => p.x)) - h,
+        minY: Math.min(...pts.map((p) => p.y)) - h,
+        maxX: Math.max(...pts.map((p) => p.x)) + h,
+        maxY: Math.max(...pts.map((p) => p.y)) + h,
+      });
     }
   let n = 0;
   for (let i = 0; i < boxes.length; i++)
@@ -166,11 +205,77 @@ function cellFor(boxes: readonly GridBox[]): number {
 }
 
 /**
- * The walled faces of a storey, or `null` when there is nothing to read (no wall, or no wall
- * body that bands), or a {@link WallFacesRefused} when a count is over its bound. A storey
- * whose walls close no region returns an empty `faces`.
+ * The most boxes touching any one cell of a `cell`-sized grid, counted up to `limit + 1`. A box
+ * spanning more cells than the index buckets it into is counted against every cell it spans
+ * only up to the index's own overflow rule (it is then a candidate everywhere, counted once).
  */
-export function wallFaces(walls: readonly RWall[]): WallFaces | WallFacesRefused | null {
+function maxPerCell(boxes: readonly GridBox[], cell: number, limit: number): number {
+  const counts = new Map<number, Map<number, number>>();
+  let everywhere = 0;
+  let best = 0;
+  for (const b of boxes) {
+    const x0 = Math.floor(b.minX / cell);
+    const x1 = Math.floor(b.maxX / cell);
+    const y0 = Math.floor(b.minY / cell);
+    const y1 = Math.floor(b.maxY / cell);
+    if (!((x1 - x0 + 1) * (y1 - y0 + 1) <= 1 << 14)) {
+      everywhere++;
+      continue;
+    }
+    for (let cx = x0; cx <= x1; cx++) {
+      let col = counts.get(cx);
+      if (!col) {
+        col = new Map();
+        counts.set(cx, col);
+      }
+      for (let cy = y0; cy <= y1; cy++) {
+        const n = (col.get(cy) ?? 0) + 1;
+        col.set(cy, n);
+        if (n + everywhere > best) best = n + everywhere;
+        if (best > limit) return best;
+      }
+    }
+  }
+  return Math.max(best, everywhere);
+}
+
+/** Upper bound on the pieces a measurement over `c` curves walks (each pair crosses at most twice). */
+const piecesBound = (c: number): number => c + 2 * c * Math.max(0, c - 1);
+
+/** The cover elements a face is measured against: anything with a room's shape fields. */
+export type FaceRoom = Pick<RRoom, "id" | "at" | "size" | "poly" | "circle">;
+
+const roomCurveCount = (r: FaceRoom): number => (r.circle ? 1 : r.poly ? r.poly.length : 4);
+
+const roomBoxOf = (r: FaceRoom): GridBox =>
+  r.circle
+    ? {
+        minX: r.circle.c.x - r.circle.r,
+        minY: r.circle.c.y - r.circle.r,
+        maxX: r.circle.c.x + r.circle.r,
+        maxY: r.circle.c.y + r.circle.r,
+      }
+    : r.poly
+      ? {
+          minX: Math.min(...r.poly.map((p) => p.x)),
+          minY: Math.min(...r.poly.map((p) => p.y)),
+          maxX: Math.max(...r.poly.map((p) => p.x)),
+          maxY: Math.max(...r.poly.map((p) => p.y)),
+        }
+      : { minX: r.at.x, minY: r.at.y, maxX: r.at.x + r.size.w, maxY: r.at.y + r.size.h };
+
+/**
+ * The walled faces of a storey, or `null` when there is nothing to read (no wall, or no wall
+ * body that bands), or a {@link WallFacesRefused} when a count is over its cap. `cover` is what
+ * {@link faceCover} will measure each face against and `rooms` what {@link roomOutside} will
+ * measure; both enter the budget, which is charged before any face or room is measured. A
+ * storey whose walls close no region returns an empty `faces`.
+ */
+export function wallFaces(
+  walls: readonly RWall[],
+  cover: readonly FaceRoom[] = [],
+  rooms: readonly FaceRoom[] = [],
+): WallFaces | WallFacesRefused | null {
   if (walls.length === 0) return null;
   const segs = segmentCount(walls);
   if (segs > MAX_FACE_WALL_SEGMENTS) return { refused: "too-many-segments", count: segs };
@@ -191,42 +296,68 @@ export function wallFaces(walls: readonly RWall[]): WallFaces | WallFacesRefused
 
   const boxes = outline.map(loopBBox);
   const cell = cellFor(boxes);
+  const loopsPerCell = maxPerCell(boxes, cell, MAX_LOOPS_PER_CELL);
+  if (loopsPerCell > MAX_LOOPS_PER_CELL) return { refused: "too-many-loops-per-cell", count: loopsPerCell };
   const loopIndex = new GridIndex<number>(cell);
   for (let i = 0; i < outline.length; i++) loopIndex.insert(boxes[i]!, i);
-  // Holes, smallest first, so the lowest-numbered one around a point is the innermost.
-  const holes = outline
-    .map((loop, i) => ({ loop, i, box: boxes[i]!, signed: signed[i]! }))
-    .filter((h) => h.signed < 0)
-    .sort((a, b) => b.signed - a.signed || a.i - b.i);
-  const holeIndex = new GridIndex<number>(cell);
-  for (let k = 0; k < holes.length; k++) holeIndex.insert(holes[k]!.box, k);
+  // Every loop by size, smallest first: the first candidate around a point is the innermost.
+  const rank = outline.map((_, i) => i).sort((a, b) => Math.abs(signed[a]!) - Math.abs(signed[b]!) || a - b);
+  const rankOf = new Int32Array(outline.length);
+  rank.forEach((i, r) => {
+    rankOf[i] = r;
+  });
   const work: FaceWork = { probes: 0, loopTests: 0 };
   const pointBox = (p: Point): GridBox => ({ minX: p.x, minY: p.y, maxX: p.x, maxY: p.y });
 
-  // A point's query box is one cell, so no loop is visited twice (overflow items are never
-  // also bucketed): the winding sum counts each loop once.
-  const solid = (p: Point): boolean => {
+  /** The innermost loop around `p` (smallest first, first winding hit), or -1. */
+  const innermost = (p: Point, skip = -1): number => {
     work.probes++;
-    let n = 0;
+    const cands: number[] = [];
     loopIndex.forEach(pointBox(p), (i) => {
-      if (!inBox(boxes[i]!, p)) return;
-      work.loopTests++;
-      n += loopWinding(outline[i]!, p);
+      if (i !== skip && inBox(boxes[i]!, p)) cands.push(i);
     });
-    return n !== 0;
+    cands.sort((a, b) => rankOf[a]! - rankOf[b]!);
+    for (const i of cands) {
+      work.loopTests++;
+      if (loopWinding(outline[i]!, p) !== 0) return i;
+    }
+    return -1;
+  };
+
+  // The containment tree: a loop's parent is the innermost OTHER loop around a point of it.
+  // The loops never cross, so any point on a loop (here its first edge's middle) has the same
+  // parent; a point on a shared pinch vertex is avoided by taking an edge's middle.
+  const parent = outline.map((l, i) => {
+    const first = l[0];
+    if (!first) return -1;
+    const p = edgeMid(first);
+    const cands: number[] = [];
+    loopIndex.forEach(pointBox(p), (j) => {
+      if (j !== i && rankOf[j]! > rankOf[i]! && inBox(boxes[j]!, p)) cands.push(j);
+    });
+    cands.sort((a, b) => rankOf[a]! - rankOf[b]!);
+    for (const j of cands) if (loopWinding(outline[j]!, p) !== 0) return j;
+    return -1;
+  });
+  const children = outline.map(() => [] as number[]);
+  parent.forEach((pj, i) => {
+    if (pj >= 0) children[pj]!.push(i);
+  });
+
+  // Holes, smallest first.
+  const holes = rank.filter((i) => signed[i]! < 0);
+  const holeOf = new Int32Array(outline.length).fill(-1);
+  holes.forEach((i, k) => {
+    holeOf[i] = k;
+  });
+
+  const solid = (p: Point): boolean => {
+    const i = innermost(p);
+    return i >= 0 && signed[i]! > 0;
   };
   const faceAt = (p: Point): number => {
-    if (solid(p)) return -1;
-    work.probes++;
-    let best = -1;
-    holeIndex.forEach(pointBox(p), (k) => {
-      if (best >= 0 && k >= best) return;
-      const h = holes[k]!;
-      if (!inBox(h.box, p)) return;
-      work.loopTests++;
-      if (loopWinding(h.loop, p) !== 0) best = k;
-    });
-    return best;
+    const i = innermost(p);
+    return i >= 0 ? holeOf[i]! : -1;
   };
   const loopsNear = (box: GridBox): EdgeLoop[] =>
     loopIndex
@@ -235,25 +366,57 @@ export function wallFaces(walls: readonly RWall[]): WallFaces | WallFacesRefused
       .sort((a, b) => a - b)
       .map((i) => outline[i]!);
 
+  // ── The budget, charged before any face or room is measured. ──
+  const faceCurveCounts = holes.map(
+    (i) => outline[i]!.length + children[i]!.reduce((n, c) => n + outline[c]!.length, 0),
+  );
+  const faceCurves = faceCurveCounts.reduce((a, b) => a + b, 0);
+  if (faceCurves > FACE_BUDGET_CAPS.faceCurves) return { refused: "too-many-face-curves", count: faceCurves };
+  const coverBoxes = cover.map(roomBoxOf);
+  let faceRooms = 0;
+  let pieces = 0;
+  holes.forEach((i, k) => {
+    let meet = 0;
+    let curves = faceCurveCounts[k]!;
+    cover.forEach((r, q) => {
+      if (boxesMeet(coverBoxes[q]!, boxes[i]!, 0)) {
+        meet++;
+        curves += roomCurveCount(r);
+      }
+    });
+    faceRooms += meet;
+    // The face's own area, then its cover.
+    pieces += piecesBound(faceCurveCounts[k]!) + piecesBound(curves);
+  });
+  if (faceRooms > FACE_BUDGET_CAPS.faceRooms) return { refused: "too-many-face-rooms", count: faceRooms };
+  let roomCurves = 0;
+  for (const r of rooms) {
+    const b = roomBoxOf(r);
+    let c = roomCurveCount(r);
+    for (const i of loopIndex.queryBox(b)) if (boxesMeet(boxes[i]!, b, 0)) c += outline[i]!.length;
+    roomCurves += c;
+    // Two measurements per room (outside, and inside faces).
+    pieces += 2 * piecesBound(c);
+  }
+  if (roomCurves > FACE_BUDGET_CAPS.roomCurves) return { refused: "too-many-room-curves", count: roomCurves };
+  // Two probes per piece, each meeting at most `loopsPerCell` candidates.
+  const candidateTests = 2 * pieces * Math.max(1, loopsPerCell);
+  if (candidateTests > FACE_BUDGET_CAPS.candidateTests)
+    return { refused: "too-many-candidate-tests", count: candidateTests };
+  const budget: FaceBudget = { loopsPerCell, candidateTests, faceCurves, faceRooms, roomCurves };
+
   const faces: WallFace[] = [];
-  for (let k = 0; k < holes.length; k++) {
-    const h = holes[k]!;
-    const inner = loopIndex
-      .queryBox(h.box)
-      .filter((i) => i !== h.i && boxInside(boxes[i]!, h.box))
-      .sort((a, b) => a - b);
-    const curves = [...curvesOfLoop(h.loop), ...inner.flatMap((i) => curvesOfLoop(outline[i]!))];
+  holes.forEach((i, k) => {
+    const curves = [...curvesOfLoop(outline[i]!), ...children[i]!.flatMap((c) => curvesOfLoop(outline[c]!))];
+    const box = boxes[i]!;
     const area =
       curves.length > MAX_NET_CURVES
         ? Number.NaN
-        : regionBoundary(curves, (p) => faceAt(p) === k, { x: h.box.minX, y: h.box.minY });
-    faces.push({ loop: h.loop, box: h.box, area, curves });
-  }
-  return { outline, faces, solid, faceAt, loopsNear, work };
+        : regionBoundary(curves, (p) => faceAt(p) === k, { x: box.minX, y: box.minY });
+    faces.push({ loop: outline[i]!, box, area, curves });
+  });
+  return { outline, faces, solid, faceAt, loopsNear, budget, work };
 }
-
-/** The room facts a face measurement reads. */
-export type FaceRoom = Pick<RRoom, "id" | "at" | "size" | "poly" | "circle">;
 
 /** What {@link faceCover} measures for one face. */
 export interface FaceCover {
@@ -345,7 +508,7 @@ export function roomOutside(wf: WallFaces, r: FaceRoom): RoomOutside | null {
     for (const v of ring) {
       if (!off(v)) continue;
       let d = Number.POSITIVE_INFINITY;
-      for (const l of wf.outline)
+      for (const l of near)
         for (const e of l) d = Math.min(d, e.t === "line" ? distPointToSegment(v, e.a, e.b) : distPointToArc(v, e.arc));
       if (Number.isFinite(d)) depth = Math.max(depth, d);
     }

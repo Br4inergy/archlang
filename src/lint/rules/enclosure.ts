@@ -137,6 +137,35 @@ interface OpenStretch {
   connector: boolean;
 }
 
+/**
+ * The convex polygon `poly` clipped to the strip `|across(p)| ≤ half` (Sutherland–Hodgman, two
+ * half-planes; a strip of width 0 is the line itself, kept to within float dust).
+ */
+function clipStrip(poly: readonly Point[], across: (p: Point) => number, half: number): Point[] {
+  let pts = [...poly];
+  for (const sign of [1, -1]) {
+    const lim = half + EPS;
+    const inside = (p: Point): boolean => sign * across(p) <= lim;
+    const out: Point[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i]!;
+      const b = pts[(i + 1) % pts.length]!;
+      const ia = inside(a);
+      const ib = inside(b);
+      if (ia) out.push(a);
+      if (ia !== ib) {
+        const fa = sign * across(a) - lim;
+        const fb = sign * across(b) - lim;
+        const t = fa / (fa - fb);
+        out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+      }
+    }
+    pts = out;
+    if (pts.length === 0) break;
+  }
+  return pts;
+}
+
 /** Complement of `covered` within `[0, len]`: the uncovered stretches, in order. */
 function gapsOf(covered: Array<[number, number]>, len: number): Array<[number, number]> {
   const sorted = covered
@@ -237,9 +266,18 @@ function sharedRuns(ctx: LintContext, a: RRoom, b: RRoom): SharedRun[] {
  * The open stretches of one shared run: where no wall body (`edgeWallCover` with a
  * {@link WallBodyTest}: the wall's centreline ± half its thickness, plus
  * {@link WALL_BODY_SLACK_MM}, meets the gap between the two room edges), no door and no cased
- * opening stands. A fixed counter closes a stretch only when it STRADDLES the line and what it
- * leaves open there totals no more than a doorway (`maxBoundaryGapMm`); a token counter in a
- * wide gap closes nothing.
+ * opening stands, nor any wall body that crosses the run (clipped to the gap between the room
+ * edges; one across an END of the run is the wall the rooms are drawn to and splits nothing).
+ * A fixed counter closes a stretch only when it STRADDLES the line and what it leaves open there
+ * totals no more than a doorway (`maxBoundaryGapMm`); a token counter in a wide gap closes
+ * nothing.
+ *
+ * **Counters and wall stubs are judged differently, by decision (review round 2).** A counter
+ * is a declared servery: the total it leaves open must be no wider than a doorway, because a
+ * partial counter is suspect (two counters leaving 950 mm open in all, across two slots, still
+ * warn). A wall stub is a real boundary: stubs split the run, and only the longest stretch they
+ * leave is compared with the doorway (two stubs leaving 950 mm in all, the longest 400 mm, are
+ * silent).
  */
 function openStretches(ctx: LintContext, run: SharedRun): OpenStretch[] {
   const { p, q, len, sep } = run;
@@ -249,6 +287,35 @@ function openStretches(ctx: LintContext, run: SharedRun): OpenStretch[] {
   const across = (x: Point): number => (x.x - p.x) * n.x + (x.y - p.y) * n.y;
   const straight = ctx.wallSegs.filter((s) => !s.arc);
   const covered = edgeWallCover(p, q, straight, ctx.rules.tolMm, { halfGap: sep / 2, slack: WALL_BODY_SLACK_MM });
+  // A wall CROSSING the run (not parallel to it) stands on it where its body spans the gap
+  // between the room edges: its body is clipped to that strip and its extent along the run
+  // counts. One that only reaches the line from one side does not cross it.
+  for (const s of straight) {
+    const dx = s.b.x - s.a.x;
+    const dy = s.b.y - s.a.y;
+    const sl = Math.hypot(dx, dy);
+    if (sl < EPS || Math.abs(u.x * dy - u.y * dx) / sl <= 1e-9) continue;
+    const h = s.thickness / 2;
+    const sn = { x: (-dy / sl) * h, y: (dx / sl) * h };
+    const quad = [
+      { x: s.a.x + sn.x, y: s.a.y + sn.y },
+      { x: s.b.x + sn.x, y: s.b.y + sn.y },
+      { x: s.b.x - sn.x, y: s.b.y - sn.y },
+      { x: s.a.x - sn.x, y: s.a.y - sn.y },
+    ];
+    const acr = quad.map(across);
+    const half = sep / 2;
+    if (!(Math.min(...acr) < -half - EPS && Math.max(...acr) > half + EPS)) continue;
+    const clipped = clipStrip(quad, across, half);
+    if (clipped.length === 0) continue;
+    const al = clipped.map(along);
+    const lo = Math.min(...al);
+    const hi = Math.max(...al);
+    // A wall across an END of the run is the wall the two rooms are drawn to, ending it: it
+    // splits nothing, and the run is still measured centreline to centreline.
+    if (lo <= EPS || hi >= len - EPS) continue;
+    covered.push([lo, hi]);
+  }
   let connector = false;
   for (const c of ctx.connectors) {
     const half = (c.host?.thickness ?? 0) / 2;
@@ -374,8 +441,11 @@ const FACES = new WeakMap<ResolvedPlan, WallFaces | WallFacesRefused | null>();
  * ({@link WallFacesRefused}: past `MAX_FACE_WALL_SEGMENTS` or `MAX_ENCLOSURE_FACES`), in which
  * case both face rules are silent on the storey.
  */
-const facesOf = (ir: ResolvedPlan): WallFaces | null => {
-  if (!FACES.has(ir)) FACES.set(ir, wallFaces(ir.walls));
+const facesOf = (ctx: LintContext): WallFaces | null => {
+  const ir = ctx.ir;
+  // The budget is charged against everything the two rules will measure: the cover each face is
+  // measured against (rooms, surfaces, voids, runs) and the rooms measured against the faces.
+  if (!FACES.has(ir)) FACES.set(ir, wallFaces(ir.walls, [...ctx.rooms, ...nonRoomCover(ctx)], ctx.rooms));
   const wf = FACES.get(ir) ?? null;
   // TODO(PS2.13): once the lint coverage seam (`ctx.skip`, PR #203) lands, report a refused
   // storey as a coverage skip naming the bound instead of staying silent.
@@ -454,7 +524,7 @@ export const floorUnassigned: LintRule = {
   name: "floor-unassigned",
   check(ctx: LintContext): Diagnostic[] {
     if (ctx.rooms.length === 0) return [];
-    const wf = facesOf(ctx.ir);
+    const wf = facesOf(ctx);
     if (!wf || wf.faces.length === 0) return [];
     // Reported in SOURCE order of the element each warning sits on (a bordering room, else a
     // wall round the face), never the outline's order, which follows coordinates and so moves
@@ -524,7 +594,7 @@ export const roomOutsideShell: LintRule = {
   name: "room-outside-shell",
   check(ctx: LintContext): Diagnostic[] {
     if (ctx.rooms.length === 0) return [];
-    const wf = facesOf(ctx.ir);
+    const wf = facesOf(ctx);
     if (!wf || wf.faces.length === 0) return [];
     const out: Diagnostic[] = [];
     for (const r of ctx.rooms) {

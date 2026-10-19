@@ -4,11 +4,14 @@ import { describe, expect, it } from "vitest";
 import { buildDoorAccessGraph, DEFAULT_TOL, resolvePlan } from "../src/analyze.js";
 import { computeCirculation } from "../src/analyze/circulation.js";
 import {
+  FACE_BUDGET_CAPS,
   faceCover,
   MAX_ENCLOSURE_FACES,
+  MAX_LOOPS_PER_CELL,
   MAX_FACE_WALL_SEGMENTS,
   MAX_WALL_CONTACTS,
   roomOutside,
+  wallContacts,
   wallFaces,
 } from "../src/analyze/wall-faces.js";
 import { lint } from "../src/index.js";
@@ -580,5 +583,141 @@ describe("review round 1 — the face rules are bounded by counts, charged befor
     // A hall drawn 2 m past the east wall: outside the shell, and most of it inside.
     expect(codesOf(lattice(n, n * 1000 + 2000))).toContain("W_ROOM_OUTSIDE_SHELL");
     expect(codesOf(lattice(n + 1, (n + 1) * 1000 + 2000))).not.toContain("W_ROOM_OUTSIDE_SHELL");
+  });
+});
+
+// ─── review round 2 ─────────────────────────────────────────────────────────────────────
+
+describe("review round 2 — the face budget is charged before the work, from counts", () => {
+  /** The reviewer's nested shape: `n` concentric square rings 150 mm apart, one hall over them. */
+  const rings = (n: number): string => {
+    const walls: string[] = [];
+    for (let k = 0; k < n; k++) {
+      const lo = 69000 - 150 * k;
+      const hi = 71000 + 150 * k;
+      walls.push(`wall partition thickness 50 { (${lo},${lo}) (${hi},${lo}) (${hi},${hi}) (${lo},${hi}) close }`);
+    }
+    const lo = 69000 - 150 * (n - 1);
+    const side = 2000 + 300 * (n - 1);
+    return P(
+      `${walls.join("\n")}\nroom at (${lo},${lo}) size ${side}x${side} label "Hall" uses hall\ndoor at (70000,${lo}) width 900`,
+    );
+  };
+  /** The reviewer's 20 × 20 lattice under `n` identical full-size rooms. */
+  const lat20 = (n: number): string => {
+    const walls = ["wall exterior thickness 200 { (0,0) (20000,0) (20000,20000) (0,20000) close }"];
+    for (let i = 1; i < 20; i++)
+      walls.push(
+        `wall partition thickness 100 { (${i * 1000},0) (${i * 1000},20000) }`,
+        `wall partition thickness 100 { (0,${i * 1000}) (20000,${i * 1000}) }`,
+      );
+    const rooms = Array.from({ length: n }, (_, i) => `room at (0,0) size 20000x19500 label "Hall ${i}" uses hall`);
+    return P(`${walls.join("\n")}\n${rooms.join("\n")}\ndoor at (500,0) width 800`);
+  };
+  /** `wallFaces` charged with the rule's own cover and rooms. */
+  const charge = (src: string) => {
+    const { ir } = resolvePlan(src);
+    const rooms = ir!.elements.filter((e): e is RRoom => e.kind === "room");
+    return wallFaces(ir!.walls, rooms, rooms);
+  };
+
+  it("refuses nested rings on the loops one point test can meet (rings-100, -200, -400), and rings-401 on contacts", () => {
+    for (const n of [100, 200, 400]) {
+      const wf = charge(rings(n));
+      expect(wf && "refused" in wf && wf.refused, `rings-${n}`).toBe("too-many-loops-per-cell");
+      // Counted up to the cap and no further: the count stops one past it.
+      expect(wf && "refused" in wf && wf.count, `rings-${n}`).toBe(MAX_LOOPS_PER_CELL + 1);
+    }
+    expect(charge(rings(401))).toEqual({ refused: "too-many-wall-contacts", count: MAX_WALL_CONTACTS + 1 });
+  });
+
+  it("measures rings just under the cap, each face read off its hole and the hole's child only", () => {
+    // 31 rings: 62 loops at the centre cell, under MAX_LOOPS_PER_CELL.
+    const wf = charge(rings(31));
+    if (!wf || "refused" in wf) throw new Error(`refused: ${JSON.stringify(wf)}`);
+    expect(wf.faces).toHaveLength(31);
+    expect(wf.budget.loopsPerCell).toBeLessThanOrEqual(MAX_LOOPS_PER_CELL);
+    // Every ring's face is bounded by its hole (4 edges) and the next ring's outer loop (4),
+    // the innermost by its hole alone: never every loop inside its box.
+    expect(wf.budget.faceCurves).toBe(30 * 8 + 4);
+    expect(codesOf(rings(31))).not.toContain("W_ROOM_OUTSIDE_SHELL");
+  });
+
+  it("refuses a lattice under hundreds of overlapping rooms on face × room pairs (lat20-rooms-100, -300)", () => {
+    expect(charge(lat20(100))).toEqual({ refused: "too-many-face-rooms", count: 40_000 });
+    expect(charge(lat20(300))).toEqual({ refused: "too-many-face-rooms", count: 120_000 });
+    expect(FACE_BUDGET_CAPS.faceRooms).toBeLessThan(40_000);
+  });
+
+  it("measures the same lattice under one room, every charge counted and under its cap (lat20-rooms-1)", () => {
+    const wf = charge(lat20(1));
+    if (!wf || "refused" in wf) throw new Error(`refused: ${JSON.stringify(wf)}`);
+    expect(wf.budget).toEqual({
+      loopsPerCell: 5,
+      candidateTests: 103_986_400,
+      faceCurves: 1600,
+      faceRooms: 400,
+      roomCurves: 1608,
+    });
+    for (const k of ["candidateTests", "faceCurves", "faceRooms", "roomCurves"] as const)
+      expect(wf.budget[k]).toBeLessThanOrEqual(FACE_BUDGET_CAPS[k]);
+  });
+
+  it("charges an arc by its own extent, not its whole circle (library 131 → 51; a 60-arc drum is not refused)", () => {
+    const { ir } = resolvePlan(readFileSync("examples/library.arch", "utf8"));
+    expect(wallContacts(ir!.walls, Number.POSITIVE_INFINITY)).toBe(51);
+    // A drum of 60 arcs of one circle: every whole-circle box meets every other (1770 pairs,
+    // over MAX_WALL_CONTACTS); the arcs' own boxes meet only their neighbours.
+    const pts = Array.from({ length: 60 }, (_, k) => {
+      const t = (k * Math.PI) / 30;
+      return `(${Math.round(20000 + 10000 * Math.cos(t))},${Math.round(20000 + 10000 * Math.sin(t))})`;
+    });
+    const drum = P(
+      `wall exterior thickness 200 { ${pts[0]} ${pts
+        .slice(1)
+        .map((p) => `arc ${p} radius 10000`)
+        .join(" ")} arc ${pts[0]} radius 10000 }\nroom circle at (20000,20000) radius 10000 label "Drum" uses hall`,
+    );
+    const wf = charge(drum);
+    expect(wf && "refused" in wf).toBe(false);
+    const { ir: dir } = resolvePlan(drum);
+    expect(wallContacts(dir!.walls, Number.POSITIVE_INFINITY)).toBeLessThan(200);
+  });
+});
+
+describe("review round 2 — W_BOUNDARY_NO_WALL", () => {
+  const gap = (extra: string): string =>
+    P(`${SHELL_67}
+room at (0,0) size 6000x4000 label "Study" uses office
+room at (0,4000) size 6000x3000 label "Bedroom" uses bedroom
+wall partition thickness 100 { (0,4000) (2100,4000) }
+wall partition thickness 100 { (3900,4000) (6000,4000) }
+${extra}`);
+
+  it("splits the stretch where a wall body crosses the line (wb-perp: two 850 mm stretches, silent)", () => {
+    expect(codesOf(gap(""))).toContain("W_BOUNDARY_NO_WALL");
+    expect(codesOf(gap("wall partition thickness 100 { (3000,3000) (3000,5000) }"))).not.toContain(
+      "W_BOUNDARY_NO_WALL",
+    );
+    // A wall that only reaches the line from one side does not cross it.
+    expect(codesOf(gap("wall partition thickness 100 { (3000,3000) (3000,3990) }"))).toContain("W_BOUNDARY_NO_WALL");
+  });
+
+  it("keeps the decided asymmetry: counters by the total they leave open, wall stubs by the longest stretch (k2b, k2c)", () => {
+    // Two counters leaving 900 mm open in all: closed. 950 in all: open.
+    expect(
+      codesOf(gap("furniture counter at (2300,3700) size 400x600\nfurniture counter at (3100,3700) size 500x600")),
+    ).not.toContain("W_BOUNDARY_NO_WALL");
+    expect(
+      codesOf(gap("furniture counter at (2300,3700) size 400x600\nfurniture counter at (3100,3700) size 450x600")),
+    ).toContain("W_BOUNDARY_NO_WALL");
+    // Two wall stubs leaving 950 mm open in all, the longest stretch 400 mm: silent.
+    expect(
+      codesOf(
+        gap(
+          "wall partition thickness 100 { (2300,4000) (2700,4000) }\nwall partition thickness 100 { (3100,4000) (3550,4000) }",
+        ),
+      ),
+    ).not.toContain("W_BOUNDARY_NO_WALL");
   });
 });
