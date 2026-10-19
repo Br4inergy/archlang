@@ -192,14 +192,14 @@ export function wallFaces(walls: readonly RWall[]): WallFaces | WallFacesRefused
   const boxes = outline.map(loopBBox);
   const cell = cellFor(boxes);
   const loopIndex = new GridIndex<number>(cell);
-  outline.forEach((_, i) => loopIndex.insert(boxes[i]!, i));
+  for (let i = 0; i < outline.length; i++) loopIndex.insert(boxes[i]!, i);
   // Holes, smallest first, so the lowest-numbered one around a point is the innermost.
   const holes = outline
     .map((loop, i) => ({ loop, i, box: boxes[i]!, signed: signed[i]! }))
     .filter((h) => h.signed < 0)
     .sort((a, b) => b.signed - a.signed || a.i - b.i);
   const holeIndex = new GridIndex<number>(cell);
-  holes.forEach((h, k) => holeIndex.insert(h.box, k));
+  for (let k = 0; k < holes.length; k++) holeIndex.insert(holes[k]!.box, k);
   const work: FaceWork = { probes: 0, loopTests: 0 };
   const pointBox = (p: Point): GridBox => ({ minX: p.x, minY: p.y, maxX: p.x, maxY: p.y });
 
