@@ -42,6 +42,7 @@ plan "Two-Bedroom Flat" {
   furniture fridge       against wall w_shell segment 3 offset 7500 in r_kitchen
   furniture stove        against wall w_shell segment 3 offset 6800 in r_kitchen
   furniture kitchen_sink against wall w_shell segment 3 offset 6100 in r_kitchen
+  furniture counter      against wall w_shell segment 3 offset 5300 in r_kitchen
   furniture sofa  at (2850,600) size 850x600 label "Sofa"  in r_kitchen
   furniture table at (200,3200) size 700x500 label "Table" in r_kitchen
 

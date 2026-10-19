@@ -77,6 +77,9 @@
 <circle cx="489" cy="1900" r="28.47" fill="#ffffff" stroke="#a8a29a" stroke-width="13.06"/>
 <circle cx="213" cy="1900" r="21" fill="none" stroke="#a8a29a" stroke-width="13.06"/>
 <line x1="234" y1="1900" x2="357.6" y2="1900" stroke="#a8a29a" stroke-width="13.06"/>
+<polygon points="150,3000 150,2400 750,2400 750,3000" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>
+<line x1="177" y1="3000" x2="177" y2="2400" stroke="#a8a29a" stroke-width="13.06"/>
+<line x1="714" y1="3000" x2="714" y2="2400" stroke="#a8a29a" stroke-width="13.06"/>
 <path d="M 2942,600 L 3758,600 A 42 42 0 0 1 3800,642 L 3800,1158 A 42 42 0 0 1 3758,1200 L 2942,1200 A 42 42 0 0 1 2900,1158 L 2900,642 A 42 42 0 0 1 2942,600 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>
 <path d="M 2936,600 L 2972,600 L 2972,1167.6 A 32.4 32.4 0 0 1 2939.6,1200 L 2936,1200 A 36 36 0 0 1 2900,1164 L 2900,636 A 36 36 0 0 1 2936,600 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>
 <path d="M 3728,600 L 3764,600 A 36 36 0 0 1 3800,636 L 3800,1164 A 36 36 0 0 1 3764,1200 L 3760.4,1200 A 32.4 32.4 0 0 1 3728,1167.6 L 3728,600 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>

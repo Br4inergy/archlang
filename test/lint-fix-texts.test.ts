@@ -157,7 +157,7 @@ describe("W_ROOM_NO_FIXTURE — the hint's statement compiles, clears it, and ra
         const hint = d!.hints!.join(" ");
         expect(hint).not.toMatch(/`import|lib\/fixtures/);
         // The hint quotes the room's defining pieces, placed together (a bath's bathtub or
-        // shower, a kitchen's sink AND hob): one fixture alone would leave the room furnished
+        // shower, a kitchen's sink, hob AND worktop): one fixture alone would leave the room furnished
         // and still lacking its defining piece, which W_ROOM_MISSING_DEFINING reports.
         const stmts = allQuoted(hint, /^furniture /);
         const [stmt] = stmts;
@@ -184,8 +184,8 @@ describe("W_ROOM_NO_FIXTURE — the hint's statement compiles, clears it, and ra
   it("the default cases each DO quote a statement (the clean-paste tests above are not vacuous)", () => {
     for (const src of [BATH, DOOR_ON_TOP, POLY, L_SHAPE, RELATIONAL])
       expect(allQuoted(of(src, "W_ROOM_NO_FIXTURE")[0]!.hints!.join(" "), /^furniture /)).toHaveLength(1);
-    // A kitchen is defined by two pieces, its sink and its hob: both are quoted.
-    expect(allQuoted(of(KITCHEN, "W_ROOM_NO_FIXTURE")[0]!.hints!.join(" "), /^furniture /)).toHaveLength(2);
+    // A kitchen is defined by three pieces, its sink, its hob and its worktop: all are quoted.
+    expect(allQuoted(of(KITCHEN, "W_ROOM_NO_FIXTURE")[0]!.hints!.join(" "), /^furniture /)).toHaveLength(3);
   });
 
   it("a room with no clear wall run gets the footprint, not a statement that would collide", () => {

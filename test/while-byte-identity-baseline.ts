@@ -310,25 +310,31 @@
  * the first measurement's `describe()` put back reproduces each first row. Seven again in review
  * round 2 (`bungalow`, `garden-house`, `hillside-villa`, `library`, `terrace-row`, `townhouse`,
  * `transit-hall`: the fact's basis or refusal), `describe()` only, the same way.
+ *
+ * 2026-10-20, plan-soundness PS2.19 and PS2.17: `furnished-flat` (its label-only "Utility"
+ * reads `utility`, `describe()` only), then the eleven examples that gained a worktop
+ * (`./byte-identity-baseline.ts`, "a worktop in every example kitchen"): the new compiler's
+ * payload of each previous source, with the "no counter or worktop" findings removed, reproduces
+ * each previous row.
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
   ["examples/aquarium.arch", "95ad80d00f98c5d796e25e680c5ad5ee0bdbb5032351ed589cc84c664421ca30"], // re-measured for PS2.4, see header
   ["examples/attached.arch", "591f4199087b7f7fcab65af3cab3f12dbe062456954e7ef0f02969a974d34b93"],
-  ["examples/bungalow.arch", "6b8516f0cf7828366634bf0453c1e1ecc19bfbb1a97d203f60f78eeb8428cfcb"],
+  ["examples/bungalow.arch", "5fddcfb20684e94f609c770e7632c207df253d8acdae244243327df6b926b7df"],
   ["examples/classroom-block.arch", "48ee65709fc9f1b2875c7b96fd680d03a8012811d0bd18bc4a3a45422f19fe79"], // added with the example, re-measured for net area, see header
   ["examples/clinic.arch", "fac5d9fab49df93fe8cbff6cc0bf26b9e84b1a32c26128e155d0eeb5da99feb1"],
-  ["examples/corner-cafe.arch", "d6fc478a0e72c1774a9dca2f9af4a04dadd3fa518bdec5211aec400ec47808e6"], // added with the example, re-measured for net area, see header
+  ["examples/corner-cafe.arch", "e0df9ca7fb18917da864b13ea713257106e29216a955976f2465338c8062f90d"], // added with the example, re-measured for net area, see header
   ["examples/courtyard-house.arch", "6ed177a87b487397decc32787c289ebaed4fa30108dd3be95d5cb87470dc6e14"], // re-measured for PS2.4, see header
   // Re-measured 2026-10-20 (PS2.19), `describe()` only: "Utility" reads `utility` (`byte-identity-baseline.ts`).
   ["examples/furnished-flat.arch", "c66caa1865a7b96d6edf80fa48a2d53eac0efa6475198983a3babb5b1b56a894"],
   ["examples/gallery-l.arch", "cc37c7d8d73b535358978674f3c5da26af87af4d066e6cd67a8bd1f8506e7f5f"],
-  ["examples/garden-house.arch", "3506cadfa5aed4c2aa839ff26d04ebc38f8981801ca4d0f14ac34a1182b9df0a"], // re-measured, see header
-  ["examples/garden-loft.arch", "eb6ba7bdcd33231cd0cfd2072a1a99e2b416be039e6efc2cc0a5ea76129738f2"],
+  ["examples/garden-house.arch", "61b1f27c03dd240fa9bb72a866c666970c5bd05d7f825ebb7d45cc360656a891"], // re-measured, see header
+  ["examples/garden-loft.arch", "c71a830b8dd98fa134a662c9ffd9a7138d84bafc086d56857e1c00f2ca935c94"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
   ["examples/hillside-villa.arch", "3ea454598ba34a492fac3e30285b404d33957624ac5722ef92ee0c722ab123b9"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
-  ["examples/laneway-house.arch", "1f6ebf00734dcfc07c8e43cea510f19cd101819b858a23a4ded11258d3e0a4b9"],
+  ["examples/laneway-house.arch", "7ae6603a78b63faff8a5bf9b393226cfa5d32b428e5297821ea9db6599228b2a"],
   ["examples/library.arch", "35dcd343befa526864edfe86efc7bc8d332413598c4cbfac661e3f1db79381bd"],
   ["examples/materials.arch", "8d9b58a1bc8dcdccb6d530b0f2d246777406e2eaa25849a3128de0dfcd850398"],
   ["examples/museum-wing.arch", "6e01f37f15c674c544fac6651e9f3bd32d4d6e4865fdafba36ed97feca9ff33a"],
@@ -337,16 +343,16 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/one-room.arch", "e12596f5401f097b5cf431fda952e96fc6523d7ca6a97c1518ffe6dd64e72cbe"],
   ["examples/parametric.arch", "4b4e50a6118cdca922c93a88e9c783abe17fd7d29458e27f98f0400721c2c8c7"],
   ["examples/practice-office.arch", "469f2d99f8911d59d91d2e7c0fdfaf21628cb5cfc92d3a0f08634699d57e2012"], // added with the example, re-measured for net area, see header
-  ["examples/relational.arch", "ff2815db4daccec25c4c8276c6a8fbff9fe4db813d07dd4ecbaa97d15bdcf2d0"], // re-measured for PS2.4, see header
+  ["examples/relational.arch", "0daebc6c46696e5be32690a293ce40d159e5c690948180767c409b53ccd28190"], // re-measured for PS2.4, see header
   ["examples/sheet-notes.arch", "0104550fc3b3a39a71c1a005da79c3db5ea10ae21d9739e11a6d1f18ee7b7420"], // re-measured, see header
   ["examples/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
-  ["examples/terrace-row.arch", "3daeb1d5550ac44d8a0c996962a7bde191a1decf4c555bb6801936ba3c1432c2"],
+  ["examples/terrace-row.arch", "2d5fba9f0db68736e8da81277cb775268e1d3f35cceeb8d4a75c8c12fe5649c0"],
   ["examples/themed.arch", "083872e0955d587897a87084c2f0bfe395856b02c643d7a8920e02f4bde870c1"],
-  ["examples/tiny-house.arch", "cbd44f2c14aa28ea42f1fac0c7029f6257e6d7bcaab42c21ec290cecc3bd1933"],
-  ["examples/townhouse.arch", "e5e78673e77f3214d432265e0caded4638f8363016a95d6e3bec667d3122d5c8"],
+  ["examples/tiny-house.arch", "c3d562235b68223d1018f22230e28fc54404a8fed6f1a617816ce834aa0f5b01"],
+  ["examples/townhouse.arch", "fe8e58b3b89a6e35101d852a82a425bee082d28735de04f1ad6546b9be3466f8"],
   ["examples/transit-hall.arch", "36eeb0b92a45d3e1db704bd302ce34731bef4cb2ed637021e90ddca7f9744d76"],
-  ["examples/two-bed.arch", "7a99d973cc7db9e33f46534d4abf6cc879fb32559b13d4459606242e8687dec8"],
-  ["examples/two-storey.arch", "149f588042915fa01fc8cb12088d2f53fc975342441bf9f5c787995640cd73e6"],
+  ["examples/two-bed.arch", "38dce8b3f9b2f408286f53ab8fd5af8501deff388f493ccced6277a9fb40e740"],
+  ["examples/two-storey.arch", "76b5e43457bd8723b53bf77739de5083718f478b5fd29cf937b6eacf6fd91632"],
   ["test/fixtures/axes-grid.arch", "a0a729cd0ec5bbfd90353f47e0fc9d3ee45601b66dbb67df459f54165465e8ff"],
   ["test/fixtures/chain30.arch", "858da6001d3d8032a10d372a3dac4c4eae453ad898c4f930ec4dd09ad4d9c54a"], // new fixture, see header
   ["test/fixtures/dense-bays.arch", "01ec7328bb74d5e67b80e9c2301db4bdf6734542b398ba714a3c19807b1bfa57"],

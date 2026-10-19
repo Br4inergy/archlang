@@ -29,11 +29,10 @@ import { type PasteFailure, pasteFixture } from "./fixture-paste.js";
  *   room, not a defect.
  * - `wc` is defined by its WC alone: a cloakroom without a basin is common.
  *
- * Kitchen: the row's required marks are a sink and a hob/stove. A kitchen with no worktop
- * between them is a real defect (`test/defect-corpus/missing-defining-contents/
- * kitchen-no-worktop.arch`) that the row does not model yet. Until a counter is a required
- * kitchen mark (or a profile rule asks for one), no worktop is asked for, because `finish`
- * would otherwise write kitchens the lint reports.
+ * Kitchen: the row's required marks are a sink, a hob/stove and a worktop (`counter`, or
+ * `worktop`; plan-soundness PS2.17), so a kitchen whose sink, hob and fridge are butted together
+ * with nowhere to prepare food is reported (`test/defect-corpus/missing-defining-contents/
+ * kitchen-no-worktop.arch`), and `finish` writes the worktop with them or leaves the kitchen out.
  */
 export const DEFINING: Readonly<Partial<Record<UseKind, "required" | { pick: readonly string[] } | { none: string }>>> =
   Object.freeze({

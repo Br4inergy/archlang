@@ -129,6 +129,7 @@ plan "Terrace Row" {
     furniture id=f_sink   kitchen_sink against wall shell segment 1 offset 6300 in living
     furniture id=f_stove  stove        against wall shell segment 1 offset 7200 in living
     furniture id=f_fridge fridge       against wall shell segment 1 offset 8100 in living
+    furniture id=f_counter counter in living anchor top flush size 600x600
   }
 
   # ---- the row --------------------------------------------------------------

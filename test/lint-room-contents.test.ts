@@ -253,7 +253,7 @@ describe("W_ROOM_MISSING_DEFINING", () => {
     ]);
   });
 
-  it("asks a kitchen for its sink and its hob; a `hob` is a stove, a bare `sink` a kitchen sink", () => {
+  it("asks a kitchen for its sink, its hob and its worktop; a `hob` is a stove, a `worktop` a counter, a bare `sink` a kitchen sink", () => {
     const kit = (pieces: string[]) =>
       PAIR(
         LIVING,
@@ -261,9 +261,10 @@ describe("W_ROOM_MISSING_DEFINING", () => {
         `${WINS}${pieces.map((p, i) => `  furniture ${p} against wall shell segment 1 offset ${800 + 900 * i} in r_b\n`).join("")}`,
       );
     expect(only(kit(["fridge"]), "W_ROOM_MISSING_DEFINING").map((d) => d.message)).toEqual([
-      '"Kitchen" is furnished (fridge) but has no kitchen sink and no stove: the pieces that make it a kitchen.',
+      '"Kitchen" is furnished (fridge) but has no kitchen sink and no stove and no counter or worktop: the pieces that make it a kitchen.',
     ]);
-    expect(codesOf(kit(["sink", "hob", "fridge"]))).not.toContain("W_ROOM_MISSING_DEFINING");
+    expect(codesOf(kit(["sink", "hob", "fridge"]))).toContain("W_ROOM_MISSING_DEFINING");
+    expect(codesOf(kit(["sink", "hob", "worktop", "fridge"]))).not.toContain("W_ROOM_MISSING_DEFINING");
   });
 
   it("does not check a living room (no one piece defines it)", () => {
@@ -362,7 +363,7 @@ describe("W_ROOM_MISSING_DEFINING", () => {
     const words = (u: keyof typeof FURNISH_TABLE) => definingItems(u).map((i) => [i.category, ...(i.or ?? [])]);
     expect(words("bedroom")).toEqual([["bed"]]);
     expect(words("dining")).toEqual([["dining_table"]]);
-    expect(words("kitchen")).toEqual([["kitchen_sink"], ["stove"]]);
+    expect(words("kitchen")).toEqual([["kitchen_sink"], ["stove"], ["counter", "worktop"]]);
     expect(words("bath")).toEqual([["bathtub", "shower"]]);
     expect(words("wc")).toEqual([["wc"]]);
     expect(definingItems("living")).toEqual([]);
@@ -458,7 +459,7 @@ ${extra}}
   window at (1250,0) width 900 wall shell
 }
 `;
-    expect(words(src)).toEqual(["kitchen_sink", "stove", "fridge"]);
+    expect(words(src)).toEqual(["kitchen_sink", "stove", "counter", "fridge"]);
     // The dining use is left out and says so; the lint then reports the room's missing table.
     const r = finish(src, { only: "furnish" });
     expect(r.unresolved.map((u) => u.reason)).toEqual([
@@ -467,7 +468,7 @@ ${extra}}
     expect(lint(r.source).map((d) => d.code)).toContain("W_ROOM_MISSING_DEFINING");
   });
 
-  it("fz-kitchen-1650x2600 and fz-kitchen-4000x2550: the sink and the stove are written", () => {
+  it("fz-kitchen-1650x2600 and fz-kitchen-4000x2550: the sink, the stove and the worktop are written", () => {
     expect(
       words(
         plan(
@@ -478,7 +479,7 @@ ${extra}}
           "  window at (450,0) width 900 wall shell\n  window at (0,1850) width 600 wall shell\n",
         ),
       ),
-    ).toEqual(["kitchen_sink", "stove"]);
+    ).toEqual(["kitchen_sink", "stove", "counter"]);
     expect(
       words(
         plan(
@@ -489,7 +490,7 @@ ${extra}}
           "  window at (2600,0) width 900 wall shell\n  window at (0,800) width 600 wall shell\n",
         ),
       ),
-    ).toEqual(["kitchen_sink", "stove"]);
+    ).toEqual(["kitchen_sink", "stove", "counter", "fridge"]);
   });
 
   it("fz-bath-1800x4200: the stage's own candidates have no bathtub position, the lint's search has one", () => {
@@ -552,5 +553,81 @@ ${extra}}
       '"r_x" was left empty — furnish found no position for its `bathtub` or `shower`, the piece that defines a bathroom (`W_ROOM_MISSING_DEFINING`)',
     ]);
     expect(lint(r.source).map((d) => d.code)).toContain("W_ROOM_NO_FIXTURE");
+  });
+});
+
+describe("PS2.17: a kitchen's worktop, written by finish", () => {
+  /** A fuzz kitchen (the PS2.9 comparison's corpora) of the given size. */
+  const kitchen = (w: number, h: number, extra: string): string => `plan "F" {
+  units mm
+  grid 50
+  wall id=shell exterior thickness 200 { (0,0) (${w},0) (${w},${h + 3000}) (0,${h + 3000}) close }
+  wall id=w_mid partition thickness 100 { (0,${h}) (${w},${h}) }
+  room id=r_x at (0,0) size ${w}x${h} label "X" uses kitchen
+  room id=r_h at (0,${h}) size ${w}x3000 label "Hall" uses hall
+  door id=d_in at (${w / 2},${h + 3000}) width 900 wall shell
+${extra}}
+`;
+  const written = (src: string): string[] =>
+    finish(src, { only: "furnish" })
+      .changes.filter((c) => c.room === "r_x")
+      .map((c) => c.text);
+  const codes = (src: string): string[] => lint(finish(src, { only: "furnish" }).source).map((d) => d.code!);
+
+  it("stands the worktop in the run, beside the hob", () => {
+    const src = kitchen(
+      4200,
+      3550,
+      "  door id=d_x at (2850,3550) width 800 wall w_mid swing out\n  window at (1400,0) width 1200 wall shell\n",
+    );
+    expect(written(src)).toEqual([
+      "furniture kitchen_sink against wall shell segment 1 offset 500 side left in r_x",
+      "furniture stove against wall shell segment 1 offset 1200 side left in r_x",
+      "furniture counter against wall shell segment 1 offset 1800 side left in r_x",
+      "furniture fridge against wall shell segment 1 offset 2400 side left in r_x",
+    ]);
+    expect(codes(src)).not.toContain("W_ROOM_MISSING_DEFINING");
+  });
+
+  it("spills it to another wall when the run has no room, the sink and hob placed as before", () => {
+    const src = kitchen(
+      2650,
+      2900,
+      "  door id=d_x at (2200,2900) width 800 wall w_mid swing in\n  window at (1500,0) width 1200 wall shell\n",
+    );
+    const t = written(src);
+    expect(t.slice(0, 2)).toEqual([
+      "furniture kitchen_sink against wall shell segment 1 offset 1475 side left in r_x",
+      "furniture stove against wall shell segment 1 offset 775 side left in r_x",
+    ]);
+    expect(t[2]).toMatch(/^furniture counter against wall shell segment 3 /);
+    expect(codes(src)).not.toContain("W_ROOM_MISSING_DEFINING");
+  });
+
+  it("falls back to a 400 mm module, written with its size", () => {
+    const src = kitchen(
+      1700,
+      2500,
+      "  door id=d_x at (1000,2500) width 800 wall w_mid swing in\n  window at (450,0) width 1200 wall shell\n" +
+        "  window at (0,1800) width 600 wall shell\n  door id=d_y at (1700,800) width 800 wall shell swing in\n",
+    );
+    expect(written(src)).toContain(
+      "furniture counter against wall shell segment 3 offset 3800 side left size 400x600 in r_x",
+    );
+    expect(codes(src)).not.toContain("W_ROOM_MISSING_DEFINING");
+  });
+
+  it("leaves the kitchen out whole, and says so, when no worktop fits: never a sink and a hob alone", () => {
+    const src = kitchen(
+      1650,
+      1950,
+      "  door id=d_x at (900,1950) width 800 wall w_mid swing in\n  window at (550,0) width 600 wall shell\n" +
+        "  window at (0,1150) width 600 wall shell\n",
+    );
+    const r = finish(src, { only: "furnish" });
+    expect(r.changes).toEqual([]);
+    expect(r.unresolved.map((u) => u.reason)).toEqual([
+      'no position for the worktop (`counter`, 600, 400 mm along) in "r_x" clears its walls, its doors and the pieces before it — the room was left empty',
+    ]);
   });
 });

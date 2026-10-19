@@ -157,7 +157,15 @@ describe("PS0.10 — the main entrance", () => {
     // A 2400 mm courtyard slider into Living: the hinged door into the Entry hall on the street.
     ["c1-courtyard.arch", { door: "d_front", basis: "street", candidates: ["d_front"] }, [NOT_EQUATOR]],
     // A back door into the Kitchen beside the front door into the Hall, no `site`: refused.
-    ["v1-privacy.arch", { door: null, basis: "tie", candidates: ["d_front", "d_back"] }, []],
+    // PS2.17: the fixture's kitchen holds a sink and a stove and no worktop, which the kitchen
+    // row now requires; that one warning is the room-contents rule's, not the entrance's.
+    [
+      "v1-privacy.arch",
+      { door: null, basis: "tie", candidates: ["d_front", "d_back"] },
+      [
+        'W_ROOM_MISSING_DEFINING: "Kitchen" is furnished (kitchen sink, stove) but has no counter or worktop: the piece that makes it a kitchen.',
+      ],
+    ],
     // Round 2. A back hall or mud room does not outrank a front door straight into the living
     // room: refused, and no walk or privacy warning is raised from the back door.
     ["n7-back-hall.arch", { door: null, basis: "tie", candidates: ["d_back", "d_front"] }, null],

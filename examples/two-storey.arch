@@ -51,6 +51,7 @@ plan "Two-storey house" {
     furniture sofa in living anchor top flush inset 300 size 2000x850 label "Sofa"
     furniture kitchen_sink against wall kitchen_w offset 1200 in kitchen
     furniture stove against wall kitchen_w offset 2200 in kitchen
+    furniture counter against wall kitchen_w offset 2900 in kitchen
     stair id=stair at (100,1500) size 900x2600 dir up
   }
 

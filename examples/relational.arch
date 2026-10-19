@@ -63,7 +63,7 @@ plan "Relational 1BR" {
   furniture coffee_table at (200,2000) size 900x500               in living
   furniture dining_table at (5300,300)  size 2400x1200 label "Table" in kitchen
   furniture chair        at (5600,1700) size 450x450               in kitchen
-  furniture chair        at (6800,1700) size 450x450               in kitchen
+  furniture chair        at (6200,1700) size 450x450               in kitchen
 
   # The serviced pieces. Every one of these is `requiresWall` — a sink, a stove, a WC and
   # a basin are plumbed or vented, so each backs onto the only wall this plan has, the
@@ -72,6 +72,7 @@ plan "Relational 1BR" {
   # to back onto (see the note in the header).
   furniture sink   at (7300,2400) size 600x800 rotate 90 in kitchen
   furniture stove  at (7300,3300) size 600x600 rotate 90 in kitchen
+  furniture counter at (7300,1800) size 600x600 rotate 90 in kitchen
 
   furniture wc     at (7200,4300) size 700x400 rotate 90 in bath
   furniture basin  at (7450,5000) size 450x600 rotate 90 in bath

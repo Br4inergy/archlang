@@ -76,6 +76,13 @@ interface Detail {
   run?: true;
   /** A `front` piece that faces the piece behind it, so its own back is to the room. */
   faces?: true;
+  /**
+   * A `run` piece that, when no place next to the run is clear, may stand against any wall
+   * instead (a worktop on the opposite wall of a galley, or the other leg of an L). It never
+   * constrains where the pieces before it stand, so the run is placed exactly as it would be
+   * without it.
+   */
+  spill?: true;
 }
 const DETAIL: Readonly<Record<string, Detail>> = {
   wardrobe: { front: 600, tall: true },
@@ -83,6 +90,8 @@ const DETAIL: Readonly<Record<string, Detail>> = {
   coffee_table: { gap: 400 },
   desk: { middle: true },
   office_chair: { gap: 100, faces: true },
+  counter: { run: true, spill: true },
+  worktop: { run: true, spill: true },
   stove: { run: true },
   fridge: { run: true, tall: true },
   shower: { tall: true },
@@ -354,7 +363,7 @@ export function furnishStage(
     const nowhere = (item: FurnishItem): string =>
       site.walled === 0 && item.place !== "centre"
         ? `"${room.id}" has no wall behind any of its edges to stand the required \`${item.category}\` against`
-        : `no position for the required \`${item.category}\` in "${room.id}" clears its walls, its doors and the pieces before it${
+        : `no position for the ${item.category === "counter" ? `worktop (\`counter\`, ${(item.sizes ?? []).map(([a]) => a).join(", ")} mm along)` : `required \`${item.category}\``} in "${room.id}" clears its walls, its doors and the pieces before it${
             site.named === 0 && item.place === "wall"
               ? `, and no wall behind it has an \`id=\` of its own for \`against wall\` to name`
               : ""
@@ -591,7 +600,7 @@ function groupsFor(uses: readonly UseKind[]): Array<{ use: UseKind; items: Furni
 
 /** The required pieces after `items[i]` that must stand in its run: it is placed where they fit. */
 const followers = (items: readonly FurnishItem[], i: number): FurnishItem[] =>
-  items.slice(i + 1).filter((f) => f.required && DETAIL[f.category]?.run === true);
+  items.slice(i + 1).filter((f) => f.required && DETAIL[f.category]?.run === true && !DETAIL[f.category]?.spill);
 
 function footprints(category: string, item: FurnishItem): ReadonlyArray<readonly [number, number]> {
   if (item.sizes && category === item.category) return item.sizes;
@@ -873,7 +882,12 @@ class Site {
               offer(this.against(item, category, next, mate.hi + along / 2, along, depth), true);
               offer(this.against(item, category, next, mate.lo - along / 2, along, depth), true);
             }
-          } else {
+          }
+          if (mate && detail.spill) {
+            // Every place beside the run first (under a window included), then any wall.
+            out.push(...here.splice(0), ...late.splice(0));
+          }
+          if (!mate || detail.spill) {
             const at = (e: Edge, slot: 0 | 1 | 2): void => {
               // A wall no statement can name: the fixture is written in the anchored form.
               if (item.place !== "wall" || !e.ref) {
@@ -941,10 +955,15 @@ class Site {
     const inward = e.edge === "top" || e.edge === "left" ? 1 : -1;
     const near = line + (inward * e.seg.thickness) / 2;
     const rect = this.rectAt(e, centre - along / 2, inward > 0 ? near : near - depth, along, depth);
+    // A footprint other than the catalogue's is written out (a 400 mm worktop module); the
+    // catalogue's own is not, so every statement that used it reads as it always did.
+    const fp = defaultFootprint(category);
+    const sized =
+      fp && (fp.along !== along || fp.depth !== depth) ? ` size ${fmtSource(along)}x${fmtSource(depth)}` : "";
     const text = [
       `furniture ${category} against wall ${ref.id}`,
       ...(ref.segment !== null ? [`segment ${ref.segment}`] : []),
-      `offset ${fmtSource(offset)} side ${ref.side} in ${this.room.id}`,
+      `offset ${fmtSource(offset)} side ${ref.side}${sized} in ${this.room.id}`,
     ].join(" ");
     return this.piece(item, category, text, rect, e.edge, false, true, centre - along / 2, along, depth);
   }

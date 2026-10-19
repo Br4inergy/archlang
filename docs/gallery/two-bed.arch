@@ -59,6 +59,7 @@ plan "Two-Bedroom Flat" {
   # Kitchen fixtures (clear of the door swing and the window)
   furniture stove        in r_kitchen anchor top-left  flush size 600x600 label "Stove"
   furniture kitchen_sink in r_kitchen anchor top-right flush size 600x600 label "Sink"
+  furniture counter      in r_kitchen anchor top       flush size 600x600 label "Worktop"
   furniture fridge       in r_kitchen anchor right     flush size 700x700 label "Fridge"
 
   # Bathroom fixtures (along the south end, clear of the door swing)

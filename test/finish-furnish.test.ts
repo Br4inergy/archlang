@@ -183,7 +183,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
       .filter((u) => u.reason.includes(PARTLY))
       .map((u) => [u.room!, /requires — (.*?) missing/.exec(u.reason)![1]!]);
 
-  it("the agent-UX audit plan: the living room's missing sofa is named; the bedrooms are furnished; the bathroom is silent", () => {
+  it("the agent-UX audit plan: the kitchen/living room's missing worktop and sofa are named; the bedrooms are furnished; the bathroom is silent", () => {
     const src = readFileSync("test/finish-fixtures/agent-ux-prefinish.arch", "utf8");
     expect(errorsOf(src)).toEqual([]);
     for (const r of [finish(src, { only: "furnish" }), finish(src)]) {
@@ -196,7 +196,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
           stage: "furnish",
           room: "r_live",
           reason:
-            '"r_live" holds furniture but not every piece its use requires — living: `sofa` missing; finish fills only empty rooms',
+            '"r_live" holds furniture but not every piece its use requires — kitchen: `counter`; living: `sofa` missing; finish fills only empty rooms',
           span: { start: src.indexOf("room id=r_live"), end: src.indexOf("\n\n  outdoor") },
         },
       ]);
@@ -238,7 +238,9 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
     );
     expect(errorsOf(src)).toEqual([]);
     const r = finish(src, { only: "furnish" });
-    expect(partly(r)).toEqual([["r_bed", "kitchen: `kitchen_sink`, `stove`; bedroom: `bed`; living: `sofa`"]]);
+    expect(partly(r)).toEqual([
+      ["r_bed", "kitchen: `kitchen_sink`, `stove`, `counter`; bedroom: `bed`; living: `sofa`"],
+    ]);
     expect(r.changes.some((c) => c.room === "r_bed")).toBe(false);
   });
 
@@ -396,7 +398,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
     expect(r.source).toBe(src);
     expect(r.unresolved).toEqual([expect.objectContaining({ stage: "furnish", room: "r" })]);
     expect(r.unresolved[0]!.reason).toBe(
-      '"r" holds furniture but not every piece its use requires — living: `sofa` missing; it is larger than 100 m², which the furnish table does not cover; finish fills only empty dwelling rooms',
+      '"r" holds furniture but not every piece its use requires — kitchen: `counter`; living: `sofa` missing; it is larger than 100 m², which the furnish table does not cover; finish fills only empty dwelling rooms',
     );
   });
 
@@ -516,6 +518,15 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
    * `courtyard-house` gains an `outdoor patio` over its courtyard, and `relational`'s header
    * counts its seven deliberate warnings (`./byte-identity-baseline.ts`, "the space-enclosure
    * rules").
+   *
+   * 2026-10-20 (PS2.17): eleven rows re-measured for SOURCE edits, not a compiler change. The
+   * kitchen row now requires a worktop (`counter`), so every example kitchen gained one
+   * (`./byte-identity-baseline.ts`, "a worktop in every example kitchen"). Each example's
+   * previous source (ef7dc46) under the new compiler reproduces its previous row exactly
+   * (its kitchen already holds furniture, so `finish` writes nothing into it either way, and
+   * the partly-furnished note naming the worktop is outside this digest); `finish` echoes the
+   * edited source: bungalow, corner-cafe, garden-house, garden-loft, laneway-house,
+   * relational, terrace-row, tiny-house, townhouse, two-bed, two-storey.
    */
   // Digest first: a name-keyed row reads to a secret scanner as `<key-ish word>: <opaque value>`.
   const FINISH_DIGESTS: ReadonlyMap<string, string> = new Map(
@@ -524,22 +535,22 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["50bfe2d1d4955f0399834c0e436ef5f6308a109552a22a7df3aea13f93cdfdd9", "accessible"], // PS2.9 source edit, see above
         ["4abe321f787662840c38a4e8c238503630c9de04e8b92e13a0c4a9243f56d0b3", "aquarium"], // PS2.4 source edit, see above
         ["8894023b744a155aad52d1ca28b7836ad1c9d63d1665e82f6b835c8d8e480f3b", "attached"],
-        ["c512ccc1711f22b6046175a9ef358ad5b2d95a481448c61bf95196714e990187", "bungalow"],
+        ["68042a31d598b906bf022a88135afd0c68c12886f9432f6fd6b2172345b32324", "bungalow"], // PS2.17 source edit (a worktop), see above
         ["cbf505c9f38de1bce32a5f6256b035a3a5cb35df068f411621db590234da0685", "classroom-block"], // first measurement, added with the example
         ["8f1860697479247a76d029ed309957a97660716904b948956bbe76b6bd46873c", "clinic"],
-        ["c23c854e798c435b2d16e1a067edc7ef860d7c46c878f2126fdbe92de1d4aa7d", "corner-cafe"], // first measurement with the example; PS2.9 source edit, see above
+        ["d48052d84f9ff286b92cd9077c3f9a732e5eb384da2fc65394a06d6242a7ff06", "corner-cafe"], // first measurement with the example; PS2.9 source edit; PS2.17 source edit (a worktop), see above
         ["67d8b7c380698ba23ed28b911e7517d89a5fbe4e80a6a169ded2c486cbb100dd", "courtyard-house"], // PS2.4 source edit, see above
         ["d6216018c7eeca2476644c8c57a52efa63e33584fc8acb9843752e4902244d8a", "furnished-flat"],
         ["6680a2b84429d16bf60bed5d240dbf498fa920c9aa99c2cf91a44362ea5d14b1", "gallery-l"],
         // Re-measured 2026-10-18 (plan-soundness PS2.6): the example's SOURCE changed, one door
         // re-hosted (`d_gar` onto the kitchen, +3 bytes), and `source` is part of this digest. The
         // pre-edit source still gives the previous row; see ./byte-identity-baseline.ts.
-        ["088bafd17d2c504adc4aa7690a14cc295b02337099787f3e2111c5e91f133e33", "garden-house"],
-        ["33a8fdea6f6aaab2ef4b42bdcf137312ac3b0b63818c9a3bc347cbb176a829ef", "garden-loft"],
+        ["a8f92591396682a6c7c13c746c747b390e7240717712d6cf9d3a88735a525d7c", "garden-house"], // PS2.17 source edit (a worktop), see above
+        ["122e17aabc2643131006de47ed85c5a98d60950cc73bbe867d306c767fdb553a", "garden-loft"], // PS2.17 source edit (a worktop), see above
         ["57d4237846d3b666c6806da6ee2bf4cadeb68a2e1d39723c6a024e5b415d5faf", "hexagon-pavilion"],
         ["bea58a9a66de93242c279308887d8979ded9c1547d9dc7ef3761c5df04f837af", "hillside-villa"], // PS2.1–PS2.3 and PS2.9 source edits, see above
         ["d90d58c40a4068427ef23c066acba5d50d8e99a801b6ce890da3ac9dc01a9554", "imports"],
-        ["d04b5112a75e5f493257685ab80f161288f82a78eedbb47ec0bc92950ed928e3", "laneway-house"],
+        ["f68275be8a97b35c070244b92347b69ba2f1d645e199cc101d7063bcfbcbfb74", "laneway-house"], // PS2.17 source edit (a worktop), see above
         ["a80df92f27d3f9f35535fb27f41b12b56a8d81f582dab3e818fff97487ded019", "library"],
         ["7737a7533af7804514e028ee6740c98133ae439ec57ca1a73f5ef72de0260a06", "materials"],
         ["0c540e53b8c534793dbfb63eb0ecedc39c152f99b1bfee51237baf114c5eaab5", "museum"],
@@ -547,17 +558,17 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["c5264000e380ff26ad0ea75d9cb75b84d52d22c5988671aee640f87ef125c340", "museum-wings"],
         ["863a9f2c6d83393b414fc6cf634c7757d3148ba19d9c85ff19b9b935f2d64f99", "one-room"],
         ["aa3345f2ba982f844e25108a7908a6f60a8ed295b574248fb895b54bb5599c27", "parametric"],
-        ["283977ceabe34bd34d2419b31bb4364e01238a8e8ab6b51f5ebab985000cd413", "relational"], // PS2.9 and PS2.4 source edits, see above
+        ["167ec58b1de1ab556690fbbd19ae0229c8bb167e02d3fc459f139f2abfca85b3", "relational"], // PS2.9 and PS2.4 source edits; PS2.17 source edit (a worktop), see above
         ["d58bfbf0a25a5b70b7bdfdd1a8ef7b0fb8912f88ebb5cf631da3efe8268015e4", "sheet-notes"], // first measurement, added with the example
         ["324269a53206201f470d727c6b29f3b7cce19f58f3d99822f474be1901503675", "practice-office"], // first measurement with the example; PS2.9 source edit, see above
         ["147ce7e23f6f2a403d2d269cc0e68b678cab850e0d3a641287ef50bced7c76d3", "studio"],
-        ["d8c991ab749604d5f2e7abfb47a54d8adb4fb0560a96ecf4a7c07d17e5ad142d", "terrace-row"], // PS2.1–PS2.3 and PS2.9 source edits, see above
+        ["29827821fb1f1893289a63131cbb17a5b5209aadf6d71d4750b0e0f750871ecb", "terrace-row"], // PS2.1–PS2.3 and PS2.9 source edits; PS2.17 source edit (a worktop), see above
         ["9da982b56530f0ec0c1b313fe8be64e5346f71bc4d098244664f164a02029a09", "themed"],
-        ["c8c89f7f1db78626ab2620d113675e146a63c80461d978ce15b968a6aff581f5", "tiny-house"],
-        ["ec6046117fe68a7329ef5aded15217195ecbd3d0108153d5e7b5d56e602e43a2", "townhouse"],
+        ["31f8334333946e24f32ae1399e066be544cf561984f496bd6c5ae57858ae1ce0", "tiny-house"], // PS2.17 source edit (a worktop), see above
+        ["8861cbfcf369054c2de2752552b048de2e5ba9cf4a2ab3c93476611445c56419", "townhouse"], // PS2.17 source edit (a worktop), see above
         ["8512160d1872176b1d122364ca4a36274ccde6c5e8204c394d50e325598bdc33", "transit-hall"],
-        ["07ed5965a8bee0706176c15c95b2714ea43a4f3212267bfcafc4a7333b9a6fdb", "two-bed"],
-        ["0fe04a1e57aaecab23f6a095f9eb6a0824077dd6f58e6b63022518f420c8a462", "two-storey"], // PS2.1–PS2.3 and PS2.9 source edits, see above
+        ["9f940ee7cbc46339e914e7ce2ff4bdab310d05ed77997a7022e28beb13adc3f0", "two-bed"], // PS2.17 source edit (a worktop), see above
+        ["554e334d2006a38f659726806b7cbc9918c635a39595209acb95a0bf50032246", "two-storey"], // PS2.1–PS2.3 and PS2.9 source edits; PS2.17 source edit (a worktop), see above
       ] as const
     ).map(([digest, example]) => [example, digest]),
   );
@@ -941,7 +952,7 @@ suite("furnish — the table is built from words the catalogue has, and the docs
         for (const w of [item.category, ...(item.or ?? [])]) expect(wet).toContain(w);
     for (const item of FURNISH_TABLE.kitchen!) expect(kitchen).toContain(item.category);
     expect(FURNISH_TABLE.bath!.map((i) => i.category)).toEqual(["wc", "basin", "bathtub"]);
-    expect(FURNISH_TABLE.kitchen!.map((i) => i.category)).toEqual(["kitchen_sink", "stove", "fridge"]);
+    expect(FURNISH_TABLE.kitchen!.map((i) => i.category)).toEqual(["kitchen_sink", "stove", "counter", "fridge"]);
   });
 
   it("docs/furniture.md prints the table as the source has it", () => {
@@ -1052,7 +1063,7 @@ suite("furnish law — a use's wall run is placed first and stays together", () 
     const r = finish(OPEN, { only: "furnish" });
     const texts = r.changes.map((c) => c.text);
     const k = run(texts);
-    expect(k.map((p) => p.word)).toEqual(["kitchen_sink", "stove", "fridge"]);
+    expect(k.map((p) => p.word)).toEqual(["kitchen_sink", "stove", "counter", "fridge"]);
     expect(new Set(k.map((p) => p.wall)).size).toBe(1);
     const sorted = [...k].sort((a, b) => a.offset - b.offset);
     const half = (w: string): number => defaultFootprint(w)!.along / 2;

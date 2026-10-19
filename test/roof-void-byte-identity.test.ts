@@ -249,7 +249,9 @@ import { type CompilerApi, semanticDigestWith } from "./byte-identity-digest.js"
 // and the previous describe() put back reproduces both previous rows
 // (./byte-identity-baseline.ts, "`describe().access` names the main entrance").
 const BASELINE: [string, string][] = [
-  ["laneway-house", "1e163ea9b813fd176ecdbca6517dc1bd39c0922c2bc024ab723a63f953d02f99"],
+  // Both laneway-house rows re-measured 2026-10-20 (PS2.17): its kitchen gained a worktop; the new
+  // compiler on the previous source, the worktop finding removed, reproduces 1e163ea9… and f3afd6b5….
+  ["laneway-house", "77d8d554d22af69327534161554168941e2d1408bfa00bc951c8073bb9e23e90"],
   ["studio", "fe06b9554615b4722732d13e7976991b7469d03387e8846ad83f54f83f3cbde7"],
   ["gallery-l", "7ab8ddd688e0a9fabb909fbfd910879a5e247ae4ae846412350951cd49dea6f0"],
   ["aquarium", "631cd03e9f97e40e59ab09cb830f5ac16d1d401e9363081b61a5cb7da393aa17"], // re-measured for PS2.4, see header
@@ -257,7 +259,7 @@ const BASELINE: [string, string][] = [
 
 /** The SUMMARY half of the same law — see the header. Re-measured for `aquarium` twice, both times because its rooms were wrong (the second: PS2.4). */
 const SEMANTIC_BASELINE: [string, string][] = [
-  ["laneway-house", "f3afd6b57e647c471d8efbfe92f824549cdd54b82c1f8a9d530e7e4f4112d7ab"],
+  ["laneway-house", "b1598f1cb7da5fad1a7ba74837d904e2ad5c7aa22d61e28356ecb16cb982344e"],
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
   ["aquarium", "5c049a2e9f4c8d1b6d034bb6e15f753243b023ebb057ea5a7aae800b59624ebe"], // re-measured for PS2.4, see header

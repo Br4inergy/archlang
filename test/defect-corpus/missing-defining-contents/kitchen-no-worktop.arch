@@ -1,7 +1,7 @@
 # class: missing-defining-contents
 # origin: audits/archcanvas-public-examples.md CB2 (sink, hob and fridge butted together with no worktop)
 # expect: W_ROOM_MISSING_DEFINING
-# status: todo
+# status: done
 # fact: r_kitchen (uses kitchen) holds a kitchen_sink, a stove and a fridge in one run (x 100-2100) and no counter
 plan "Kitchen without a worktop" {
   units mm

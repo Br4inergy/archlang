@@ -35,6 +35,9 @@
 <circle cx="4340" cy="4187" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="6.5"/>
 <circle cx="4460" cy="4187" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="6.5"/>
 <circle cx="4580" cy="4187" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="6.5"/>
+<polygon points="4800,3650 5400,3650 5400,4250 4800,4250" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
+<line x1="4800" y1="3677" x2="5400" y2="3677" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="4800" y1="4214" x2="5400" y2="4214" stroke="#a8a29a" stroke-width="6.5"/>
 </g>
 <g id="A-FLOR-STRS" inkscape:groupmode="layer" inkscape:label="A-FLOR-STRS">
 <polygon points="100,1500 1000,1500 1000,4100 100,4100" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
