@@ -143,7 +143,7 @@ rooms (ADR 0005):**
 | A shared run is shorter than `t_int` | `E_PARTITION_TOO_SHORT` (names the pair and the run) |
 | A `polygon` or `circle` room is in the set and not excluded | `E_ROOM_NOT_RECTANGLE` |
 | An `open between` or `between … thickness` clause names a pair that shares no run | `E_WALL_BETWEEN_NOT_ADJACENT` |
-| A clause names a room that is not in the group (or is a polygon/circle) | `E_WALL_BETWEEN_ROOM` |
+| An `open between` or `between … thickness` clause names a room that is not in the group, or a polygon/circle room; `except` accepts any room of the group, polygon and circle rooms included (it is how they are excluded) | `E_WALL_BETWEEN_ROOM` |
 | An authored wall lies on a pair the author also declared `open`, or a relational opening targets such a pair | `E_WALL_BETWEEN_OPEN` |
 
 There is no tolerance row: a 1 mm jog in the outline is a legal tiling whose ring follows the jog,
@@ -155,8 +155,8 @@ wall).
 **Direction of a derived wall**, which hinge, swing, `from start|end` and `segment <n>` read: the
 exterior ring starts at its vertex with the smallest `y`, then the smallest `x`, and runs clockwise
 on the page (first along `+x`), so the floor is on the `in` side of travel; an inner ring round a
-courtyard starts the same way and runs **counter-clockwise**, so the floor is again on the `in`
-side and `swing in` opens into the building on both rings; a partition starts at its end with the
+courtyard starts the same way and runs **counter-clockwise** (first along `+y`), so the floor is
+again on the `in` side and `swing in` opens into the building on both rings; a partition starts at its end with the
 smaller `y`, then the smaller `x`, so a horizontal run grows along `+x` and a vertical run along
 `+y`. `swing into <room>` and `hinge near start|end` are the recommended words on a derived wall;
 `swing in|out` means what it means on any wall of that direction (plan card PS3.8 adds
@@ -170,8 +170,9 @@ ring) with `_idAuthored = false`, so the keyed internals (heights, hosting, lint
 unchanged and nothing can collide with an authored id; `describe()` prints that name only in
 `derived_walls[]` and in `heights.walls[]`. A lint hint about a derived host quotes the relational
 form (`between A and B at …`), never `on A|B`. Plan JSON exports the `walls from rooms` statement
-and the relational openings as written; derived children are not exported as walls, and `arch fix`
-and `suggest` never emit a derived child as an authored one. `roof overhang` counts only the outer
+and the relational openings as written, as additive kinds in its schema (the Plan JSON and printer
+round-trip tests gain a case each); derived children are not exported as walls, and `arch fix` and
+`suggest` never emit a derived child as an authored one. `roof overhang` counts only the outer
 ring among its candidates. An author who needs a wall by id writes it by hand.
 
 **Coexistence with authored walls.** An authored wall whose centreline is exactly collinear with a
@@ -189,8 +190,8 @@ exactly as two authored instances draw today. A root derivation sees only root-d
 instance rooms are covered by their component's own statement.
 
 **Bounds, charged before allocating.** At expansion the statement counts toward `MAX_ELEMENTS` with
-the upper bound of what it can derive (at most `3n` partitions and `4n` ring vertices for `n`
-rooms), so a tiling that could exceed the cap is `E_ELEMENT_LIMIT` before resolve. At resolve the
+the upper bound of what it can derive (at most `6n` partition pieces, since coexistence can split
+a run in two, and `4n` ring vertices for `n` rooms), so a tiling that could exceed the cap is `E_ELEMENT_LIMIT` before resolve. At resolve the
 shared runs come from one sort of the room edges per axis and a sweep, charged as `n log n + 3n`
 steps on the evaluator meter before the sweep runs; the union outline is one sweep over the sorted
 edges. Derived children count toward the drawing budget like authored ones in `compile()`
@@ -256,10 +257,17 @@ ADR 0005).
 `against wall <id|category>` needs a unique wall id and refuses a category that matches several
 walls, so furniture could never back onto a derived partition (a tiling has many). The form above,
 pulled forward from plan card PS3.7, backs a piece onto a room's own edge: the piece's back face
-lies on the edge line's room-side wall face when a wall stands there (derived or authored, any
-thickness), or on the edge line itself when nothing does; `offset` runs along the edge in the
-room's frame from its start corner (`top`/`bottom` from `left`, `left`/`right` from `top`). It is
-closed-form, needs no wall id, and `examples/two-bed.arch`'s wardrobe and shower rewrite to it.
+lies on the edge line's room-side wall face when a wall stands there, or on the edge line itself
+when nothing does. "A wall stands there" is decided over the piece's whole footprint span along the
+edge: exactly one wall body, derived or authored, with its centreline on the edge line across the
+whole span; two walls of different thickness, a part-open span, or a wall beside the line is
+`E_FURN_AGAINST`, as a non-unique `against wall` is today. `offset` is measured along the edge in
+the room's frame from its start corner (`top`/`bottom` from `left`, `left`/`right` from `top`) to
+the piece's **centre**, defaults to the edge's midpoint, and is refused outside `0 … edge length`
+(`E_FURN_AGAINST`), exactly as `against wall … offset` works today (`furniture.ts`). `in <B>` with
+`B ≠ A` is refused: the edge already names the room. It is closed-form, needs no wall id, and
+`examples/two-bed.arch`'s wardrobe (`against r_bed2.right offset 1500`, centre y 6500) and shower
+(`against r_bath.left offset 2000`, centre y 7000) rewrite to it one for one.
 `against wall exterior [segment <n>]` keeps working when the ring is the only exterior wall, with
 segments numbered along the ring's direction rule; an inner ring or an authored exterior wall beside
 the ring makes `exterior` ambiguous, as today.
@@ -337,10 +345,11 @@ Recorded with D1 and D5 in the plan:
 ## Acceptance (cards PS3.0, PS3.2–PS3.4)
 
 - Before any form lands: a probe runs the four preconditions that need no clause (overlap, tiling
-  with the hole and pinch rules, too-short run, non-rectangle) over every corpus storey, excluding
-  rooms whose uses are outdoor (balcony, terrace, garden) as `except` would, and reports the
-  refusal share, replacing the area-sum premise with the exact one. D5's quarter threshold is read
-  from that figure.
+  with the hole and pinch rules, too-short run, non-rectangle) over every corpus storey and reports
+  the refusal share twice: with no exclusions, and with a reviewed per-example `except` list
+  checked into the probe (no use kind means "outdoor", so a terrace is excluded by that list, never
+  by reading its label). D5's quarter threshold is read from the excluded figure, and both are
+  recorded in the plan.
 - Byte-identity sweep green with the new resolve order and no new form in use, diagnostics order
   included.
 - `examples/relational.arch` and `examples/two-bed.arch` rewritten in the headline form lint clean
