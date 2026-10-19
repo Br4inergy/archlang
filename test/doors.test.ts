@@ -447,6 +447,8 @@ suite("doors — W_POCKET_RUN", () => {
     // `habitable-no-window` and `room-missing-defining` (plan-soundness PS2.8, PS2.9) are in
     // the same position again: no new syntax, appended last, every corpus movement listed in
     // `test/byte-identity-baseline.ts`'s header.
+    // The three space-enclosure rules (plan-soundness PS2.4) follow those, in the same
+    // position and for the same reasons; their corpus movement is listed in the same header.
     expect(names.slice(i + 1)).toEqual([
       "outdoor-overlaps-room",
       "balcony-no-door",
@@ -460,6 +462,9 @@ suite("doors — W_POCKET_RUN", () => {
       "connector-ambiguous",
       "habitable-no-window",
       "room-missing-defining",
+      "boundary-no-wall",
+      "floor-unassigned",
+      "room-outside-shell",
     ]);
   });
 
@@ -470,8 +475,9 @@ suite("doors — W_POCKET_RUN", () => {
     // plan does not write. The three circulation-and-privacy rules follow those, and this
     // plan has no room for them to read; the three opening rules follow those, and none fires
     // here (a door at a corner is `W_DOOR_NEAR_CORNER`'s alone); the two room-contents rules
-    // follow those, and this plan has no room for them to read either.
-    expect(LINT_RULES.map((r) => r.name).slice(-10)).toEqual([
+    // follow those, and this plan has no room for them to read either; nor do the three
+    // space-enclosure rules after them.
+    expect(LINT_RULES.map((r) => r.name).slice(-13)).toEqual([
       "door-near-corner",
       "opening-not-dimensioned",
       "room-via-private",
@@ -482,6 +488,9 @@ suite("doors — W_POCKET_RUN", () => {
       "connector-ambiguous",
       "habitable-no-window",
       "room-missing-defining",
+      "boundary-no-wall",
+      "floor-unassigned",
+      "room-outside-shell",
     ]);
     // A plan carrying an unrelated pre-existing warning (a sub-passable door width) AND
     // tripping the new rule: the old diagnostic must still be first, byte-for-byte.

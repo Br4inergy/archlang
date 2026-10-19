@@ -202,6 +202,10 @@ import { type CompilerApi, semanticDigestWith } from "./byte-identity-digest.js"
 // 0027): `aquarium`'s two rows, because the curved shell's band covers 0.28 + 1.14 m² of
 // the concourse and cafe; its SUMMARY row moves with describe(). Field by field in
 // ./byte-identity-baseline.ts ("Six plans re-measured again").
+// `aquarium`'s two rows re-measured for plan-soundness PS2.4: its source was fixed (the galleries
+// reach the north wall, the concourse takes the bay round the drum), and the new rules move lint() only —
+// the new SVG and describe() with the previous lint() reproduce both rows on the previous
+// source. ./byte-identity-baseline.ts ("the space-enclosure rules").
 // `laneway-house`'s two rows re-measured for plan-soundness PS0.10: describe().access gains the
 // appended `mainEntrance` and each room's `depthFromMainEntrance`; SVG and lint() byte-identical,
 // and the previous describe() put back reproduces both previous rows
@@ -210,15 +214,15 @@ const BASELINE: [string, string][] = [
   ["laneway-house", "1e163ea9b813fd176ecdbca6517dc1bd39c0922c2bc024ab723a63f953d02f99"],
   ["studio", "fe06b9554615b4722732d13e7976991b7469d03387e8846ad83f54f83f3cbde7"],
   ["gallery-l", "7ab8ddd688e0a9fabb909fbfd910879a5e247ae4ae846412350951cd49dea6f0"],
-  ["aquarium", "4dcfa86da1e9b655ae0f1962a2226df79486705c7b08de021280ed82c8183318"],
+  ["aquarium", "631cd03e9f97e40e59ab09cb830f5ac16d1d401e9363081b61a5cb7da393aa17"], // re-measured for PS2.4, see header
 ];
 
-/** The SUMMARY half of the same law — see the header. Re-measured once, for `aquarium`, because its rooms were wrong. */
+/** The SUMMARY half of the same law — see the header. Re-measured for `aquarium` twice, both times because its rooms were wrong (the second: PS2.4). */
 const SEMANTIC_BASELINE: [string, string][] = [
   ["laneway-house", "f3afd6b57e647c471d8efbfe92f824549cdd54b82c1f8a9d530e7e4f4112d7ab"],
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
-  ["aquarium", "0c0ff87fb446fe2dea2db1cc0560f6e840066c0a4a9afa192cee4387badde556"],
+  ["aquarium", "5c049a2e9f4c8d1b6d034bb6e15f753243b023ebb057ea5a7aae800b59624ebe"], // re-measured for PS2.4, see header
 ];
 
 /** The compiler surface the summary-half pins are taken over. */

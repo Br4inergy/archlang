@@ -1,7 +1,7 @@
 # class: space-not-enclosed
 # origin: repro/widen-after.arch (verbatim); evidence.md section 4 change drill
 # expect: W_ROOM_OUTSIDE_SHELL
-# status: todo
+# status: done
 # fact: with AW=4500 the relational room b resolves to x 4500-8500, 500 mm past the shell's east wall at
 #   8000; the partition p (x=4000) is left inside room a
 plan "widen" {

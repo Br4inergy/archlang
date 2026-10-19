@@ -42,6 +42,7 @@ export type {
   LintFamily,
   LintSkipReason,
   LintUnclassifiedRoom,
+  EnclosureBudgetCap,
 } from "./lint/coverage.js";
 export { LINT_RULES } from "./lint/rules/index.js";
 
@@ -262,13 +263,14 @@ function lintOne(
   // The coverage seam: a rule's `ctx.skip(...)` is filed under the family of the rule
   // running, which the fold — not the rule — supplies.
   let current = LINT_RULES[0]!;
-  const ctx = buildLintContext(ir, rules, building, (reason, room) =>
+  const ctx = buildLintContext(ir, rules, building, (reason, room, cap) =>
     notes.push({
       rule: current.name,
       family: current.family,
       reason,
       ...(room ? { room } : {}),
       ...(level !== undefined ? { level } : {}),
+      ...(cap ? { cap } : {}),
     }),
   );
   const out: Diagnostic[] = [];

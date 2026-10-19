@@ -419,6 +419,9 @@ export const RULE_CLASS: Readonly<Record<string, RuleClass>> = {
   "connector-ambiguous": "invariant",
   "habitable-no-window": "invariant",
   "room-missing-defining": "invariant",
+  "boundary-no-wall": "invariant",
+  "floor-unassigned": "invariant",
+  "room-outside-shell": "invariant",
 };
 
 /**

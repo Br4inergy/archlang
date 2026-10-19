@@ -1165,6 +1165,50 @@
  * each row below is the new measurement with this file's digest bodies (`two-storey` over its
  * height-free derivation).
  *
+ * ## Three examples: both rows re-measured — the space-enclosure rules, and the defects they found
+ *
+ * 2026-10-19, plan-soundness PS2.4. Two steps, each measured on its own against `cc165f4`.
+ *
+ * (1) The compiler: `W_BOUNDARY_NO_WALL`, `W_FLOOR_UNASSIGNED` and `W_ROOM_OUTSIDE_SHELL` are
+ * appended to `LINT_RULES`. Swept over every tracked `.arch` file (228) with `cc165f4`'s `dist/`
+ * and this tree's: every storey's SVG, `describe()` and `compile().diagnostics` byte-identical
+ * on the PREVIOUS sources, and `lint()` moved only by the new codes appended (the old list is
+ * intact, element by element). Hashing the new SVG + `describe()` (+ diagnostics) with the
+ * PREVIOUS `lint()` reproduces both previous rows of the three examples below, and every moved
+ * row of `while-byte-identity-baseline.ts`, `import-module-lets.test.ts`,
+ * `outdoor-byte-identity.test.ts` and `roof-void-byte-identity.test.ts`.
+ *
+ * (2) The examples, fixed where the new warnings were real defects:
+ *   - `aquarium`: `W_FLOOR_UNASSIGNED` ×3. The walls closed the north band (y 0–6000) of both
+ *     galleries, but "Reef Gallery" and "Kelp Forest" started at y 6000, leaving 121.39 m² each
+ *     in no room (lit by the north windows), and the bay round the drum was open to the
+ *     concourse (no wall on y 22000 between x 21000 and 39000), leaving its four spandrels
+ *     (77.55 m²) as floor in no room. Fix: both galleries start at y 0 (21000×22000, a
+ *     same-length edit), and the concourse polygon takes the bay round the drum, its edge there
+ *     a run of 7.5° vertices snapped OUTWARD to the grid (the cafe's method, mirrored), so it
+ *     never enters the round room (`compile()` raises no `W_ROOM_OVERLAP`). Reef and Kelp
+ *     336 → 462 m², Concourse 480 → 564.56 m². No wall moved: a wall meeting the drum would put
+ *     a line past its outer face (`joinery-pipeline.test.ts`). The concourse's name is pinned
+ *     (`label … at (30000,25900)`) where it stood, since the new shape's pole sits by the drum's
+ *     south door. SVG: the labels, the areas, the schedule; `describe()`: the three rooms and
+ *     the totals.
+ *   - `courtyard-house`: `W_FLOOR_UNASSIGNED`, the walled courtyard (19.14 m²) in no room or
+ *     surface. Fix: `outdoor patio at (5000,3500) size 6000x3500`, with a comment, after every
+ *     statement any diagnostic points at. SVG: the patio's tint and hatch; `describe()`:
+ *     `outdoor[]` and `totals.outdoor_area_m2`.
+ *   - `relational`: `W_BOUNDARY_NO_WALL` ×3, the language limit its header already documents
+ *     (relational rooms cannot carry walls). Not fixed; the header now counts seven deliberate
+ *     warnings (+90 code units above every diagnostic). SVG and `describe()` byte-identical
+ *     with the previous source; `cc165f4`'s `lint()` on the new source is its `lint()` on the
+ *     previous one with every span +90, and the new `lint()` is that list plus the three.
+ *
+ * Review round 1 (same day) moved `lint()` again, and only `lint()`: the boundary rule's
+ * wording (a partial gap reads "the boundary … is open for N mm"), its run merging, wall-body
+ * test and counter test, and the face rule's accept-if hint. `relational`'s rows and the moved
+ * fixture rows elsewhere (`diff-a`, `zones-levels`, `zones-wings`) were re-measured with the same
+ * proofs against `cc165f4`; `aquarium` and `courtyard-house` lint clean and did not move.
+ * After (2) `aquarium` and `courtyard-house` lint exactly as before (1) (both clean); each row
+ * below is the new measurement with this file's digest bodies.
  * ## `hillside-villa`: both rows re-measured — a window on an arc edge is attributed from the shape
  *
  * Case (1), a compiler change, in `describe()` only (plan-soundness PS0.12;
@@ -1214,13 +1258,13 @@
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
 export const BASELINE: [string, string][] = [
   ["accessible", "cdc14f20b17a41f25cb20a6c5b19ca55e368bd5c84ca1ef6eeb0a9ecb53d08b1"],
-  ["aquarium", "4ed4aecd6b289a2538e3f1cd55ac6f2d52f4dfb637d5898f1f879f767c713b98"],
+  ["aquarium", "20b24fcb5237a1ea92bc22795f0d49813d34c380fb655c8a6d966e52cdd22200"], // re-measured for PS2.4, see header
   ["attached", "f1b122904c1242d9ef7088c5eed12c765dc63f4dbc2af2a75ab8f23f398feac2"],
   ["bungalow", "38f10b3a35b6e821a0b6aaa90795e5c195bd7bb1bc2665c399a6d1dcbbf637dd"],
   ["classroom-block", "b3e8150f963c3c1060e4f2caa809a6d133795b8130466f3fee798b5a0aa602e1"], // added with the example, re-measured for net area, see header
   ["clinic", "5d1f3ac0f05d759faa0cb55fcc1059e4e140fef7004974606eda28d2957d9174"],
   ["corner-cafe", "e83933d36bfe1ee9c892994ba38b13a5494a862c8dfce2b417e3f6981091b813"], // added with the example, re-measured for net area, see header
-  ["courtyard-house", "e8b10ab9b69a0f2d733174f42e1e6e93cd81ae3abfa831eab7ee8c402379382f"],
+  ["courtyard-house", "a7778b04f1111a33de39134c1eb726fda7d50c07c4d14961dc8683ef69838ba6"], // re-measured for PS2.4, see header
   ["furnished-flat", "0d00a6d601630e8bbfa2f15a0536bcbf8ccbb82fbfcea50b21b6586339a851d7"],
   ["gallery-l", "ef97490e9b951d76396df52427ba6673b0cce29489dfdf4232dc4d0876fe691d"],
   ["garden-house", "762dc08b4a28a20f55285b0a4fd9f6067b7c24420b63885a7ee6356457285239"], // re-measured, see header
@@ -1237,7 +1281,7 @@ export const BASELINE: [string, string][] = [
   ["one-room", "9519d5c396d8644e840a1520e6d84f75a8306d1309abebcbd61aa59560fda364"],
   ["parametric", "e45fddefabb204b9470fd9b06f59c2aec440a8fd786773effc1334f1b7fb904c"],
   ["practice-office", "2a3b241c5897a154d937b8e1b392e8468812a1acafd8b8fafaee8ad478c5caa9"], // added with the example, re-measured for net area, see header
-  ["relational", "eb88e4d74a8fd93cd72943f6beb95452feda9f9914916f610c0c853d8d3dad84"],
+  ["relational", "0725cbcad5270584cc69f8e457971bf07494110365956c72d83ea910d9565e8f"], // re-measured for PS2.4, see header
   ["sheet-notes", "f4ab64ec80be43d25a5949c971b07b00696f8fc2ab3927af72442ab70e8f551f"], // re-measured, see header
   ["studio", "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f"],
   ["terrace-row", "60964f3808b0e632f807ce3c0df876c118bd231bb0d105701576f8a231b25e8e"], // re-measured, see header
@@ -1262,13 +1306,13 @@ export const BASELINE: [string, string][] = [
  */
 export const SEMANTIC_BASELINE: [string, string][] = [
   ["accessible", "ea4dbda89e3b9b49c115c69acf7c10ffd86aa4b6315f3589792d7795313051df"],
-  ["aquarium", "0c0ff87fb446fe2dea2db1cc0560f6e840066c0a4a9afa192cee4387badde556"],
+  ["aquarium", "5c049a2e9f4c8d1b6d034bb6e15f753243b023ebb057ea5a7aae800b59624ebe"], // re-measured for PS2.4, see header
   ["attached", "0edb3482583f971f1c5daa64c7e8f8c638dc3ad70943893bfb5076ec71a425ac"],
   ["bungalow", "9cd9231204f6b07bee5ddfa6b67d92dabad26fbfce3c8705beb086048a6e579d"],
   ["classroom-block", "3ac3a2a28075c9f125b5a562c19af9cf5538ae7ea42acc432b73e175cf2c8de9"], // added with the example, re-measured for net area, see header
   ["clinic", "6abf1b490c46e473a3330d3acf61e35a0b9524f33ebaa0d7881dafebcf014261"],
   ["corner-cafe", "94ee873e35d96aae534476e6a965e767482632b49920ca62ed01af844888b54f"], // added with the example, re-measured for net area, see header
-  ["courtyard-house", "57e02b130f210c110227c0dfb1f441a56af09f2cba04fe78f00a875619031d77"],
+  ["courtyard-house", "29260fb6e7c46a27c6048457c73ef25a52d63af1086ce74496ea72e81d7f5d4f"], // re-measured for PS2.4, see header
   ["furnished-flat", "dab3b998a75ba65679021c8ae9282cb785d8daf69e6c0d64c39aea0c35a36fa5"],
   ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
   ["garden-house", "cb0adce49a5e153b366de219ed8d1f4751427020c80c7a51d539646d184fc907"], // re-measured, see header
@@ -1285,7 +1329,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["one-room", "fbbd7f194ce4ff25444b4a5e58d32ae1919f01a25e20f9ab8bf6aa9d7475def5"],
   ["parametric", "ec765bc02073b9cf32d8646760c3df96cc8ec60f351ea05506f89b1373c0ad22"],
   ["practice-office", "bc58498b17376ff2fcb8f5bf1713dcec5b6bbf851a3ed92be5ea4ff34f277996"], // added with the example, re-measured for net area, see header
-  ["relational", "1790561ae6b44e5a656a0e8584aab226322c20379b4a123c340f89047d633167"],
+  ["relational", "7bf5bed995082c538cce85c5263b55283e972c502f2742f82f0e3c7e3fb067bd"], // re-measured for PS2.4, see header
   ["sheet-notes", "8a72d4737654ecebe5fa7cce4590d84c70d3c73556115298e2a1c2eadde7d0f9"], // added with the example, see header
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["terrace-row", "71c0ce12608b954f8237e56bcd713814e8f0429844d569544e2e376638800ebc"],

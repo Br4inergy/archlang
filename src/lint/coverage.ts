@@ -38,7 +38,8 @@ export type LintFamily =
   | "privacy"
   | "openings"
   | "daylight"
-  | "contents";
+  | "contents"
+  | "enclosure";
 
 /**
  * Why a rule declined to judge. A room-level reason is filed with the room; a plan-level one
@@ -71,6 +72,9 @@ export type LintSkipReason =
   /** A room that is a kitchen and also the living room holds no kitchen fixture, so
    *  the rule cannot tell which end of it is the kitchen. */
   | "no-kitchen-fixtures"
+  /** The storey's walls enclose more regions, or more nested or crowded ones, than the face
+   *  rules' counted budget measures (`src/analyze/wall-faces.ts`, charged before the work). */
+  | "enclosure-budget"
   /** The storey has more than one way in and names no main entrance (PS0.10: a tie, no
    *  candidate, or an upper storey), so a route is judged from every exterior door. */
   | "no-main-entrance";
@@ -91,6 +95,7 @@ export const FAMILY_NOUN: Readonly<Record<LintFamily, string>> = {
   openings: "opening checks",
   daylight: "daylight",
   contents: "room contents",
+  enclosure: "enclosure checks",
 };
 
 /** Why a reason stops a rule, as one clause. */
@@ -107,7 +112,23 @@ export const SKIP_WHY: Readonly<Record<LintSkipReason, string>> = {
   "balcony-only-entrance": "the only way in is a balcony or terrace door",
   "unsupported-host-geometry": "the door's wall is angled or curved",
   "no-kitchen-fixtures": "the room holds no kitchen fixtures to locate the kitchen",
+  "enclosure-budget": "too much wall geometry to measure",
   "no-main-entrance": "no main entrance could be named",
+};
+
+/**
+ * Which of the face rules' counted caps refused a storey, for an `enclosure-budget` skip
+ * (`src/analyze/wall-faces.ts`). One reason id, with the cap as a typed detail, so the words
+ * name the cap that tripped and no new id appears in any text.
+ */
+export type EnclosureBudgetCap = "regions" | "nested-regions" | "room-region-pairs" | "point-tests";
+
+/** The words for each {@link EnclosureBudgetCap}; they replace {@link SKIP_WHY}'s for that skip. */
+export const ENCLOSURE_CAP_WHY: Readonly<Record<EnclosureBudgetCap, string>> = {
+  regions: "too many walls or walled regions to measure",
+  "nested-regions": "too many walled regions nested in one place to measure",
+  "room-region-pairs": "too many room–region pairs to measure",
+  "point-tests": "too many point tests to measure",
 };
 
 /** One recorded skip, as the fold collects it. */
@@ -120,13 +141,17 @@ export interface SkipNote {
   room?: RRoom;
   /** The storey, on a multi-storey plan. */
   level?: number;
+  /** For an `enclosure-budget` skip, the cap that tripped. */
+  cap?: EnclosureBudgetCap;
 }
 
 /** One reason a family skipped, with the rooms it skipped for it. */
 export interface LintCoverageSkip {
   reason: LintSkipReason;
-  /** {@link SKIP_WHY} for the reason. */
+  /** {@link SKIP_WHY} for the reason, or {@link ENCLOSURE_CAP_WHY} for the cap that tripped. */
   why: string;
+  /** For an `enclosure-budget` skip, the cap that tripped (the machine field). */
+  cap?: EnclosureBudgetCap;
   /** The rooms, named as a person would (label, else id); absent for a plan-level skip. */
   rooms?: string[];
   /** The same rooms' ids, in the same order: the machine field. */
@@ -189,12 +214,13 @@ export function foldCoverage(
     const planLevels = new Map<string, Set<number>>();
     const planRuns = new Set<string>();
     for (const n of mine) {
-      const key = n.room ? `${n.reason}|room|${n.level ?? ""}` : `${n.reason}|plan`;
+      const key = n.room ? `${n.reason}|room|${n.level ?? ""}` : `${n.reason}|plan|${n.cap ?? ""}`;
       let g = groups.get(key);
       if (!g) {
         g = {
           reason: n.reason,
-          why: SKIP_WHY[n.reason],
+          why: n.cap ? ENCLOSURE_CAP_WHY[n.cap] : SKIP_WHY[n.reason],
+          ...(n.cap ? { cap: n.cap } : {}),
           ...(n.room ? { rooms: [], roomIds: [] } : {}),
           ...(n.room && n.level !== undefined ? { level: n.level } : {}),
         };

@@ -962,6 +962,7 @@ is `0` and its `integration` is `null`: it is as integrated as a space can be.
 | Furniture / fixtures | `W_FIXTURE_FLOATING`, `W_FIXTURE_BACK_TO_ROOM`, `W_FIXTURE_WRONG_ROOM`, `W_FURNITURE_OVERLAP`, `W_FURN_CLEARANCE` |
 | Circulation quality | `W_ROOM_NO_CLEAR_PATH`, `W_PATH_TOO_NARROW`, `W_CIRCUITOUS_PATH` |
 | Circulation and privacy | `W_ROOM_VIA_PRIVATE`, `W_WET_ROOM_DOOR`, `W_ENTRANCE_INTO_PRIVATE` |
+| Enclosure | `W_BOUNDARY_NO_WALL`, `W_FLOOR_UNASSIGNED`, `W_ROOM_OUTSIDE_SHELL` |
 
 Every code is documented — with cause, fix, and example — in the
 [error catalog](error-codes.md), or run `archlang explain W_SWING_OBSTRUCTED`. (In human
@@ -984,6 +985,18 @@ doors that make it a passage), and `W_ENTRANCE_INTO_PRIVATE` fires when every do
 outside opens into a bedroom, bathroom or WC. All three read `uses` (authored, or from the label
 vocabulary) and skip a room with no classified use. Their hints offer only doors on edges two
 rooms really share, measured, and never suggest shrinking or deleting a room.
+
+The enclosure rules compare the rooms with the walls. `W_BOUNDARY_NO_WALL` fires when two
+rooms share an edge and more than a doorway's width of it (900 mm) has no wall, door, cased
+opening or fixed counter on it; two rooms that are each kitchen, dining or living are an
+open-plan pair and are exempt. `W_FLOOR_UNASSIGNED` fires when a closed region of floor the
+walls enclose is less than 95 % covered by rooms (an `outdoor` surface, a `void` or a stair
+also counts as cover), and names the rooms beside the empty floor. A walled pocket with no
+door or window into it and no room on it, such as a duct, is not reported. A wall counts as
+the boundary between two rooms when its body stands on their shared edge, not merely near
+it. `W_ROOM_OUTSIDE_SHELL` fires when part of a room lies outside every wall, and only for a
+room most of whose floor is inside walls: with no closed shell around it, it says nothing. All three measure the shapes themselves, so curved walls and circular rooms are
+measured exactly.
 
 Narrow a noisy report with `--code` or `--severity` — on `lint` and on `validate`:
 

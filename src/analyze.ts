@@ -29,6 +29,7 @@ import {
   rectInsidePolygon,
   rectRing,
   ringsAdjacent,
+  VERTEX_EPS,
 } from "./geometry/polygon.js";
 import { arcAngleOffset, arcLength, arcParamAt, arcPointAt, fullCircleArc } from "./geometry/arc.js";
 import { classifyLabelUses } from "./vocabulary.js";
@@ -1205,21 +1206,60 @@ export function largestPerimeterGapRing(
   for (const [a, b] of polygonEdges(ring)) {
     const len = Math.hypot(b.x - a.x, b.y - a.y);
     if (len === 0) continue;
-    const ux = (b.x - a.x) / len;
-    const uy = (b.y - a.y) / len;
-    const covered: Array<[number, number]> = [];
-    for (const s of segs) {
-      if (collinearOverlapLength(a, b, s.a, s.b, tol) <= 0) continue;
-      const t1 = (s.a.x - a.x) * ux + (s.a.y - a.y) * uy;
-      const t2 = (s.b.x - a.x) * ux + (s.b.y - a.y) * uy;
-      const lo = Math.max(0, Math.min(t1, t2));
-      const hi = Math.min(len, Math.max(t1, t2));
-      if (hi > lo) covered.push([lo, hi]);
-    }
-    const gap = len - mergedLength(covered);
+    const gap = len - mergedLength(edgeWallCover(a, b, segs, tol));
     if (gap > worst) worst = gap;
   }
   return worst;
+}
+
+/**
+ * How {@link edgeWallCover} decides that a wall stands on an edge by its BODY, not its
+ * centreline: the segment is parallel to the edge and its body (centreline ± half its
+ * thickness, widened by `slack` on each side) meets the strip `halfGap` either side of the
+ * edge's line (the gap between two rooms drawn to a wall's faces; 0 when they share a line).
+ */
+export interface WallBodyTest {
+  halfGap: number;
+  slack: number;
+}
+
+/**
+ * The runs of the edge `a`→`b` that a wall backs: every segment of `segs` parallel to the edge
+ * with its line within `tol` ({@link collinearOverlapLength}), clipped to the edge, as
+ * intervals in mm from `a` (unmerged, in `segs` order). The measure behind
+ * {@link largestPerimeterGapRing} for one edge, byte for byte. With `body`
+ * ({@link WallBodyTest}, `W_BOUNDARY_NO_WALL`'s reading of the run two rooms share) a segment
+ * counts by its body instead, and `tol` is not read; that caller passes only straight
+ * segments, since an arc's chord is not a wall.
+ */
+export function edgeWallCover(
+  a: Point,
+  b: Point,
+  segs: readonly Pick<WallSegment, "a" | "b" | "thickness">[],
+  tol: number,
+  body?: WallBodyTest,
+): Array<[number, number]> {
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  if (len === 0) return [];
+  const ux = (b.x - a.x) / len;
+  const uy = (b.y - a.y) / len;
+  const covered: Array<[number, number]> = [];
+  for (const s of segs) {
+    if (body) {
+      const sx = s.b.x - s.a.x;
+      const sy = s.b.y - s.a.y;
+      const sl = Math.hypot(sx, sy);
+      if (sl < VERTEX_EPS || Math.abs(ux * sy - uy * sx) / sl > 1e-9) continue;
+      const across = Math.abs((s.a.x - a.x) * -uy + (s.a.y - a.y) * ux);
+      if (across - s.thickness / 2 - body.slack > body.halfGap) continue;
+    } else if (collinearOverlapLength(a, b, s.a, s.b, tol) <= 0) continue;
+    const t1 = (s.a.x - a.x) * ux + (s.a.y - a.y) * uy;
+    const t2 = (s.b.x - a.x) * ux + (s.b.y - a.y) * uy;
+    const lo = Math.max(0, Math.min(t1, t2));
+    const hi = Math.min(len, Math.max(t1, t2));
+    if (hi > lo) covered.push([lo, hi]);
+  }
+  return covered;
 }
 
 /**
