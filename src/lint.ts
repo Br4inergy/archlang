@@ -16,10 +16,11 @@
  * `lint/ruleset.ts` (re-exported here, so the public surface is unchanged).
  */
 
-import { buildingRoomReach, DEFAULT_TOL, resolvePlan, storeyGrounded } from "./analyze.js";
-import type { ResolvedLevel, ResolvedPlan } from "./ir.js";
+import { buildingRoomReach, DEFAULT_TOL, resolvePlan, roomUses, storeyGrounded } from "./analyze.js";
+import type { ResolvedLevel, ResolvedPlan, RRoom } from "./ir.js";
 import type { Diagnostic, Span } from "./diagnostics.js";
 import { type BuildingContext, buildLintContext } from "./lint/context.js";
+import { foldCoverage, type LintCoverage, type LintUnclassifiedRoom, type SkipNote } from "./lint/coverage.js";
 import { MAX_ATTRIBUTION_MEASURES } from "./lint/rules/circulation-facts.js";
 import { ONCE_PER_PLACEMENT_CODES } from "./lint/rules/dims.js";
 import { LINT_RULES } from "./lint/rules/index.js";
@@ -34,6 +35,14 @@ export {
   type LintRuleset,
 } from "./lint/ruleset.js";
 export type { BuildingContext, DiagnosticSite, LintContext, LintRule } from "./lint/context.js";
+export type {
+  LintCoverage,
+  LintCoverageFamily,
+  LintCoverageSkip,
+  LintFamily,
+  LintSkipReason,
+  LintUnclassifiedRoom,
+} from "./lint/coverage.js";
 export { LINT_RULES } from "./lint/rules/index.js";
 
 /**
@@ -52,20 +61,56 @@ export { LINT_RULES } from "./lint/rules/index.js";
  * the one-plan path with an inert context, so it lints exactly as before.
  */
 export function lint(source: string, opts: LintOptions = {}): Diagnostic[] {
+  return lintWithCoverage(source, opts).diagnostics;
+}
+
+/**
+ * `lint()`'s diagnostics, plus the coverage report (plan-soundness PS2.13): which rule
+ * families ran, which skipped and why, and the rooms with no classified use. One run of the
+ * rules produces both. `diagnostics` is exactly what `lint()` returns, element for element;
+ * the report sits beside it and never inside it, so nothing that reads diagnostics can see a
+ * difference. `coverage` is `null` when the plan does not resolve (nothing ran). Pure.
+ */
+export function lintWithCoverage(
+  source: string,
+  opts: LintOptions = {},
+): { diagnostics: Diagnostic[]; coverage: LintCoverage | null } {
   // Ruleset cascade: defaults → named profile → explicit per-call overrides.
   const profileRules = opts.profile ? (LINT_PROFILES[opts.profile] ?? {}) : {};
   const rules: LintRuleset = { ...DEFAULT_RULESET, ...profileRules, ...opts.ruleset };
   const { ir, levels } = resolvePlan(source, opts);
-  if (!ir) return [];
+  if (!ir) return { diagnostics: [], coverage: null };
 
+  const notes: SkipNote[] = [];
+  const unclassified: LintUnclassifiedRoom[] = [];
   if (levels.length > 0) {
     const byLevel = buildingContexts(levels, rules.tolMm);
-    const out = levels.flatMap((l) =>
-      lintOne(l.ir, rules, byLevel.get(l.level)).map((d) => ({ ...d, level: l.level })),
-    );
-    return reconcileSharedFixes(out, levels);
+    const out = levels.flatMap((l) => {
+      unclassified.push(...unclassifiedRooms(l.ir, l.level));
+      return lintOne(l.ir, rules, byLevel.get(l.level), notes, l.level).map((d) => ({ ...d, level: l.level }));
+    });
+    return {
+      diagnostics: reconcileSharedFixes(out, levels),
+      coverage: foldCoverage(LINT_RULES, notes, unclassified, levels.length),
+    };
   }
-  return reconcileSharedFixes(lintOne(ir, rules), [{ ir }]);
+  unclassified.push(...unclassifiedRooms(ir));
+  return {
+    diagnostics: reconcileSharedFixes(lintOne(ir, rules, undefined, notes), [{ ir }]),
+    coverage: foldCoverage(LINT_RULES, notes, unclassified, 1),
+  };
+}
+
+/** {@link lintWithCoverage}'s report alone; `null` when the plan does not resolve. */
+export function lintCoverage(source: string, opts: LintOptions = {}): LintCoverage | null {
+  return lintWithCoverage(source, opts).coverage;
+}
+
+/** The rooms of one storey whose {@link roomUses} is empty, in source order. */
+function unclassifiedRooms(ir: ResolvedPlan, level?: number): LintUnclassifiedRoom[] {
+  return ir.elements
+    .filter((e): e is RRoom => e.kind === "room" && roomUses(e).size === 0)
+    .map((r) => ({ name: r.label ?? r.id, id: r.id, ...(level !== undefined ? { level } : {}) }));
 }
 
 /** One resolved storey a {@link reconcileSharedFixes} census reads (`level` absent for a
@@ -208,11 +253,27 @@ function buildingContexts(levels: readonly ResolvedLevel[], tolMm: number): Map<
 function lintOne(
   ir: Parameters<typeof buildLintContext>[0],
   rules: LintRuleset,
-  building?: BuildingContext,
+  building: BuildingContext | undefined,
+  notes: SkipNote[],
+  level?: number,
 ): Diagnostic[] {
-  const ctx = buildLintContext(ir, rules, building);
+  // The coverage seam: a rule's `ctx.skip(...)` is filed under the family of the rule
+  // running, which the fold — not the rule — supplies.
+  let current = LINT_RULES[0]!;
+  const ctx = buildLintContext(ir, rules, building, (reason, room) =>
+    notes.push({
+      rule: current.name,
+      family: current.family,
+      reason,
+      ...(room ? { room } : {}),
+      ...(level !== undefined ? { level } : {}),
+    }),
+  );
   const out: Diagnostic[] = [];
-  for (const rule of LINT_RULES) for (const d of rule.check(ctx)) out.push(withFixProvenance(d));
+  for (const rule of LINT_RULES) {
+    current = rule;
+    for (const d of rule.check(ctx)) out.push(withFixProvenance(d));
+  }
   return out;
 }
 

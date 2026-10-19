@@ -8,8 +8,8 @@
  *  - `W_ENTRANCE_INTO_PRIVATE`: the way in from outside lands in a bedroom, bathroom or WC.
  *
  * A room's use is {@link roomUses}: its authored `uses` first, then the label vocabulary.
- * A room with no classified use is skipped silently by all three rules for now; card PS2.13
- * of the plan-soundness programme reports that coverage.
+ * A room with no classified use is skipped by all three rules and declared to the lint coverage
+ * report (`ctx.skip`, PS2.13).
  *
  * "Private" is a bedroom, bath or WC use with no public use beside it. A room that is
  * also a living space, dining room, kitchen, hall, circulation or entry (a bedsit authored
@@ -29,10 +29,14 @@ import type { Point, UseKind } from "../../ast.js";
 import {
   accessDigraph,
   type AccessEdge,
+  connectorFacePath,
+  connectorFaces,
   doorFacesBalcony,
   EXTERIOR_NODE,
   isBedroom,
+  pointInRoomBox,
   reachFrom,
+  rectOf,
   type RoomBox,
   roomRing,
   roomsAdjacent,
@@ -41,10 +45,11 @@ import {
 } from "../../analyze.js";
 import type { Digraph } from "../../algebra/paths.js";
 import type { Diagnostic } from "../../diagnostics.js";
+import { canonicalFixture } from "../../elements/fixtures-glyphs.js";
 import type { WallSegment } from "../../geometry.js";
-import { collinearOverlapLength, polygonEdges } from "../../geometry/polygon.js";
+import { collinearOverlapLength, distPointToSegment, polygonEdges } from "../../geometry/polygon.js";
 import type { RDoor, ROpening, ROutdoor, RRoom } from "../../ir.js";
-import { fmt2 } from "../../num-format.js";
+import { fmt0, fmt2 } from "../../num-format.js";
 import type { LintContext, LintRule } from "../context.js";
 
 /** Uses that make a room one people pass through by design. */
@@ -220,6 +225,111 @@ interface Facts {
   depthNoPrivate: Map<string, number>;
 }
 
+/**
+ * {@link factsOf} for a rule that reads every room's use, declaring each room with none to the
+ * coverage report (PS2.13): none of the three rules can tell whether such a room is private.
+ */
+function classifiedFactsOf(ctx: LintContext): Facts {
+  const f = factsOf(ctx);
+  for (const r of ctx.rooms) if (f.uses.get(r.id)!.size === 0) ctx.skip("no-uses", r);
+  return f;
+}
+
+/**
+ * The fixture families that place a kitchen inside a room that is also the living room: the
+ * sink, the hob, the oven, the fridge, the worktop, the island and the dishwasher, by their
+ * canonical names in the fixture family table (an alias such as `hob` or `worktop` resolves to
+ * its family). Each is a kitchen-only piece. The microwave is left out: it is a portable
+ * appliance that may stand on any shelf or sideboard, so it does not mark where the kitchen is.
+ */
+const KITCHEN_FAMILIES: ReadonlySet<string> = new Set([
+  "kitchen_sink",
+  "stove",
+  "oven",
+  "fridge",
+  "counter",
+  "island",
+  "dishwasher",
+]);
+
+/** Do the segments `ab` and `cd` cross at a point inside both? (Touching is measured, as 0.) */
+function segmentsCross(a: Point, b: Point, c: Point, d: Point): boolean {
+  const cross = (o: Point, p: Point, q: Point): number => (p.x - o.x) * (q.y - o.y) - (p.y - o.y) * (q.x - o.x);
+  const d1 = cross(c, d, a);
+  const d2 = cross(c, d, b);
+  const d3 = cross(a, b, c);
+  const d4 = cross(a, b, d);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+/**
+ * Distance (mm) from the polyline `path` to the axis-aligned rectangle `r`, 0 when they meet.
+ * Exact for a convex rectangle: a crossing or a path point inside is 0, otherwise the nearest
+ * pair is an endpoint of one side against a segment of the other.
+ */
+function pathToRectMm(path: readonly Point[], r: { x: number; y: number; w: number; h: number }): number {
+  const corners = [
+    { x: r.x, y: r.y },
+    { x: r.x + r.w, y: r.y },
+    { x: r.x + r.w, y: r.y + r.h },
+    { x: r.x, y: r.y + r.h },
+  ];
+  const inside = (p: Point): boolean => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+  if (path.some(inside)) return 0;
+  let best = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < 4; i++) {
+    const c = corners[i]!;
+    const d = corners[(i + 1) % 4]!;
+    for (const a of path) best = Math.min(best, distPointToSegment(a, c, d));
+    for (let k = 0; k + 1 < path.length; k++) {
+      const a = path[k]!;
+      const b = path[k + 1]!;
+      if (segmentsCross(a, b, c, d)) return 0;
+      best = Math.min(best, distPointToSegment(c, a, b));
+    }
+  }
+  return best;
+}
+
+/**
+ * How near the kitchen of `to` (a room that is a kitchen and also the living room) stands to
+ * the connector `doorId`: the distance, rounded to whole mm ({@link fmt0}, the value the
+ * message prints, so the threshold is tested on it), from the doorway's face on `to`'s side
+ * ({@link connectorFacePath}: jamb, centre, jamb) to the nearest {@link KITCHEN_FAMILIES}
+ * footprint whose centre is on `to`'s floor ({@link pointInRoomBox}, shape-aware), and that
+ * piece's category as written. `null` when `to` holds no such piece: the kitchen cannot be
+ * located.
+ *
+ * The side is the face whose clear span covers more of `to` ({@link connectorFaces}, from the
+ * shape). A connector with no host, or whose faces do not read `to`, is measured from its
+ * centre point.
+ */
+function kitchenNearDoor(ctx: LintContext, doorId: string, to: RRoom): { mm: number; category: string } | null {
+  const box = ctx.roomRects.get(to.id)!;
+  const pieces = ctx.furniture.filter((p) => {
+    if (!KITCHEN_FAMILIES.has(canonicalFixture(p.category) ?? "")) return false;
+    const r = rectOf(p);
+    return pointInRoomBox({ x: r.x + r.w / 2, y: r.y + r.h / 2 }, box);
+  });
+  if (pieces.length === 0) return null;
+  const c = ctx.connectors.find((x) => x.id === doorId);
+  if (!c) return null;
+  let path: Point[] = [c.at];
+  if (c.host) {
+    const faces = connectorFaces(c, ctx.roomRects);
+    const covers = (i: 0 | 1): number => faces?.[i].cover.find((x) => x.id === to.id)?.mm ?? 0;
+    const minus = covers(0);
+    const plus = covers(1);
+    if (minus > 0 || plus > 0) path = connectorFacePath({ ...c, host: c.host }, plus > minus ? "plus" : "minus");
+  }
+  let best: { mm: number; category: string } | null = null;
+  for (const p of pieces) {
+    const d = pathToRectMm(path, rectOf(p));
+    if (!best || d < best.mm) best = { mm: d, category: p.category };
+  }
+  return best && { mm: Number(fmt0(best.mm)), category: best.category };
+}
+
 function factsOf(ctx: LintContext): Facts {
   const { rooms, roomRects, building, access } = ctx;
   const all = access().edges;
@@ -331,14 +441,22 @@ function shorten(items: readonly string[], rest: (n: number) => string): string[
  * a WC compartment behind a bathroom) and a storage room (a wardrobe or dressing room).
  * Balconies and other `outdoor` surfaces are not rooms, so they are never cut off. A wet room `W_BATH_VIA_BEDROOM` already reports (the storey's only
  * bathroom, behind a bedroom) is not reported again. Rooms with no classified use are skipped
- * silently for now (PS2.13 reports coverage).
+ * and declared to the coverage report (PS2.13).
  */
 export const roomViaPrivate: LintRule = {
   name: "room-via-private",
+  family: "privacy",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
-    const f = factsOf(ctx);
-    if (!f.wayIn) return out;
+    const f = classifiedFactsOf(ctx);
+    if (!f.wayIn) {
+      // No way in, so no room is "reached only through" anything. When the storey does have
+      // a door to the outside but every one opens onto a balcony or terrace, this rule does not
+      // count it as a way in while the access graph and the walk do: say that, not "no entrance".
+      if (ctx.rooms.length > 0)
+        ctx.skip(f.edges.some((e) => e.between.includes(EXTERIOR_NODE)) ? "balcony-only-entrance" : "no-entrance");
+      return out;
+    }
     const doms = privateDominators(ctx, f);
     if (doms.size === 0) return out;
     // W_BATH_VIA_BEDROOM's own question, asked exactly as `reachability.ts` asks it.
@@ -441,21 +559,29 @@ function viaPrivateHints(
  *  1. its only connector is a leaf-less `opening` onto a habitable room (living, dining,
  *     kitchen, bedroom, office), so it cannot be closed;
  *  2. a connector joins it straight to a kitchen or dining room with no lobby between
- *     (GB 50096-2011 5.4.3, cited as advice, not compliance). A room that is also the living
- *     room (an open-plan kitchen/living, a studio) is not a kitchen for this sub-case: a bath
- *     opening off the living space is a matter of taste the plan scores, never warns;
+ *     (GB 50096-2011 5.4.3, cited as advice, not compliance). A room that is a kitchen and also
+ *     the living room (an open-plan kitchen/living, with or without dining) counts only where
+ *     the door opens onto its kitchen: a sink, hob, oven, fridge, worktop, island or dishwasher
+ *     on its floor nearer the doorway's face than `wetDoorKitchenProximityMm`, compared in
+ *     whole mm ({@link kitchenNearDoor}; a microwave does not locate the kitchen). Such a room
+ *     with no kitchen fixture at all cannot be located, so it is declared to the coverage
+ *     report (`no-kitchen-fixtures`) and not warned. A kitchen alone, a dining room alone and a
+ *     kitchen that is also the dining room (no living use) always count. A living room with no
+ *     kitchen use, and a dining room that is also the living room, are exempt: a bath opening
+ *     off the living space is graded by the taste layer, never warned;
  *  3. two or more connectors join it to two different rooms outside a private suite (not a
  *     bedroom, bath, WC or storage room), so it is a passage between them. When one of those
  *     rooms is reached ONLY through the wet room, `W_ROOM_VIA_PRIVATE` already reports it and
  *     this sub-case stays silent.
  *
- * Rooms with no classified use are skipped silently for now (PS2.13 reports coverage).
+ * Rooms with no classified use are skipped and declared to the coverage report (PS2.13).
  */
 export const wetRoomDoor: LintRule = {
   name: "wet-room-door",
+  family: "privacy",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
-    const f = factsOf(ctx);
+    const f = classifiedFactsOf(ctx);
     const wets = ctx.rooms.filter((r) => {
       const k = f.priv.get(r.id);
       return k === "bath" || k === "wc";
@@ -497,27 +623,49 @@ export const wetRoomDoor: LintRule = {
         });
       }
 
-      // 2. A connector straight onto a kitchen or dining room (not the living room too).
+      // 2. A connector straight onto a kitchen or a dining room. A room that is also the
+      // living room counts only as a kitchen, and then only where a kitchen fixture stands near
+      // the doorway; a kitchen that is also the dining room (no living) always counts.
       for (const e of mine) {
         if (reported.has(e.doorId)) continue;
         const to = room(far(e));
         if (!to) continue;
         const u = f.uses.get(to.id)!;
-        if (u.has("living") || !(u.has("kitchen") || u.has("dining"))) continue;
+        if (!(u.has("kitchen") || u.has("dining"))) continue;
+        if (u.has("living") && !u.has("kitchen")) continue;
         if (f.priv.has(to.id)) continue;
+        let near: { mm: number; category: string } | null = null;
+        if (u.has("kitchen") && u.has("living")) {
+          near = kitchenNearDoor(ctx, e.doorId, to);
+          if (!near) {
+            ctx.skip("no-kitchen-fixtures", to);
+            continue;
+          }
+          if (near.mm >= ctx.rules.wetDoorKitchenProximityMm) continue;
+        }
         reported.add(e.doorId);
         const what = u.has("kitchen") ? "a kitchen" : "a dining room";
         const moves = movesOnto(ctx, f, w, wBox, new Set([to.id]), order, tol, e.doorId);
+        const way = `${e.kind === "door" ? "a door" : "an opening"} ${mm(e.nominalWidth)} mm wide`;
         out.push({
           severity: "warning",
           code: "W_WET_ROOM_DOOR",
           ...ctx.at(w),
           message:
-            `${quoted(ctx, w)} opens straight into ${quoted(ctx, to)}, ${what}, through ${e.kind === "door" ? "a door" : "an opening"} ` +
-            `${mm(e.nominalWidth)} mm wide. A ${noun} door should not open directly onto a kitchen or dining room without a lobby ` +
+            (near
+              ? `${quoted(ctx, w)} opens straight into the kitchen of ${quoted(ctx, to)} through ${way}, ` +
+                `${mm(near.mm)} mm from its ${near.category}. `
+              : `${quoted(ctx, w)} opens straight into ${quoted(ctx, to)}, ${what}, through ${way}. `) +
+            `A ${noun} door should not open directly onto a kitchen or dining room without a lobby ` +
             "(GB 50096-2011 5.4.3, cited as advice, not compliance; ResPlan: about 0.3 % of bath doors open off a kitchen).",
           hints: [
             ...moves,
+            ...(near
+              ? [
+                  `Keep the kitchen of ${quoted(ctx, to)} (${to.id}) at least ${mm(ctx.rules.wetDoorKitchenProximityMm)} mm ` +
+                    `from ${e.doorId}, measured from the doorway's face: its ${near.category} is ${mm(near.mm)} mm away.`,
+                ]
+              : []),
             ...(moves.length === 0
               ? [
                   `No hall or corridor shares a door-wide edge with ${quoted(ctx, w)} (${w.id}): a lobby at least ` +
@@ -697,13 +845,14 @@ function privateEntrances(ctx: LintContext, f: Facts): Array<{ door: RDoor; room
  * A storey whose classified rooms are all private (a bedroom drawn alone, a fragment of a
  * dwelling whose "outside" is the rest of the flat) is not reported either. The rooms behind
  * such an entrance are not also reported by `W_ROOM_VIA_PRIVATE`: one fault, one warning.
- * Rooms with no classified use are skipped silently for now (PS2.13 reports coverage).
+ * Rooms with no classified use are skipped and declared to the coverage report (PS2.13).
  */
 export const entranceIntoPrivate: LintRule = {
   name: "entrance-into-private",
+  family: "privacy",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
-    const f = factsOf(ctx);
+    const f = classifiedFactsOf(ctx);
     const ways = privateEntrances(ctx, f);
     const tol = ctx.rules.tolMm;
     const order = new Map(ctx.rooms.map((r, i) => [r.id, i]));

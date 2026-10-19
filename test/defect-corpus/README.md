@@ -96,6 +96,8 @@ The card that implements a check may rename its code; rename it here and in the 
 | `W_STAIR_TOO_STEEP` | A flight too short for its storey height (riser over the profile's limit) | PS2.11 |
 | `W_TITLE_OVERFLOW` | Title-block text wider than its row | PS2.12 |
 | `W_LABEL_COLLISION` | A room label over a furniture or fixture symbol | PS2.12 |
+| `W_LEAF_ACROSS_DOORWAY` | An open door leaf parked across another doorway's approach (door–door interference) | PS2.11 |
+| `W_FOOTPRINT_TRANSPOSED` | A directional piece written `at … size WxH` with its depth on the long axis and no `rotate`, so it draws turned and stretched | PS2.11 |
 
 Two checks extend existing codes instead of adding one: a desk in front of a leaf-less opening expects
 `W_DOORWAY_BLOCKED` (PS2.11), and wall-thickness labels from `dims auto` inside a room expect
@@ -114,6 +116,21 @@ Two checks extend existing codes instead of adding one: a desk in front of a lea
 - Defects with no PS2 check are left out rather than given a code: a kitchen as the only route
   (BB4), a garage opening into a study (X4), a WC on a pocket-door cavity (M3), an exterior wall used
   as a partition (T2), an indoor courtyard (CY1), and the `describe` bugs of PS0.
+- The first-contact audit (`audits/2026-10-18-first-contact.md`, card PS1.2) adds one case per new
+  shape. Instances whose shape an earlier case already holds get no second copy: the kitchens with
+  no worktop (A7, H4, S3, T5, C8) are `kitchen-no-worktop`, the wall-thickness labels inside rooms
+  (A10, H6, S5, C11, T8, K11) are `auto-dims-in-room`, K2 is `door-jamb-50-from-tee`, K3 is
+  `door-fills-gap` and C5's staff WC onto a `uses kitchen` servery is `bath-door-off-kitchen`.
+  `circulation-privacy/bath-off-open-plan` is S1's stronger variant: its kitchen sink stands 400 mm
+  from the bath door. The audit's own instance (`first-contact-plans/3-studio.arch`) has its nearest
+  kitchen fixture 2025 mm from the door, beyond the 1500 mm `wetDoorKitchenProximityMm` default, so
+  it is silent: there a bath door onto a combined kitchen/living room is a taste question
+  (`research/design-taste.md` R2), and no case is added that could never fire.
+  Instances outside the eight classes, and those in a class with no check a card
+  names (A6, S2 bed sides; A7 hob against a side wall; C6, C7, K8 accessible WC layout), are left
+  out for the planner.
+- The two masked-route cases (PS0.10) are silent because a balcony or patio door is a way in for
+  the walk; each `fact` gives the warning lint raises when that door is made a window.
 
 ## Adding a case
 

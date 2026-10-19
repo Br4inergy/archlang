@@ -369,6 +369,7 @@ const boxesNear = (a: RoomBox, b: RoomBox, tol: number): boolean =>
  */
 export const boundaryNoWall: LintRule = {
   name: "boundary-no-wall",
+  family: "enclosure",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const max = ctx.rules.maxBoundaryGapMm;
@@ -447,9 +448,13 @@ const facesOf = (ctx: LintContext): WallFaces | null => {
   // measured against (rooms, surfaces, voids, runs) and the rooms measured against the faces.
   if (!FACES.has(ir)) FACES.set(ir, wallFaces(ir.walls, [...ctx.rooms, ...nonRoomCover(ctx)], ctx.rooms));
   const wf = FACES.get(ir) ?? null;
-  // TODO(PS2.13): once the lint coverage seam (`ctx.skip`, PR #203) lands, report a refused
-  // storey as a coverage skip naming the bound instead of staying silent.
-  if (wf === null || "refused" in wf) return null;
+  if (wf === null) return null;
+  if ("refused" in wf) {
+    // Over a counted budget: the rule asking judges nothing on this storey, and says so in the
+    // coverage report (filed under its own family by the fold).
+    ctx.skip("enclosure-budget");
+    return null;
+  }
   return wf;
 };
 
@@ -522,6 +527,7 @@ function nonRoomCover(ctx: LintContext): FaceRoom[] {
  */
 export const floorUnassigned: LintRule = {
   name: "floor-unassigned",
+  family: "enclosure",
   check(ctx: LintContext): Diagnostic[] {
     if (ctx.rooms.length === 0) return [];
     const wf = facesOf(ctx);
@@ -592,6 +598,7 @@ export const floorUnassigned: LintRule = {
  */
 export const roomOutsideShell: LintRule = {
   name: "room-outside-shell",
+  family: "enclosure",
   check(ctx: LintContext): Diagnostic[] {
     if (ctx.rooms.length === 0) return [];
     const wf = facesOf(ctx);

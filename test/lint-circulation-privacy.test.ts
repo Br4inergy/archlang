@@ -10,7 +10,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve as resolvePath } from "node:path";
 import { describe, expect, it } from "vitest";
-import { describe as describePlan, lint } from "../src/index.js";
+import { describe as describePlan, lint, lintWithCoverage } from "../src/index.js";
 import { LINT_RULES } from "../src/lint/rules/index.js";
 import type { World } from "../src/world.js";
 
@@ -124,13 +124,28 @@ describe("W_WET_ROOM_DOOR", () => {
     expect(of(dining, "W_WET_ROOM_DOOR")[0]!.message).toContain('"Dining", a dining room,');
   });
 
-  it("sub-case 2 leaves an open-plan kitchen/living room alone (scored, never warned)", () => {
-    const src = replaceOnce(
+  it("sub-case 2 counts an open-plan kitchen only by its fixtures, and leaves a living room alone", () => {
+    // The case holds no kitchen fixture: relabelled a kitchen/living room, it cannot be told
+    // which end is the kitchen, so it is skipped (S1 revision, review round 1 of PR #203).
+    const kitLiv = replaceOnce(
       corpusCase("bath-door-off-kitchen"),
       'label "Kitchen" uses kitchen',
       'label "Kitchen / Living" uses kitchen living',
     );
-    expect(of(src, "W_WET_ROOM_DOOR")).toEqual([]);
+    expect(of(kitLiv, "W_WET_ROOM_DOOR")).toEqual([]);
+    // d_kitchen_bath's kitchen-side face is x 3950, y 650-1350; a sink 400 mm off it warns.
+    const sinkBy = replaceOnce(
+      kitLiv,
+      "  window at",
+      "  furniture kitchen_sink at (2950,700) size 600x800\n  window at",
+    );
+    expect(of(sinkBy, "W_WET_ROOM_DOOR")).toHaveLength(1);
+    const living = replaceOnce(
+      corpusCase("bath-door-off-kitchen"),
+      'label "Kitchen" uses kitchen',
+      'label "Living" uses living',
+    );
+    expect(of(living, "W_WET_ROOM_DOOR")).toEqual([]);
   });
 
   it("sub-case 3: a WC that is the passage between two rooms", () => {
@@ -482,5 +497,195 @@ describe("the three rules' texts", () => {
     // Not vacuous: every code is exercised, and some option was checked against an edge.
     for (const c of CODES) expect(seen.get(c) ?? 0, c).toBeGreaterThan(0);
     expect(edges).toBeGreaterThan(0);
+  });
+});
+
+describe("W_WET_ROOM_DOOR onto an open-plan kitchen (S1 revision, review round 1 of PR #203)", () => {
+  // A bath off the west room, whose `uses` vary; with `third`, a bedroom east of the bath.
+  // d_bath's face on the west room's side is x 3950, y 1100-1900 (a 100 mm wall, 800 mm wide).
+  const plan = (westUses: string, third: boolean, ...pieces: string[]): string => {
+    const w = third ? 9000 : 6000;
+    return [
+      'plan "t" {',
+      "  units mm",
+      "  grid 50",
+      `  wall id=shell exterior thickness 200 { (0,0) (${w},0) (${w},3000) (0,3000) close }`,
+      "  wall id=w_bath partition thickness 100 { (4000,0) (4000,3000) }",
+      ...(third ? ["  wall id=w_bed partition thickness 100 { (6000,0) (6000,3000) }"] : []),
+      `  room id=r_main at (0,0) size 4000x3000 label "Main" uses ${westUses}`,
+      '  room id=r_bath at (4000,0) size 2000x3000 label "Bathroom" uses bath',
+      ...(third
+        ? [
+            '  room id=r_bed at (6000,0) size 3000x3000 label "Bedroom" uses bedroom',
+            "  door id=d_bed at (7500,3000) width 900 wall shell",
+          ]
+        : []),
+      "  door id=d_in at (2000,3000) width 900 wall shell",
+      "  door id=d_bath at (4000,1500) width 800 wall w_bath",
+      ...pieces.map((p) => `  furniture ${p}`),
+      "}",
+    ].join("\n");
+  };
+  /** Nearest corner (3400,700) to the face's end (3950,1100): hypot(550, 400) = 680.07 mm. */
+  const NEAR = "kitchen_sink at (2600,100) size 800x600";
+  /** Nearest corner (1200,700) to (3950,1100): hypot(2750, 400) = 2778.9 mm. */
+  const FAR = "kitchen_sink at (400,100) size 800x600";
+  const wet = (src: string, ruleset?: { wetDoorKitchenProximityMm: number }) =>
+    lint(src, ruleset ? { ruleset } : {}).filter((d) => d.code === "W_WET_ROOM_DOOR");
+  const skips = (src: string) =>
+    lintWithCoverage(src).coverage?.families.find((f) => f.family === "privacy")?.skipped ?? [];
+
+  it("an open-plan kitchen warns when a kitchen fixture stands near the doorway, with the distance", () => {
+    for (const uses of ["living kitchen", "living kitchen dining"]) {
+      const ds = wet(plan(uses, true, NEAR));
+      expect(ds, uses).toHaveLength(1);
+      expect(ds[0]!.message).toContain(
+        'opens straight into the kitchen of "Main" through a door 800 mm wide, 680 mm from its kitchen_sink.',
+      );
+      expect(ds[0]!.hints).toContain(
+        'Keep the kitchen of "Main" (r_main) at least 1500 mm from d_bath, measured from the doorway\'s face: its kitchen_sink is 680 mm away.',
+      );
+    }
+  });
+
+  it("is silent when every kitchen fixture is at least wetDoorKitchenProximityMm away", () => {
+    expect(wet(plan("living kitchen", true, FAR))).toEqual([]);
+    expect(wet(plan("living kitchen", true, NEAR), { wetDoorKitchenProximityMm: 680 })).toEqual([]);
+    expect(wet(plan("living kitchen", true, NEAR), { wetDoorKitchenProximityMm: 681 })).toHaveLength(1);
+    // 2778.9 mm is compared as the 2779 it prints (review round 2).
+    expect(wet(plan("living kitchen", true, FAR), { wetDoorKitchenProximityMm: 2779 })).toEqual([]);
+    expect(wet(plan("living kitchen", true, FAR), { wetDoorKitchenProximityMm: 2780 })).toHaveLength(1);
+  });
+
+  it("reads the families through their aliases, and only a kitchen fixture on the room's own floor", () => {
+    expect(wet(plan("living kitchen", true, "hob at (2800,100) size 600x600"))).toHaveLength(1);
+    expect(wet(plan("living kitchen", true, "worktop at (2800,100) size 600x600"))).toHaveLength(1);
+    // A sofa by the door is not a kitchen; a sink inside the bathroom is not this room's.
+    for (const p of ["sofa at (2000,1100) size 1800x800", "kitchen_sink at (4100,1100) size 600x800"]) {
+      const src = plan("living kitchen", true, p);
+      expect(wet(src), p).toEqual([]);
+      expect(skips(src), p).toContainEqual(
+        expect.objectContaining({ reason: "no-kitchen-fixtures", roomIds: ["r_main"] }),
+      );
+    }
+  });
+
+  it("a room with no kitchen fixture is skipped and declared to the coverage report", () => {
+    const src = plan("living kitchen", true);
+    expect(wet(src)).toEqual([]);
+    expect(skips(src)).toContainEqual({
+      reason: "no-kitchen-fixtures",
+      why: "the room holds no kitchen fixtures to locate the kitchen",
+      rooms: ["Main"],
+      roomIds: ["r_main"],
+    });
+    // A located kitchen files no such skip.
+    expect(skips(plan("living kitchen", true, FAR)).some((s) => s.reason === "no-kitchen-fixtures")).toBe(false);
+  });
+
+  it("a kitchen alone warns as before, fixtures or not, studio or not", () => {
+    expect(wet(plan("kitchen", true))).toHaveLength(1);
+    expect(wet(plan("kitchen", false))).toHaveLength(1);
+    expect(wet(plan("kitchen", true, FAR))).toHaveLength(1);
+    // A studio's open-plan room is measured like any other.
+    expect(wet(plan("living kitchen", false, NEAR))).toHaveLength(1);
+    expect(wet(plan("living kitchen", false, FAR))).toEqual([]);
+  });
+
+  it("a living or dining room with no kitchen use stays exempt; a dining room alone still warns", () => {
+    expect(wet(plan("living", true, NEAR))).toEqual([]);
+    expect(wet(plan("living dining", true, NEAR))).toEqual([]);
+    expect(wet(plan("dining", true))).toHaveLength(1);
+  });
+});
+
+describe("W_WET_ROOM_DOOR onto an open-plan kitchen (review round 2 of PR #203)", () => {
+  // The reviewer's repro shape: "Main" (0,0)-(6000,3000) north of w_h; d_bath at x 4100-4900 on
+  // w_h, its face on Main's side at y 2950. `grid` off lets a piece sit off the 50 mm grid.
+  const plan = (uses: string, grid: boolean, ...pieces: string[]): string =>
+    [
+      'plan "r2" {',
+      "  units mm",
+      ...(grid ? ["  grid 50"] : []),
+      "  wall id=shell exterior thickness 200 { (0,0) (6000,0) (6000,5000) (0,5000) close }",
+      "  wall id=w_h partition thickness 100 { (0,3000) (6000,3000) }",
+      "  wall id=w_v partition thickness 100 { (3000,3000) (3000,5000) }",
+      `  room id=r_main at (0,0) size 6000x3000 label "Main" uses ${uses}`,
+      '  room id=r_entry at (0,3000) size 3000x2000 label "Entrance" uses entry',
+      '  room id=r_bath at (3000,3000) size 3000x2000 label "Bathroom" uses bath',
+      "  door id=d_front at (1500,5000) width 900 wall shell swing into r_entry",
+      "  opening id=o_entry at (1500,3000) width 900 wall w_h",
+      "  door id=d_bath at (4500,3000) width 800 wall w_h swing into r_bath",
+      "  window at (3000,0) width 2400 wall shell",
+      "  furniture shower at (5000,4000) size 900x900",
+      "  furniture wc at (3200,4200) size 400x700",
+      "  furniture basin at (3800,4500) size 500x400",
+      ...pieces.map((x) => `  furniture ${x}`),
+      "}",
+    ].join("\n");
+  /** The far corner sink: its nearest corner (1100,650) is hypot(3000, 2300) = 3780 mm from (4100,2950). */
+  const SINK = "kitchen_sink at (300,100) size 800x550";
+  const TABLE = "table at (2000,1000) size 1600x900";
+  const wet = (src: string, ruleset?: { wetDoorKitchenProximityMm: number }) =>
+    lint(src, ruleset ? { ruleset } : {}).filter((d) => d.code === "W_WET_ROOM_DOOR");
+  const skipped = (src: string) =>
+    (lintWithCoverage(src).coverage?.families.find((f) => f.family === "privacy")?.skipped ?? []).some(
+      (x) => x.reason === "no-kitchen-fixtures",
+    );
+
+  it("is monotone in the uses: only a living use relaxes a kitchen to the proximity test", () => {
+    // The reviewer's four shapes (repro2/g-*.arch): each keeps main's unconditional warning.
+    const dining = plan("dining", true, TABLE);
+    const kitDin = plan("kitchen dining", true, TABLE, SINK);
+    const kitDinBare = plan("kitchen dining", true, TABLE);
+    const kitchen = plan("kitchen", true, TABLE, SINK);
+    const msg = (src: string) => wet(src).map((d) => d.message.split(" through ")[0]);
+    expect(msg(dining)).toEqual(['"Bathroom" opens straight into "Main", a dining room,']);
+    expect(msg(kitDin)).toEqual(['"Bathroom" opens straight into "Main", a kitchen,']);
+    expect(msg(kitDinBare)).toEqual(['"Bathroom" opens straight into "Main", a kitchen,']);
+    expect(msg(kitchen)).toEqual(['"Bathroom" opens straight into "Main", a kitchen,']);
+    for (const src of [dining, kitDin, kitDinBare, kitchen]) expect(skipped(src)).toBe(false);
+    // The sink is 3780 mm off: lifting the threshold past it does not change a kitchen/dining room.
+    expect(wet(kitDin, { wetDoorKitchenProximityMm: 1 })).toHaveLength(1);
+    // Adding the living use is what relaxes it: the same sink, 3780 mm away, is then silent ...
+    expect(wet(plan("kitchen dining living", true, TABLE, SINK))).toEqual([]);
+    expect(wet(plan("living kitchen", true, TABLE, SINK))).toEqual([]);
+    expect(wet(plan("living kitchen", true, TABLE, SINK), { wetDoorKitchenProximityMm: 3781 })[0]!.message).toContain(
+      "3780 mm from its kitchen_sink.",
+    );
+    // ... and with no fixture it is skipped, not warned.
+    expect(wet(plan("living kitchen dining", true, TABLE))).toEqual([]);
+    expect(skipped(plan("living kitchen dining", true, TABLE))).toBe(true);
+  });
+
+  it("an island or a dishwasher locates the kitchen; a microwave does not", () => {
+    const island = wet(plan("living kitchen", true, "island at (4000,750) size 1200x1000", SINK));
+    expect(island.map((d) => d.message)).toEqual([
+      expect.stringContaining(
+        'opens straight into the kitchen of "Main" through a door 800 mm wide, 1200 mm from its island.',
+      ),
+    ]);
+    const dishwasher = wet(plan("living kitchen", true, "dishwasher at (4100,2350) size 600x600", SINK));
+    expect(dishwasher.map((d) => d.message)).toEqual([
+      expect.stringContaining("800 mm wide, 0 mm from its dishwasher."),
+    ]);
+    // A microwave beside the door: portable, so the room stays unlocated and is skipped.
+    const microwave = plan("living kitchen", true, "microwave at (4200,2450) size 500x400");
+    expect(wet(microwave)).toEqual([]);
+    expect(skipped(microwave)).toBe(true);
+  });
+
+  it("tests the threshold on the whole millimetres it prints", () => {
+    // A counter whose far edge stands `d` mm off the doorway's face (y 2950), off the grid.
+    const at = (d: number) => plan("living kitchen", false, `counter at (2000,${2950 - 600 - d}) size 4000x600`);
+    // 1499.6 mm prints as 1500, at least the 1500 mm threshold: silent, never "keep at least
+    // 1500 ... is 1500 mm away".
+    expect(wet(at(1499.6))).toEqual([]);
+    expect(wet(at(1500))).toEqual([]);
+    const [d] = wet(at(1499.4));
+    expect(d!.message).toContain("1499 mm from its counter.");
+    expect(d!.hints).toContain(
+      'Keep the kitchen of "Main" (r_main) at least 1500 mm from d_bath, measured from the doorway\'s face: its counter is 1499 mm away.',
+    );
   });
 });

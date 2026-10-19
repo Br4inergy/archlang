@@ -15,6 +15,7 @@ import {
   wallFaces,
 } from "../src/analyze/wall-faces.js";
 import { lint } from "../src/index.js";
+import { lintCoverage } from "../src/lint.js";
 import type { RDoor, RFurniture, ROpening, RRoom, RVoid } from "../src/ir.js";
 import { LINT_RULES } from "../src/lint/rules/index.js";
 import { verticalsOf } from "../src/vertical.js";
@@ -719,5 +720,30 @@ ${extra}`);
         ),
       ),
     ).not.toContain("W_BOUNDARY_NO_WALL");
+  });
+});
+
+describe("the coverage report names a refused storey (PS2.13 seam)", () => {
+  it("files the face rules' budget refusal as an enclosure-budget skip, and nothing when measured", () => {
+    const walls: string[] = [];
+    for (let k = 0; k < 100; k++) {
+      const lo = 69000 - 150 * k;
+      const hi = 71000 + 150 * k;
+      walls.push(`wall partition thickness 50 { (${lo},${lo}) (${hi},${lo}) (${hi},${hi}) (${lo},${hi}) close }`);
+    }
+    const nested = P(
+      `${walls.join("\n")}\nroom at (54150,54150) size 31700x31700 label "Hall" uses hall\ndoor at (70000,54150) width 900`,
+    );
+    const fam = lintCoverage(nested)!.families.find((f) => f.family === "enclosure");
+    // The boundary rule measured; the two face rules declined, so the family is partial.
+    expect(fam).toEqual({
+      family: "enclosure",
+      status: "partial",
+      skipped: [{ reason: "enclosure-budget", why: "too many walled regions to measure" }],
+    });
+    const measured = lintCoverage(
+      readFileSync("test/defect-corpus/space-not-enclosed/bow-strip-unassigned.arch", "utf8"),
+    )!;
+    expect(measured.families.find((f) => f.family === "enclosure")).toEqual({ family: "enclosure", status: "ran" });
   });
 });

@@ -27,6 +27,21 @@ import { passableDoorWidthMm } from "./doors.js";
 
 const modelCache = new WeakMap<LintContext, CirculationModel | null>();
 
+/**
+ * {@link circulationOf} for a rule, declaring to the coverage report (PS2.13) a storey whose
+ * walk is not measured because it has rooms and no way in. A plan with no room has nothing to
+ * walk, which is not a skip.
+ */
+function measuredCirculationOf(ctx: LintContext): CirculationModel | null {
+  const circ = circulationOf(ctx);
+  if (!circ && ctx.rooms.length > 0 && !ctx.access().hasEntrance) ctx.skip("no-entrance");
+  // TODO(coverage): the model is also null for a degenerate extent (zero-width or non-finite
+  // room bounds, `navExtent` in `src/analyze/circulation.ts`) and when `buildGrid` returns null
+  // (`buildNav`'s "none"). Neither is reached by a real plan; when one is, declare it here with
+  // its own reason rather than leave it silent.
+  return circ;
+}
+
 function circulationOf(ctx: LintContext): CirculationModel | null {
   if (modelCache.has(ctx)) return modelCache.get(ctx) ?? null;
   const model = computeCirculation(
@@ -483,10 +498,11 @@ function namedClause(doors: readonly AccessEdge[] | null, width: number, ctx: Li
 
 export const pathTooNarrow: LintRule = {
   name: "path-too-narrow",
+  family: "circulation",
   check(ctx: LintContext): Diagnostic[] {
     // This storey has started: it no longer needs a measure kept back for it.
     if (ctx.building.attributionMeasures) ctx.building.attributionMeasures.storeys--;
-    const circ = circulationOf(ctx);
+    const circ = measuredCirculationOf(ctx);
     if (!circ) return [];
     const { rooms, labelOf, at } = ctx;
     const min = ctx.rules.minPathClearWidthMm;
@@ -572,8 +588,9 @@ export const pathTooNarrow: LintRule = {
 
 export const circuitousPath: LintRule = {
   name: "circuitous-path",
+  family: "circulation",
   check(ctx: LintContext): Diagnostic[] {
-    const circ = circulationOf(ctx);
+    const circ = measuredCirculationOf(ctx);
     if (!circ) return [];
     const { rooms, labelOf, at } = ctx;
     const max = ctx.rules.maxDetourRatio;

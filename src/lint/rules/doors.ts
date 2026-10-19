@@ -42,6 +42,7 @@ import { approachGapMm, deficitMm, distPointToRect, mm, shortfall } from "../mea
  */
 export const swingObstructed: LintRule = {
   name: "swing-obstructed",
+  family: "doors",
   check({ ir, doors, furniture, rules, at, frameOf }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const swings: Array<{ d: RDoor; s: DoorSwing }> = [];
@@ -188,12 +189,17 @@ export function widestClearingWidth(
  *  bathroom door. Built as an AABB straddling the opening on orthogonal host walls. */
 export const doorwayBlocked: LintRule = {
   name: "doorway-blocked",
-  check({ doors, furniture, rules, at }: LintContext): Diagnostic[] {
+  family: "doors",
+  check({ doors, furniture, rules, at, skip }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const d of doors) {
       const depth = rules.doorwayLandingMm;
       const landing = doorLandingRect(d, depth);
-      if (!landing) continue; // no host, or an angled host — skip
+      if (!landing) {
+        // No host (`W_DOOR_OFF_WALL`'s report), or an angled or curved host: not measured.
+        if (d.host) skip("unsupported-host-geometry");
+        continue;
+      }
       const blocker = furniture.find((f) => rectsOverlap(landing, rectOf(f)));
       if (blocker) {
         const gn = blocker.label ?? blocker.category;
@@ -248,12 +254,17 @@ export const doorwayBlocked: LintRule = {
  */
 export const pocketRun: LintRule = {
   name: "pocket-run",
-  check({ doors, ir, rules, at }: LintContext): Diagnostic[] {
+  family: "doors",
+  check({ doors, ir, rules, at, skip }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const d of doors) {
       if (d.doorKind !== "pocket") continue;
       const seg = d.host;
-      if (!seg || seg.arc) continue;
+      if (!seg) continue;
+      if (seg.arc) {
+        skip("unsupported-host-geometry");
+        continue;
+      }
       const wall = ir.walls.find((w) => w.id === seg.wallId);
       const openings = wall ? wall.openings : [];
       const need = d.width + Math.max(rules.pocketRunClearanceMm, d.width * POCKET_RUN_RATIO);
@@ -327,6 +338,7 @@ function pocketRunMm(
 /** Door too narrow to pass comfortably. */
 export const doorClearance: LintRule = {
   name: "door-clearance",
+  family: "doors",
   check({ doors, rules, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const d of doors) {
@@ -404,6 +416,7 @@ export const doorClearance: LintRule = {
  */
 export const doorNearCorner: LintRule = {
   name: "door-near-corner",
+  family: "doors",
   check({ doors, wallSegs, rules, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const d of doors) {
