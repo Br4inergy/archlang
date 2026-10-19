@@ -110,11 +110,19 @@ for (const { group, items } of EXAMPLE_GROUPS) {
 }
 
 // ---- lint-profile selector (advisory rule sets) ----
-// One-line description of what each profile tightens, shown under the selector.
+// One-line description of what each profile tightens, shown under the selector. The first
+// option, value "", is the default ruleset (no profile), as `lint()` and the CLI run it.
 const LINT_PROFILE_CAPTIONS: Record<string, string> = {
-  "residential-basic": "Default — doors ≥ 700 mm, habitable rooms ≥ 4 m²; every plan judged as a dwelling.",
+  "": "Default — doors ≥ 700 mm, habitable rooms ≥ 4 m²; home-only checks skip a café, shop or office.",
+  "residential-basic": "The default's thresholds, asserting a dwelling: every plan is judged as a home.",
   "accessibility-advisory": "Stricter — doors ≥ 850 mm, rooms ≥ 5 m², 150 mm door-swing clearance.",
 };
+{
+  const o = document.createElement("option");
+  o.value = "";
+  o.textContent = "default";
+  lintProfileSelect.appendChild(o);
+}
 for (const name of LINT_PROFILE_NAMES) {
   const o = document.createElement("option");
   o.value = name;
