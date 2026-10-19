@@ -14,17 +14,19 @@
  * deterministic bad heuristic is still an arranger, so WIDTH never decides: a wider back or
  * delivery door is not a front door). The candidates are the storey's exterior DOORS (a leaf: a
  * cased opening is not a front door) that are not a `garage` door and do not open onto an
- * `outdoor balcony` ({@link doorFacesBalcony}). Each step must single out exactly one door, or
- * the next step is asked:
- *  0. One candidate: it is the only door from the ground (`sole`).
- *  1. The candidates opening into an entrance space: a room whose uses ({@link roomUses}) include
- *     entry, hall or circulation and no private or service use (`entry-room`). Of several, step 2
- *     is asked of those alone.
- *  2. With `site`, the HINGED candidates whose wall faces `site.street`: the outward side of the
- *     host wall, probed one wall thickness off each face (the side whose probe is on no room's
+ * `outdoor balcony` ({@link doorFacesBalcony}), and (step 0) do not open into a room used as a
+ * bedroom, bath or WC: a front door never does (`W_ENTRANCE_INTO_PRIVATE`). Each step must single
+ * out exactly one door, or the next step is asked:
+ *  1. The one door into an entrance space, a room whose uses ({@link roomUses}) include entry,
+ *     hall or circulation and no service use (`entry-room`), but ONLY when every other candidate
+ *     opens into a service room (utility, storage, garage). A back hall or mud room does not
+ *     outrank a door straight into the living room, the kitchen or an unclassified room.
+ *  2. With `site`, the one HINGED candidate whose wall faces `site.street`: the outward side of
+ *     the host wall, probed one wall thickness off each face (the side whose probe is on no room's
  *     floor), turned by `north` (`street`). A slider on the street is a shop front or a patio
  *     door as often as a front door, so it is never chosen here.
- *  3. Otherwise refused: `tie` (the doors nothing singled out are listed), or `no-candidate`.
+ *  3. One candidate left: it is the only door from the ground (`sole`).
+ *  4. Otherwise refused: `tie` (the candidates are listed), or `no-candidate`.
  * A storey a shaft arrives on from below names none (`upper-storey`): which of its exterior doors
  * is a way in at all is PS0.3's question. A refusal keeps every way in, exactly as before, and
  * the fact still says why.
@@ -140,22 +142,24 @@ const hinged = (d: RDoor): boolean => d.doorKind === undefined || d.doorKind ===
 
 /** Uses that make a room an entrance space: a hall, an entry or circulation. */
 const ENTRY_USES: ReadonlySet<UseKind> = new Set<UseKind>(["entry", "hall", "circulation"]);
-/** Uses that make a room private or service, never a front door's room whatever else it is. */
-const NOT_ENTRY_USES: ReadonlySet<UseKind> = new Set<UseKind>([
-  "bedroom",
-  "bath",
-  "wc",
-  "storage",
-  "utility",
-  "garage",
-]);
+/** Uses a front door never opens into (`W_ENTRANCE_INTO_PRIVATE`): such a door is no candidate. */
+const PRIVATE_USES: ReadonlySet<UseKind> = new Set<UseKind>(["bedroom", "bath", "wc"]);
+/** Uses of a service room: a door into one does not compete with a door into the hall. */
+const SERVICE_USES: ReadonlySet<UseKind> = new Set<UseKind>(["utility", "storage", "garage"]);
 
 /** Does the room read as an entrance space ({@link roomUses}): an entry, hall or circulation
- *  use, and no private or service use beside it? */
+ *  use, and no service use beside it? */
 function isEntryRoom(r: RRoom | undefined): boolean {
   if (!r) return false;
-  const uses = roomUses(r);
-  return [...uses].some((u) => ENTRY_USES.has(u)) && ![...uses].some((u) => NOT_ENTRY_USES.has(u));
+  const uses = [...roomUses(r)];
+  return uses.some((u) => ENTRY_USES.has(u)) && !uses.some((u) => SERVICE_USES.has(u));
+}
+
+/** Is the room a service room: classified, and every use a service one? */
+function isServiceRoom(r: RRoom | undefined): boolean {
+  if (!r) return false;
+  const uses = [...roomUses(r)];
+  return uses.length > 0 && uses.every((u) => SERVICE_USES.has(u));
 }
 
 /**
@@ -173,26 +177,30 @@ export function mainEntranceOf(graph: AccessGraph, inp: EntranceInputs): MainEnt
   const cands: Array<{ door: RDoor; room: string }> = [];
   for (const w of entranceWays(graph, inp)) {
     const d = doors.get(w.doorId);
-    if (w.kind === "door" && d && d.doorKind !== "garage" && !w.balcony) cands.push({ door: d, room: w.room });
+    if (w.kind !== "door" || !d || d.doorKind === "garage" || w.balcony) continue;
+    // (0) A front door never opens into a bedroom, bath or WC.
+    const r = rooms.get(w.room);
+    if (r && [...roomUses(r)].some((u) => PRIVATE_USES.has(u))) continue;
+    cands.push({ door: d, room: w.room });
   }
   const ids = (cs: readonly { door: RDoor }[]): string[] => cs.map((c) => c.door.id);
   if (cands.length === 0) return { door: null, basis: "no-candidate", candidates: [] };
-  // The only door from the ground there is: nothing is chosen.
-  if (cands.length === 1) return { door: cands[0]!.door.id, basis: "sole", candidates: ids(cands) };
-  // (a) The door into an entrance space.
+  // (a) The door into an entrance space, when every other one opens into a service room: a hall
+  // does not outrank a door straight into the living room, the kitchen or an unclassified room.
   const entry = cands.filter((c) => isEntryRoom(rooms.get(c.room)));
-  if (entry.length === 1) return { door: entry[0]!.door.id, basis: "entry-room", candidates: ids(entry) };
-  const pool = entry.length > 1 ? entry : cands;
-  // (b) The hinged door on the street side, within the doors (a) left.
+  if (entry.length === 1 && cands.every((c) => c === entry[0] || isServiceRoom(rooms.get(c.room))))
+    return { door: entry[0]!.door.id, basis: "entry-room", candidates: ids(entry) };
+  // (b) The one hinged door on the street side.
   if (inp.site) {
     const turns = northQuarterTurns(inp.north);
     const street = deriveSite(inp.site).street;
-    const onStreet = pool.filter((c) => hinged(c.door) && doorFacing(c.door, inp.roomRects, turns) === street);
+    const onStreet = cands.filter((c) => hinged(c.door) && doorFacing(c.door, inp.roomRects, turns) === street);
     if (onStreet.length === 1) return { door: onStreet[0]!.door.id, basis: "street", candidates: ids(onStreet) };
-    if (onStreet.length > 1) return { door: null, basis: "tie", candidates: ids(onStreet) };
   }
-  // (c) Nothing singles one door out.
-  return { door: null, basis: "tie", candidates: ids(pool) };
+  // (c) The only door from the ground there is: nothing is chosen.
+  if (cands.length === 1) return { door: cands[0]!.door.id, basis: "sole", candidates: ids(cands) };
+  // (d) Nothing singles one door out.
+  return { door: null, basis: "tie", candidates: ids(cands) };
 }
 
 /** Door hops from the entrance `door` (its room is 1) without going outside, per room. */

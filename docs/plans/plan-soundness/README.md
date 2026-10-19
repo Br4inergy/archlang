@@ -232,13 +232,14 @@ a profile that sets the generic floor, `accessibility-advisory`'s 5 m², holds e
 no researched accessible per-use table exists yet), PS0.12 (a window on an arc edge is attributed
 from the shape: face probes, else through the arc's chord; PS2.8's `arc-window-unattributed` skip
 kept only where that fails) and PS0.10 (`describe().access.mainEntrance` and
-`depthFromMainEntrance`; width never decides: the basis is `sole`, `entry-room` (the one door into
-an entry, hall or circulation room) or `street` (the one hinged door facing `site.street`), and the
-fact refuses with `tie`, `no-candidate` or `upper-storey` (a storey a shaft arrives on, PS0.3's
+`depthFromMainEntrance`; width never decides: no door into a bedroom, bath or WC is a candidate,
+and the basis is `entry-room` (the one door into an entry, hall or circulation room, only when every
+other door opens into a service room), `street` (the one hinged door facing `site.street`) or `sole`;
+the fact refuses with `tie`, `no-candidate` or `upper-storey` (a storey a shaft arrives on, PS0.3's
 question), declared to the coverage report as `no-main-entrance`. `W_PATH_TOO_NARROW`,
 `W_ROOM_VIA_PRIVATE` and `W_WET_ROOM_DOOR` judge a route from the main entrance; garage doors and
-doors into rooms it cannot reach from inside stay ways in, and a room with its own door from outside
-is judged by that door).
+doors into rooms it cannot reach from inside stay ways in; a room with its own door from outside is
+judged by that door, and reported in its own words when the main entrance cannot reach it).
 
 | Card | Bug (re-measure first; the evidence is in the cited file) | Status |
 |---|---|---|

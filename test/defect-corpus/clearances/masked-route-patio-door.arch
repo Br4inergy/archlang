@@ -2,12 +2,12 @@
 # origin: audits/2026-10-18-first-contact.md T2 (first-contact-plans/5-townhouse.arch L0: the sofa 250 mm in front of
 #   g_o_hl; living and kitchen measured from g_patio); README PS0.10
 # expect: W_PATH_TOO_NARROW
-# status: done
+# status: todo
 # fact: the sofa (x 2400-3300, y 5000-7000) stands 250 mm in front of o_hl (w_v face x 2150, y 5500-6500) over its
 #   full width; describe measures Living and Dining from d_patio (1540 mm), so lint is silent; with d_patio made a
-#   window, lint gives W_PATH_TOO_NARROW 200 mm for "Living" and "Dining". Since PS0.10 the walk is judged from the
-#   main entrance (d_front, the door into the hall), so lint reports "Living" 200 mm as it stands, with no site;
-#   "Dining" opens onto the garden through d_patio itself, which is a way into it, so it is not reported
+#   window, lint gives W_PATH_TOO_NARROW 200 mm for "Living" and "Dining". With no site the main entrance is refused
+#   (the patio door opens into a public room, so the door into the hall does not outrank it; PS0.10), and every way in
+#   is kept; with site { street ... } naming d_front, lint reports both, "Dining" as reached only through its own door
 plan "Sofa across the hall opening, masked by the patio door" {
   units mm
   grid 50

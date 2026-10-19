@@ -275,13 +275,16 @@ openings) and walks it from the exterior. For the studio:
 | `rooms[].depthFromEntrance` | how many connectors you pass through from the nearest entrance (`1` = opens straight off it); `null` if you can't get there |
 | `rooms[].reachable` | can this room be reached from the exterior at all? |
 | `rooms[].bottleneckClearWidth` | the **narrowest clear width** along the widest path in from the entrance — the real constraint for moving furniture or a wheelchair (a widest-path search, so it reports the best route's worst pinch) |
-| `mainEntrance` | which entrance is the **front door**: `{ door, basis, candidates }`. **Present only on a storey with more than one entrance.** The candidates are the exterior doors with a leaf that are not a `garage` door and do not open onto an `outdoor balcony`; width never decides. Each step must single out exactly one door: the only candidate (`basis: "sole"`); else the one opening into an entry, hall or circulation room with no private or service use (`"entry-room"`); else, with `site`, among those (or all, when none opens into an entrance space), the one **hinged** door whose wall faces `site.street` (`"street"`). Otherwise the choice is refused, `door: null`: `"tie"` (the doors nothing singled out are listed in `candidates`) or `"no-candidate"`. A storey a stair or lift arrives on from below names none (`"upper-storey"`) |
+| `mainEntrance` | which entrance is the **front door**: `{ door, basis, candidates }`. **Present only on a storey with more than one entrance.** The candidates are the exterior doors with a leaf that are not a `garage` door, do not open onto an `outdoor balcony`, and do not open into a bedroom, bath or WC; width never decides. In order, each step must single out exactly one door: the one door into an entry, hall or circulation room, but only when every other candidate opens into a service room (utility, storage, garage) (`basis: "entry-room"`); else, with `site`, the one **hinged** door whose wall faces `site.street` (`"street"`); else the only candidate (`"sole"`). Otherwise the choice is refused, `door: null`: `"tie"` (the candidates are listed) or `"no-candidate"`. A storey a stair or lift arrives on from below names none (`"upper-storey"`) |
 | `rooms[].depthFromMainEntrance` | connectors passed from the main entrance (its room is `1`) **without going outside**; `null` for a room reached only through another door from outside. Present only when `mainEntrance.door` names a door. `depthFromEntrance` is unchanged beside it |
 
 When a main entrance is named, lint's `W_PATH_TOO_NARROW`, `W_ROOM_VIA_PRIVATE` and `W_WET_ROOM_DOOR`
 judge a route from it: another door from outside counts as a way in only into a room the main entrance
 cannot reach from inside, or when it is a `garage` door. So a patio or balcony door no longer
-hides a route blocked from the front door. When the fact refuses, they measure from every
+hides a route blocked from the front door. A room with a door of its own from outside is judged by
+that door, and when the walk from the main entrance cannot reach it at all `W_PATH_TOO_NARROW` says
+so with its own message ("From the main entrance the walk to … is blocked; the room is reached only
+through its own door from outside"). When the fact refuses, they measure from every
 exterior door, and the coverage report says so (`no-main-entrance`). Which rooms are reachable at all does not
 change.
 `circulation` below, and `W_CIRCUITOUS_PATH`'s ratio, still measure each room from its nearest

@@ -297,26 +297,28 @@
  * `describe()` put back reproduces each previous row. The fact per example is in
  * `./byte-identity-baseline.ts`, "`describe().access` names the main entrance". Thirteen of them
  * re-measured again in the PS0.10 review round (width no longer decides), `describe()` only:
- * the first measurement's `describe()` put back reproduces each first row.
+ * the first measurement's `describe()` put back reproduces each first row. Seven again in review
+ * round 2 (`bungalow`, `garden-house`, `hillside-villa`, `library`, `terrace-row`, `townhouse`,
+ * `transit-hall`: the fact's basis or refusal), `describe()` only, the same way.
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
   ["examples/aquarium.arch", "9b8e70c3cd7838abbb883062d3abd06dfb54ec7336f523bb4369ad917301cbb4"],
   ["examples/attached.arch", "591f4199087b7f7fcab65af3cab3f12dbe062456954e7ef0f02969a974d34b93"],
-  ["examples/bungalow.arch", "789618aa886b446ce66de0e73c1417ca2d570c8f55a3a08125dc7b1a4529e1ff"],
+  ["examples/bungalow.arch", "6b8516f0cf7828366634bf0453c1e1ecc19bfbb1a97d203f60f78eeb8428cfcb"],
   ["examples/classroom-block.arch", "48ee65709fc9f1b2875c7b96fd680d03a8012811d0bd18bc4a3a45422f19fe79"], // added with the example, re-measured for net area, see header
   ["examples/clinic.arch", "fac5d9fab49df93fe8cbff6cc0bf26b9e84b1a32c26128e155d0eeb5da99feb1"],
   ["examples/corner-cafe.arch", "d6fc478a0e72c1774a9dca2f9af4a04dadd3fa518bdec5211aec400ec47808e6"], // added with the example, re-measured for net area, see header
   ["examples/courtyard-house.arch", "4a6c2594c8297071e217968266791a9ce35d8c639cd32605fbf3f5afdd3db59b"],
   ["examples/furnished-flat.arch", "4eb26e5f4ea04859bd96da44cd7db791a9da347d462143478e00b184de54a70b"],
   ["examples/gallery-l.arch", "cc37c7d8d73b535358978674f3c5da26af87af4d066e6cd67a8bd1f8506e7f5f"],
-  ["examples/garden-house.arch", "ac4dcad493ec3aaaa39e0bc90d4459a8c2b24f14185989f1dea54e9665fdf825"], // re-measured, see header
+  ["examples/garden-house.arch", "3506cadfa5aed4c2aa839ff26d04ebc38f8981801ca4d0f14ac34a1182b9df0a"], // re-measured, see header
   ["examples/garden-loft.arch", "eb6ba7bdcd33231cd0cfd2072a1a99e2b416be039e6efc2cc0a5ea76129738f2"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
-  ["examples/hillside-villa.arch", "b45bfad516ef6868370893f52c9b7f41692730bd6e8fdb9a0daac1c6324dfd31"], // re-measured, see header
+  ["examples/hillside-villa.arch", "3ea454598ba34a492fac3e30285b404d33957624ac5722ef92ee0c722ab123b9"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
   ["examples/laneway-house.arch", "1f6ebf00734dcfc07c8e43cea510f19cd101819b858a23a4ded11258d3e0a4b9"],
-  ["examples/library.arch", "dd9416875948cac4447e19c4c3540824aadddee208af2ca5fc7236f7e9133e67"],
+  ["examples/library.arch", "35dcd343befa526864edfe86efc7bc8d332413598c4cbfac661e3f1db79381bd"],
   ["examples/materials.arch", "8d9b58a1bc8dcdccb6d530b0f2d246777406e2eaa25849a3128de0dfcd850398"],
   ["examples/museum-wing.arch", "6e01f37f15c674c544fac6651e9f3bd32d4d6e4865fdafba36ed97feca9ff33a"],
   ["examples/museum-wings.arch", "273fcdf2e5493e731893362b345c15804299d81d30c681a0d11fd78adfe605b6"], // re-measured, see header
@@ -327,11 +329,11 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/relational.arch", "f1c37e433fca8d5618a3558ebd48865933ca2f7ede0a836df13a1e09ab213a60"],
   ["examples/sheet-notes.arch", "0104550fc3b3a39a71c1a005da79c3db5ea10ae21d9739e11a6d1f18ee7b7420"], // re-measured, see header
   ["examples/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
-  ["examples/terrace-row.arch", "c1de2b1e232b6163575841b4c15b2d0232f5be3b55a3679f3227fe42224b8f15"],
+  ["examples/terrace-row.arch", "3daeb1d5550ac44d8a0c996962a7bde191a1decf4c555bb6801936ba3c1432c2"],
   ["examples/themed.arch", "083872e0955d587897a87084c2f0bfe395856b02c643d7a8920e02f4bde870c1"],
   ["examples/tiny-house.arch", "cbd44f2c14aa28ea42f1fac0c7029f6257e6d7bcaab42c21ec290cecc3bd1933"],
-  ["examples/townhouse.arch", "143b6881f738ef249024a7e321f50f6d646873197b1d763a2ae235d89daec807"],
-  ["examples/transit-hall.arch", "afd83228631414e11386c173a39587155019ee31a209829e1cb9fedef25e71ce"],
+  ["examples/townhouse.arch", "e5e78673e77f3214d432265e0caded4638f8363016a95d6e3bec667d3122d5c8"],
+  ["examples/transit-hall.arch", "36eeb0b92a45d3e1db704bd302ce34731bef4cb2ed637021e90ddca7f9744d76"],
   ["examples/two-bed.arch", "7a99d973cc7db9e33f46534d4abf6cc879fb32559b13d4459606242e8687dec8"],
   ["examples/two-storey.arch", "149f588042915fa01fc8cb12088d2f53fc975342441bf9f5c787995640cd73e6"],
   ["test/fixtures/axes-grid.arch", "a0a729cd0ec5bbfd90353f47e0fc9d3ee45601b66dbb67df459f54165465e8ff"],

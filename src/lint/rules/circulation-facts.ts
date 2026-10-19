@@ -124,13 +124,14 @@ function circulationOf(ctx: LintContext, from: "walk" | "nearest" = "walk"): Cir
  * with its own front-of-house or back door that no route reaches it. Empty when the walk keeps
  * every way in.
  */
-function ownDoorRooms(ctx: LintContext): ReadonlySet<string> {
+function ownDoorRooms(ctx: LintContext): ReadonlyMap<string, string[]> {
   const keep = ctx.walkWays();
-  if (keep === null) return new Set();
-  const out = new Set<string>();
+  const out = new Map<string, string[]>();
+  if (keep === null) return out;
   for (const e of ctx.access().edges) {
     if (!ctx.access().entrances.includes(e.doorId) || keep.has(e.doorId)) continue;
-    out.add(e.between[0] === EXTERIOR_NODE ? e.between[1] : e.between[0]);
+    const room = e.between[0] === EXTERIOR_NODE ? e.between[1] : e.between[0];
+    out.set(room, [...(out.get(room) ?? []), e.doorId]);
   }
   return out;
 }
@@ -675,6 +676,30 @@ export const pathTooNarrow: LintRule = {
     const named = {
       get: (id: string): AccessEdge[] | undefined => (own.has(id) ? namedFull?.get(id) : namedWalk.get(id)),
     };
+    // The warning for a room judged by its own door whose walk from the main entrance fails.
+    const maskedByOwnDoor = (r: (typeof rooms)[number]): Diagnostic | null => {
+      // Only a SEAL from the main entrance is reported: the room is then reached only through its
+      // own door. A walk from the main entrance that does reach it, narrowly, is a room with two
+      // ways in, one of them wide, which is not the masking PS0.10 removes.
+      const sealed = seals.walk.get(r.id);
+      if (sealed === undefined) return null;
+      const tail = "the room is reached only through its own door from outside";
+      const message =
+        sealed > 0
+          ? `From the main entrance the walk to "${labelOf(r)}" squeezes to ${mm(sealed)} mm and stops there (${mm(shortfall(min, sealed))} mm below the ${mm(min)} mm minimum); ${tail}.`
+          : `From the main entrance the walk to "${labelOf(r)}" is blocked: furniture and its clearances leave no gap at all (0 mm against the ${mm(min)} mm minimum); ${tail}.`;
+      const ids = (own.get(r.id) ?? []).map((id) => `\`${id}\``).join(", ");
+      return {
+        severity: "warning",
+        code: "W_PATH_TOO_NARROW",
+        ...at(r),
+        message,
+        hints: [
+          ...narrowRemedies(min, null, ctx),
+          `Measured from the main entrance \`${ctx.mainEntrance()?.door ?? ""}\`. The room's own door from outside, ${ids}, is a way into it, but not the way the plan is entered.`,
+        ],
+      };
+    };
     for (const r of rooms) {
       const wayIn = blockedOf(r.id);
       if (wayIn !== undefined) {
@@ -697,7 +722,16 @@ export const pathTooNarrow: LintRule = {
         continue;
       }
       const rc = factOf(r.id);
-      if (!rc || rc.bottleneckClearWidthMm >= min) continue;
+      if (!rc || rc.bottleneckClearWidthMm >= min) {
+        // PS0.10: a room its own door from outside serves well, but the walk from the main
+        // entrance does not reach (or reaches too narrowly), is the masking PS0.10 removes: say so.
+        const masked = own.has(r.id) ? maskedByOwnDoor(r) : null;
+        if (masked) {
+          warned.add(r.id);
+          out.push(masked);
+        }
+        continue;
+      }
       warned.add(r.id);
       const doors = named.get(r.id) ?? null;
       if (already(doors)) continue;

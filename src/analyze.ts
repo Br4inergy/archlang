@@ -796,9 +796,9 @@ export interface MainEntranceFact {
   /** The main entrance's id, or `null` when the choice is refused. */
   door: string | null;
   basis: MainEntranceBasis;
-  /** The doors the deciding step compared, in entrance order: the one door (`sole`), the doors
-   *  into an entrance space (`entry-room`), the hinged street-side doors (`street`, or `tie`
-   *  when several), or the doors nothing singled out (`tie`). Empty with `no-candidate` and
+  /** The doors the deciding step singled out or compared, in entrance order: the door into the
+   *  entrance space (`entry-room`), the hinged street-side door (`street`), the one door left
+   *  (`sole`), or every candidate nothing singled out (`tie`). Empty with `no-candidate` and
    *  `upper-storey`. */
   candidates: string[];
 }
