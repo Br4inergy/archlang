@@ -52,6 +52,7 @@ import { composeFrame, makeFrame } from "../src/frame.js";
 import { compile, type Diagnostic, describe as describePlan, lint } from "../src/index.js";
 import { type PlanSpec, planSpec, withInstance } from "./arbitrary-plan.js";
 import {
+  D4_ELEMENTS,
   D4_TEST_ELEMENTS,
   explain,
   type GroupElement,
@@ -173,4 +174,46 @@ describe("nested `place` is frame composition", () => {
       { numRuns: 30 },
     );
   }, 120_000);
+});
+
+/**
+ * Shrunk counterexamples the unseeded draws above found, pinned so they run on every CI job
+ * rather than whenever a draw happens to hit them (`docs/testing.md` § 3: never delete a pin).
+ */
+describe("pinned fuzz counterexamples", () => {
+  /**
+   * PS0.13: `W_ROOM_NO_CLEAR_PATH` raised only under `mirror x`. The door's centre sat on a
+   * line of the room's occupancy grid (`src/analyze/occupancy.ts`), and flooring seeded the
+   * flood from its +x column: the plain plan seeded the open column the second WC leaves
+   * free, the mirrored plan the column beside it — a 4-cell pocket between the first WC and
+   * the wall. A connector on a cell line now seeds both sides of it.
+   */
+  const ps013 = (g: GroupElement | null): string => `plan "P" {
+  units mm
+  component body() {
+    wall id=w_shell exterior thickness 100 { (0,0) (2000,0) (2000,2000) (0,2000) close }
+    room id=r0 at (0,0) size 2000x2000
+    door id=o0 hinged on w_shell at 5% width 700
+    furniture id=f0 wc at (0,51) size 400x300
+    furniture id=f1 wc at (357,0) size 300x300
+  }
+  place body() as g at (${g?.translate ? translationFor(0) : 0},${g?.translate ? translationFor(0) : 0}) rotate ${g?.rotate ?? 0}${g?.mirror ? " mirror x" : ""}
+}`;
+
+  it("PS0.13: the doorway-on-a-cell-line room lints the same under every D4 element", () => {
+    const codes = (g: GroupElement | null) => lint(ps013(g)).map((d) => d.code);
+    const base = codes(null);
+    expect(base).not.toContain("W_ROOM_NO_CLEAR_PATH");
+    for (const g of D4_ELEMENTS) expect(codes(g), g.name).toEqual(base);
+  });
+
+  it("PS0.13: the oracle finds no violation for the witness under any element", () => {
+    for (const g of D4_TEST_ELEMENTS.filter((e) => e.name !== "e")) {
+      const { vs } = instanceCase((h) => ps013(h), g, 0, "up");
+      expect(
+        vs.map((v) => v.key),
+        `${g.name}:\n${explain(vs, 4)}`,
+      ).toEqual([]);
+    }
+  }, 60_000);
 });
