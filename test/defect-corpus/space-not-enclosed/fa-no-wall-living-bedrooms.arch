@@ -1,7 +1,7 @@
 # class: space-not-enclosed
 # origin: evidence.md section 1 row 2; repro/family-apartment.arch Living Room vs Bedrooms 3 and 4 (reduced)
 # expect: W_BOUNDARY_NO_WALL
-# status: todo
+# status: done
 # fact: Living (y 0-4000) and Bedrooms 3 and 4 (y 4000-7000) share the 6000 mm edge y=4000 with no wall or
 #   opening on it; describe lists them as adjacent but the access graph has no living-bedroom edge
 plan "Living open to two bedrooms" {

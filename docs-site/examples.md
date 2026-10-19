@@ -277,7 +277,9 @@ A 16 × 11.5 m single-storey house whose rooms ring an open middle — **11 room
 The first thing to understand about the courtyard is that **it is not a room**. Nothing is
 declared inside it: it is the hole the building wraps around, open to the sky, and calling
 it a `room` would put 21 m² of weather into the floor schedule. It is enclosed by a single
-three-segment partition, and everything that reads the plan — the schedule,
+three-segment partition and paved with an `outdoor patio` surface, which says what that
+walled ground is without making it floor (walled ground with neither a room nor a surface is
+`W_FLOOR_UNASSIGNED`), and everything that reads the plan — the schedule,
 `describe().totals`, the circulation flood-fill — simply sees no floor there. The courtyard
 is also the shape that breaks the naive way of answering *which way does this window look?*
 The window on the courtyard's west wall has the gallery's floor to its west and open air to
@@ -357,7 +359,7 @@ no coordinate is hand-computed.
 
 ### Harbour Aquarium (curves)
 
-A 60 × 40 m public aquarium — **8 rooms, 2028.83 m², 3 doors, 6 windows**, A2 at 1:200 —
+A 60 × 40 m public aquarium — **8 rooms, 2365.59 m², 3 doors, 6 windows**, A2 at 1:200 —
 and the [curved-geometry](/reference#curved-walls-arc-edges-v1-24) flagship. Everything
 above is rectilinear; an aquarium is the building type that is not. Its centrepiece is a
 cylindrical tank you walk around, written as a

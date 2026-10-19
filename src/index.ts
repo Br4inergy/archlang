@@ -255,6 +255,7 @@ export type {
   LintFamily,
   LintSkipReason,
   LintUnclassifiedRoom,
+  EnclosureBudgetCap,
 } from "./lint.js";
 // Explicit opt-in source-to-source corrector (ADR 0006): never part of compile().
 export { repair } from "./repair.js";

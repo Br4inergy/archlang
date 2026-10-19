@@ -172,7 +172,7 @@ export function roomNetAreaMm2(r: NetAreaRoom, bands: readonly NetAreaBand[]): n
  * Curves: a straight edge or a true arc, each walked from parameter 0 to 1
  * ------------------------------------------------------------------------- */
 
-type Curve = { t: "line"; a: Point; b: Point; box: GridBox } | { t: "arc"; arc: Arc; box: GridBox };
+export type Curve = { t: "line"; a: Point; b: Point; box: GridBox } | { t: "arc"; arc: Arc; box: GridBox };
 
 const TAU = Math.PI * 2;
 
@@ -223,20 +223,20 @@ function curveIntegral(c: Curve, t0: number, t1: number, p0: Point, p1: Point, o
   return (cx * (p1.y - p0.y) - cy * (p1.x - p0.x) + r * r * sweep * (t1 - t0)) / 2;
 }
 
-function lineBox(a: Point, b: Point): GridBox {
+export function lineBox(a: Point, b: Point): GridBox {
   return { minX: Math.min(a.x, b.x), minY: Math.min(a.y, b.y), maxX: Math.max(a.x, b.x), maxY: Math.max(a.y, b.y) };
 }
 
-const boxesMeet = (a: GridBox, b: GridBox, pad: number): boolean =>
+export const boxesMeet = (a: GridBox, b: GridBox, pad: number): boolean =>
   a.minX <= b.maxX + pad && b.minX <= a.maxX + pad && a.minY <= b.maxY + pad && b.minY <= a.maxY + pad;
 
-function curvesOfLoop(loop: EdgeLoop): Curve[] {
+export function curvesOfLoop(loop: EdgeLoop): Curve[] {
   return loop.map(
     (e): Curve => (e.t === "line" ? { t: "line", a: e.a, b: e.b, box: lineBox(e.a, e.b) } : arcCurve(e.arc)),
   );
 }
 
-function arcCurve(arc: Arc): Curve {
+export function arcCurve(arc: Arc): Curve {
   // The arc's own extremes bound it; its loop's box is a safe superset when it has one.
   const { center, r } = arc;
   return { t: "arc", arc, box: { minX: center.x - r, minY: center.y - r, maxX: center.x + r, maxY: center.y + r } };
@@ -355,56 +355,79 @@ const ends = (c: Curve): Point[] => (c.t === "line" ? [c.a, c.b] : [c.arc.a, c.a
 const PROBE_MM = 1e-4;
 
 /**
- * Measure `room ∩ ⋃ bands` for one room. `covered` is the boundary integral, unclamped;
- * `ok: false` names why the figure is omitted.
+ * A room as a region the boundary integral can read: its own boundary curves (a true arc
+ * for a circle, never its tessellation), its own inside test (open bounds), its box and its
+ * gross area — the same reading {@link netAreaDetail} measures a room by. Shared with the
+ * walled-face rules (`src/analyze/wall-faces.ts`), so a room's floor is one region there and
+ * here.
  */
-export function netAreaDetail(r: NetAreaRoom, bands: readonly NetAreaBand[]): NetAreaDetail {
-  // The room as a region: its own boundary curves and its own inside test.
-  let roomCurves: Curve[];
-  let inRoom: (p: Point) => boolean;
-  let roomBox: GridBox;
-  let gross: number;
+export interface RoomRegion {
+  curves: Curve[];
+  inside: (p: Point) => boolean;
+  box: GridBox;
+  gross: number;
+}
+
+/** The {@link RoomRegion} of a room. */
+export function roomRegion(r: NetAreaRoom): RoomRegion {
   if (r.circle) {
     const { c, r: rad } = r.circle;
-    gross = Math.PI * rad * rad;
     const east = { x: c.x + rad, y: c.y };
-    roomCurves = [arcCurve({ center: c, r: rad, a: east, b: east, sweep: TAU, start: 0 })];
-    inRoom = (p) => Math.hypot(p.x - c.x, p.y - c.y) < rad;
-    roomBox = { minX: c.x - rad, minY: c.y - rad, maxX: c.x + rad, maxY: c.y + rad };
-  } else {
-    const ring: Point[] = r.poly
-      ? [...r.poly]
-      : [
-          { x: r.at.x, y: r.at.y },
-          { x: r.at.x + r.size.w, y: r.at.y },
-          { x: r.at.x + r.size.w, y: r.at.y + r.size.h },
-          { x: r.at.x, y: r.at.y + r.size.h },
-        ];
-    gross = r.poly ? polygonArea(r.poly) : r.size.w * r.size.h;
-    roomCurves = ring
+    return {
+      curves: [arcCurve({ center: c, r: rad, a: east, b: east, sweep: TAU, start: 0 })],
+      inside: (p) => Math.hypot(p.x - c.x, p.y - c.y) < rad,
+      box: { minX: c.x - rad, minY: c.y - rad, maxX: c.x + rad, maxY: c.y + rad },
+      gross: Math.PI * rad * rad,
+    };
+  }
+  const ring: Point[] = r.poly
+    ? [...r.poly]
+    : [
+        { x: r.at.x, y: r.at.y },
+        { x: r.at.x + r.size.w, y: r.at.y },
+        { x: r.at.x + r.size.w, y: r.at.y + r.size.h },
+        { x: r.at.x, y: r.at.y + r.size.h },
+      ];
+  return {
+    curves: ring
       .map((a, i) => ({ a, b: ring[(i + 1) % ring.length]! }))
       .filter(({ a, b }) => a.x !== b.x || a.y !== b.y)
-      .map(({ a, b }): Curve => ({ t: "line", a, b, box: lineBox(a, b) }));
-    inRoom = (p) => pointInPolygon(p.x, p.y, ring, 0);
-    roomBox = lineBox(
+      .map(({ a, b }): Curve => ({ t: "line", a, b, box: lineBox(a, b) })),
+    inside: (p) => pointInPolygon(p.x, p.y, ring, 0),
+    box: lineBox(
       { x: Math.min(...ring.map((p) => p.x)), y: Math.min(...ring.map((p) => p.y)) },
       { x: Math.max(...ring.map((p) => p.x)), y: Math.max(...ring.map((p) => p.y)) },
-    );
-  }
-  if (!(gross > 0)) return { ok: true, gross: Math.max(0, gross), covered: 0, curves: 0 };
+    ),
+    gross: r.poly ? polygonArea(r.poly) : r.size.w * r.size.h,
+  };
+}
 
-  const near = bands.filter((b) => boxesMeet(b.box, roomBox, 0));
-  if (near.length === 0) return { ok: true, gross, covered: 0, curves: 0 };
-  const inBands = (p: Point): boolean =>
-    near.some(
-      (b) =>
-        p.x >= b.box.minX && p.x <= b.box.maxX && p.y >= b.box.minY && p.y <= b.box.maxY && loopsContain(b.loops, p),
-    );
-  const inS = (p: Point): boolean => inRoom(p) && inBands(p);
+/** What {@link regionBoundary} reads off one piece of the boundary of `S`. */
+export interface BoundaryPiece {
+  /** Index into the `curves` the measurement was given. */
+  curve: number;
+  /** The piece's midpoint. */
+  mid: Point;
+  /** `+1` when `S` lies on the piece's left (the `+n` side), `-1` on its right. */
+  side: 1 | -1;
+}
 
-  const curves: Curve[] = [...roomCurves, ...near.flatMap((b) => b.loops.flatMap(curvesOfLoop))];
-  if (curves.length > MAX_NET_CURVES) return { ok: false, gross, reason: "too-many-edges", curves: curves.length };
-
+/**
+ * The area (mm², signed as measured, unclamped) of a region `S` whose boundary lies on
+ * `curves`, by Green's theorem (see the module header): every curve is split at every
+ * crossing with every other, closed form; a piece bounds `S` exactly when `inS` differs on
+ * its two sides, and contributes `½∮(x dy − y dx)` about `origin`, once even when two curves
+ * share it. Curves that do not bound `S` may be included; their pieces have `S` on both sides
+ * or neither and contribute nothing. `onPiece`, when given, sees every counted piece.
+ *
+ * The caller bounds the work: it is quadratic in `curves.length` (`MAX_NET_CURVES`).
+ */
+export function regionBoundary(
+  curves: readonly Curve[],
+  inS: (p: Point) => boolean,
+  origin: Point,
+  onPiece?: (piece: BoundaryPiece) => void,
+): number {
   // Split every curve at every crossing with every other.
   const splits: Split[][] = curves.map(() => []);
   for (let i = 0; i < curves.length; i++) {
@@ -414,11 +437,10 @@ export function netAreaDetail(r: NetAreaRoom, bands: readonly NetAreaBand[]): Ne
     }
   }
 
-  // Walk each piece; keep it once if it bounds the covered region, signed by its side.
-  const origin = { x: roomBox.minX, y: roomBox.minY };
+  // Walk each piece; keep it once if it bounds the region, signed by its side.
   const seen = new PointInterner();
   const counted = new Set<string>();
-  let covered = 0;
+  let area = 0;
   curves.forEach((c, i) => {
     const ts: Split[] = [
       { t: 0, p: curvePoint(c, 0) },
@@ -442,9 +464,35 @@ export function netAreaDetail(r: NetAreaRoom, bands: readonly NetAreaBand[]): Ne
       if (counted.has(key)) continue;
       counted.add(key);
       const v = curveIntegral(c, t0, t1, p0, p1, origin);
-      covered += plus ? v : -v;
+      area += plus ? v : -v;
+      onPiece?.({ curve: i, mid: m, side: plus ? 1 : -1 });
     }
   });
+  return area;
+}
+
+/**
+ * Measure `room ∩ ⋃ bands` for one room. `covered` is the boundary integral, unclamped;
+ * `ok: false` names why the figure is omitted.
+ */
+export function netAreaDetail(r: NetAreaRoom, bands: readonly NetAreaBand[]): NetAreaDetail {
+  // The room as a region: its own boundary curves and its own inside test.
+  const { curves: roomCurves, inside: inRoom, box: roomBox, gross } = roomRegion(r);
+  if (!(gross > 0)) return { ok: true, gross: Math.max(0, gross), covered: 0, curves: 0 };
+
+  const near = bands.filter((b) => boxesMeet(b.box, roomBox, 0));
+  if (near.length === 0) return { ok: true, gross, covered: 0, curves: 0 };
+  const inBands = (p: Point): boolean =>
+    near.some(
+      (b) =>
+        p.x >= b.box.minX && p.x <= b.box.maxX && p.y >= b.box.minY && p.y <= b.box.maxY && loopsContain(b.loops, p),
+    );
+  const inS = (p: Point): boolean => inRoom(p) && inBands(p);
+
+  const curves: Curve[] = [...roomCurves, ...near.flatMap((b) => b.loops.flatMap(curvesOfLoop))];
+  if (curves.length > MAX_NET_CURVES) return { ok: false, gross, reason: "too-many-edges", curves: curves.length };
+
+  const covered = regionBoundary(curves, inS, { x: roomBox.minX, y: roomBox.minY });
 
   const eps = 1e-9 * gross + 1e-3;
   if (!Number.isFinite(covered) || covered < -eps || covered > gross + eps) {

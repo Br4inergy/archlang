@@ -4,9 +4,10 @@
 # anchored with `at`; every other room derives its position from a neighbour, so
 # changing the anchor or a size reflows the whole plan deterministically.
 #
-# FOUR DELIBERATE WARNINGS, and all four are one fact about the language:
+# SEVEN DELIBERATE WARNINGS, and all seven are one fact about the language:
 #
 #   W_ROOM_DISCONNECTED x3 (Kitchen, Bedroom, Bath) + W_ROOM_NOT_ENCLOSED x1 (Bath)
+#   + W_BOUNDARY_NO_WALL x3 (each wall-free boundary but the open-plan living|kitchen)
 #
 # A relationally-laid plan cannot carry partitions that reflow with it. Rooms resolve to
 # coordinates, but nothing can read a resolved room boundary back OUT: a wall point is an
@@ -28,7 +29,7 @@
 #     to `bath below kitchen` and the walls stay exactly where they were. It also rebuilds
 #     by hand the coordinate model `right-of` exists to remove.
 #
-# So these four stand. `arch validate` is clean; `arch validate --strict` reports them.
+# So these seven stand. `arch validate` is clean; `arch validate --strict` reports them.
 # Everything NOT caused by that limitation was repaired rather than documented: the
 # kitchen and the bath have their serviced fixtures, and the living room and the bedroom
 # each have a window.

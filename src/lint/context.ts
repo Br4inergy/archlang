@@ -11,7 +11,7 @@ import type { Diagnostic } from "../diagnostics.js";
 import { segmentsOfWall, type WallSegment } from "../geometry.js";
 import type { RDoor, RFurniture, ROpening, RRoom, RVoid, RWindow, ResolvedPlan } from "../ir.js";
 import { type ArrivingRun, type RVertical, verticalsOf } from "../vertical.js";
-import type { LintFamily, LintSkipReason } from "./coverage.js";
+import type { EnclosureBudgetCap, LintFamily, LintSkipReason } from "./coverage.js";
 import type { LintRuleset } from "./ruleset.js";
 
 /**
@@ -119,9 +119,10 @@ export interface LintContext {
    * (`src/lint/coverage.ts`, PS2.13). Pass the room when the skip is about one room, nothing
    * for a plan-level skip. The family is the rule's own {@link LintRule.family}, attached by
    * the fold. It records only: what a rule returns never depends on it, and a context built
-   * outside `lint()` (tests, `furnish`) drops every note.
+   * outside `lint()` (tests, `furnish`) drops every note. `cap` names the counted cap behind an
+   * `enclosure-budget` skip, so the report's words can say which one tripped.
    */
-  skip(reason: LintSkipReason, room?: RRoom): void;
+  skip(reason: LintSkipReason, room?: RRoom, cap?: EnclosureBudgetCap): void;
 }
 
 /** What {@link LintContext.at} needs off an element: where it is, and in which file. */
@@ -140,7 +141,7 @@ export interface LintRule {
 }
 
 /** Where {@link LintContext.skip} sends a note; the default drops it. */
-export type SkipSink = (reason: LintSkipReason, room?: RRoom) => void;
+export type SkipSink = (reason: LintSkipReason, room?: RRoom, cap?: EnclosureBudgetCap) => void;
 const DROP_SKIP: SkipSink = () => {};
 
 export function buildLintContext(

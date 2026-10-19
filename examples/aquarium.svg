@@ -3,10 +3,10 @@
 <rect x="-30200" y="-16000" width="118800" height="84000" fill="#ffffff"/>
 <g id="A-FLOR" inkscape:groupmode="layer" inkscape:label="A-FLOR">
 <circle cx="30000" cy="14000" r="8000" fill="#fbfaf7"/>
-<polygon points="0,6000 21000,6000 21000,22000 0,22000" fill="#fbfaf7"/>
-<polygon points="39000,6000 60000,6000 60000,22000 39000,22000" fill="#fbfaf7"/>
+<polygon points="0,0 21000,0 21000,22000 0,22000" fill="#fbfaf7"/>
+<polygon points="39000,0 60000,0 60000,22000 39000,22000" fill="#fbfaf7"/>
 <polygon points="21000,0 39000,0 39000,6000 21000,6000" fill="#fbfaf7"/>
-<polygon points="0,22000 60000,22000 60000,28000 59800,30000 0,30000" fill="#fbfaf7"/>
+<polygon points="0,22000 21000,22000 21000,6000 28900,6000 27900,6200 26900,6600 26000,7000 25100,7600 24300,8300 23600,9100 23000,10000 22600,10900 22200,11900 22000,12900 22000,14000 22000,15100 22200,16100 22600,17100 23000,18000 23600,18900 24300,19700 25100,20400 26000,21000 26900,21400 27900,21800 28900,22000 30000,22000 31100,22000 32100,21800 33100,21400 34000,21000 34900,20400 35700,19700 36400,18900 37000,18000 37400,17100 37800,16100 38000,15100 38000,14000 38000,12900 37800,11900 37400,10900 37000,10000 36400,9100 35700,8300 34900,7600 34000,7000 33100,6600 32100,6200 31100,6000 39000,6000 39000,22000 60000,22000 60000,28000 59800,30000 0,30000" fill="#fbfaf7"/>
 <polygon points="20000,30000 40000,30000 40000,40000 20000,40000" fill="#fbfaf7"/>
 <polygon points="0,30000 20000,30000 20000,40000 0,40000" fill="#fbfaf7"/>
 <polygon points="40000,30000 59800,30000 59400,31600 58800,33000 58100,34400 57100,35700 56100,36800 54800,37800 53500,38600 52100,39200 50500,39700 49000,39900 48000,40000 40000,40000" fill="#fbfaf7"/>
@@ -138,11 +138,13 @@
 <line x1="8500" y1="-150" x2="11500" y2="-150" stroke="#1b1b1b" stroke-width="36"/>
 <line x1="8500" y1="37.5" x2="11500" y2="37.5" stroke="#3a6ea5" stroke-width="36"/>
 <line x1="8500" y1="-37.5" x2="11500" y2="-37.5" stroke="#3a6ea5" stroke-width="36"/>
+<polygon points="8440,-150 8440,-210 11560,-210 11560,-150" fill="none" stroke="#1b1b1b" stroke-width="36"/>
 <polygon points="48500,250 51500,250 51500,-250 48500,-250" fill="#ffffff"/>
 <line x1="48500" y1="150" x2="51500" y2="150" stroke="#1b1b1b" stroke-width="36"/>
 <line x1="48500" y1="-150" x2="51500" y2="-150" stroke="#1b1b1b" stroke-width="36"/>
 <line x1="48500" y1="37.5" x2="51500" y2="37.5" stroke="#3a6ea5" stroke-width="36"/>
 <line x1="48500" y1="-37.5" x2="51500" y2="-37.5" stroke="#3a6ea5" stroke-width="36"/>
+<polygon points="48440,-150 48440,-210 51560,-210 51560,-150" fill="none" stroke="#1b1b1b" stroke-width="36"/>
 <polygon points="250,15500 250,12500 -250,12500 -250,15500" fill="#ffffff"/>
 <line x1="150" y1="15500" x2="150" y2="12500" stroke="#1b1b1b" stroke-width="36"/>
 <line x1="-150" y1="15500" x2="-150" y2="12500" stroke="#1b1b1b" stroke-width="36"/>
@@ -159,14 +161,14 @@
 <g id="A-ANNO-TEXT" inkscape:groupmode="layer" inkscape:label="A-ANNO-TEXT">
 <text x="30000" y="10360" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Ocean Rotunda</text>
 <text x="30000" y="11130" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">201.1 m²</text>
-<text x="10500" y="13860" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Reef Gallery</text>
-<text x="10500" y="14630" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">336.0 m²</text>
-<text x="49500" y="13860" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Kelp Forest</text>
-<text x="49500" y="14630" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">336.0 m²</text>
+<text x="10500" y="10860" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Reef Gallery</text>
+<text x="10500" y="11630" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">462.0 m²</text>
+<text x="49500" y="10860" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Kelp Forest</text>
+<text x="49500" y="11630" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">462.0 m²</text>
 <text x="30000" y="2860" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Filtration</text>
 <text x="30000" y="3630" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">108.0 m²</text>
-<text x="29987.52" y="25858.61" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Concourse</text>
-<text x="29987.52" y="26628.61" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">479.8 m²</text>
+<text x="30000" y="25760" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Concourse</text>
+<text x="30000" y="26530" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">564.6 m²</text>
 <text x="30000" y="34860" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Entrance Foyer</text>
 <text x="30000" y="35630" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">200.0 m²</text>
 <text x="10000" y="34860" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Shop</text>
@@ -402,13 +404,13 @@
 <text x="12006" y="50020" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">196.07</text>
 <text x="400" y="50700" font-size="380" fill="#333333" text-anchor="middle" dominant-baseline="central">02</text>
 <text x="1094" y="50700" font-size="380" fill="#333333" text-anchor="start" dominant-baseline="central">Reef Gallery</text>
-<text x="9206" y="50700" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">336.00</text>
-<text x="12006" y="50700" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">329.93</text>
+<text x="9206" y="50700" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">462.00</text>
+<text x="12006" y="50700" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">451.31</text>
 <line x1="-150" y1="50360" x2="12150" y2="50360" stroke="#333333" stroke-width="26"/>
 <text x="400" y="51380" font-size="380" fill="#333333" text-anchor="middle" dominant-baseline="central">03</text>
 <text x="1094" y="51380" font-size="380" fill="#333333" text-anchor="start" dominant-baseline="central">Kelp Forest</text>
-<text x="9206" y="51380" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">336.00</text>
-<text x="12006" y="51380" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">329.93</text>
+<text x="9206" y="51380" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">462.00</text>
+<text x="12006" y="51380" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">451.31</text>
 <line x1="-150" y1="51040" x2="12150" y2="51040" stroke="#333333" stroke-width="26"/>
 <text x="400" y="52060" font-size="380" fill="#333333" text-anchor="middle" dominant-baseline="central">04</text>
 <text x="1094" y="52060" font-size="380" fill="#333333" text-anchor="start" dominant-baseline="central">Filtration</text>
@@ -417,8 +419,8 @@
 <line x1="-150" y1="51720" x2="12150" y2="51720" stroke="#333333" stroke-width="26"/>
 <text x="400" y="52740" font-size="380" fill="#333333" text-anchor="middle" dominant-baseline="central">05</text>
 <text x="1094" y="52740" font-size="380" fill="#333333" text-anchor="start" dominant-baseline="central">Concourse</text>
-<text x="9206" y="52740" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">479.80</text>
-<text x="12006" y="52740" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">467.17</text>
+<text x="9206" y="52740" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">564.56</text>
+<text x="12006" y="52740" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">544.72</text>
 <line x1="-150" y1="52400" x2="12150" y2="52400" stroke="#333333" stroke-width="26"/>
 <text x="400" y="53420" font-size="380" fill="#333333" text-anchor="middle" dominant-baseline="central">06</text>
 <text x="1094" y="53420" font-size="380" fill="#333333" text-anchor="start" dominant-baseline="central">Entrance Foyer</text>
@@ -437,8 +439,8 @@
 <line x1="-150" y1="54440" x2="12150" y2="54440" stroke="#333333" stroke-width="26"/>
 <line x1="-150" y1="55120" x2="12150" y2="55120" stroke="#333333" stroke-width="36"/>
 <text x="-6" y="55460" font-size="380" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">TOTAL</text>
-<text x="9206" y="55460" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">2028.83</text>
-<text x="12006" y="55460" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">1973.62</text>
+<text x="9206" y="55460" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">2365.59</text>
+<text x="12006" y="55460" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">2293.93</text>
 </g>
 <g><polygon points="59250,-2700 58800,-1260 59250,-1575 59700,-1260" fill="#333333" transform="rotate(0 59250 -1800)"/><text x="59250" y="-3116" font-size="520" fill="#333333" text-anchor="middle" dominant-baseline="central">N</text></g>
 <g><rect x="-150" y="46400" width="2500" height="280" fill="#333333"/><rect x="2350" y="46400" width="2500" height="280" fill="none" stroke="#333333" stroke-width="36"/><text x="-150" y="47080" font-size="400" fill="#333333" text-anchor="start" dominant-baseline="central">0</text><text x="4850" y="47080" font-size="400" fill="#333333" text-anchor="middle" dominant-baseline="central">5 m</text></g>

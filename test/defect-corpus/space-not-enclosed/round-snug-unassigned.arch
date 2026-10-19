@@ -1,7 +1,7 @@
 # class: space-not-enclosed
 # origin: audits/archcanvas-public-examples.md BB1 (bay-bungalow round snug in a walled 3800x2400 rectangle)
 # expect: W_FLOOR_UNASSIGNED
-# status: todo
+# status: done
 # fact: the walls enclose 3.8 x 2.4 = 9.12 m2 (centreline) but the only room is a R1200 circle (4.52 m2), so
 #   about 4.6 m2 of walled floor belongs to no room
 plan "Round snug in a square room" {

@@ -508,19 +508,27 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
    * `dining`. Measured again on the tree merged with the opening rules: `hillside-villa`,
    * `terrace-row` and `two-storey` carry both branches' edits, and each one's source as `main`
    * has it (cefe7e9) still reproduces `main`'s row under this compiler.
+   *
+   * 2026-10-19 (PS2.4): three rows re-measured for SOURCE edits, not a compiler change. Each
+   * example's previous source (cc165f4) under the new compiler (the three space-enclosure rules)
+   * reproduces its previous row exactly; `finish` echoes the edited source: `aquarium`'s
+   * galleries reach the north wall and its concourse takes the floor round the drum,
+   * `courtyard-house` gains an `outdoor patio` over its courtyard, and `relational`'s header
+   * counts its seven deliberate warnings (`./byte-identity-baseline.ts`, "the space-enclosure
+   * rules").
    */
   // Digest first: a name-keyed row reads to a secret scanner as `<key-ish word>: <opaque value>`.
   const FINISH_DIGESTS: ReadonlyMap<string, string> = new Map(
     (
       [
         ["50bfe2d1d4955f0399834c0e436ef5f6308a109552a22a7df3aea13f93cdfdd9", "accessible"], // PS2.9 source edit, see above
-        ["8c16911c1bfb24f05f97b69b48666a3d6bba913f133e535c15a98df45ceca22e", "aquarium"],
+        ["4abe321f787662840c38a4e8c238503630c9de04e8b92e13a0c4a9243f56d0b3", "aquarium"], // PS2.4 source edit, see above
         ["8894023b744a155aad52d1ca28b7836ad1c9d63d1665e82f6b835c8d8e480f3b", "attached"],
         ["c512ccc1711f22b6046175a9ef358ad5b2d95a481448c61bf95196714e990187", "bungalow"],
         ["cbf505c9f38de1bce32a5f6256b035a3a5cb35df068f411621db590234da0685", "classroom-block"], // first measurement, added with the example
         ["8f1860697479247a76d029ed309957a97660716904b948956bbe76b6bd46873c", "clinic"],
         ["c23c854e798c435b2d16e1a067edc7ef860d7c46c878f2126fdbe92de1d4aa7d", "corner-cafe"], // first measurement with the example; PS2.9 source edit, see above
-        ["34d62884662a298eba9f224039bc128f5e24d865f658438f37bf5a8b8cc12f8e", "courtyard-house"],
+        ["67d8b7c380698ba23ed28b911e7517d89a5fbe4e80a6a169ded2c486cbb100dd", "courtyard-house"], // PS2.4 source edit, see above
         ["d6216018c7eeca2476644c8c57a52efa63e33584fc8acb9843752e4902244d8a", "furnished-flat"],
         ["6680a2b84429d16bf60bed5d240dbf498fa920c9aa99c2cf91a44362ea5d14b1", "gallery-l"],
         // Re-measured 2026-10-18 (plan-soundness PS2.6): the example's SOURCE changed, one door
@@ -539,7 +547,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["c5264000e380ff26ad0ea75d9cb75b84d52d22c5988671aee640f87ef125c340", "museum-wings"],
         ["863a9f2c6d83393b414fc6cf634c7757d3148ba19d9c85ff19b9b935f2d64f99", "one-room"],
         ["aa3345f2ba982f844e25108a7908a6f60a8ed295b574248fb895b54bb5599c27", "parametric"],
-        ["5cdc4092245e98f6e15379d28d6e5ca6c91878b85465684ab6db085a3a3b8926", "relational"], // PS2.9 source edit, see above
+        ["283977ceabe34bd34d2419b31bb4364e01238a8e8ab6b51f5ebab985000cd413", "relational"], // PS2.9 and PS2.4 source edits, see above
         ["d58bfbf0a25a5b70b7bdfdd1a8ef7b0fb8912f88ebb5cf631da3efe8268015e4", "sheet-notes"], // first measurement, added with the example
         ["324269a53206201f470d727c6b29f3b7cce19f58f3d99822f474be1901503675", "practice-office"], // first measurement with the example; PS2.9 source edit, see above
         ["147ce7e23f6f2a403d2d269cc0e68b678cab850e0d3a641287ef50bced7c76d3", "studio"],

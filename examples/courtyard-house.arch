@@ -207,6 +207,10 @@ plan "Courtyard House" {
   # would ask which room it belongs to simply does not apply to it.
   furniture planter at (7250,4750) size 1500x1500 label "Planter"
 
+  # The courtyard's ground. Walls close it on every side, so without a surface it would be
+  # walled floor that belongs to nothing; `outdoor` says it is open air, not a room.
+  outdoor patio at (5000,3500) size 6000x3500
+
   # ---- the eaves --------------------------------------------------------------
   # `shell` is the plan's one closed exterior wall — a plain rectangle. The courtyard
   # is cut by an INTERIOR partition, `w_court`, so it never enters this offset at all;

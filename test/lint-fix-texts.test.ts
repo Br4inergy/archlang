@@ -772,6 +772,9 @@ describe("the four reworded hints' messages name things as a reader would; ids s
     "W_CONNECTOR_AMBIGUOUS",
     "W_HABITABLE_NO_WINDOW",
     "W_ROOM_MISSING_DEFINING",
+    "W_BOUNDARY_NO_WALL",
+    "W_FLOOR_UNASSIGNED",
+    "W_ROOM_OUTSIDE_SHELL",
   ];
   type Storey = {
     rooms?: { id: string; label?: string }[];
@@ -817,6 +820,10 @@ describe("the four reworded hints' messages name things as a reader would; ids s
       // And the two room-contents codes, which quote a room's label (test/fixtures raise both).
       expect(seen.get("W_HABITABLE_NO_WINDOW") ?? 0).toBeGreaterThan(0);
       expect(seen.get("W_ROOM_MISSING_DEFINING") ?? 0).toBeGreaterThan(0);
+      // And the space-enclosure codes (PS2.4): relational and the zones fixtures have rooms with no
+      // wall between them, diff-a a strip of walled floor in no room.
+      expect(seen.get("W_BOUNDARY_NO_WALL") ?? 0).toBeGreaterThan(0);
+      expect(seen.get("W_FLOOR_UNASSIGNED") ?? 0).toBeGreaterThan(0);
     });
   }
 
