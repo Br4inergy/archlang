@@ -82,8 +82,9 @@ export type LintSkipReason =
    *  `src/lint/defining.ts`), so a later room's hint quotes none (PS2.17). */
   | "hint-budget"
   /** The plan reads as a building people do not live in (`dwellingReading`,
-   *  `src/analyze/dwelling.ts`: an office and no bedroom or living room, or a café, shop or clinic label), so a
-   *  rule that describes a defect of a home declines (PS2.18). Not `no-dwelling`, which waits
+   *  `src/analyze/dwelling.ts`: a café or clinic label; or, with no bedroom or living room, an
+   *  office use or a shop, lobby or reception label), so a rule that describes a defect of a
+   *  home declines (PS2.18). Not `no-dwelling`, which waits
    *  for declared dwellings (PS2.14). `residential-basic` judges every plan as a dwelling. */
   | "non-dwelling";
 

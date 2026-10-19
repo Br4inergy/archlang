@@ -440,7 +440,8 @@ function shorten(items: readonly string[], rest: (n: number) => string): string[
  * The ways in are the doors to the ground and the shaft arrivals; a door onto an `outdoor
  * balcony` is not one, so it cannot hide a route through a bedroom. When the front door itself
  * opens into the private room, `W_ENTRANCE_INTO_PRIVATE` reports that one fault and the rooms
- * behind it are not reported again.
+ * behind it are not reported again. On a plan that reads as non-residential that rule declines
+ * (PS2.18), so the rooms behind such a door are reported here instead.
  *
  * Not reported, because the room legitimately belongs behind P: a bath or WC (an en-suite, or
  * a WC compartment behind a bathroom) and a storage room (a wardrobe or dressing room).
@@ -476,8 +477,9 @@ export const roomViaPrivate: LintRule = {
       },
     });
     const viaBedroom = wetRoomsOnlyViaBedroom(ctx.rooms, reachAll, reachNoBed);
-    // One fault, one warning: behind a front door into a private room, W_ENTRANCE_INTO_PRIVATE.
-    const entered = new Set(privateEntrances(ctx, f).map((w) => w.room.id));
+    // One fault, one warning: behind a front door into a private room, W_ENTRANCE_INTO_PRIVATE,
+    // but only where that rule judges (PS2.18); on a non-residential plan these rooms report here.
+    const entered = new Set(judgesAsDwelling(ctx) ? privateEntrances(ctx, f).map((w) => w.room.id) : []);
     const order = new Map(ctx.rooms.map((r, i) => [r.id, i]));
     for (const d of ctx.rooms) {
       const ps = doms.get(d.id)?.filter((p) => !entered.has(p));
@@ -866,8 +868,8 @@ function privateEntrances(ctx: LintContext, f: Facts): Array<{ door: RDoor; room
  * such an entrance are not also reported by `W_ROOM_VIA_PRIVATE`: one fault, one warning.
  * Rooms with no classified use are skipped and declared to the coverage report (PS2.13).
  * A plan that reads as non-residential ({@link judgesAsDwelling}, PS2.18) is not judged and is
- * declared as `non-dwelling`; the rooms behind such a door stay out of `W_ROOM_VIA_PRIVATE`
- * there too, so the coverage line is the one report.
+ * declared as `non-dwelling`; the rooms behind such a door are then reported by
+ * `W_ROOM_VIA_PRIVATE`, so the fault still has its one warning.
  */
 export const entranceIntoPrivate: LintRule = {
   name: "entrance-into-private",

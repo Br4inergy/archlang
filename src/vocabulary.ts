@@ -356,39 +356,43 @@ export function matchesLivingDining(text: string): boolean {
 
 /**
  * Words that read a room's label as part of a building people do not live in (plan-soundness
- * PS2.18): a café, shop, clinic, school or office. Read by `dwellingReading`
- * (`src/analyze/dwelling.ts`) alone, never by {@link classifyLabelUses}: they give no
- * {@link UseKind}, so no room's `uses` and nothing `describe()` reports changes.
+ * PS2.18). Read by `dwellingReading` (`src/analyze/dwelling.ts`) alone, never by
+ * {@link classifyLabelUses}: they give no {@link UseKind}, so no room's `uses` and nothing
+ * `describe()` reports changes.
+ *
+ *  - `canonical` words read non-residential on any plan: a café, restaurant, shop floor
+ *    (`retail`), clinic, school or staff room is not a home's room.
+ *  - `aliases` are ambiguous and read non-residential only on a plan with no bedroom and no
+ *    living room: "Reception room" is a UK house's sitting room, an "Entrance Lobby" a flat's
+ *    hall, a "Waiting area" a landing, a "Shop" a workshop and a "Meeting nook" a corner of a
+ *    living room.
  *
  * Measured against every room label in the corpus (examples/, test/, eval/, docs/ and the doc
- * fences) before it shipped: no plan with a bedroom carries one. "Reception" is a UK house's
- * sitting room as often as a clinic's front desk, and "lobby" an entrance lobby in a flat;
- * neither appears in a dwelling of the corpus, so both stay, and a bedroom does not overrule
- * them (a shop with a flat above reads as non-residential: a known limit until PS2.14 declares
- * dwellings, and `residential-basic` judges such a plan as a dwelling).
+ * fences) before it shipped: no plan with a bedroom or living room is read by an ambiguous word
+ * alone. A café or shop with a flat above still reads as non-residential throughout (a known
+ * limit until PS2.14 declares dwellings); `residential-basic` judges such a plan as a dwelling.
  */
-export const NON_RESIDENTIAL_WORDS: readonly string[] = Object.freeze([
-  "cafe",
-  "café",
-  "restaurant",
-  "shop",
-  "retail",
-  "clinic",
-  "consulting",
-  "waiting",
-  "reception",
-  "servery",
-  "staff room",
-  "classroom",
-  "lobby",
-  "meeting",
-]);
+export const NON_RESIDENTIAL_VOCABULARY: VocabEntry = Object.freeze({
+  canonical: Object.freeze([
+    "cafe",
+    "café",
+    "restaurant",
+    "retail",
+    "clinic",
+    "consulting",
+    "servery",
+    "staff room",
+    "classroom",
+  ]),
+  aliases: Object.freeze(["lobby", "reception", "waiting", "shop", "meeting"]),
+});
 
-/** {@link NON_RESIDENTIAL_WORDS}, prepared once when this module loads. */
-const PREPARED_NON_RESIDENTIAL = prepareEntry({ canonical: NON_RESIDENTIAL_WORDS, aliases: [] });
+/** {@link NON_RESIDENTIAL_VOCABULARY}, prepared once when this module loads. */
+const PREPARED_NON_RESIDENTIAL = prepareEntry(NON_RESIDENTIAL_VOCABULARY);
 
-/** The first {@link NON_RESIDENTIAL_WORDS} entry a label's text reads, token-bounded as every
- *  vocabulary word is, or `null`. */
-export function nonResidentialWord(text: string): string | null {
-  return matchPrepared(tokensOf(text), PREPARED_NON_RESIDENTIAL)?.word ?? null;
+/** The first {@link NON_RESIDENTIAL_VOCABULARY} word a label's text reads, token-bounded as
+ *  every vocabulary word is, with whether it is one of the ambiguous ones; or `null`. */
+export function nonResidentialWord(text: string): { word: string; ambiguous: boolean } | null {
+  const m = matchPrepared(tokensOf(text), PREPARED_NON_RESIDENTIAL);
+  return m ? { word: m.word, ambiguous: !m.canonical } : null;
 }

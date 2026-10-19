@@ -9,12 +9,14 @@
  * declared dwellings (PS2.14), the plan's rooms are read for positive evidence of another kind
  * of building, and a plan without it is a dwelling:
  *
- *  - a room whose use ({@link roomUses}) is `office`, and no room whose use is `bedroom` or
- *    `living` (a living room, an office and a bath drawn alone are a home's fragment with a
- *    study, not an office);
- *  - or a room whose label (else id, as {@link roomUses} reads it) carries one of
- *    `NON_RESIDENTIAL_WORDS` (`src/vocabulary.ts`: "Cafe seating", "Waiting / Reception",
- *    "Meeting Room").
+ *  - a room whose label (else id, as {@link roomUses} reads it) carries an unambiguous word of
+ *    `NON_RESIDENTIAL_VOCABULARY` (`src/vocabulary.ts`: "Cafe seating", "Consulting 1",
+ *    "Staff room"), on any plan;
+ *  - or, on a plan with no room whose use is `bedroom` or `living`, a room whose use is
+ *    `office`, or a label carrying one of the ambiguous words ("Waiting / Reception",
+ *    "Meeting Room", "Lobby", "Shop"). A bedroom or a living room overrules them: a living room,
+ *    an office and a bath drawn alone are a home's fragment with a study, and a house's
+ *    "Reception room" or "Entrance Lobby" is a room of the house.
  *
  * There is no "unknown": a plan that gives no such evidence is judged as before, so every
  * house, flat and studio (`uses living bedroom`) lints exactly as it did. The reading is
@@ -31,13 +33,15 @@ export type DwellingReading = "dwelling" | "non-residential";
 
 /** Read the plan's rooms (every storey's, for a multi-storey plan). */
 export function dwellingReading(rooms: Iterable<{ label?: string; id: string; uses?: UseKind[] }>): DwellingReading {
-  let office = false;
+  // Evidence a bedroom or living room overrules: an office use, or an ambiguous word.
+  let weak = false;
   let home = false;
   for (const r of rooms) {
-    if (nonResidentialWord(r.label ?? r.id) !== null) return "non-residential";
+    const w = nonResidentialWord(r.label ?? r.id);
+    if (w !== null && !w.ambiguous) return "non-residential";
     const u = roomUses(r);
-    if (u.has("office")) office = true;
+    if (w !== null || u.has("office")) weak = true;
     if (u.has("bedroom") || u.has("living")) home = true;
   }
-  return office && !home ? "non-residential" : "dwelling";
+  return weak && !home ? "non-residential" : "dwelling";
 }

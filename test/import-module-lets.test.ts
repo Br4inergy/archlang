@@ -477,6 +477,13 @@ suite("a module `let` that fails reports as it does in the module", () => {
  * hint now says its placement would raise another finding (pasted, its pieces opened the
  * bathroom straight onto the kitchen, `W_WET_ROOM_DOOR`); `lint()` only, round 1's `lint()` put
  * back reproduces its row (e621f33b…).
+ *
+ * 2026-10-20, plan-soundness PS2.18 (dwelling-reading rules decline on a non-residential plan):
+ * `eval/goldens/core-and-shell.arch`, `office.arch`, `reception-suite.arch` and
+ * `sized-office-mix.arch` read as offices, so `W_HABITABLE_NO_WINDOW` no longer asks their
+ * kitchenette for a window. `lint()` only: the new SVG, `describe()` and `compile().diagnostics`
+ * with the PREVIOUS `lint()` reproduce each previous row (ddcdc0c9…, f4725500…, 2d52aba1…,
+ * 019a62d8…).
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
@@ -564,8 +571,8 @@ const BASELINE: [string, string][] = [
   ["eval/goldens/dims-auto-cottage.arch", "ca327599910fd97d0f8ced7ea4f03bb93312541b92e12119e12e976b0e76b5d8"],
   ["eval/goldens/galley-kitchen.arch", "af379acc431baaa7728fde7eee94f2a34fef2e4303ab967cabb029a7b3837669"],
   ["eval/goldens/l-shaped-flat.arch", "9634e0daba1977009de1013018e4f774212ae7632c2079600864ef25fa972255"],
-  // Re-measured 2026-10-20 (PS2.19), `describe()` only: "Open Office" reads `office`; the PREVIOUS
-  // `describe()` with the new SVG, `lint()` and diagnostics reproduces d41de65c….
+  // Re-measured 2026-10-20 for PS2.19 (`describe()` only: "Open Office" reads `office`) and again for
+  // PS2.18 (`lint()` only: the kitchenette's daylight warning declines); see header.
   ["eval/goldens/office.arch", "7c7925bb950f8b8f5ee0519bf175f1e9fc8b7cf7c4aee4c579b93828accd20f1"],
   ["eval/goldens/open-plan-loft.arch", "2efcf0fdc611e4c017621e8de25030ea3a7afed4069a6816217ba2f7cfca762a"],
   ["eval/goldens/reception-suite.arch", "b2d8484329cdf29957e587deba367ae007fe24eacf30bf50851e9fca29f8f5cc"],

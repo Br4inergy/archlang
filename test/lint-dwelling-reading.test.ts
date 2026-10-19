@@ -7,6 +7,7 @@ import { describe as describePlan, lint, lintCoverage, type LintCoverage } from 
 import { dwellingReading } from "../src/analyze/dwelling.js";
 import type { UseKind } from "../src/ast.js";
 import { SKIP_WHY } from "../src/lint/coverage.js";
+import { STRICTER_PROFILES, stricterProfileNames } from "../src/finish.js";
 
 /**
  * Plan-soundness PS2.18: the rules that describe a defect of a HOME judge a plan only when it
@@ -54,6 +55,28 @@ describe("dwellingReading", () => {
   it("matches whole words only", () => {
     // "Shopfront" is not "shop"; "Lobbyist" is not "lobby".
     expect(dwellingReading([room("Shopfront Bedroom"), room("Lobbyist")])).toBe("dwelling");
+  });
+
+  it("an ambiguous word is overruled by a bedroom or a living room; an unambiguous one is not", () => {
+    const house = (swap: string) => [
+      room("Living"),
+      room("Kitchen"),
+      room("Bedroom"),
+      room("Dining"),
+      room("WC"),
+      room(swap),
+    ];
+    for (const w of ["Entrance Lobby", "Reception room", "Waiting area", "Shop", "Meeting nook"])
+      expect(dwellingReading(house(w)), w).toBe("dwelling");
+    // With only a living room, or only a bedroom, the word is still overruled.
+    expect(dwellingReading([room("Reception room"), room("Living")])).toBe("dwelling");
+    expect(dwellingReading([room("Entrance Lobby"), room("Bedroom")])).toBe("dwelling");
+    // With neither, the same words read a building people do not live in.
+    for (const w of ["Lobby", "Reception", "Waiting", "Shop", "Meeting Room"])
+      expect(dwellingReading([room(w), room("WC"), room("Store")]), w).toBe("non-residential");
+    // An unambiguous word reads non-residential even beside a bedroom (a café with a flat above).
+    for (const w of ["Cafe", "Restaurant", "Clinic", "Consulting 1", "Servery", "Staff room", "Classroom", "Retail"])
+      expect(dwellingReading([...house("Hall"), room(w)]), w).toBe("non-residential");
   });
 
   it("reads the first-contact plans: the café and the clinic are non-residential, the homes are not", () => {
@@ -217,5 +240,51 @@ describe("the non-dwelling reason", () => {
       coverage: LintCoverage;
     };
     expect(JSON.stringify(house.coverage)).not.toContain("non-dwelling");
+  });
+});
+
+/** WC | Cafe seating | Servery, with the only door from outside opening into the WC. */
+const cafeEnteredThroughWc = PLAN(`  wall id=shell exterior thickness 200 { (0,0) (9000,0) (9000,4000) (0,4000) close }
+  wall id=p1 partition thickness 100 { (2000,0) (2000,4000) }
+  wall id=p2 partition thickness 100 { (6000,0) (6000,4000) }
+  room id=r_wc at (0,0) size 2000x4000 label "WC" uses wc
+  room id=r_seat at (2000,0) size 4000x4000 label "Cafe seating" uses dining
+  room id=r_serv at (6000,0) size 3000x4000 label "Servery" uses kitchen
+  door id=d_entry at (1000,4000) width 1000 wall shell
+  door id=d_wc at (2000,2000) width 900 wall p1
+  door id=d_serv at (6000,2000) width 900 wall p2
+  window at (4000,0) width 2000 wall shell
+  window at (7500,0) width 1500 wall shell`);
+
+describe("a non-residential front door into a private room is still one warning (red team round 1)", () => {
+  const count = (src: string, code: string, profile?: string): number =>
+    lint(src, profile ? { profile } : {}).filter((d) => d.code === code).length;
+
+  it("the default reports the rooms behind the WC, since the entrance rule declines", () => {
+    expect(count(cafeEnteredThroughWc, "W_ENTRANCE_INTO_PRIVATE")).toBe(0);
+    expect(count(cafeEnteredThroughWc, "W_ROOM_VIA_PRIVATE")).toBe(2);
+  });
+
+  it("residential-basic reports the door itself, and not the rooms behind it", () => {
+    expect(count(cafeEnteredThroughWc, "W_ENTRANCE_INTO_PRIVATE", "residential-basic")).toBe(1);
+    expect(count(cafeEnteredThroughWc, "W_ROOM_VIA_PRIVATE", "residential-basic")).toBe(0);
+  });
+});
+
+describe("finish's stricter profiles", () => {
+  it("leave out a profile whose only key is assumeDwelling", () => {
+    expect(STRICTER_PROFILES).not.toContain("residential-basic");
+    expect(STRICTER_PROFILES).toContain("accessibility-advisory");
+  });
+
+  it("keep a profile with a threshold override, alone or beside assumeDwelling", () => {
+    expect(
+      stricterProfileNames({
+        a: { assumeDwelling: true },
+        b: { minDoorWidthMm: 800 },
+        c: { assumeDwelling: true, minRoomAreaM2: 5 },
+        d: {},
+      }),
+    ).toEqual(["b", "c"]);
   });
 });
