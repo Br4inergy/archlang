@@ -28,7 +28,7 @@
  * disagree about which way a window looks.
  */
 
-import { pointOnRoomEdge, roomUses } from "../../analyze.js";
+import { pointOnRoomEdge, roomUses, windowServesRoom } from "../../analyze.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import type { RRoom } from "../../ir.js";
 import { deriveSite, planCenterOfRooms, toCompass, windowFacingPage } from "../../site.js";
@@ -74,13 +74,24 @@ export const roomNotEquatorFacing: LintRule = {
       if (!isHabitable(r)) continue;
       const rect = ctx.roomRects.get(r.id);
       if (!rect) continue;
-      const wins = ctx.windows.filter((w) => pointOnRoomEdge(w.at, rect, ctx.rules.tolMm));
+      const wins = ctx.windows.filter((w) => windowServesRoom(w, r.id, ctx.roomRects, ctx.rules.tolMm, ctx.wallSegs));
       if (wins.length === 0) continue;
       // `ctx.roomRects` is passed so a window on a polygon/circle room — or on a courtyard
       // wall — is answered by the outward-face probe, exactly as `describe()` answers it.
-      // The two must never disagree about which way a window looks.
+      // The two must never disagree about which way a window looks. A window on an arc edge
+      // the room's edge does not touch (a bay, PS0.12) is asked with no room box, as
+      // `describe()` asks it.
       const facings = wins.map((w) =>
-        toCompass(windowFacingPage(w.at, rect, w.host, planCenter, ctx.roomRects), turns),
+        toCompass(
+          windowFacingPage(
+            w.at,
+            pointOnRoomEdge(w.at, rect, ctx.rules.tolMm) ? rect : null,
+            w.host,
+            planCenter,
+            ctx.roomRects,
+          ),
+          turns,
+        ),
       );
       if (facings.includes(facts.equator_side)) continue;
       out.push({

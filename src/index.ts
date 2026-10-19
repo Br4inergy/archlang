@@ -128,6 +128,8 @@ export type {
   AccessGraph,
   AccessRoomNode,
   AccessEdge,
+  MainEntranceFact,
+  MainEntranceBasis,
   AxesSummary,
   AxisSummary,
   ScheduleRow,

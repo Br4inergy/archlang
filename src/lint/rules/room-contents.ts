@@ -6,7 +6,16 @@
  * an unclassified room shows, not a guess in these rules). Neither reads `site` or any other storey.
  */
 
-import { isBedroom, pointInRoomBox, pointOnRoomEdge, rectOf, roomRing, roomUses, roomsAtPoint } from "../../analyze.js";
+import {
+  arcWindowRoom,
+  isBedroom,
+  pointInRoomBox,
+  pointOnRoomEdge,
+  rectOf,
+  roomRing,
+  roomUses,
+  roomsAtPoint,
+} from "../../analyze.js";
 import type { UseKind } from "../../ast.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import type { FurnishItem } from "../../furnish-table.js";
@@ -64,16 +73,21 @@ function outsideWallsAlong(ctx: LintContext, r: RRoom): string[] {
 
 /**
  * Does a window the analysis attributes to NO room stand on an arc wall edge whose chord ends
- * both lie on this room's perimeter? A window on an arc host is on no room's straight edge, so
- * `describe().windows[].room` reads `null` for it even when it lights this room: whether the
- * room has daylight is unknown, and the rule says nothing (attribution unknown; PS0.12).
+ * both lie on this room's perimeter? A window on an arc host is on no room's straight edge, and
+ * where the shape cannot attribute it either ({@link arcWindowRoom}: no floor behind either
+ * face, and no bay opening into a room through the chord) `describe().windows[].room` reads
+ * `null` for it even when it may light this room: whether the room has daylight is unknown,
+ * and the rule says nothing (attribution unknown). A window the shape does attribute is read
+ * by {@link roomHasWindow} instead.
  */
 function arcWindowUnattributed(ctx: LintContext, r: RRoom): boolean {
   const box = ctx.roomRects.get(r.id)!;
   const tol = ctx.rules.tolMm;
   return ctx.windows.some(
     (w) =>
+      w.host?.arc !== undefined &&
       roomsAtPoint(w.at, ctx.roomRects, tol).length === 0 &&
+      arcWindowRoom({ at: w.at, width: w.width, host: w.host }, ctx.roomRects, tol, ctx.wallSegs) === null &&
       ctx.wallSegs.some(
         (s) =>
           s.arc !== undefined &&

@@ -6,12 +6,14 @@
  */
 
 import type { AnalyzeOptions } from "../analyze.js";
+import type { UseKind } from "../ast.js";
 import { DEFAULT_TOL } from "../analyze.js";
 import { FIXTURE_WALL_TOL_MM } from "../fixture-orientation.js";
 
 /** Tunable thresholds for the lint rules. All distances in mm, areas in m². */
 export interface LintRuleset {
-  /** Rooms smaller than this (m²) warn as implausibly small. Default 4. */
+  /** Rooms smaller than this (m²) warn as implausibly small. Default 4. A room whose every
+   *  use has its own entry in {@link minRoomAreaByUseM2} is held to that instead. */
   minRoomAreaM2: number;
   /** Doors narrower than this (mm) warn as sub-passable. Default 700 (≥800 recommended). */
   minDoorWidthMm: number;
@@ -191,6 +193,43 @@ export interface LintRuleset {
    * on the wall centrelines, or to the outer face, has none outside at all.
    */
   minOutsideShellM2: number;
+  /**
+   * `W_ROOM_TOO_SMALL`'s floor (m²) for a room of a given use, read from {@link roomUses}
+   * (its `uses`, else its label). `null` exempts the use: no floor at all. A use with no
+   * entry, and a room with no classified use, keep {@link minRoomAreaM2}. A room with
+   * several uses takes the highest floor among them, so `uses kitchen storage` is held to
+   * the kitchen's 4 m² and `uses hall storage` to none.
+   *
+   * **Why per use.** One 4 m² floor for every room made the rule ask a WC and a cupboard to
+   * be the size of a kitchen; repairing against it, an author inflated a café's staff WC to
+   * 1.6 × 3.4 m and deleted a house's linen store (plan-soundness audit, first contact,
+   * "repair pressure"). The defaults:
+   *  - `wc` 1.1: GB 50096-2011 5.4.2 item 5, a room with a WC alone, at least 1.10 m².
+   *  - `bath` 2.0: GB 50096-2011 5.4.2 items 2 and 3, the smallest combinations with a
+   *    shower or bath (WC + shower, basin + shower), at least 2.00 m². A three-fixture
+   *    bathroom wants 2.50 m² (5.4.1); the rule does not count fixtures, so it asks the lower.
+   *  - `storage`, `utility`, `hall`, `circulation`, `entry` exempt: the standard sets no area
+   *    for a store, a laundry or a lobby, and a cupboard is a room. A passage is judged by its
+   *    width (`W_PATH_TOO_NARROW`), never its area.
+   * Clauses as read in `docs/plans/plan-soundness/research/prior-art.md` §3.1 (full text
+   * extracted), applied as advice, never as compliance (ADR 0005).
+   *
+   * Merged PER USE ({@link resolveRuleset}): a profile or a caller that sets `{ wc: 1.5 }` changes
+   * the WC's floor and keeps every other default, exemptions included.
+   */
+  minRoomAreaByUseM2: Readonly<Partial<Record<UseKind, number | null>>>;
+  /**
+   * How {@link minRoomAreaM2} and {@link minRoomAreaByUseM2} combine. `"by-use"` (the default):
+   * a use's own floor replaces the generic one. `"at-least-generic"`: every room is held to at
+   * least the generic floor, and a use's own floor applies only where it is higher (an exempt use
+   * counts as no floor of its own). {@link resolveRuleset} picks `"at-least-generic"` whenever a
+   * profile or the caller sets `minRoomAreaM2` explicitly, so a stricter generic floor (the
+   * `accessibility-advisory` profile's 5 m²) is not undone by the per-use table, which has no
+   * researched accessible values yet. Writing the default itself, `ruleset: { minRoomAreaM2: 4 }`,
+   * also picks `"at-least-generic"`, so every room is held to 4 m² again, as before the per-use
+   * table.
+   */
+  roomAreaFloorMode: "by-use" | "at-least-generic";
 }
 
 export const DEFAULT_RULESET: LintRuleset = {
@@ -215,6 +254,16 @@ export const DEFAULT_RULESET: LintRuleset = {
   minFaceCoverRatio: 0.95,
   minUnassignedM2: 0.5,
   minOutsideShellM2: 0.1,
+  minRoomAreaByUseM2: Object.freeze({
+    wc: 1.1,
+    bath: 2.0,
+    storage: null,
+    utility: null,
+    hall: null,
+    circulation: null,
+    entry: null,
+  }),
+  roomAreaFloorMode: "by-use",
 };
 
 /**
@@ -242,6 +291,32 @@ export const LINT_PROFILES: Readonly<Record<string, Partial<LintRuleset>>> = Obj
 
 /** The names of the built-in {@link LINT_PROFILES}, for CLI validation. */
 export const LINT_PROFILE_NAMES: readonly string[] = Object.keys(LINT_PROFILES);
+
+const hasOwn = (o: object | undefined, k: string): boolean => o !== undefined && Object.hasOwn(o, k);
+
+/**
+ * The ruleset cascade `lint()` runs: defaults, then the named profile's overrides, then the
+ * caller's. Flat keys are replaced; `minRoomAreaByUseM2` is merged per use (later layers win
+ * per key, the other keys keep their defaults). `roomAreaFloorMode` is `"at-least-generic"`
+ * when a profile or the caller sets `minRoomAreaM2` without setting the mode.
+ */
+export function resolveRuleset(profile: Partial<LintRuleset> = {}, ruleset: Partial<LintRuleset> = {}): LintRuleset {
+  const mode =
+    ruleset.roomAreaFloorMode ??
+    profile.roomAreaFloorMode ??
+    (hasOwn(profile, "minRoomAreaM2") || hasOwn(ruleset, "minRoomAreaM2") ? "at-least-generic" : "by-use");
+  return {
+    ...DEFAULT_RULESET,
+    ...profile,
+    ...ruleset,
+    minRoomAreaByUseM2: {
+      ...DEFAULT_RULESET.minRoomAreaByUseM2,
+      ...profile.minRoomAreaByUseM2,
+      ...ruleset.minRoomAreaByUseM2,
+    },
+    roomAreaFloorMode: mode,
+  };
+}
 
 export interface LintOptions extends AnalyzeOptions {
   /** A named profile from {@link LINT_PROFILES} (applied before `ruleset`). */

@@ -206,8 +206,12 @@ import { type CompilerApi, semanticDigestWith } from "./byte-identity-digest.js"
 // reach the north wall, the concourse takes the bay round the drum), and the new rules move lint() only —
 // the new SVG and describe() with the previous lint() reproduce both rows on the previous
 // source. ./byte-identity-baseline.ts ("the space-enclosure rules").
+// `laneway-house`'s two rows re-measured for plan-soundness PS0.10: describe().access gains the
+// appended `mainEntrance` and each room's `depthFromMainEntrance`; SVG and lint() byte-identical,
+// and the previous describe() put back reproduces both previous rows
+// (./byte-identity-baseline.ts, "`describe().access` names the main entrance").
 const BASELINE: [string, string][] = [
-  ["laneway-house", "fe584e22b63295a27537b93db681c7fb5ab1968caa27761cb97191e331d964d2"],
+  ["laneway-house", "1e163ea9b813fd176ecdbca6517dc1bd39c0922c2bc024ab723a63f953d02f99"],
   ["studio", "fe06b9554615b4722732d13e7976991b7469d03387e8846ad83f54f83f3cbde7"],
   ["gallery-l", "7ab8ddd688e0a9fabb909fbfd910879a5e247ae4ae846412350951cd49dea6f0"],
   ["aquarium", "631cd03e9f97e40e59ab09cb830f5ac16d1d401e9363081b61a5cb7da393aa17"], // re-measured for PS2.4, see header
@@ -215,7 +219,7 @@ const BASELINE: [string, string][] = [
 
 /** The SUMMARY half of the same law — see the header. Re-measured for `aquarium` twice, both times because its rooms were wrong (the second: PS2.4). */
 const SEMANTIC_BASELINE: [string, string][] = [
-  ["laneway-house", "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0"],
+  ["laneway-house", "f3afd6b57e647c471d8efbfe92f824549cdd54b82c1f8a9d530e7e4f4112d7ab"],
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
   ["aquarium", "5c049a2e9f4c8d1b6d034bb6e15f753243b023ebb057ea5a7aae800b59624ebe"], // re-measured for PS2.4, see header

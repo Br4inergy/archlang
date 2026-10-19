@@ -14,26 +14,57 @@
  * way in MEASURED rather than printed as a zero, because a fabricated 0 mm is the same
  * defect 5.8 was filed over, one digit smaller.
  *
- * Both rules read the same circulation model, so it is built once per `lint()` run and
+ * The models are built at most once per `lint()` run and
  * memoised on the (per-run) LintContext identity.
+ *
+ * `W_PATH_TOO_NARROW` judges the walk from the storey's MAIN entrance when it names one
+ * (plan-soundness PS0.10, `src/analyze/entrance.ts`): its model, the door attribution and its
+ * re-measures all read `LintContext.walkAccess()`, the access graph with only the ways in the
+ * walk keeps, so a patio or balcony door no longer hides a route blocked from the front door.
+ * `W_CIRCUITOUS_PATH` keeps the nearest-entrance model `describe().circulation` reports (backlog
+ * C.3); the two are one model whenever the storey keeps every way in.
  */
 
-import { type CirculationModel, computeCirculation, roomBottlenecks } from "../../analyze/circulation.js";
-import { type AccessEdge, buildDoorAccessGraph, EXTERIOR_NODE } from "../../analyze.js";
+import {
+  type CirculationModel,
+  computeCirculation,
+  type NavCache,
+  roomBottlenecks,
+} from "../../analyze/circulation.js";
+import { type AccessEdge, type AccessGraph, buildDoorAccessGraph, EXTERIOR_NODE, roomBox } from "../../analyze.js";
+import { entranceInputs, entranceWays, walkAccessGraph } from "../../analyze/entrance.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import type { LintContext, LintRule } from "../context.js";
 import { mm, shortfall } from "../measure.js";
 import { passableDoorWidthMm } from "./doors.js";
 
 const modelCache = new WeakMap<LintContext, CirculationModel | null>();
+const nearestCache = new WeakMap<LintContext, CirculationModel | null>();
+/** The one nav grid both models of a storey share: they differ only in their seeds. */
+const gridCache = new WeakMap<LintContext, NavCache>();
+
+/**
+ * Which access graph a judgement reads (PS0.10): the WALK view — the ways in the main entrance
+ * keeps (`LintContext.walkAccess()`), judged from the front door — or the FULL view, every way
+ * in, each room from its nearest. The full view is what a room that has its own door from
+ * outside is judged by (that door is a way into it), and what `W_CIRCUITOUS_PATH` reads.
+ */
+interface View {
+  from: "walk" | "nearest";
+  access: AccessGraph;
+  ways: ReadonlySet<string> | null;
+}
+
+const walkView = (ctx: LintContext): View => ({ from: "walk", access: ctx.walkAccess(), ways: ctx.walkWays() });
+const fullView = (ctx: LintContext): View => ({ from: "nearest", access: ctx.access(), ways: null });
 
 /**
  * {@link circulationOf} for a rule, declaring to the coverage report (PS2.13) a storey whose
  * walk is not measured because it has rooms and no way in. A plan with no room has nothing to
  * walk, which is not a skip.
  */
-function measuredCirculationOf(ctx: LintContext): CirculationModel | null {
-  const circ = circulationOf(ctx);
+function measuredCirculationOf(ctx: LintContext, from: "walk" | "nearest" = "walk"): CirculationModel | null {
+  const circ = circulationOf(ctx, from);
   if (!circ && ctx.rooms.length > 0 && !ctx.access().hasEntrance) ctx.skip("no-entrance");
   // TODO(coverage): the model is also null for a degenerate extent (zero-width or non-finite
   // room bounds, `navExtent` in `src/analyze/circulation.ts`) and when `buildGrid` returns null
@@ -42,15 +73,36 @@ function measuredCirculationOf(ctx: LintContext): CirculationModel | null {
   return circ;
 }
 
-function circulationOf(ctx: LintContext): CirculationModel | null {
-  if (modelCache.has(ctx)) return modelCache.get(ctx) ?? null;
+function shared(ctx: LintContext): NavCache {
+  let c = gridCache.get(ctx);
+  if (!c) {
+    c = {};
+    gridCache.set(ctx, c);
+  }
+  return c;
+}
+
+/**
+ * The circulation model a view reads: `"walk"` judged from the ways in the walk keeps (the
+ * main entrance's, PS0.10), which `W_PATH_TOO_NARROW` reads for every room without a door of its
+ * own from outside; `"nearest"` from every entrance, each room from its nearest, which
+ * `W_PATH_TOO_NARROW` reads for a room that has one and `W_CIRCUITOUS_PATH` reads throughout
+ * (owner decision, backlog C.3: one record, one route, the ratio taken from the nearest
+ * entrance, as `describe().circulation` reports it). One model when the storey keeps every way
+ * in; otherwise two, sharing one nav grid.
+ */
+function circulationOf(ctx: LintContext, from: "walk" | "nearest" = "walk"): CirculationModel | null {
+  const access = from === "walk" ? ctx.walkAccess() : ctx.access();
+  if (from === "nearest" && access === ctx.walkAccess()) return circulationOf(ctx, "walk");
+  const cache = from === "walk" ? modelCache : nearestCache;
+  if (cache.has(ctx)) return cache.get(ctx) ?? null;
   const model = computeCirculation(
     ctx.rooms,
     ctx.ir.walls,
     ctx.doors,
     ctx.openings,
     ctx.furniture,
-    ctx.access(),
+    access,
     ctx.rules.tolMm,
     undefined,
     ctx.verticals,
@@ -59,9 +111,41 @@ function circulationOf(ctx: LintContext): CirculationModel | null {
     // rules measure it instead of going silent while reachability already treats those
     // landings as the storey's way in.
     ctx.building.arrivalShafts,
+    // The nearest-entrance model, when it is a second one, is read for its rooms alone.
+    { navCache: shared(ctx), routes: from === "walk" },
   );
-  modelCache.set(ctx, model);
+  cache.set(ctx, model);
   return model;
+}
+
+/** The doors from outside that open onto an `outdoor balcony`: no way in from the ground. */
+function balconyDoors(ctx: LintContext): ReadonlySet<string> {
+  const rects = new Map(ctx.rooms.map((r) => [r.id, roomBox(r)]));
+  return new Set(
+    entranceWays(ctx.access(), entranceInputs(ctx.ir, rects))
+      .filter((w) => w.balcony)
+      .map((w) => w.doorId),
+  );
+}
+
+/**
+ * The rooms with a door of their own from outside that the walk does not keep as a way in:
+ * each is judged by the full view (its own door is a way into it), so no message tells a room
+ * with its own front-of-house or back door that no route reaches it. A door onto an `outdoor
+ * balcony` is no door from outside: a room sealed behind its balcony slider reads as blocked.
+ * Empty when the walk keeps every way in.
+ */
+function ownDoorRooms(ctx: LintContext): ReadonlyMap<string, string[]> {
+  const keep = ctx.walkWays();
+  const out = new Map<string, string[]>();
+  if (keep === null) return out;
+  const balcony = balconyDoors(ctx);
+  for (const e of ctx.access().edges) {
+    if (!ctx.access().entrances.includes(e.doorId) || keep.has(e.doorId) || balcony.has(e.doorId)) continue;
+    const room = e.between[0] === EXTERIOR_NODE ? e.between[1] : e.between[0];
+    out.set(room, [...(out.get(room) ?? []), e.doorId]);
+  }
+  return out;
 }
 
 /**
@@ -74,7 +158,62 @@ function circulationOf(ctx: LintContext): CirculationModel | null {
  * intrusions, swings, doorway landings and overlaps, not a route pinch, and pointing at a
  * tool that would report "nothing to do" is worse than silence.
  */
-const narrowHints = (min: number, doors: readonly AccessEdge[] | null, ctx: LintContext): string[] =>
+const narrowHints = (
+  min: number,
+  doors: readonly AccessEdge[] | null,
+  ctx: LintContext,
+  view: View,
+  unreached: ReadonlySet<string>,
+): string[] => [...narrowRemedies(min, doors, ctx), ...mainEntranceHint(ctx, view, unreached)];
+
+/**
+ * The line saying where the walk was measured from (PS0.10, `src/analyze/entrance.ts`): on a
+ * walk-view warning, the main entrance and the doors from outside left out. Nothing when the
+ * storey names no main entrance (the coverage report's `no-main-entrance` says so), on a storey
+ * with one entrance or none, nor on a room judged by its own door (the full view), so those
+ * read exactly as before. Ids are hints-only. What it says of each door left out is what the
+ * measured walk found (`unreached`: the rooms the walk from the main entrance does not reach),
+ * so it never contradicts a warning on that room.
+ */
+function mainEntranceHint(ctx: LintContext, view: View, unreached: ReadonlySet<string>): string[] {
+  const fact = ctx.mainEntrance();
+  if (fact === null) return [];
+  // A refused fact is declared to the coverage report (`no-main-entrance`), not here.
+  if (fact.door === null) return [];
+  if (view.from !== "walk" || view.ways === null) return [];
+  const keep = view.ways;
+  const dropped = ctx.access().entrances.filter((id) => !keep.has(id));
+  if (dropped.length === 0) return [];
+  const why =
+    fact.basis === "street"
+      ? "the hinged door on the `site` street side"
+      : fact.basis === "entry-room"
+        ? "the door into the entry, hall or circulation space"
+        : "the only door from outside, garage and balcony doors aside";
+  const roomOf = (id: string): string | undefined => {
+    const e = ctx.access().edges.find((x) => x.doorId === id);
+    return e ? (e.between[0] === EXTERIOR_NODE ? e.between[1] : e.between[0]) : undefined;
+  };
+  const onBalcony = balconyDoors(ctx);
+  const bal = dropped.filter((id) => onBalcony.has(id));
+  const lost = dropped.filter((id) => !onBalcony.has(id) && unreached.has(roomOf(id) ?? ""));
+  const kept = dropped.filter((id) => !onBalcony.has(id) && !lost.includes(id));
+  const list = (ids: readonly string[]) => ids.map((id) => `\`${id}\``).join(", ");
+  const parts = [`Measured from the main entrance \`${fact.door}\` (${why}).`];
+  if (kept.length > 0)
+    parts.push(
+      `${kept.length === 1 ? "The other door from outside" : "The other doors from outside"}, ${list(kept)}, ${kept.length === 1 ? "is a way into its own room" : "are ways into their own rooms"} only, since the main entrance reaches ${kept.length === 1 ? "that room" : "those rooms"} from inside.`,
+    );
+  if (lost.length > 0)
+    parts.push(
+      `${list(lost)} ${lost.length === 1 ? "opens into a room" : "open into rooms"} the walk from the main entrance does not reach: ${lost.length === 1 ? "its" : "their"} own way in, not the way the plan is entered.`,
+    );
+  if (bal.length > 0)
+    parts.push(`${list(bal)} ${bal.length === 1 ? "opens" : "open"} onto a balcony, which is no way in.`);
+  return [parts.join(" ")];
+}
+
+const narrowRemedies = (min: number, doors: readonly AccessEdge[] | null, ctx: LintContext): string[] =>
   doors === null
     ? [
         `Widen the tightest door/opening on the way to at least ${mm(min)} mm.`,
@@ -257,9 +396,12 @@ function attributeBottlenecks(
   ctx: LintContext,
   widthOf: ReadonlyMap<string, number>,
   warnedRooms: readonly string[],
+  view: View,
+  /** The run's measures, when the caller shares one count across two views (PS0.10). */
+  measures?: { left: number; storeys: number },
 ): Map<string, AccessEdge[]> {
   const min = ctx.rules.minPathClearWidthMm;
-  const edges = ctx.access().edges.filter((e) => !e.ambiguous && e.between[0] !== "" && e.between[1] !== "");
+  const edges = view.access.edges.filter((e) => !e.ambiguous && e.between[0] !== "" && e.between[1] !== "");
   const tree = bottleneckDoors(ctx, widthOf, edges);
   const candidates = new Map<string, AccessEdge[][]>();
   for (const roomId of warnedRooms) {
@@ -299,7 +441,11 @@ function attributeBottlenecks(
   const measure = (wider: ReadonlyMap<string, number>, own: ReadonlyMap<string, readonly AccessEdge[]>): Measured => {
     const doors = ctx.doors.map((d) => (wider.has(d.id) ? { ...d, width: wider.get(d.id)! } : d));
     const openings = ctx.openings.map((o) => (wider.has(o.id) ? { ...o, width: wider.get(o.id)! } : o));
-    const access = buildDoorAccessGraph(ctx.rooms, doors, ctx.rules.tolMm, undefined, openings);
+    // Judged from the same ways in as the reading it re-measures (PS0.10).
+    const access = walkAccessGraph(
+      buildDoorAccessGraph(ctx.rooms, doors, ctx.rules.tolMm, undefined, openings),
+      view.ways,
+    );
     const request = new Map<string, Set<string>>();
     for (const [roomId, set] of own) {
       const mine = new Set(set.map((e) => e.doorId));
@@ -326,7 +472,7 @@ function attributeBottlenecks(
   // 2–4. Tier by tier (every remaining room's first candidate, then its second, …): ONE union
   // model per tier, with every door of that tier's sets widened, all within the count budget.
   // Shared by every storey of the run when there are several; this storey's own otherwise.
-  const budget = ctx.building.attributionMeasures ?? { left: MAX_ATTRIBUTION_MEASURES, storeys: 0 };
+  const budget = measures ?? ctx.building.attributionMeasures ?? { left: MAX_ATTRIBUTION_MEASURES, storeys: 0 };
   // Each later storey keeps one measure for its own first union: only a first union may
   // spend into that reserve.
   const later = Math.max(0, budget.storeys);
@@ -427,7 +573,7 @@ function throughSet(
   return best;
 }
 
-const hopsCache = new WeakMap<LintContext, ReadonlyMap<string, number>>();
+const hopsCache = new WeakMap<LintContext, Map<AccessGraph, ReadonlyMap<string, number>>>();
 
 /**
  * Door hops from where this storey's walks start, per room: the exterior through the front
@@ -435,10 +581,15 @@ const hopsCache = new WeakMap<LintContext, ReadonlyMap<string, number>>();
  * sources {@link bottleneckDoors} and the circulation model walk from. A breadth-first search
  * over the non-ambiguous connectors; a room it never reaches is absent.
  */
-function hopsOf(ctx: LintContext): ReadonlyMap<string, number> {
-  const memo = hopsCache.get(ctx);
+function hopsOf(ctx: LintContext, view: View): ReadonlyMap<string, number> {
+  let byView = hopsCache.get(ctx);
+  if (!byView) {
+    byView = new Map();
+    hopsCache.set(ctx, byView);
+  }
+  const memo = byView.get(view.access);
   if (memo) return memo;
-  const edges = ctx.access().edges.filter((e) => !e.ambiguous);
+  const edges = view.access.edges.filter((e) => !e.ambiguous);
   const hops = new Map<string, number>();
   let frontier = ctx.access().hasEntrance ? [EXTERIOR_NODE] : [...ctx.building.arrivalRooms];
   for (const n of frontier) hops.set(n, 0);
@@ -454,7 +605,7 @@ function hopsOf(ctx: LintContext): ReadonlyMap<string, number> {
       }
     frontier = next;
   }
-  hopsCache.set(ctx, hops);
+  byView.set(view.access, hops);
   return hops;
 }
 
@@ -465,9 +616,9 @@ function hopsOf(ctx: LintContext): ReadonlyMap<string, number> {
  * ({@link narrowHints}). The room fewer door hops from where the walk starts comes first
  * ({@link hopsOf}; source order on a tie), so the phrase reads in the walk's direction.
  */
-function connectorPhrase(e: AccessEdge, ctx: LintContext): string {
+function connectorPhrase(e: AccessEdge, ctx: LintContext, view: View): string {
   const byId = new Map(ctx.rooms.map((r, i) => [r.id, { r, i }] as const));
-  const depth = hopsOf(ctx);
+  const depth = hopsOf(ctx, view);
   const name = (id: string): string => {
     const hit = byId.get(id);
     return `"${hit ? ctx.labelOf(hit.r) : id}"`;
@@ -484,11 +635,11 @@ function connectorPhrase(e: AccessEdge, ctx: LintContext): string {
 }
 
 /** The message clause naming the connectors a walk squeezes through, or nothing. */
-function namedClause(doors: readonly AccessEdge[] | null, width: number, ctx: LintContext): string {
+function namedClause(doors: readonly AccessEdge[] | null, width: number, ctx: LintContext, view: View): string {
   if (doors === null) return "";
   const same = doors.every((e) => Math.round(e.estimatedClearWidth) === width);
   const list = doors.map(
-    (e) => `${connectorPhrase(e, ctx)}${same ? "" : ` (${mm(Math.round(e.estimatedClearWidth))} mm clear)`}`,
+    (e) => `${connectorPhrase(e, ctx, view)}${same ? "" : ` (${mm(Math.round(e.estimatedClearWidth))} mm clear)`}`,
   );
   if (list.length === 1) return ` — the bottleneck is ${list[0]}, ${mm(width)} mm clear`;
   // Each item already says "between X and Y", so the list takes a comma before its last "and".
@@ -504,6 +655,16 @@ export const pathTooNarrow: LintRule = {
     if (ctx.building.attributionMeasures) ctx.building.attributionMeasures.storeys--;
     const circ = measuredCirculationOf(ctx);
     if (!circ) return [];
+    // PS0.10: with no main entrance named, the walk starts from every exterior door.
+    if (ctx.mainEntrance()?.door === null) ctx.skip("no-main-entrance");
+    // PS0.10: a room with a door of its own from outside that the walk does not keep is judged by
+    // the full view (that door is a way into it); every other room by the walk from the main
+    // entrance. One view, and one model, when the walk keeps every way in.
+    const own = ownDoorRooms(ctx);
+    const walk = walkView(ctx);
+    const full = fullView(ctx);
+    const circFull = own.size > 0 ? (circulationOf(ctx, "nearest") ?? circ) : circ;
+    const viewOf = (id: string): View => (own.has(id) ? full : walk);
     const { rooms, labelOf, at } = ctx;
     const min = ctx.rules.minPathClearWidthMm;
     const roomById = new Map(rooms.map((r) => [r.id, r]));
@@ -521,17 +682,68 @@ export const pathTooNarrow: LintRule = {
     // — which by construction has no `circ.rooms` entry — lands where it belongs instead
     // of nowhere. `circ.rooms` is itself in source order, so a plan with nothing blocked
     // emits exactly the diagnostics, in exactly the order, it emitted before.
-    const factOf = new Map(circ.rooms.map((rc) => [rc.roomId, rc]));
-    const blocked = new Map((circ.blocked ?? []).map((b) => [b.roomId, b.widestWayInMm]));
-    const named = attributeBottlenecks(
+    const factIn = (c: CirculationModel) => new Map(c.rooms.map((rc) => [rc.roomId, rc]));
+    const blockedIn = (c: CirculationModel) => new Map((c.blocked ?? []).map((b) => [b.roomId, b.widestWayInMm]));
+    const facts = { walk: factIn(circ), full: factIn(circFull) };
+    const seals = { walk: blockedIn(circ), full: blockedIn(circFull) };
+    const factOf = (id: string) => (own.has(id) ? facts.full : facts.walk).get(id);
+    // What the measured walk from the main entrance does not reach (a seal, or no route at all).
+    const unreached = new Set(rooms.filter((r) => !facts.walk.has(r.id)).map((r) => r.id));
+    const blockedOf = (id: string) => (own.has(id) ? seals.full : seals.walk).get(id);
+    const warnedIn = (fs: ReadonlyMap<string, { bottleneckClearWidthMm: number }>, seal: ReadonlyMap<string, number>) =>
+      rooms.filter((r) => !seal.has(r.id) && (fs.get(r.id)?.bottleneckClearWidthMm ?? min) < min).map((r) => r.id);
+    const widths = (c: CirculationModel) => new Map(c.rooms.map((rc) => [rc.roomId, rc.bottleneckClearWidthMm]));
+    // ONE count of re-measures for both views (MAX_ATTRIBUTION_MEASURES per run). The walk from the
+    // main entrance is attributed first: its pinches are what PS0.10 judges. The rooms judged by
+    // their own door alone take what is left in the full view, and a room neither can afford gets
+    // the unattributed hints.
+    const measures = ctx.building.attributionMeasures ?? { left: MAX_ATTRIBUTION_MEASURES, storeys: 0 };
+    const namedWalk = attributeBottlenecks(
       ctx,
-      new Map(circ.rooms.map((rc) => [rc.roomId, rc.bottleneckClearWidthMm])),
-      rooms
-        .filter((r) => !blocked.has(r.id) && (factOf.get(r.id)?.bottleneckClearWidthMm ?? min) < min)
-        .map((r) => r.id),
+      widths(circ),
+      warnedIn(facts.walk, seals.walk).filter((id) => !own.has(id)),
+      walk,
+      measures,
     );
+    const namedFull =
+      own.size > 0
+        ? attributeBottlenecks(
+            ctx,
+            widths(circFull),
+            warnedIn(facts.full, seals.full).filter((id) => own.has(id)),
+            full,
+            measures,
+          )
+        : null;
+    const named = {
+      get: (id: string): AccessEdge[] | undefined => (own.has(id) ? namedFull?.get(id) : namedWalk.get(id)),
+    };
+    // The warning for a room judged by its own door whose walk from the main entrance fails.
+    const maskedByOwnDoor = (r: (typeof rooms)[number]): Diagnostic | null => {
+      // Only a SEAL from the main entrance is reported: the room is then reached only through its
+      // own door. A walk from the main entrance that does reach it, narrowly, is a room with two
+      // ways in, one of them wide, which is not the masking PS0.10 removes.
+      const sealed = seals.walk.get(r.id);
+      if (sealed === undefined) return null;
+      const tail = "the room is reached only through its own door from outside";
+      const message =
+        sealed > 0
+          ? `From the main entrance the walk to "${labelOf(r)}" squeezes to ${mm(sealed)} mm and stops there (${mm(shortfall(min, sealed))} mm below the ${mm(min)} mm minimum); ${tail}.`
+          : `From the main entrance the walk to "${labelOf(r)}" is blocked: furniture and its clearances leave no gap at all (0 mm against the ${mm(min)} mm minimum); ${tail}.`;
+      const ids = (own.get(r.id) ?? []).map((id) => `\`${id}\``).join(", ");
+      return {
+        severity: "warning",
+        code: "W_PATH_TOO_NARROW",
+        ...at(r),
+        message,
+        hints: [
+          ...narrowRemedies(min, null, ctx),
+          `Measured from the main entrance \`${ctx.mainEntrance()?.door ?? ""}\`. The room's own door from outside, ${ids}, is a way into it, but not the way the plan is entered.`,
+        ],
+      };
+    };
     for (const r of rooms) {
-      const wayIn = blocked.get(r.id);
+      const wayIn = blockedOf(r.id);
       if (wayIn !== undefined) {
         warned.add(r.id);
         // Two different claims, and saying the stronger one when the weaker is true is
@@ -547,12 +759,21 @@ export const pathTooNarrow: LintRule = {
           code: "W_PATH_TOO_NARROW",
           ...at(r),
           message,
-          hints: narrowHints(min, null, ctx),
+          hints: narrowHints(min, null, ctx, viewOf(r.id), unreached),
         });
         continue;
       }
-      const rc = factOf.get(r.id);
-      if (!rc || rc.bottleneckClearWidthMm >= min) continue;
+      const rc = factOf(r.id);
+      if (!rc || rc.bottleneckClearWidthMm >= min) {
+        // PS0.10: a room its own door from outside serves well, but the walk from the main
+        // entrance does not reach (or reaches too narrowly), is the masking PS0.10 removes: say so.
+        const masked = own.has(r.id) ? maskedByOwnDoor(r) : null;
+        if (masked) {
+          warned.add(r.id);
+          out.push(masked);
+        }
+        continue;
+      }
       warned.add(r.id);
       const doors = named.get(r.id) ?? null;
       if (already(doors)) continue;
@@ -561,8 +782,8 @@ export const pathTooNarrow: LintRule = {
         severity: "warning",
         code: "W_PATH_TOO_NARROW",
         ...at(r),
-        message: `The walk from the entrance to "${labelOf(r)}" squeezes to ${mm(rc.bottleneckClearWidthMm)} mm (${mm(shortfall(min, rc.bottleneckClearWidthMm))} mm below the ${mm(min)} mm minimum)${namedClause(doors, rc.bottleneckClearWidthMm, ctx)}.`,
-        hints: narrowHints(min, doors, ctx),
+        message: `The walk from the entrance to "${labelOf(r)}" squeezes to ${mm(rc.bottleneckClearWidthMm)} mm (${mm(shortfall(min, rc.bottleneckClearWidthMm))} mm below the ${mm(min)} mm minimum)${namedClause(doors, rc.bottleneckClearWidthMm, ctx, viewOf(r.id))}.`,
+        hints: narrowHints(min, doors, ctx, viewOf(r.id), unreached),
       });
     }
     for (const rt of circ.routes) {
@@ -579,7 +800,8 @@ export const pathTooNarrow: LintRule = {
         code: "W_PATH_TOO_NARROW",
         ...at(from),
         message: `The route from "${labelOf(from)}" to "${to ? labelOf(to) : rt.toRoomId}" squeezes to ${mm(w)} mm (${mm(shortfall(min, w))} mm below the ${mm(min)} mm minimum).`,
-        hints: narrowHints(min, null, ctx),
+        // A route runs room to room: where the walk starts says nothing about it.
+        hints: narrowRemedies(min, null, ctx),
       });
     }
     return out;
@@ -590,7 +812,7 @@ export const circuitousPath: LintRule = {
   name: "circuitous-path",
   family: "circulation",
   check(ctx: LintContext): Diagnostic[] {
-    const circ = measuredCirculationOf(ctx);
+    const circ = measuredCirculationOf(ctx, "nearest");
     if (!circ) return [];
     const { rooms, labelOf, at } = ctx;
     const max = ctx.rules.maxDetourRatio;

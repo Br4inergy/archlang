@@ -101,15 +101,28 @@ describe("lint coverage: the skips rules declare", () => {
   });
 
   it("an arc window the analysis gives to no room: daylight skips that room (PS2.8, PS0.12)", () => {
-    const c = lintCoverage(example("hillside-villa.arch"))!;
-    const skip = family(c, "daylight")!.skipped!.find((s) => s.reason === "arc-window-unattributed");
+    // A bay closed off by a wall on its chord: the shape attributes its window to no room.
+    const bay = (chordWall: boolean) => `plan "Bay" {
+  units mm
+  grid 50
+  wall id=shell exterior thickness 200 { (0,0) (4800,0) (4800,6000) (4000,6000) arc (1400,6000) radius 2000 cw (0,6000) close }
+${chordWall ? "  wall id=w_chord partition thickness 100 { (1400,6000) (4000,6000) }\n" : ""}  room id=r_living at (0,0) size 4800x6000 label "Living" uses living
+  door id=d_garden at (700,6000) width 900 wall shell swing out
+  window id=win_bay on shell at 13000 width 1200
+}`;
+    const skip = family(lintCoverage(bay(true)), "daylight")!.skipped!.find(
+      (s) => s.reason === "arc-window-unattributed",
+    );
     expect(skip).toEqual({
       reason: "arc-window-unattributed",
       why: SKIP_WHY["arc-window-unattributed"],
       rooms: ["Living"],
       roomIds: ["r_living"],
-      level: 1,
     });
+    // Where the shape does attribute the window (the bay opens into the room through its chord),
+    // nothing is skipped: hillside-villa's living-room bay is one.
+    for (const src of [bay(false), example("hillside-villa.arch")])
+      expect(JSON.stringify(family(lintCoverage(src), "daylight"))).not.toContain("arc-window-unattributed");
   });
 
   it("a stair on a one-storey plan: storey matching is skipped", () => {
