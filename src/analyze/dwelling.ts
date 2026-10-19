@@ -40,10 +40,10 @@ export function dwellingReading(rooms: Iterable<{ label?: string; id: string; us
     const w = nonResidentialWord(r.label ?? r.id);
     if (w !== null && !w.ambiguous) return "non-residential";
     const u = roomUses(r);
-    const homely = u.has("bedroom") || u.has("living");
-    // A room that itself reads as a home's ("Reception room" is a living room) is no evidence.
-    if ((w !== null && !homely) || u.has("office")) weak = true;
-    if (homely) home = true;
+    // A room that itself reads as a home's ("Reception room" is a living room) sets `home`, which
+    // overrules any weak evidence, its own word included, so no per-room guard is needed.
+    if (w !== null || u.has("office")) weak = true;
+    if (u.has("bedroom") || u.has("living")) home = true;
   }
   return weak && !home ? "non-residential" : "dwelling";
 }
