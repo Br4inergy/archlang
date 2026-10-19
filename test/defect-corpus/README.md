@@ -120,7 +120,13 @@ Two checks extend existing codes instead of adding one: a desk in front of a lea
   shape. Instances whose shape an earlier case already holds get no second copy: the kitchens with
   no worktop (A7, H4, S3, T5, C8) are `kitchen-no-worktop`, the wall-thickness labels inside rooms
   (A10, H6, S5, C11, T8, K11) are `auto-dims-in-room`, K2 is `door-jamb-50-from-tee`, K3 is
-  `door-fills-gap` and C5's staff WC onto a `uses kitchen` servery is `bath-door-off-kitchen`. Instances outside the eight classes, and those in a class with no check a card
+  `door-fills-gap` and C5's staff WC onto a `uses kitchen` servery is `bath-door-off-kitchen`.
+  `circulation-privacy/bath-off-open-plan` is S1's stronger variant: its kitchen sink stands 400 mm
+  from the bath door. The audit's own instance (`first-contact-plans/3-studio.arch`) has its nearest
+  kitchen fixture 2025 mm from the door, beyond the 1500 mm `wetDoorKitchenProximityMm` default, so
+  it is silent: there a bath door onto a combined kitchen/living room is a taste question
+  (`research/design-taste.md` R2), and no case is added that could never fire.
+  Instances outside the eight classes, and those in a class with no check a card
   names (A6, S2 bed sides; A7 hob against a side wall; C6, C7, K8 accessible WC layout), are left
   out for the planner.
 - The two masked-route cases (PS0.10) are silent because a balcony or patio door is a way in for

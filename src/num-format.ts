@@ -66,6 +66,8 @@ export function makeNumFmt(scale: number, zeroNonFinite = false): (n: number) =>
   };
 }
 
+/** 0 dp — whole millimetres, where a lint rule compares the value it prints. */
+export const fmt0 = makeNumFmt(1);
 /** 2 dp — Scene labels and SVG coordinates. */
 export const fmt2 = makeNumFmt(100);
 /** 3 dp, non-finite → "0" — expression stringification and the source formatter. */

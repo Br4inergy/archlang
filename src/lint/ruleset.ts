@@ -152,10 +152,10 @@ export interface LintRuleset {
   minStraddleCoverMm: number;
   /**
    * How near (mm) a kitchen fixture must stand to a bath or WC door before `W_WET_ROOM_DOOR`
-   * reads the door as opening onto the KITCHEN of a room that is also the living or dining
-   * room. Measured from the doorway's face on that room's side (jamb, centre, jamb) to the
-   * nearest sink, hob, oven, fridge or worktop footprint on that room's floor; the door warns
-   * when the fixture is nearer than this. Default 1500.
+   * reads the door as opening onto the KITCHEN of a room that is also the living room.
+   * Measured from the doorway's face on that room's side (jamb, centre, jamb) to the nearest
+   * sink, hob, oven, fridge, worktop, island or dishwasher footprint on that room's floor, in
+   * whole mm; the door warns when the fixture is nearer than this. Default 1500.
    *
    * **Why 1500.** It is the clear width GB 50096-2011 5.3.5 gives a kitchen with one row of
    * fixtures (at least 1.50 m, cited as advice; `docs/plans/plan-soundness/research/

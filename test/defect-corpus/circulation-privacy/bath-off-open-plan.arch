@@ -1,8 +1,11 @@
 # class: circulation-privacy
 # origin: audits/2026-10-18-first-contact.md S1 (first-contact-plans/3-studio.arch d_bath opens onto the
 #   living/kitchen/dining room); README PS2.6. Decided 2026-10-19 (coordinator, review round 1 of PR #203,
-#   S1 revision): a kitchen that is also the living or dining room counts where a kitchen fixture stands
-#   nearer the bath door than wetDoorKitchenProximityMm (1500); here the kitchen run is beside the door
+#   S1 revision): a kitchen that is also the living room counts where a kitchen fixture stands nearer the
+#   bath door than wetDoorKitchenProximityMm (1500). This case is the stronger variant, with the kitchen
+#   run beside the door: the audit's own instance has its nearest kitchen fixture 2025 mm from the door,
+#   beyond the 1500 mm default, and is silent; there a bath door onto a combined room is a taste question
+#   (research/design-taste.md R2), not a warning
 # expect: W_WET_ROOM_DOOR
 # status: done
 # fact: the bathroom's only door, d_bath (x 4100-4900 on w_h, face y 2950 on the living side), opens onto

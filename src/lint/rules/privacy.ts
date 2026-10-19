@@ -49,7 +49,7 @@ import { canonicalFixture } from "../../elements/fixtures-glyphs.js";
 import type { WallSegment } from "../../geometry.js";
 import { collinearOverlapLength, distPointToSegment, polygonEdges } from "../../geometry/polygon.js";
 import type { RDoor, ROpening, ROutdoor, RRoom } from "../../ir.js";
-import { fmt2 } from "../../num-format.js";
+import { fmt0, fmt2 } from "../../num-format.js";
 import type { LintContext, LintRule } from "../context.js";
 
 /** Uses that make a room one people pass through by design. */
@@ -236,11 +236,21 @@ function classifiedFactsOf(ctx: LintContext): Facts {
 }
 
 /**
- * The fixture families that place a kitchen inside a room that is also the living or dining
- * room: the sink, the hob, the oven, the fridge and the worktop, by their canonical names in
- * the fixture family table (an alias such as `hob` or `worktop` resolves to its family).
+ * The fixture families that place a kitchen inside a room that is also the living room: the
+ * sink, the hob, the oven, the fridge, the worktop, the island and the dishwasher, by their
+ * canonical names in the fixture family table (an alias such as `hob` or `worktop` resolves to
+ * its family). Each is a kitchen-only piece. The microwave is left out: it is a portable
+ * appliance that may stand on any shelf or sideboard, so it does not mark where the kitchen is.
  */
-const KITCHEN_FAMILIES: ReadonlySet<string> = new Set(["kitchen_sink", "stove", "oven", "fridge", "counter"]);
+const KITCHEN_FAMILIES: ReadonlySet<string> = new Set([
+  "kitchen_sink",
+  "stove",
+  "oven",
+  "fridge",
+  "counter",
+  "island",
+  "dishwasher",
+]);
 
 /** Do the segments `ab` and `cd` cross at a point inside both? (Touching is measured, as 0.) */
 function segmentsCross(a: Point, b: Point, c: Point, d: Point): boolean {
@@ -282,8 +292,9 @@ function pathToRectMm(path: readonly Point[], r: { x: number; y: number; w: numb
 }
 
 /**
- * How near the kitchen of `to` (a room that is a kitchen and also the living or dining room)
- * stands to the connector `doorId`: the distance (mm) from the doorway's face on `to`'s side
+ * How near the kitchen of `to` (a room that is a kitchen and also the living room) stands to
+ * the connector `doorId`: the distance, rounded to whole mm ({@link fmt0}, the value the
+ * message prints, so the threshold is tested on it), from the doorway's face on `to`'s side
  * ({@link connectorFacePath}: jamb, centre, jamb) to the nearest {@link KITCHEN_FAMILIES}
  * footprint whose centre is on `to`'s floor ({@link pointInRoomBox}, shape-aware), and that
  * piece's category as written. `null` when `to` holds no such piece: the kitchen cannot be
@@ -316,7 +327,7 @@ function kitchenNearDoor(ctx: LintContext, doorId: string, to: RRoom): { mm: num
     const d = pathToRectMm(path, rectOf(p));
     if (!best || d < best.mm) best = { mm: d, category: p.category };
   }
-  return best;
+  return best && { mm: Number(fmt0(best.mm)), category: best.category };
 }
 
 function factsOf(ctx: LintContext): Facts {
@@ -549,13 +560,15 @@ function viaPrivateHints(
  *     kitchen, bedroom, office), so it cannot be closed;
  *  2. a connector joins it straight to a kitchen or dining room with no lobby between
  *     (GB 50096-2011 5.4.3, cited as advice, not compliance). A room that is a kitchen and also
- *     the living or dining room (an open-plan kitchen/living) counts only where the door opens
- *     onto its kitchen: a sink, hob, oven, fridge or worktop on its floor nearer the doorway's
- *     face than `wetDoorKitchenProximityMm` ({@link kitchenNearDoor}). Such a room with no
- *     kitchen fixture at all cannot be located, so it is declared to the coverage report
- *     (`no-kitchen-fixtures`) and not warned. A living or dining room with no kitchen use, and
- *     a dining room that is also the living room, are exempt: a bath opening off the living
- *     space is graded by the taste layer, never warned;
+ *     the living room (an open-plan kitchen/living, with or without dining) counts only where
+ *     the door opens onto its kitchen: a sink, hob, oven, fridge, worktop, island or dishwasher
+ *     on its floor nearer the doorway's face than `wetDoorKitchenProximityMm`, compared in
+ *     whole mm ({@link kitchenNearDoor}; a microwave does not locate the kitchen). Such a room
+ *     with no kitchen fixture at all cannot be located, so it is declared to the coverage
+ *     report (`no-kitchen-fixtures`) and not warned. A kitchen alone, a dining room alone and a
+ *     kitchen that is also the dining room (no living use) always count. A living room with no
+ *     kitchen use, and a dining room that is also the living room, are exempt: a bath opening
+ *     off the living space is graded by the taste layer, never warned;
  *  3. two or more connectors join it to two different rooms outside a private suite (not a
  *     bedroom, bath, WC or storage room), so it is a passage between them. When one of those
  *     rooms is reached ONLY through the wet room, `W_ROOM_VIA_PRIVATE` already reports it and
@@ -611,8 +624,8 @@ export const wetRoomDoor: LintRule = {
       }
 
       // 2. A connector straight onto a kitchen or a dining room. A room that is also the
-      // living room counts only as a kitchen, and a kitchen that is also the living or dining
-      // room only where a kitchen fixture stands near the doorway.
+      // living room counts only as a kitchen, and then only where a kitchen fixture stands near
+      // the doorway; a kitchen that is also the dining room (no living) always counts.
       for (const e of mine) {
         if (reported.has(e.doorId)) continue;
         const to = room(far(e));
@@ -622,7 +635,7 @@ export const wetRoomDoor: LintRule = {
         if (u.has("living") && !u.has("kitchen")) continue;
         if (f.priv.has(to.id)) continue;
         let near: { mm: number; category: string } | null = null;
-        if (u.has("kitchen") && (u.has("living") || u.has("dining"))) {
+        if (u.has("kitchen") && u.has("living")) {
           near = kitchenNearDoor(ctx, e.doorId, to);
           if (!near) {
             ctx.skip("no-kitchen-fixtures", to);

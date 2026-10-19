@@ -68,7 +68,7 @@ export type LintSkipReason =
   | "balcony-only-entrance"
   /** The door's host wall is angled or curved, which the rule does not measure. */
   | "unsupported-host-geometry"
-  /** A room that is a kitchen and also the living or dining room holds no kitchen fixture, so
+  /** A room that is a kitchen and also the living room holds no kitchen fixture, so
    *  the rule cannot tell which end of it is the kitchen. */
   | "no-kitchen-fixtures";
 

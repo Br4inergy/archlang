@@ -1026,7 +1026,7 @@ label, as in every lint message. The reasons:
 | `no-entrance` | reachability, circulation walk, privacy checks | a storey with rooms and no way in (`W_NO_ENTRANCE` still runs) |
 | `balcony-only-entrance` | privacy checks | every door to the outside opens onto a balcony or terrace, which these rules do not count as a way in (the access graph and the walk do) |
 | `unsupported-host-geometry` | door checks | a door on an angled or curved wall, which the doorway-landing and pocket-run checks do not measure |
-| `no-kitchen-fixtures` | privacy checks | a bath or WC door onto a room that is a kitchen and also the living or dining room, which holds no sink, hob, oven, fridge or worktop, so `W_WET_ROOM_DOOR` cannot tell whether the door opens onto the kitchen |
+| `no-kitchen-fixtures` | privacy checks | a bath or WC door onto a room that is a kitchen and also the living room, which holds no sink, hob, oven, fridge, worktop, island or dishwasher, so `W_WET_ROOM_DOOR` cannot tell whether the door opens onto the kitchen |
 
 Three more reasons are reserved for families that do not exist yet: `no-brief`,
 `no-dwelling` and `no-operable-window-data`. In human mode `lint` prints one line on stderr
