@@ -162,6 +162,26 @@ pair.** (2026-10-18, amends D1; does not reverse it.)
   a load-bearing line) grows past three clauses, or the tiling preconditions reject more than a
   quarter of the corpus. Then the pairwise forms stay the headline and this one is dropped.
 
+**D6. The default profile keeps the dwelling-reading rules on; a plan opts out by reading as
+non-residential, not by choosing a profile.** (2026-10-20, amends PS2.18's card; does not touch D3.)
+- PS2.18 as filed would have moved PS2.8's kitchen daylight arm, PS2.6 (`W_WET_ROOM_DOOR`) and
+  PS2.7 (`W_ENTRANCE_INTO_PRIVATE`) into the residential profiles and had the default profile file
+  a coverage skip. The default profile is the one a first-contact agent runs on a house, so that
+  would have silenced the three rules exactly where the audit found their defects
+  (`evidence.md`: the hall→bath→bedroom chain, the kitchen with no window). Instead the plan is
+  read as a *dwelling* unless it carries positive non-residential evidence: a room with use `office`
+  and no room with use `bedroom`, or a label from a short non-residential word list (café,
+  restaurant, shop, retail, clinic, consulting, waiting, reception, servery, staff room, classroom,
+  lobby, meeting; measured against every corpus label before it ships). A non-residential plan files
+  the typed skip `non-dwelling` for those arms; `residential-basic` asserts a dwelling and runs them
+  unconditionally. `describe()` never learns the reading; no `UseKind` is added.
+- *Why:* the two first-contact plans the card cites (4-cafe, 6-clinic) both carry that evidence, and
+  no residential example or eval golden does; the heuristic is therefore decided by measurement, and
+  the acceptance for PS2.18 is that no residential corpus row loses a warning.
+- *Reverse if:* PS2.14's dwelling declaration lands (the declaration then decides and the word list
+  is retired), or the word list misreads a residential plan in the corpus or the fuzz, or a third
+  rule needs the reading (then it belongs in a declaration, not a heuristic).
+
 ## 4. Principles: what "professional rules and taste" means here
 
 **Four layers, treated differently:**
@@ -241,6 +261,16 @@ question), declared to the coverage report as `no-main-entrance`. `W_PATH_TOO_NA
 doors into rooms it cannot reach from inside stay ways in; a room with its own door from outside is
 judged by that door, and reported in its own words when the main entrance cannot reach it).
 
+Landed 2026-10-20 in PR #214 (… aac48b2; one red-team round, no blocker): PS0.13 (the occupancy
+grid seeds a doorway that sits exactly on a cell line from both cells, so `W_ROOM_NO_CLEAR_PATH`
+reads the same under every D4 placement; corpus `lint()` byte-identical over 272 files) and PS0.14
+(`describe()`'s net-area walk is charged to a count, `MAX_NET_PROBE_WORK` = 20,000,000, before it
+runs; a room past it omits `net_area_m2` as ADR 0027's third named case, and the 125 × 300 comb
+that took 52–97 s now returns in milliseconds). The red team measured that the cap is per room:
+200 distinct comb rooms each just under it still cost `describe()` 172.6 s, three times faster than
+before but unbounded per plan, since `describe()` draws nothing and so never meets the drawing
+budget (ADR 0022 §4). That is PS0.15.
+
 | Card | Bug (re-measure first; the evidence is in the cited file) | Status |
 |---|---|---|
 | PS0.2 | `compile -f json` (Plan JSON) drops arc segments; a round trip loses a bay and floats its window (`audits/archcanvas-public-examples.md` G2) | todo |
@@ -250,8 +280,9 @@ judged by that door, and reported in its own words when the main entrance cannot
 | PS0.6 | `suggest` connects an unreachable room to *any* reachable neighbour, a bedroom included (`src/suggest.ts` ~364-395), against `skills/archlang/SKILL.md`'s own advice. Rank by neighbour use (hall/circulation/living first, bedroom and bath last) | todo |
 | PS0.8 | `W_PATH_TOO_NARROW` measures pinches on the 100 mm grid and missed a 500 mm diagonal between a bench and a jamb (`repro/gallery-bench-pinch.arch`, `audits/archcanvas-public-examples.md` GW3). Re-measure the case first: the repro lints with the warning in isolation | todo |
 | PS0.9 | `describe` assigns a window between an enclosed room and a covered loggia to the loggia, so lint and describe disagree on bedroom windows (`audits/showcase-and-examples.md` villa-rotonda) | todo |
-| PS0.13 | `W_ROOM_NO_CLEAR_PATH` is not equivariant under mirror x. Found 2026-10-19 by `test/equivariance-fuzz.test.ts` (unseeded) on a PR unrelated to circulation and reproduced on `main@6b6a42c`: a 2 × 2 m room with a 700 mm door at 5 % and two WCs at (0,51) 400×300 and (357,0) 300×300 raises the code only when placed with `mirror x`. The fuzz test fails whenever its random draw hits the class, so any PR's CI can go red on it. Either fix the walk (`src/lint/rules/circulation.ts`) or pin the class in the oracle with its witness; the plan is in the owner's scratch note (`plan-soundness-impl/fuzz-mx/`) until fixed | todo |
-| PS0.14 | `describe()`'s net-area integral is super-linear on a room polygon with hundreds of vertices whose edges cross hundreds of free-standing walls: 52–97 s on `main@90ae6bf` for a 125-partition × 300-tooth comb room (the inside test walks every ring vertex per boundary piece, pieces ≈ 4·S·T). No shipped plan is near it (corpus max 56 vertices), but `compile()` is bounded by law and `describe()` runs in the playground thread. Charge pieces × ring vertices to a count before the integral, or bin the ring for the inside test; PS2.4's `FaceBudget` already refuses the lint side (PR #204 round 3) | todo |
+| PS0.13 | `W_ROOM_NO_CLEAR_PATH` is not equivariant under mirror x. Found 2026-10-19 by `test/equivariance-fuzz.test.ts` (unseeded) on a PR unrelated to circulation and reproduced on `main@6b6a42c`: a 2 × 2 m room with a 700 mm door at 5 % and two WCs at (0,51) 400×300 and (357,0) 300×300 raises the code only when placed with `mirror x`. The fuzz test fails whenever its random draw hits the class, so any PR's CI can go red on it. Either fix the walk (`src/lint/rules/circulation.ts`) or pin the class in the oracle with its witness; the plan is in the owner's scratch note (`plan-soundness-impl/fuzz-mx/`) until fixed. *As built (PR #214):* the walk was right; the seed was wrong. A doorway centre on a cell line was seeded into one cell chosen by the sign of the coordinate, so `mirror x` moved the seed. Both cells are seeded now (`src/analyze/occupancy.ts`). The witness is pinned in `test/d4-oracle.ts`; the red team's aimed fuzz (3 seeds, 2,200 cases) found 0 non-equivariant cases on the branch against 7 of 600 on main. A doorway authored 1e-6 mm off a line still reads differently under D4 (any absolute tolerance has that edge; the nav grid snaps exactly), noted, not fixed | done |
+| PS0.14 | `describe()`'s net-area integral is super-linear on a room polygon with hundreds of vertices whose edges cross hundreds of free-standing walls: 52–97 s on `main@90ae6bf` for a 125-partition × 300-tooth comb room (the inside test walks every ring vertex per boundary piece, pieces ≈ 4·S·T). No shipped plan is near it (corpus max 56 vertices), but `compile()` is bounded by law and `describe()` runs in the playground thread. Charge pieces × ring vertices to a count before the integral, or bin the ring for the inside test; PS2.4's `FaceBudget` already refuses the lint side (PR #204 round 3). *As built (PR #214):* `MAX_NET_PROBE_WORK` (20,000,000) is charged after the split and before the walk as 2 × pieces × (nearby band boxes and edges + the fullest y-band of the ring); the inside test bins the ring by y. A room past it omits `net_area_m2` (ADR 0027, third case, `too-much-work`); no shipped room is charged more than 175,000. Per room only; the per-plan total is PS0.15 | done |
+| PS0.15 | `describe()`'s net-area work has a cap per room but no total per plan. Measured by PR #214's red team on `aac48b2`: 200 distinct 45-wall × 60-tooth comb rooms, each under `MAX_NET_PROBE_WORK`, cost `describe()` 172.6 s (50 rooms 19.7 s; main 60.3 s for the same 50). `compile()` meets the drawing budget only when a schedule is drawn; `describe()` draws nothing (ADR 0022 §4), so the step budget is its only bound and the playground thread is still exposed. Add a per-call total (a count, charged before each room's walk; rooms past it omit the figure for the same reason) or make the per-room charge count against one plan-level meter. No shipped plan is near it | todo |
 
 ### PS1 · The defect corpus (do this before PS2; it is the yardstick)
 
