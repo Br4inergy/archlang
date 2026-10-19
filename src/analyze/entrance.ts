@@ -14,21 +14,28 @@
  * deterministic bad heuristic is still an arranger, so WIDTH never decides: a wider back or
  * delivery door is not a front door). The candidates are the storey's exterior DOORS (a leaf: a
  * cased opening is not a front door) that are not a `garage` door and do not open onto an
- * `outdoor balcony` ({@link doorFacesBalcony}), and (step 0) do not open into a room used as a
- * bedroom, bath or WC: a front door never does (`W_ENTRANCE_INTO_PRIVATE`). Each step must single
- * out exactly one door, or the next step is asked:
+ * `outdoor balcony` ({@link doorFacesBalcony}), and (step 0) do not open into a private room, a
+ * bedroom, bath or WC with no living, dining, kitchen or entrance use beside it: a front door
+ * never does (`W_ENTRANCE_INTO_PRIVATE`), while a studio's `uses living bedroom` keeps its door.
+ * Each step must single out exactly one door, or the next step is asked:
  *  1. The one door into an entrance space, a room whose uses ({@link roomUses}) include entry,
  *     hall or circulation and no service use (`entry-room`), but ONLY when every other candidate
  *     opens into a service room (utility, storage, garage). A back hall or mud room does not
- *     outrank a door straight into the living room, the kitchen or an unclassified room.
- *  2. With `site`, the one HINGED candidate whose wall faces `site.street`: the outward side of
- *     the host wall, probed one wall thickness off each face (the side whose probe is on no room's
- *     floor), turned by `north` (`street`). A slider on the street is a shop front or a patio
- *     door as often as a front door, so it is never chosen here.
+ *     outrank a door straight into the living room, the kitchen or an unclassified room. Any
+ *     leaf counts here, a sliding entry door included: the room says it is the way in.
+ *  2. With `site`, the one HINGED candidate, not into a service room, whose wall faces
+ *     `site.street`: the outward side of the host wall, probed one wall thickness off each face
+ *     (the side whose probe is on no room's floor), turned by `north` (`street`). A slider on
+ *     the street is a shop front or a patio door as often as a front door, so it is never chosen
+ *     here; a street door into a utility, store or garage is a service door, and when the street
+ *     side has only such doors the choice is refused (`tie`). A wall at 45° to the compass faces
+ *     no single side, so a door on it is never the street door.
  *  3. One candidate left: it is the only door from the ground (`sole`).
  *  4. Otherwise refused: `tie` (the candidates are listed), or `no-candidate`.
- * A storey a shaft arrives on from below names none (`upper-storey`): which of its exterior doors
- * is a way in at all is PS0.3's question. A refusal keeps every way in, exactly as before, and
+ * A storey a shaft arrives on from a storey below that has a candidate of its own names none
+ * (`upper-storey`): which of its exterior doors is a way in at all is PS0.3's question. A
+ * basement with no door from the ground does not demote the floor above it; a walk-out basement
+ * does. A refusal keeps every way in, exactly as before, and
  * the fact still says why.
  *
  * **The ways a walk keeps** ({@link walkWays}): the main entrance; every `garage` door (a
@@ -50,11 +57,13 @@ import {
   type AccessGraph,
   accessGraphOf,
   type AccessRoomNode,
+  buildDoorAccessGraph,
   doorFacesBalcony,
   EXTERIOR_NODE,
   type MainEntranceFact,
   pointInRoomBox,
   type RoomBox,
+  roomBox,
   roomUses,
 } from "../analyze.js";
 import type { UseKind } from "../ast.js";
@@ -130,12 +139,18 @@ function doorFacing(d: RDoor, roomRects: ReadonlyMap<string, RoomBox>, turns: 0 
   };
   const onPlus = on(plus);
   if (onPlus === on(minus)) return null;
-  // Outward is the side with no floor on it; a 45° wall reads N/S, as a window's does.
+  // Outward is the side with no floor on it.
   const ox = (onPlus ? -1 : 1) * n.x;
   const oy = (onPlus ? -1 : 1) * n.y;
+  // A wall at 45° to the compass faces two sides equally: no single side, so it is never the
+  // street door on its own (a tie broken toward N/S would flip under a quarter turn).
+  if (Math.abs(Math.abs(ox) - Math.abs(oy)) <= DIAGONAL_TOL) return null;
   const page: CompassLetter = Math.abs(oy) >= Math.abs(ox) ? (oy < 0 ? "N" : "S") : ox < 0 ? "W" : "E";
   return toCompass(page, turns);
 }
+
+/** How near |x| and |y| of a unit outward normal may be for the wall to read as diagonal. */
+const DIAGONAL_TOL = 1e-6;
 
 /** A door with a hinged leaf: the default kind, or `hinged` written out. */
 const hinged = (d: RDoor): boolean => d.doorKind === undefined || d.doorKind === "hinged";
@@ -144,6 +159,16 @@ const hinged = (d: RDoor): boolean => d.doorKind === undefined || d.doorKind ===
 const ENTRY_USES: ReadonlySet<UseKind> = new Set<UseKind>(["entry", "hall", "circulation"]);
 /** Uses a front door never opens into (`W_ENTRANCE_INTO_PRIVATE`): such a door is no candidate. */
 const PRIVATE_USES: ReadonlySet<UseKind> = new Set<UseKind>(["bedroom", "bath", "wc"]);
+/** Uses that keep a room public even when it is also slept or washed in: a studio's
+ *  `uses living bedroom` is still where its front door opens. */
+const PUBLIC_USES: ReadonlySet<UseKind> = new Set<UseKind>([
+  "living",
+  "dining",
+  "kitchen",
+  "entry",
+  "hall",
+  "circulation",
+]);
 /** Uses of a service room: a door into one does not compete with a door into the hall. */
 const SERVICE_USES: ReadonlySet<UseKind> = new Set<UseKind>(["utility", "storage", "garage"]);
 
@@ -163,6 +188,47 @@ function isServiceRoom(r: RRoom | undefined): boolean {
 }
 
 /**
+ * The candidates for the main entrance, in edge order: the doors from the ground with a leaf,
+ * not a `garage` door, not onto an `outdoor balcony`, and (0) not into a private room (a
+ * bedroom, bath or WC with no living, dining, kitchen or entrance use beside it).
+ */
+export function entranceCandidates(graph: AccessGraph, inp: EntranceInputs): Array<{ door: RDoor; room: string }> {
+  const doors = new Map(inp.doors.map((d) => [d.id, d]));
+  const rooms = new Map(inp.rooms.map((r) => [r.id, r]));
+  const cands: Array<{ door: RDoor; room: string }> = [];
+  for (const w of entranceWays(graph, inp)) {
+    const d = doors.get(w.doorId);
+    if (w.kind !== "door" || !d || d.doorKind === "garage" || w.balcony) continue;
+    const r = rooms.get(w.room);
+    if (r && isPrivateRoom(r)) continue;
+    cands.push({ door: d, room: w.room });
+  }
+  return cands;
+}
+
+/** A room a front door never opens into (`W_ENTRANCE_INTO_PRIVATE`): a bedroom, bath or WC use
+ *  and no public use beside it. */
+function isPrivateRoom(r: RRoom): boolean {
+  const uses = [...roomUses(r)];
+  return uses.some((u) => PRIVATE_USES.has(u)) && !uses.some((u) => PUBLIC_USES.has(u));
+}
+
+/**
+ * Does storey `ir` have a door from the ground that could be its main entrance
+ * ({@link entranceCandidates})? A storey a stair arrives on from one that does is an upper
+ * storey (`levelsEnteredFromBelow`); a basement with no such door does not demote the floor
+ * above it.
+ */
+export function storeyHasEntranceCandidate(ir: ResolvedPlan, tolMm: number): boolean {
+  const inp = entranceInputs(
+    ir,
+    new Map(ir.elements.filter((e): e is RRoom => e.kind === "room").map((r) => [r.id, roomBox(r)])),
+  );
+  const graph = buildDoorAccessGraph([...inp.rooms], [...inp.doors], tolMm, undefined, [...inp.openings]);
+  return entranceCandidates(graph, inp).length > 0;
+}
+
+/**
  * The storey's main entrance ({@link MainEntranceFact}; the rule is this module's header), or
  * `null` on a storey with one entrance or none: there is nothing to choose, and no fact.
  * Width never decides: a wider back or delivery door is not a front door.
@@ -172,17 +238,8 @@ export function mainEntranceOf(graph: AccessGraph, inp: EntranceInputs): MainEnt
   // PS0.3: an upper storey's exterior doors open onto decks and terraces; which of them is a
   // way in at all is that card's question, so the fact is not asked here.
   if (inp.upperStorey === true) return { door: null, basis: "upper-storey", candidates: [] };
-  const doors = new Map(inp.doors.map((d) => [d.id, d]));
   const rooms = new Map(inp.rooms.map((r) => [r.id, r]));
-  const cands: Array<{ door: RDoor; room: string }> = [];
-  for (const w of entranceWays(graph, inp)) {
-    const d = doors.get(w.doorId);
-    if (w.kind !== "door" || !d || d.doorKind === "garage" || w.balcony) continue;
-    // (0) A front door never opens into a bedroom, bath or WC.
-    const r = rooms.get(w.room);
-    if (r && [...roomUses(r)].some((u) => PRIVATE_USES.has(u))) continue;
-    cands.push({ door: d, room: w.room });
-  }
+  const cands = entranceCandidates(graph, inp);
   const ids = (cs: readonly { door: RDoor }[]): string[] => cs.map((c) => c.door.id);
   if (cands.length === 0) return { door: null, basis: "no-candidate", candidates: [] };
   // (a) The door into an entrance space, when every other one opens into a service room: a hall
@@ -194,8 +251,13 @@ export function mainEntranceOf(graph: AccessGraph, inp: EntranceInputs): MainEnt
   if (inp.site) {
     const turns = northQuarterTurns(inp.north);
     const street = deriveSite(inp.site).street;
-    const onStreet = cands.filter((c) => hinged(c.door) && doorFacing(c.door, inp.roomRects, turns) === street);
+    const facing = cands.filter((c) => hinged(c.door) && doorFacing(c.door, inp.roomRects, turns) === street);
+    // A street door into a utility, store or garage is a service door, not the front door.
+    const onStreet = facing.filter((c) => !isServiceRoom(rooms.get(c.room)));
     if (onStreet.length === 1) return { door: onStreet[0]!.door.id, basis: "street", candidates: ids(onStreet) };
+    // The street side holds service doors only: which of the others is the front is not said.
+    if (onStreet.length === 0 && facing.length > 0 && cands.length > 1)
+      return { door: null, basis: "tie", candidates: ids(cands) };
   }
   // (c) The only door from the ground there is: nothing is chosen.
   if (cands.length === 1) return { door: cands[0]!.door.id, basis: "sole", candidates: ids(cands) };

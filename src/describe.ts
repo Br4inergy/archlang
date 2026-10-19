@@ -57,7 +57,7 @@ import {
 import { outerFaceBounds, segmentsOfWall, type WallSegment } from "./geometry.js";
 import type { PaperOrientation, PaperSize } from "./sheet.js";
 import { computeCirculation, type CirculationModel } from "./analyze/circulation.js";
-import { entranceInputs, withMainEntrance } from "./analyze/entrance.js";
+import { entranceInputs, storeyHasEntranceCandidate, withMainEntrance } from "./analyze/entrance.js";
 import { symmetryFacts, type SymmetryFacts } from "./analyze/symmetry.js";
 import { syntaxFacts, type SyntaxFacts } from "./analyze/syntax.js";
 import { roomTypeForUses, buildInputGraph } from "./plan-json.js";
@@ -1511,7 +1511,10 @@ function buildVerticalReport(
   return {
     report: { connections, reachable_levels: [...reach.reachable].sort((a, b) => a - b) },
     arrivals: arrivalRuns(inputs, grounded, roomReach),
-    fromBelow: levelsEnteredFromBelow(connections),
+    fromBelow: levelsEnteredFromBelow(connections, (n) => {
+      const l = levels.find((x) => x.level === n);
+      return l ? storeyHasEntranceCandidate(l.ir, tol) : false;
+    }),
   };
 }
 

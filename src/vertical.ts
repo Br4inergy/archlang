@@ -256,15 +256,20 @@ export function verticalConnections(levels: readonly VerticalLevelInput[]): Vert
 }
 
 /**
- * The storeys a shaft arrives on from a storey below: every level of a connection but its
- * lowest. Identity only, like {@link verticalConnections}. Such a storey names no main
+ * The storeys a shaft arrives on from a storey below that has a door from the ground of its own
+ * (`hasWayIn`: a main-entrance candidate, `src/analyze/entrance.ts`). A basement with no
+ * such door does not make the floor above it an upper storey; a walk-out basement does.
+ * Identity only, like {@link verticalConnections}. Such a storey names no main
  * entrance (`src/analyze/entrance.ts`, basis `upper-storey`): an exterior door up there opens
  * onto a deck, a terrace or a balcony, not the ground. Whether a person truly arrives there is
  * PS0.3's question (the upper-storey sibling of PS0.10), still open; this is the identity fact.
  */
-export function levelsEnteredFromBelow(connections: readonly VerticalConnection[]): ReadonlySet<number> {
+export function levelsEnteredFromBelow(
+  connections: readonly VerticalConnection[],
+  hasWayIn: (level: number) => boolean,
+): ReadonlySet<number> {
   const out = new Set<number>();
-  for (const c of connections) for (const l of c.levels.slice(1)) out.add(l);
+  for (const c of connections) for (const l of c.levels) if (c.levels.some((b) => b < l && hasWayIn(b))) out.add(l);
   return out;
 }
 

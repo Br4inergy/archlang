@@ -39,7 +39,7 @@ describe("PS0.10 — the main entrance", () => {
     expect(d!.message).toContain('"Laundry" squeezes to 400 mm and stops there');
     expect(d!.message).not.toContain("d_front");
     expect(d!.hints!.at(-1)).toBe(
-      "Measured from the main entrance `d_front` (the door into the entry, hall or circulation space). The other door from outside, `d_bal`, is a way into its own room only, since the main entrance reaches that room from inside.",
+      "Measured from the main entrance `d_front` (the door into the entry, hall or circulation space). `d_bal` opens onto a balcony, which is no way in.",
     );
   });
 
@@ -236,6 +236,88 @@ describe("PS0.10 — the main entrance", () => {
       'The walk from the entrance to "Hall" is blocked: furniture and its clearances leave no gap at all (0 mm against the 700 mm minimum).',
       'The walk from the entrance to "Bath" is blocked: furniture and its clearances leave no gap at all (0 mm against the 700 mm minimum).',
     ]);
+  });
+
+  // Review round 3.
+  const codes = (src: string) => lint(src).map((d) => d.code);
+  const UTILITY_SEALED =
+    'From the main entrance the walk to "Utility" is blocked: furniture and its clearances leave no gap at all (0 mm against the 700 mm minimum); the room is reached only through its own door from outside.';
+  const LIVING_BLOCKED =
+    'The walk from the entrance to "Living" is blocked: furniture and its clearances leave no gap at all (0 mm against the 700 mm minimum).';
+
+  it.each([
+    // A studio the front door opens into is a living room with a bed in it, not a bedroom: its
+    // door stays a candidate (step 0), so the utility back door is not named "sole".
+    [
+      "e1-studio-util.arch",
+      ["W_SWING_OBSTRUCTED", "W_DOORWAY_BLOCKED", "W_FIXTURE_BACK_TO_ROOM", "W_ROOM_MISSING_DEFINING"],
+    ],
+    // The same studio by its label alone (no `uses`).
+    ["e1b-studio-label.arch", ["W_SWING_OBSTRUCTED", "W_DOORWAY_BLOCKED", "W_FIXTURE_BACK_TO_ROOM"]],
+  ])("%s: a studio's front door is still a candidate; refused, lint as on main", (name, lintCodes) => {
+    const src = read(`${FIX}/${name}`);
+    expect(describePlan(src).access.mainEntrance).toEqual({
+      door: null,
+      basis: "tie",
+      candidates: ["d_front", "d_util"],
+    });
+    expect(codes(src)).toEqual(lintCodes);
+  });
+
+  it("q5b/q5c: a hinged street door into a utility room is not the front door; refused, lint as on main", () => {
+    for (const name of ["q5b-street-service-sofa.arch", "q5c-nosite-sofa.arch"]) {
+      const src = read(`${FIX}/${name}`);
+      expect(describePlan(src).access.mainEntrance).toEqual({
+        door: null,
+        basis: "tie",
+        candidates: ["d_util", "d_live"],
+      });
+      expect(codes(src)).toEqual(["W_SWING_OBSTRUCTED", "W_DOORWAY_BLOCKED"]);
+    }
+  });
+
+  it("d1: a street door on a 45° wall faces no single side, so a quarter turn (north co-rotated) gives the same fact", () => {
+    const facts = ["d1-chamfer.arch", "d1-chamfer-rot.arch"].map(
+      (n) => describePlan(read(`${FIX}/${n}`)).access.mainEntrance,
+    );
+    expect(facts[0]).toEqual({ door: null, basis: "tie", candidates: ["d_ch", "d_s"] });
+    expect(facts[1]).toEqual(facts[0]);
+  });
+
+  it("q7: a basement with no door from the ground does not make the ground floor an upper storey", () => {
+    const src = read(`${FIX}/q7-basement.arch`);
+    expect(describePlan(src).levels!.map((l) => l.access.mainEntrance ?? null)).toEqual([
+      null,
+      { door: "d_front", basis: "entry-room", candidates: ["d_front"] },
+    ]);
+    expect(narrow(src).map((d) => [d.level, d.message])).toEqual([
+      [1, LIVING_BLOCKED],
+      [1, UTILITY_SEALED],
+    ]);
+  });
+
+  it("q7c: the two hints say what the measured walk found, so they never contradict", () => {
+    const [living, utility] = narrow(read(`${FIX}/q7c-no-basement.arch`));
+    expect([living!.message, utility!.message]).toEqual([LIVING_BLOCKED, UTILITY_SEALED]);
+    expect(living!.hints!.at(-1)).toBe(
+      "Measured from the main entrance `d_front` (the door into the entry, hall or circulation space). `d_util` opens into a room the walk from the main entrance does not reach: its own way in, not the way the plan is entered.",
+    );
+    expect(utility!.hints!.at(-1)).toBe(
+      "Measured from the main entrance `d_front`. The room's own door from outside, `d_util`, is a way into it, but not the way the plan is entered.",
+    );
+  });
+
+  it("w1: a room sealed behind its balcony slider reads as an ordinary blocked walk; the slider is no way in", () => {
+    const [d, ...rest] = narrow(read(`${FIX}/w1-balcony-sealed.arch`));
+    expect(rest).toEqual([]);
+    expect(d!.message).toBe(LIVING_BLOCKED);
+    expect(d!.hints!.at(-1)).toBe(
+      "Measured from the main entrance `d_front` (the door into the entry, hall or circulation space). `d_bal` opens onto a balcony, which is no way in.",
+    );
+  });
+
+  it("w2: a route sealed by a wall, not furniture, is outside PS0.10 (the seal is confirmed furniture-free)", () => {
+    expect(narrow(read(`${FIX}/w2-wall-sealed.arch`))).toEqual([]);
   });
 
   it("an upper storey a stair arrives on names no main entrance, and walks from every way in (PS0.3)", () => {

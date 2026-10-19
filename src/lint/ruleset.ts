@@ -225,7 +225,9 @@ export interface LintRuleset {
    * counts as no floor of its own). {@link resolveRuleset} picks `"at-least-generic"` whenever a
    * profile or the caller sets `minRoomAreaM2` explicitly, so a stricter generic floor (the
    * `accessibility-advisory` profile's 5 m²) is not undone by the per-use table, which has no
-   * researched accessible values yet.
+   * researched accessible values yet. Writing the default itself, `ruleset: { minRoomAreaM2: 4 }`,
+   * also picks `"at-least-generic"`, so every room is held to 4 m² again, as before the per-use
+   * table.
    */
   roomAreaFloorMode: "by-use" | "at-least-generic";
 }

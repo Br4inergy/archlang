@@ -25,6 +25,7 @@ import { MAX_ATTRIBUTION_MEASURES } from "./lint/rules/circulation-facts.js";
 import { ONCE_PER_PLACEMENT_CODES } from "./lint/rules/dims.js";
 import { LINT_RULES } from "./lint/rules/index.js";
 import { LINT_PROFILES, type LintOptions, type LintRuleset, resolveRuleset } from "./lint/ruleset.js";
+import { storeyHasEntranceCandidate } from "./analyze/entrance.js";
 import { arrivalRuns, levelsEnteredFromBelow, verticalConnections, verticalReach } from "./vertical.js";
 
 export {
@@ -235,7 +236,10 @@ export function buildingContexts(levels: readonly ResolvedLevel[], tolMm: number
   const roomReach = buildingRoomReach(inputs, tolMm ?? DEFAULT_TOL);
   const reach = verticalReach(inputs, grounded, roomReach);
   const runs = arrivalRuns(inputs, grounded, roomReach);
-  const fromBelow = levelsEnteredFromBelow(connections);
+  const fromBelow = levelsEnteredFromBelow(connections, (n) => {
+    const l = levels.find((x) => x.level === n);
+    return l ? storeyHasEntranceCandidate(l.ir, tolMm ?? DEFAULT_TOL) : false;
+  });
   const out = new Map<number, BuildingContext>();
   // One re-measure budget for the whole building, not one per storey.
   const attributionMeasures = { left: MAX_ATTRIBUTION_MEASURES, storeys: levels.length };
