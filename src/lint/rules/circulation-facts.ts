@@ -151,18 +151,16 @@ const narrowHints = (min: number, doors: readonly AccessEdge[] | null, ctx: Lint
 
 /**
  * The line saying where the walk was measured from (PS0.10, `src/analyze/entrance.ts`): on a
- * walk-view warning, the main entrance and the doors from outside left out; when the storey
- * names no main entrance, that every exterior door was a way in, and why. Nothing on a storey
+ * walk-view warning, the main entrance and the doors from outside left out. Nothing when the
+ * storey names no main entrance (the coverage report's `no-main-entrance` says so), on a storey
  * with one entrance or none, nor on a room judged by its own door (the full view), so those
  * read exactly as before. Ids are hints-only.
  */
 function mainEntranceHint(ctx: LintContext, view: View): string[] {
   const fact = ctx.mainEntrance();
   if (fact === null) return [];
-  // TODO(PS2.13): once the `ctx.skip` coverage seam (PR #203) lands, report a refused main
-  // entrance there as a coverage skip instead of in this hint.
-  if (fact.door === null)
-    return [`Measured from every exterior door because no main entrance could be named (${fact.basis}).`];
+  // A refused fact is declared to the coverage report (`no-main-entrance`), not here.
+  if (fact.door === null) return [];
   if (view.from !== "walk" || view.ways === null) return [];
   const keep = view.ways;
   const dropped = ctx.access().entrances.filter((id) => !keep.has(id));
@@ -363,8 +361,8 @@ function attributeBottlenecks(
   widthOf: ReadonlyMap<string, number>,
   warnedRooms: readonly string[],
   view: View,
-  /** A budget of the view's own (the walk view beside the full one, PS0.10); else the storey's. */
-  ownMeasures?: { left: number; storeys: number },
+  /** The run's measures, when the caller shares one count across two views (PS0.10). */
+  measures?: { left: number; storeys: number },
 ): Map<string, AccessEdge[]> {
   const min = ctx.rules.minPathClearWidthMm;
   const edges = view.access.edges.filter((e) => !e.ambiguous && e.between[0] !== "" && e.between[1] !== "");
@@ -438,7 +436,7 @@ function attributeBottlenecks(
   // 2–4. Tier by tier (every remaining room's first candidate, then its second, …): ONE union
   // model per tier, with every door of that tier's sets widened, all within the count budget.
   // Shared by every storey of the run when there are several; this storey's own otherwise.
-  const budget = ownMeasures ?? ctx.building.attributionMeasures ?? { left: MAX_ATTRIBUTION_MEASURES, storeys: 0 };
+  const budget = measures ?? ctx.building.attributionMeasures ?? { left: MAX_ATTRIBUTION_MEASURES, storeys: 0 };
   // Each later storey keeps one measure for its own first union: only a first union may
   // spend into that reserve.
   const later = Math.max(0, budget.storeys);
@@ -621,6 +619,8 @@ export const pathTooNarrow: LintRule = {
     if (ctx.building.attributionMeasures) ctx.building.attributionMeasures.storeys--;
     const circ = measuredCirculationOf(ctx);
     if (!circ) return [];
+    // PS0.10: with no main entrance named, the walk starts from every exterior door.
+    if (ctx.mainEntrance()?.door === null) ctx.skip("no-main-entrance");
     // PS0.10: a room with a door of its own from outside that the walk does not keep is judged by
     // the full view (that door is a way into it); every other room by the walk from the main
     // entrance. One view, and one model, when the walk keeps every way in.
@@ -655,17 +655,21 @@ export const pathTooNarrow: LintRule = {
     const warnedIn = (fs: ReadonlyMap<string, { bottleneckClearWidthMm: number }>, seal: ReadonlyMap<string, number>) =>
       rooms.filter((r) => !seal.has(r.id) && (fs.get(r.id)?.bottleneckClearWidthMm ?? min) < min).map((r) => r.id);
     const widths = (c: CirculationModel) => new Map(c.rooms.map((rc) => [rc.roomId, rc.bottleneckClearWidthMm]));
-    // The full view is attributed first, with the storey's own measures and over exactly the rooms
-    // it warns, as before PS0.10, so a room judged by its own door reads byte for byte as it did.
-    // The walk view then gets measures of its own for the rooms it judges: still a count.
+    // ONE count of re-measures for both views (MAX_ATTRIBUTION_MEASURES per run). The full view is
+    // attributed first, over exactly the rooms it warns, as before PS0.10, so a room judged by its
+    // own door reads as it did; the walk view takes what is left, and a room it cannot afford gets
+    // the unattributed hints.
+    const measures = ctx.building.attributionMeasures ?? { left: MAX_ATTRIBUTION_MEASURES, storeys: 0 };
     const namedFull =
-      own.size > 0 ? attributeBottlenecks(ctx, widths(circFull), warnedIn(facts.full, seals.full), full) : null;
+      own.size > 0
+        ? attributeBottlenecks(ctx, widths(circFull), warnedIn(facts.full, seals.full), full, measures)
+        : null;
     const namedWalk = attributeBottlenecks(
       ctx,
       widths(circ),
       warnedIn(facts.walk, seals.walk).filter((id) => !own.has(id)),
       walk,
-      own.size > 0 ? { left: MAX_ATTRIBUTION_MEASURES, storeys: 0 } : undefined,
+      measures,
     );
     const named = {
       get: (id: string): AccessEdge[] | undefined => (own.has(id) ? namedFull?.get(id) : namedWalk.get(id)),

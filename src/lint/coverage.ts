@@ -70,7 +70,10 @@ export type LintSkipReason =
   | "unsupported-host-geometry"
   /** A room that is a kitchen and also the living room holds no kitchen fixture, so
    *  the rule cannot tell which end of it is the kitchen. */
-  | "no-kitchen-fixtures";
+  | "no-kitchen-fixtures"
+  /** The storey has more than one way in and names no main entrance (PS0.10: a tie, no
+   *  candidate, or an upper storey), so a route is judged from every exterior door. */
+  | "no-main-entrance";
 
 /** What each family checks, as the human coverage line names it. */
 export const FAMILY_NOUN: Readonly<Record<LintFamily, string>> = {
@@ -104,6 +107,7 @@ export const SKIP_WHY: Readonly<Record<LintSkipReason, string>> = {
   "balcony-only-entrance": "the only way in is a balcony or terrace door",
   "unsupported-host-geometry": "the door's wall is angled or curved",
   "no-kitchen-fixtures": "the room holds no kitchen fixtures to locate the kitchen",
+  "no-main-entrance": "no main entrance could be named",
 };
 
 /** One recorded skip, as the fold collects it. */

@@ -460,6 +460,8 @@ export const roomViaPrivate: LintRule = {
         ctx.skip(f.edges.some((e) => e.between.includes(EXTERIOR_NODE)) ? "balcony-only-entrance" : "no-entrance");
       return out;
     }
+    // PS0.10: with no main entrance named, routes are judged from every door to the ground.
+    if (ctx.mainEntrance()?.door === null) ctx.skip("no-main-entrance");
     const doms = privateDominators(ctx, f);
     if (doms.size === 0) return out;
     // W_BATH_VIA_BEDROOM's own question, asked exactly as `reachability.ts` asks it.
@@ -590,6 +592,7 @@ export const wetRoomDoor: LintRule = {
       return k === "bath" || k === "wc";
     });
     if (wets.length === 0) return out;
+    if (f.wayIn && ctx.mainEntrance()?.door === null) ctx.skip("no-main-entrance");
     const edges = f.edges;
     const doms = privateDominators(ctx, f);
     const tol = ctx.rules.tolMm;

@@ -3,11 +3,12 @@
 #   from the balcony door hides a 400 mm squeeze from the front door; reduced: the pinch is a sofa and a table across
 #   the living room); README PS0.10
 # expect: W_PATH_TOO_NARROW
-# status: todo
+# status: done
 # fact: from d_front the laundry lies past a sofa (x 2450-4650) and a table (x 4650-7700) across the living room at y
 #   3000; the gaps are 400 mm to the w_a face x 2050 and 200 mm to the east face x 7900. describe measures the
 #   laundry from d_bal (740 mm, entranceId d_bal), so lint is silent; with d_bal made a window, lint gives
-#   W_PATH_TOO_NARROW "Laundry" 500 mm
+#   W_PATH_TOO_NARROW "Laundry" 500 mm. Since PS0.10 the walk is judged from the main entrance (d_front, the only
+#   door from the ground once the balcony slider is set aside), so lint reports it as it stands
 plan "Pinched route to the laundry, masked by the balcony door" {
   units mm
   grid 50

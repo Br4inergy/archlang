@@ -282,7 +282,7 @@ When a main entrance is named, lint's `W_PATH_TOO_NARROW`, `W_ROOM_VIA_PRIVATE` 
 judge a route from it: another door from outside counts as a way in only into a room the main entrance
 cannot reach from inside, or when it is a `garage` door. So a patio or balcony door no longer
 hides a route blocked from the front door. When the fact refuses, they measure from every
-exterior door, and `W_PATH_TOO_NARROW`'s hint says so. Which rooms are reachable at all does not
+exterior door, and the coverage report says so (`no-main-entrance`). Which rooms are reachable at all does not
 change.
 `circulation` below, and `W_CIRCUITOUS_PATH`'s ratio, still measure each room from its nearest
 entrance.
@@ -1032,12 +1032,13 @@ label, as in every lint message. The reasons:
 | `no-uses` | room, reachability, privacy, daylight, contents and orientation checks | a room with no `uses` whose label classifies to no use |
 | `no-site` | orientation | the plan declares no `site` and has a bedroom, living or dining room with a window, so no window has a compass facing |
 | `single-storey` | storey matching | a `stair`, `elevator` or `escalator` on a plan with one storey |
-| `arc-window-unattributed` | daylight | a room bounded by a curved wall edge whose window is attributed to no room |
+| `arc-window-unattributed` | daylight | a room bounded by a curved wall edge whose window the shape attributes to no room (neither face probe finds a floor, and no bay opens into a room through the chord) |
 | `non-rectangular-room` | room and furniture checks | a polygon room: the garage-width check declines a `uses garage` one, and the fixture-orientation check (`W_FIXTURE_BACK_TO_ROOM`) any one |
 | `no-entrance` | reachability, circulation walk, privacy checks | a storey with rooms and no way in (`W_NO_ENTRANCE` still runs) |
 | `balcony-only-entrance` | privacy checks | every door to the outside opens onto a balcony or terrace, which these rules do not count as a way in (the access graph and the walk do) |
 | `unsupported-host-geometry` | door checks | a door on an angled or curved wall, which the doorway-landing and pocket-run checks do not measure |
 | `no-kitchen-fixtures` | privacy checks | a bath or WC door onto a room that is a kitchen and also the living room, which holds no sink, hob, oven, fridge, worktop, island or dishwasher, so `W_WET_ROOM_DOOR` cannot tell whether the door opens onto the kitchen |
+| `no-main-entrance` | circulation walk, privacy checks | a storey with more than one way in whose `access.mainEntrance` names no door (`tie`, `no-candidate`, `upper-storey`), so `W_PATH_TOO_NARROW`, `W_ROOM_VIA_PRIVATE` and `W_WET_ROOM_DOOR` judge a route from every exterior door |
 
 Three more reasons are reserved for families that do not exist yet: `no-brief`,
 `no-dwelling` and `no-operable-window-data`. In human mode `lint` prints one line on stderr

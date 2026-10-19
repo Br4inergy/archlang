@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { accessDigraph, buildDoorAccessGraph, reachFrom, resolvePlan, roomBox, type RoomBox } from "../src/analyze.js";
 import { entranceInputs, walkAccessGraph, walkWays } from "../src/analyze/entrance.js";
 import type { RDoor, ROpening, RRoom } from "../src/ir.js";
-import { describe as describePlan, lint } from "../src/index.js";
+import { describe as describePlan, lint, lintWithCoverage } from "../src/index.js";
 
 /**
  * The main entrance (plan-soundness PS0.10). Reachability and the walk were seeded from every
@@ -82,10 +82,20 @@ describe("PS0.10 — the main entrance", () => {
     const s = describePlan(src);
     expect(s.access.mainEntrance).toEqual({ door: null, basis: "tie", candidates: ["d_a", "d_b"] });
     expect(s.access.rooms.every((r) => !("depthFromMainEntrance" in r))).toBe(true);
-    // The walk keeps every way in, and the warning says the main entrance was refused.
+    // The walk keeps every way in, and the coverage report (not the hint) says no main entrance
+    // could be named, for the walk and for the privacy rules.
     const [d] = narrow(src);
     expect(d!.message).toContain('"Hall" squeezes to 640 mm');
-    expect(d!.hints!.at(-1)).toBe("Measured from every exterior door because no main entrance could be named (tie).");
+    expect(d!.hints!.join(" ")).not.toContain("main entrance");
+    const cov = lintWithCoverage(src).coverage!;
+    for (const fam of ["circulation", "privacy"])
+      expect(cov.families.find((f) => f.family === fam)!.skipped).toContainEqual({
+        reason: "no-main-entrance",
+        why: "no main entrance could be named",
+      });
+    // A storey that names its main entrance files no such skip.
+    const named = lintWithCoverage(read(`${FIRST_CONTACT}/1-apartment.arch`)).coverage!;
+    expect(JSON.stringify(named)).not.toContain("no-main-entrance");
   });
 
   it("a room reached only by its own door from outside keeps that door, and reads depthFromMainEntrance null", () => {

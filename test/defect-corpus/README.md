@@ -129,8 +129,10 @@ Two checks extend existing codes instead of adding one: a desk in front of a lea
   Instances outside the eight classes, and those in a class with no check a card
   names (A6, S2 bed sides; A7 hob against a side wall; C6, C7, K8 accessible WC layout), are left
   out for the planner.
-- The two masked-route cases (PS0.10) are silent because a balcony or patio door is a way in for
-  the walk; each `fact` gives the warning lint raises when that door is made a window.
+- The two masked-route cases (PS0.10) are reported since the walk is judged from the main entrance
+  (`describe().access.mainEntrance`): the balcony door is no candidate, and the patio door is a way
+  into its own room only. Each `fact` still gives the warning lint raised before only when that door
+  was made a window.
 
 ## Adding a case
 
