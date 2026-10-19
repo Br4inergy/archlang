@@ -30,7 +30,8 @@
  * contacts. The holes are then counted ({@link MAX_ENCLOSURE_FACES}), and the loops per grid
  * cell (the candidates any point test can meet, {@link MAX_LOOPS_PER_CELL}). Once the tree is
  * built, the curves every measurement will read are counted, and from them an upper bound on
- * the point tests and the loop tests they cost; each is capped ({@link FACE_BUDGET_CAPS}).
+ * the point tests and the loop tests and room-ring vertex walks they cost; each is capped
+ * ({@link FACE_BUDGET_CAPS}).
  * Past any cap the storey is refused whole, before any face or room is measured, and the face
  * rules say nothing about it. Under the caps {@link FaceWork} counts the work actually done.
  *
@@ -97,7 +98,12 @@ export const MAX_LOOPS_PER_CELL = 64;
  * corpus maxima are pinned beside them in `test/lint-space-enclosure.test.ts`).
  */
 export const FACE_BUDGET_CAPS = {
-  /** Point tests × candidate loops per test, over every measurement. */
+  /**
+   * Over every measurement: its probes (2 × an upper bound on the pieces it walks) × what one
+   * probe costs (the candidate loops of its point tests, plus the ring vertices of every room
+   * whose inside it asks). A room with hundreds of vertices crossed by many walls is charged
+   * here, not only one with many loops.
+   */
   candidateTests: 200_000_000,
   /** Σ over faces of the curves bounding the face (its hole and the hole's children). */
   faceCurves: 20_000,
@@ -111,7 +117,7 @@ export const FACE_BUDGET_CAPS = {
 export interface FaceBudget {
   /** The most loops whose boxes touch one grid cell (candidates per point test). */
   loopsPerCell: number;
-  /** Upper bound on point tests × candidates (see {@link FACE_BUDGET_CAPS}). */
+  /** Upper bound on probes × (candidate loops + ring vertices) (see {@link FACE_BUDGET_CAPS}). */
   candidateTests: number;
   faceCurves: number;
   faceRooms: number;
@@ -374,19 +380,26 @@ export function wallFaces(
   if (faceCurves > FACE_BUDGET_CAPS.faceCurves) return { refused: "too-many-face-curves", count: faceCurves };
   const coverBoxes = cover.map(roomBoxOf);
   let faceRooms = 0;
-  let pieces = 0;
+  // Each measurement probes both sides of every piece it walks (2 × pieces), and each probe
+  // costs the loops it can meet (`loopsPerCell`, per point test) plus a walk over the ring
+  // vertices of every room it asks about. Charged as that product, before any of it runs.
+  const L = Math.max(1, loopsPerCell);
+  let candidateTests = 0;
   holes.forEach((i, k) => {
     let meet = 0;
     let curves = faceCurveCounts[k]!;
+    let vertices = 0;
     cover.forEach((r, q) => {
       if (boxesMeet(coverBoxes[q]!, boxes[i]!, 0)) {
         meet++;
         curves += roomCurveCount(r);
+        vertices += roomCurveCount(r);
       }
     });
     faceRooms += meet;
-    // The face's own area, then its cover.
-    pieces += piecesBound(faceCurveCounts[k]!) + piecesBound(curves);
+    // The face's own area (one point test per probe), then its cover (a point test and every
+    // nearby room's inside test per probe).
+    candidateTests += 2 * piecesBound(faceCurveCounts[k]!) * L + 2 * piecesBound(curves) * (L + vertices);
   });
   if (faceRooms > FACE_BUDGET_CAPS.faceRooms) return { refused: "too-many-face-rooms", count: faceRooms };
   let roomCurves = 0;
@@ -395,12 +408,11 @@ export function wallFaces(
     let c = roomCurveCount(r);
     for (const i of loopIndex.queryBox(b)) if (boxesMeet(boxes[i]!, b, 0)) c += outline[i]!.length;
     roomCurves += c;
-    // Two measurements per room (outside, and inside faces).
-    pieces += 2 * piecesBound(c);
+    // Two measurements per room (outside, and inside faces), each probe two point tests and
+    // the room's own inside test.
+    candidateTests += 2 * 2 * piecesBound(c) * (2 * L + roomCurveCount(r));
   }
   if (roomCurves > FACE_BUDGET_CAPS.roomCurves) return { refused: "too-many-room-curves", count: roomCurves };
-  // Two probes per piece, each meeting at most `loopsPerCell` candidates.
-  const candidateTests = 2 * pieces * Math.max(1, loopsPerCell);
   if (candidateTests > FACE_BUDGET_CAPS.candidateTests)
     return { refused: "too-many-candidate-tests", count: candidateTests };
   const budget: FaceBudget = { loopsPerCell, candidateTests, faceCurves, faceRooms, roomCurves };

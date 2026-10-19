@@ -55,6 +55,7 @@ import { collinearOverlapLength } from "../../geometry/polygon.js";
 import type { ResolvedPlan, RRoom, RWall } from "../../ir.js";
 import { fmt2 } from "../../num-format.js";
 import type { LintContext, LintRule } from "../context.js";
+import type { EnclosureBudgetCap } from "../coverage.js";
 import { mm } from "../measure.js";
 
 /** Uses that make an open-plan pair: two rooms each with one of these need no wall between them. */
@@ -435,6 +436,18 @@ export const boundaryNoWall: LintRule = {
 
 // ─── walled faces (W_FLOOR_UNASSIGNED, W_ROOM_OUTSIDE_SHELL) ──────────────────────────
 
+/** Which of the coverage report's caps each refusal is, so its words name the one that tripped. */
+const CAP_OF: Readonly<Record<WallFacesRefused["refused"], EnclosureBudgetCap>> = {
+  "too-many-segments": "regions",
+  "too-many-wall-contacts": "regions",
+  "too-many-faces": "regions",
+  "too-many-face-curves": "regions",
+  "too-many-loops-per-cell": "nested-regions",
+  "too-many-face-rooms": "room-region-pairs",
+  "too-many-room-curves": "room-region-pairs",
+  "too-many-candidate-tests": "point-tests",
+};
+
 /** The faces of a storey, computed once per resolved plan and shared by both rules. */
 const FACES = new WeakMap<ResolvedPlan, WallFaces | WallFacesRefused | null>();
 /**
@@ -452,7 +465,7 @@ const facesOf = (ctx: LintContext): WallFaces | null => {
   if ("refused" in wf) {
     // Over a counted budget: the rule asking judges nothing on this storey, and says so in the
     // coverage report (filed under its own family by the fold).
-    ctx.skip("enclosure-budget");
+    ctx.skip("enclosure-budget", undefined, CAP_OF[wf.refused]);
     return null;
   }
   return wf;

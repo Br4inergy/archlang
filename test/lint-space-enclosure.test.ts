@@ -579,11 +579,25 @@ describe("review round 1 — the face rules are bounded by counts, charged befor
     expect(big && "refused" in big && big.count).toBe(MAX_WALL_CONTACTS + 1);
   });
 
-  it("so both face rules are silent on the refused lattice, and speak just under the bound", () => {
-    const n = Math.floor(Math.sqrt(MAX_ENCLOSURE_FACES));
+  it("so both face rules speak on a lattice just under every cap, and are silent past one", () => {
     // A hall drawn 2 m past the east wall: outside the shell, and most of it inside.
-    expect(codesOf(lattice(n, n * 1000 + 2000))).toContain("W_ROOM_OUTSIDE_SHELL");
-    expect(codesOf(lattice(n + 1, (n + 1) * 1000 + 2000))).not.toContain("W_ROOM_OUTSIDE_SHELL");
+    const past = (n: number): string => lattice(n, n * 1000 + 2000);
+    // 18²: 324 faces, and its point-test charge (191 164 128) just under the cap.
+    const { ir } = resolvePlan(past(18));
+    const rooms = ir!.elements.filter((e): e is RRoom => e.kind === "room");
+    const wf = wallFaces(ir!.walls, rooms, rooms);
+    if (!wf || "refused" in wf) throw new Error(`refused: ${JSON.stringify(wf)}`);
+    expect(wf.budget).toEqual({
+      loopsPerCell: 5,
+      candidateTests: 191_164_128,
+      faceCurves: 1296,
+      faceRooms: 324,
+      roomCurves: 1304,
+    });
+    expect(codesOf(past(18))).toContain("W_ROOM_OUTSIDE_SHELL");
+    // 20²: under the face cap, over the point-test cap. 21²: over the face cap.
+    expect(codesOf(past(20))).not.toContain("W_ROOM_OUTSIDE_SHELL");
+    expect(codesOf(past(21))).not.toContain("W_ROOM_OUTSIDE_SHELL");
   });
 });
 
@@ -650,18 +664,11 @@ describe("review round 2 — the face budget is charged before the work, from co
     expect(FACE_BUDGET_CAPS.faceRooms).toBeLessThan(40_000);
   });
 
-  it("measures the same lattice under one room, every charge counted and under its cap (lat20-rooms-1)", () => {
-    const wf = charge(lat20(1));
-    if (!wf || "refused" in wf) throw new Error(`refused: ${JSON.stringify(wf)}`);
-    expect(wf.budget).toEqual({
-      loopsPerCell: 5,
-      candidateTests: 103_986_400,
-      faceCurves: 1600,
-      faceRooms: 400,
-      roomCurves: 1608,
-    });
-    for (const k of ["candidateTests", "faceCurves", "faceRooms", "roomCurves"] as const)
-      expect(wf.budget[k]).toBeLessThanOrEqual(FACE_BUDGET_CAPS[k]);
+  it("charges the same lattice under one room by its point tests, ring vertices included (lat20-rooms-1)", () => {
+    // Each probe of the hall's own measurements is two point tests (5 loops per cell each)
+    // and the hall's 4-vertex inside test: 290 480 320 in all, over the cap.
+    expect(charge(lat20(1))).toEqual({ refused: "too-many-candidate-tests", count: 290_480_320 });
+    expect(FACE_BUDGET_CAPS.candidateTests).toBeLessThan(290_480_320);
   });
 
   it("charges an arc by its own extent, not its whole circle (library 131 → 51; a 60-arc drum is not refused)", () => {
@@ -739,11 +746,106 @@ describe("the coverage report names a refused storey (PS2.13 seam)", () => {
     expect(fam).toEqual({
       family: "enclosure",
       status: "partial",
-      skipped: [{ reason: "enclosure-budget", why: "too many walled regions to measure" }],
+      skipped: [
+        {
+          reason: "enclosure-budget",
+          why: "too many walled regions nested in one place to measure",
+          cap: "nested-regions",
+        },
+      ],
     });
     const measured = lintCoverage(
       readFileSync("test/defect-corpus/space-not-enclosed/bow-strip-unassigned.arch", "utf8"),
     )!;
     expect(measured.families.find((f) => f.family === "enclosure")).toEqual({ family: "enclosure", status: "ran" });
+  });
+});
+
+// ─── review round 3 ─────────────────────────────────────────────────────────────────────
+
+describe("review round 3 — a room's inside test is charged per probe, before the work", () => {
+  /**
+   * The reviewer's comb: `s` long free-standing stubs inside a 40 m box, one room with `t`
+   * teeth whose edges cross every stub, and `k` tiny stubs outside the box (they shrink the
+   * grid cell). Ported from `comb.mjs`, same numbers.
+   */
+  const comb = (s: number, t: number, k: number): string => {
+    const W = 40000;
+    const H = 40000;
+    const o = [`wall exterior thickness 200 { (0,0) (${W},0) (${W},${H}) (0,${H}) close }`];
+    for (let i = 0; i < s; i++)
+      o.push(`wall partition thickness 20 { (1000,${1000 + i * 300}) (${W - 1000},${1000 + i * 300}) }`);
+    const p = (W - 4000) / t;
+    const pts: Array<[number, number]> = [[1500, 400]];
+    for (let j = 0; j < t; j++) {
+      const x0 = Math.round(2000 + j * p);
+      const x1 = Math.round(2000 + j * p + p / 2);
+      pts.push([x0, 400], [x0, H - 500], [x1, H - 500], [x1, 400]);
+    }
+    pts.push([W - 1500, 400], [W - 1500, 300], [1500, 300]);
+    o.push(`room polygon ${pts.map(([x, y]) => `(${x},${y})`).join(" ")} label "Comb" uses storage`);
+    for (let j = 0; j < k; j++) {
+      const x = -20000 - (j % 40) * 500;
+      const y = Math.floor(j / 40) * 500;
+      o.push(`wall partition thickness 20 { (${x},${y}) (${x + 300},${y}) }`);
+    }
+    return P(o.join("\n"));
+  };
+  const charge = (src: string) => {
+    const { ir } = resolvePlan(src);
+    const rooms = ir!.elements.filter((e): e is RRoom => e.kind === "room");
+    return wallFaces(ir!.walls, rooms, rooms);
+  };
+
+  it("refuses combs whose many-vertex room is crossed by many walls (comb 60/100/400, 100/100/400)", () => {
+    expect(charge(comb(60, 100, 400))).toEqual({ refused: "too-many-candidate-tests", count: 2_085_773_472 });
+    expect(charge(comb(100, 100, 400))).toEqual({ refused: "too-many-candidate-tests", count: 3_239_282_592 });
+  });
+
+  it("still measures the corpus's largest ring (aquarium's 56-vertex concourse over its walls)", () => {
+    const src = readFileSync("examples/aquarium.arch", "utf8");
+    const { ir } = resolvePlan(src);
+    const rooms = ir!.elements.filter((e): e is RRoom => e.kind === "room");
+    expect(Math.max(...rooms.map((r) => r.poly?.length ?? 4))).toBe(56);
+    const wf = wallFaces(ir!.walls, rooms, rooms);
+    if (!wf || "refused" in wf) throw new Error(`refused: ${JSON.stringify(wf)}`);
+    expect(wf.budget.candidateTests).toBe(9_306_756);
+    expect(wf.budget.candidateTests).toBeLessThan(FACE_BUDGET_CAPS.candidateTests / 20);
+    expect(lintCoverage(src)!.families.find((f) => f.family === "enclosure")).toEqual({
+      family: "enclosure",
+      status: "ran",
+    });
+  });
+
+  it("names the cap that tripped in the coverage words, under the one reason id", () => {
+    const why = (src: string) =>
+      lintCoverage(src)!
+        .families.find((f) => f.family === "enclosure")!
+        .skipped!.map((s) => [s.reason, s.cap, s.why]);
+    const lat20 = (n: number): string => {
+      const walls = ["wall exterior thickness 200 { (0,0) (20000,0) (20000,20000) (0,20000) close }"];
+      for (let i = 1; i < 20; i++)
+        walls.push(
+          `wall partition thickness 100 { (${i * 1000},0) (${i * 1000},20000) }`,
+          `wall partition thickness 100 { (0,${i * 1000}) (20000,${i * 1000}) }`,
+        );
+      const rooms = Array.from({ length: n }, (_, i) => `room at (0,0) size 20000x19500 label "Hall ${i}" uses hall`);
+      return P(`${walls.join("\n")}\n${rooms.join("\n")}\ndoor at (500,0) width 800`);
+    };
+    expect(why(comb(60, 100, 400))).toEqual([["enclosure-budget", "point-tests", "too many point tests to measure"]]);
+    expect(why(lat20(300))).toEqual([
+      ["enclosure-budget", "room-region-pairs", "too many room–region pairs to measure"],
+    ]);
+    // 21 x 21 cells of 1 m: 441 faces, over the face cap.
+    const cells: string[] = ["wall exterior thickness 200 { (0,0) (21000,0) (21000,21000) (0,21000) close }"];
+    for (let i = 1; i < 21; i++)
+      cells.push(
+        `wall partition thickness 100 { (${i * 1000},0) (${i * 1000},21000) }`,
+        `wall partition thickness 100 { (0,${i * 1000}) (21000,${i * 1000}) }`,
+      );
+    cells.push('room at (0,0) size 21000x21000 label "Hall" uses hall');
+    expect(why(P(cells.join("\n")))).toEqual([
+      ["enclosure-budget", "regions", "too many walls or walled regions to measure"],
+    ]);
   });
 });
