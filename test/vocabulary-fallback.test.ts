@@ -122,7 +122,7 @@ describe("PS2.18: a US/UK house's main rooms", () => {
     for (const [l, word] of [
       ["Snug", "snug"],
       ["Den", "den"],
-    ])
+    ] as const)
       expect(classifyLabelUses(l), l).toEqual({ uses: ["living"], aliases: [{ kind: "living", word }] });
   });
 
