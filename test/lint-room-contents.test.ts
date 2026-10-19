@@ -626,6 +626,33 @@ ${extra}}
     expect(d!.hints![0]).toContain("`furniture counter in r_live anchor top-left flush size 400x600`");
   });
 
+  it("a 400 mm worktop quoted in a corner says its rotation, so pasting the hint raises nothing", () => {
+    // Review round 2: the resolver reads a `counter` as the catalogue's square piece, so in a
+    // corner with two walls it derives no rotation, and the pasted 400 x 600 worktop stood with
+    // its back to the room (W_FIXTURE_BACK_TO_ROOM).
+    const src = `plan "F" {
+  units mm
+  grid 50
+  wall id=shell exterior thickness 200 { (0,0) (4000,0) (4000,4450) (0,4450) close }
+  wall id=w_mid partition thickness 100 { (0,1450) (4000,1450) }
+  room id=r_x at (0,0) size 4000x1450 label "X" uses living kitchen
+  room id=r_h at (0,1450) size 4000x3000 label "Hall" uses hall
+  door id=d_in at (2000,4450) width 900 wall shell
+  door id=d_x at (2150,1450) width 800 wall w_mid swing out
+  window at (2800,0) width 900 wall shell
+}
+`;
+    const [d] = lint(src).filter((x) => x.code === "W_ROOM_NO_FIXTURE");
+    const stmts = [...d!.hints![0]!.matchAll(/`(furniture [^`]+)`/g)].map((m) => m[1]!);
+    expect(stmts).toContain("furniture counter in r_x anchor bottom-left flush size 400x600 rotate 180");
+    const pasted = src.replace(/\n}\s*$/, `\n${stmts.map((s) => `  ${s}`).join("\n")}\n}\n`);
+    const before = new Set(lint(src).map((x) => `${x.code}|${x.message}`));
+    const gained = lint(pasted)
+      .filter((x) => x.code !== "W_ROOM_MISSING_DEFINING" && x.code !== "W_ROOM_NO_FIXTURE")
+      .filter((x) => !before.has(`${x.code}|${x.message}`));
+    expect(gained.map((x) => x.code)).toEqual([]);
+  });
+
   it("leaves the kitchen out whole, and says so, when no worktop fits: never a sink and a hob alone", () => {
     const src = kitchen(
       1650,

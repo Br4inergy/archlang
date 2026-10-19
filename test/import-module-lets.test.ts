@@ -469,6 +469,14 @@ suite("a module `let` that fails reports as it does in the module", () => {
  * too, as `finish` does, so `core-and-shell` and five `eval/fidelity-plans` quote paste-able
  * statements again (sink, stove and worktop) where the first commit's hint said "make room
  * first"; `lint()` only, and the first commit's `lint()` put back reproduces each of its rows.
+ * The same size fallback reaches every defining piece with more than one size: a bed's hint
+ * now tries 1500 then 900 mm (`docs/plans/plan-soundness/repro/family-apartment.arch`'s "no
+ * bed" quotes `bed … size 900x2000`; not a row here). Review round 2: a hint's set is linted
+ * with its pieces standing and is not quoted if it would raise any other finding, and a corner
+ * worktop the resolver would not turn quotes its `rotate`; `two-bed-min-area.laundered`'s kitchen
+ * hint now says its placement would raise another finding (pasted, its pieces opened the
+ * bathroom straight onto the kitchen, `W_WET_ROOM_DOOR`); `lint()` only, round 1's `lint()` put
+ * back reproduces its row (e621f33b…).
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
@@ -598,7 +606,7 @@ const BASELINE: [string, string][] = [
   ],
   [
     "eval/fidelity-plans/two-bed-min-area.laundered.arch",
-    "e621f33bb3e64a9d664d1f466b3b37123ea35b62e85ad5ec63f7711f8358bb28",
+    "f34b44502b0d494422c40d073d52068a14a9fe3066085cb1b297c897e6492d3d",
   ],
   [
     "eval/fidelity-plans/wide-doorways.faithful.arch",

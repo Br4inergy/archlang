@@ -121,9 +121,13 @@ export function pasteFailureWhy(ctx: LintContext, failure: PasteFailure): string
     ? `the plan's \`grid ${fmt2(ctx.ir.grid)}\` snaps that footprint away, so use a finer grid`
     : failure === "grid-offset"
       ? `the plan's \`grid ${fmt2(ctx.ir.grid)}\` snaps an \`at (x,y)\` placement off the wall face here, so use a finer grid or a rectangular room with \`anchor … flush\``
-      : failure === "no-wall"
-        ? "it has no straight wall running square to the page for one to back onto, so give it one or place the fixture with `at (x,y)` and `rotate`"
-        : "no wall of it has a run clear of its doors and furniture for one, so make room first";
+      : failure === "squeeze"
+        ? "the placement found would squeeze the walk below its minimum clear width (`W_PATH_TOO_NARROW`), so make room first"
+        : failure === "raises"
+          ? "the placement found would raise another finding, so place it by hand"
+          : failure === "no-wall"
+            ? "it has no straight wall running square to the page for one to back onto, so give it one or place the fixture with `at (x,y)` and `rotate`"
+            : "no wall of it has a run clear of its doors and furniture for one, so make room first";
 }
 
 /** What a room held to a per-use floor is called in the `W_ROOM_TOO_SMALL` message. */

@@ -267,6 +267,9 @@ const FRAGMENTS: readonly string[] = [
   "En-Suite",
   "Car_Port",
   "living/dining",
+  "Day Nursery",
+  "day-nursery",
+  "Night nursery",
   "Hallmark",
   "bedrooms",
   "2",
@@ -367,6 +370,15 @@ describe("label classification: the one-split matcher against the per-word one",
     expect(synHits).toBeGreaterThan(130);
     expect(tally.suffix).toBeGreaterThan(20);
   }, 120_000);
+
+  it("the fallback's guard phrase: a day nursery is not a bedroom, a night nursery is", () => {
+    // PS2.19 review 2: without these the oracle never met the phrase, and dropping the guard
+    // from the classifier left this file green.
+    for (const l of ["Day Nursery", "day-nursery", "Day_Nursery 2", "Night nursery", "Nursery"]) compareLabel(l);
+    expect(classifyLabelUses("Day Nursery").uses).toEqual([]);
+    expect(classifyLabelUses("day-nursery").uses).toEqual([]);
+    expect(classifyLabelUses("Night nursery").uses).toEqual(["bedroom"]);
+  });
 
   it("the synonym tables' own entries, as labels and against each other", () => {
     const syns = [...new Set([...USE_WORDS, ...CONCEPT_WORDS])];

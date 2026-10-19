@@ -10,6 +10,7 @@ import type { UseKind } from "../ast.js";
 import { defaultFootprint } from "../fixtures-catalog.js";
 import { FURNISH_TABLE, type FurnishItem } from "../furnish-table.js";
 import type { RFurniture, RRoom } from "../ir.js";
+import { LINT_RULES } from "./rules/index.js";
 import type { LintContext } from "./context.js";
 import { type PasteFailure, pasteFixture } from "./fixture-paste.js";
 
@@ -132,5 +133,49 @@ export function pasteSet(
         failure: first?.failure ?? "no-room",
       };
   }
+  // Each piece is checked against what the placement rules measure, one at a time. The SET can
+  // still raise what no single check sees: two pieces on different walls can squeeze the walk
+  // below its minimum clear width (`W_PATH_TOO_NARROW`), and a kitchen fixture that now locates
+  // the kitchen beside a bathroom door lets `W_WET_ROOM_DOOR` judge it. So the whole ruleset is
+  // run once with the pieces standing, and a set that would add any finding other than the
+  // room's own contents findings is not quoted: a hint that warns when pasted is worse than none.
+  // Both runs use copies of the context that file no coverage notes and spend none of the
+  // lint run's shared counted budgets (each copy counts its own `W_PATH_TOO_NARROW` door
+  // attribution, as a single-storey plan's context does), so this check reports and changes
+  // nothing outside itself; a nested hint (a rule run here quoting its own set) is not
+  // verified again, so the extra work is two lint passes per quoted set, bounded by the rooms.
+  if (stmts.length > 0 && !(VERIFYING in ctx)) {
+    const quiet = (c: LintContext): LintContext =>
+      ({
+        ...c,
+        skip: () => {},
+        building: ownBudget(c.building),
+        [VERIFYING]: true,
+      }) as LintContext;
+    const said = (c: LintContext): string[] =>
+      LINT_RULES.flatMap((r) => r.check(quiet(c)))
+        .filter((d) => d.code !== "W_ROOM_NO_FIXTURE" && d.code !== "W_ROOM_MISSING_DEFINING")
+        .map((d) => `${d.code}|${d.message}`);
+    const before = new Set(said(ctx));
+    const gained = said(here).find((m) => !before.has(m));
+    if (gained !== undefined) {
+      const last = items[items.length - 1]!;
+      return {
+        item: last,
+        footprint: footprintsOf(last, last.category)[0] ?? null,
+        failure: gained.startsWith("W_PATH_TOO_NARROW|") ? "squeeze" : "raises",
+      };
+    }
+  }
   return { stmts };
 }
+
+/** The building context without the lint run's shared attribution budget. */
+function ownBudget(b: LintContext["building"]): LintContext["building"] {
+  const { attributionMeasures: _shared, ...own } = b;
+  return own;
+}
+
+/** Marks a context {@link pasteSet} built to re-lint a set with its pieces standing: a hint a
+ *  rule quotes inside that run is not verified again. */
+const VERIFYING = Symbol("pasteSet verifying");

@@ -36,7 +36,7 @@ import {
   rotateForBackEdge,
 } from "../analyze.js";
 import type { FurnitureAnchor } from "../ast.js";
-import { frontClearanceMm, requiresWall } from "../fixtures-catalog.js";
+import { defaultFootprint, frontClearanceMm, requiresWall } from "../fixtures-catalog.js";
 import { doorSwing, sectorIntersectsRect } from "../geometry.js";
 import { pointInPolygon } from "../geometry/polygon.js";
 import { type BBox, doorLandingRect, rectsOverlap, wallIntrusionDepth } from "../geometry/rect.js";
@@ -107,7 +107,7 @@ export function placementClear(
  * edge to back onto; no clear run on any; the grid snaps the footprint to nothing; or a run
  * that IS clear at exact coordinates, which the grid only lets `at` reach off the wall face.
  */
-export type PasteFailure = "no-wall" | "no-room" | "grid" | "grid-offset";
+export type PasteFailure = "no-wall" | "no-room" | "grid" | "grid-offset" | "squeeze" | "raises";
 
 /**
  * The statement that places one `category` fixture clear in `room`, or why there is none.
@@ -150,11 +150,23 @@ export function pasteFixture(
       walled = true;
       const { w, h } = sizeOn(edge);
       for (const a of EDGE_ANCHORS[edge]) {
-        // The derived rotation needs exactly this edge among the anchored, walled edges the
-        // footprint's aspect allows (`placeInRoom`).
-        const shape = backCandidateEdges({ w, h }, { along, depth });
-        const backed = ANCHOR_BACK_EDGES[a].filter((e) => shape.includes(e) && face(rect, e) !== null);
+        // The quoted footprint's aspect must make this edge the one anchored, walled edge it
+        // can back onto. The resolver derives the rotation the same way, but reads the
+        // CATALOGUE footprint, not the size quoted (`placeInRoom`): a 400 × 600 worktop is a
+        // square `counter` to it, so in a corner with both walls standing it derives no
+        // rotation and the piece stands with its back to the room (`W_FIXTURE_BACK_TO_ROOM`).
+        // Where the two readings differ, the statement quotes the rotation explicitly.
+        const backedBy = (shape: readonly RectEdge[]) =>
+          ANCHOR_BACK_EDGES[a].filter((e) => shape.includes(e) && face(rect, e) !== null);
+        const backed = backedBy(backCandidateEdges({ w, h }, { along, depth }));
         if (backed.length !== 1 || backed[0] !== edge) continue;
+        const derived = backedBy(backCandidateEdges({ w, h }, defaultFootprint(category)));
+        // A piece the resolver derives no turn for stands at rotate 0 (back on the top edge), so
+        // that turn goes unsaid; any other is written out.
+        const turn =
+          (derived.length === 1 && derived[0] === edge) || (derived.length !== 1 && rotateForBackEdge(edge) === 0)
+            ? ""
+            : ` rotate ${rotateForBackEdge(edge)}`;
         const f = (e: RectEdge) => (ANCHOR_BACK_EDGES[a].includes(e) ? face(rect, e) : null);
         const x =
           a === "top-left" || a === "left" || a === "bottom-left"
@@ -170,7 +182,7 @@ export function pasteFixture(
               : rect.y + rect.h / 2 - h / 2;
         if (fits({ x, y, w, h }, edge))
           return {
-            stmt: `furniture ${category} in ${room.id} anchor ${a} flush size ${printed(edge)}`,
+            stmt: `furniture ${category} in ${room.id} anchor ${a} flush size ${printed(edge)}${turn}`,
             rect: { x, y, w, h },
             rotate: rotateForBackEdge(edge),
           };
