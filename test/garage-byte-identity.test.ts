@@ -167,11 +167,12 @@ const ROOT = join(HERE, "..");
 // `describe().access` gains the appended `mainEntrance` (`d_front`, the door on the `site`
 // street side) and each room's `depthFromMainEntrance`; SVG and `lint()` byte-identical, and
 // the previous describe() put back reproduces every previous row (./byte-identity-baseline.ts,
-// "`describe().access` names the main entrance").
+// "`describe().access` names the main entrance"). `bungalow` re-measured again in the PS0.10
+// review round (its fact became `entry-room`), describe() only, the same way.
 const BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f",
   "laneway-house.arch": "6b064cc3a3f173f8ae7d94a5030e1f66e2b84a108047fed2a79d645f1526dfc3",
-  "bungalow.arch": "38f10b3a35b6e821a0b6aaa90795e5c195bd7bb1bc2665c399a6d1dcbbf637dd",
+  "bungalow.arch": "2dda41b22b152e73653a72295914356a0ea1be8133f1090b18efeaa53861c665",
   // Re-measured for the `overhead` flag. Its SOURCE gained two statements —
   // a `range_hood` over the stove and a `mirror` over the basin, the two correct drawings
   // the missing flag had kept out of the flagship — so this plan is a different building
@@ -198,7 +199,7 @@ const BASELINE: Readonly<Record<string, string>> = {
 const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a",
   "laneway-house.arch": "f3afd6b57e647c471d8efbfe92f824549cdd54b82c1f8a9d530e7e4f4112d7ab",
-  "bungalow.arch": "9cd9231204f6b07bee5ddfa6b67d92dabad26fbfce3c8705beb086048a6e579d",
+  "bungalow.arch": "df18453476656dd4bb691902059b577d7ec6202f124797e07209d0d354fd82e8",
   // `furnished-flat.arch` is the ONE value in this table that is not the original `5298b99`
   // measurement, and the exception proves the rule rather than bending it. Its SOURCE keeps
   // being edited -- seven of the new families in the furniture pass, then a `range_hood` and a `mirror`

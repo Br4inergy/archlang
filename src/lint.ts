@@ -23,8 +23,8 @@ import { type BuildingContext, buildLintContext } from "./lint/context.js";
 import { MAX_ATTRIBUTION_MEASURES } from "./lint/rules/circulation-facts.js";
 import { ONCE_PER_PLACEMENT_CODES } from "./lint/rules/dims.js";
 import { LINT_RULES } from "./lint/rules/index.js";
-import { DEFAULT_RULESET, LINT_PROFILES, type LintOptions, type LintRuleset } from "./lint/ruleset.js";
-import { arrivalRuns, verticalConnections, verticalReach } from "./vertical.js";
+import { LINT_PROFILES, type LintOptions, type LintRuleset, resolveRuleset } from "./lint/ruleset.js";
+import { arrivalRuns, levelsEnteredFromBelow, verticalConnections, verticalReach } from "./vertical.js";
 
 export {
   DEFAULT_RULESET,
@@ -54,7 +54,7 @@ export { LINT_RULES } from "./lint/rules/index.js";
 export function lint(source: string, opts: LintOptions = {}): Diagnostic[] {
   // Ruleset cascade: defaults → named profile → explicit per-call overrides.
   const profileRules = opts.profile ? (LINT_PROFILES[opts.profile] ?? {}) : {};
-  const rules: LintRuleset = { ...DEFAULT_RULESET, ...profileRules, ...opts.ruleset };
+  const rules: LintRuleset = resolveRuleset(profileRules, opts.ruleset);
   const { ir, levels } = resolvePlan(source, opts);
   if (!ir) return [];
 
@@ -176,7 +176,7 @@ function withoutFixes(d: Diagnostic): Diagnostic {
  * entrance of its own, which rooms a shaft delivers you into. Computed once for the whole
  * building so no rule re-derives it, and deterministic (levels are already ascending).
  */
-function buildingContexts(levels: readonly ResolvedLevel[], tolMm: number): Map<number, BuildingContext> {
+export function buildingContexts(levels: readonly ResolvedLevel[], tolMm: number): Map<number, BuildingContext> {
   const inputs = levels.map((l) => ({ level: l.level, ir: l.ir }));
   const connections = verticalConnections(inputs);
   const peerIds = new Set(connections.map((c) => c.id));
@@ -189,6 +189,7 @@ function buildingContexts(levels: readonly ResolvedLevel[], tolMm: number): Map<
   const roomReach = buildingRoomReach(inputs, tolMm ?? DEFAULT_TOL);
   const reach = verticalReach(inputs, grounded, roomReach);
   const runs = arrivalRuns(inputs, grounded, roomReach);
+  const fromBelow = levelsEnteredFromBelow(connections);
   const out = new Map<number, BuildingContext>();
   // One re-measure budget for the whole building, not one per storey.
   const attributionMeasures = { left: MAX_ATTRIBUTION_MEASURES, storeys: levels.length };
@@ -199,6 +200,7 @@ function buildingContexts(levels: readonly ResolvedLevel[], tolMm: number): Map<
       arrivalRooms: reach.arrivalRooms.get(l.level) ?? [],
       arrivalShafts: runs.get(l.level) ?? [],
       attributionMeasures,
+      ...(fromBelow.has(l.level) ? { enteredFromBelow: true } : {}),
     });
   }
   return out;

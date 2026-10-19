@@ -172,8 +172,21 @@ export interface LintRuleset {
    *    width (`W_PATH_TOO_NARROW`), never its area.
    * Clauses as read in `docs/plans/plan-soundness/research/prior-art.md` §3.1 (full text
    * extracted), applied as advice, never as compliance (ADR 0005).
+   *
+   * Merged PER USE ({@link resolveRuleset}): a profile or a caller that sets `{ wc: 1.5 }` changes
+   * the WC's floor and keeps every other default, exemptions included.
    */
   minRoomAreaByUseM2: Readonly<Partial<Record<UseKind, number | null>>>;
+  /**
+   * How {@link minRoomAreaM2} and {@link minRoomAreaByUseM2} combine. `"by-use"` (the default):
+   * a use's own floor replaces the generic one. `"at-least-generic"`: every room is held to at
+   * least the generic floor, and a use's own floor applies only where it is higher (an exempt use
+   * counts as no floor of its own). {@link resolveRuleset} picks `"at-least-generic"` whenever a
+   * profile or the caller sets `minRoomAreaM2` explicitly, so a stricter generic floor (the
+   * `accessibility-advisory` profile's 5 m²) is not undone by the per-use table, which has no
+   * researched accessible values yet.
+   */
+  roomAreaFloorMode: "by-use" | "at-least-generic";
 }
 
 export const DEFAULT_RULESET: LintRuleset = {
@@ -202,6 +215,7 @@ export const DEFAULT_RULESET: LintRuleset = {
     circulation: null,
     entry: null,
   }),
+  roomAreaFloorMode: "by-use",
 };
 
 /**
@@ -229,6 +243,32 @@ export const LINT_PROFILES: Readonly<Record<string, Partial<LintRuleset>>> = Obj
 
 /** The names of the built-in {@link LINT_PROFILES}, for CLI validation. */
 export const LINT_PROFILE_NAMES: readonly string[] = Object.keys(LINT_PROFILES);
+
+const hasOwn = (o: object | undefined, k: string): boolean => o !== undefined && Object.hasOwn(o, k);
+
+/**
+ * The ruleset cascade `lint()` runs: defaults, then the named profile's overrides, then the
+ * caller's. Flat keys are replaced; `minRoomAreaByUseM2` is merged per use (later layers win
+ * per key, the other keys keep their defaults). `roomAreaFloorMode` is `"at-least-generic"`
+ * when a profile or the caller sets `minRoomAreaM2` without setting the mode.
+ */
+export function resolveRuleset(profile: Partial<LintRuleset> = {}, ruleset: Partial<LintRuleset> = {}): LintRuleset {
+  const mode =
+    ruleset.roomAreaFloorMode ??
+    profile.roomAreaFloorMode ??
+    (hasOwn(profile, "minRoomAreaM2") || hasOwn(ruleset, "minRoomAreaM2") ? "at-least-generic" : "by-use");
+  return {
+    ...DEFAULT_RULESET,
+    ...profile,
+    ...ruleset,
+    minRoomAreaByUseM2: {
+      ...DEFAULT_RULESET.minRoomAreaByUseM2,
+      ...profile.minRoomAreaByUseM2,
+      ...ruleset.minRoomAreaByUseM2,
+    },
+    roomAreaFloorMode: mode,
+  };
+}
 
 export interface LintOptions extends AnalyzeOptions {
   /** A named profile from {@link LINT_PROFILES} (applied before `ruleset`). */

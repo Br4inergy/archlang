@@ -286,7 +286,8 @@ function privateDominators(ctx: LintContext, f: Facts): Map<string, string[]> {
   for (const p of ps) {
     const without = hops(f.g, f.sources, (id) => id === p.id);
     for (const r of ctx.rooms) {
-      if (r.id === p.id || !f.depth.has(r.id) || without.has(r.id)) continue;
+      // A room with a door of its own to the ground is never cut off: that door is a way in.
+      if (r.id === p.id || !f.depth.has(r.id) || without.has(r.id) || f.ground.some((w) => w.room === r.id)) continue;
       const list = out.get(r.id) ?? [];
       list.push(p.id);
       out.set(r.id, list);

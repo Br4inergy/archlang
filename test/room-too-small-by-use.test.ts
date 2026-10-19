@@ -71,9 +71,38 @@ describe("W_ROOM_TOO_SMALL — the floor follows the room's use", () => {
     expect(d!.message).toBe('Room "Cupboard" is only 2.25 m² (under 3 m², the floor for a room used as storage).');
     // A floor a caller sets has no source the rule could name.
     expect(d!.hints![0]).toBe("Increase its `size`, or merge it into an adjacent space.");
-    // Emptying the table restores the single 4 m² floor for every room.
-    expect(tooSmall(src, { ruleset: { minRoomAreaByUseM2: {} } }).map((x) => x.message)).toEqual([
-      'Room "Cupboard" is only 2.25 m² (under 4 m²).',
+  });
+
+  it("the table merges per use: one key overrides, every other default (exemptions included) stays", () => {
+    const src = plan(`room id=r_wc at (0,0) size 1000x1400 label "WC"
+  room id=r_cup at (1500,0) size 1500x1500 label "Cupboard" uses storage`);
+    // Default: the 1.4 m² WC clears 1.1, the cupboard is exempt.
+    expect(tooSmall(src)).toEqual([]);
+    const [d, ...rest] = tooSmall(src, { ruleset: { minRoomAreaByUseM2: { wc: 1.5 } } });
+    // The cupboard stays exempt; only the WC's floor moved.
+    expect(rest).toEqual([]);
+    expect(d!.message).toBe('Room "WC" is only 1.4 m² (under 1.5 m², the floor for a WC).');
+    // 1.5 is not GB 50096's 1.10, so the clause is not cited for it.
+    expect(d!.hints!.join(" ")).not.toContain("GB 50096");
+    // At the default value the clause is cited.
+    const [e] = tooSmall(plan(`room id=r_wc at (0,0) size 1000x1000 label "WC"`), {
+      ruleset: { minRoomAreaByUseM2: { wc: 1.1 } },
+    });
+    expect(e!.hints![0]).toContain("GB 50096-2011 5.4.2");
+  });
+
+  it("a profile or caller that sets the generic floor holds every room to at least it (accessibility-advisory)", () => {
+    // The profile sets 5 m², and no researched accessible per-use table exists: a 4.5 m² bath and
+    // a 2.25 m² cupboard are held to 5 m², with the message the single floor always gave.
+    const src = plan(`room id=r_b at (0,0) size 1500x3000 label "Bathroom"
+  room id=r_cup at (1500,0) size 1500x1500 label "Cupboard" uses storage`);
+    expect(tooSmall(src)).toEqual([]);
+    expect(tooSmall(src, { profile: "accessibility-advisory" }).map((d) => d.message)).toEqual([
+      'Room "Bathroom" is only 4.5 m² (under 5 m²).',
+      'Room "Cupboard" is only 2.25 m² (under 5 m²).',
     ]);
+    // The same through the caller's ruleset; and an explicit mode keeps the per-use table.
+    expect(tooSmall(src, { ruleset: { minRoomAreaM2: 5 } })).toHaveLength(2);
+    expect(tooSmall(src, { ruleset: { minRoomAreaM2: 5, roomAreaFloorMode: "by-use" } })).toEqual([]);
   });
 });

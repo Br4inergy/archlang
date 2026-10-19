@@ -10,21 +10,24 @@
  * walk is judged from. It is the one place a storey's ways in are classified: the circulation
  * rules and the privacy rules (`src/lint/rules/privacy.ts`) both read it.
  *
- * **The choice, and when it is refused** (ADR 0005: report the ambiguity, never guess). The
- * candidates are the storey's exterior DOORS (a leaf: a cased opening is not a front door) that
- * are not a `garage` door and do not open onto an `outdoor balcony` ({@link doorFacesBalcony}).
- * Then, in order:
- *  1. With `site`, the candidates whose wall faces `site.street`: the outward side of the host
- *     wall, probed one wall thickness off each face (the side whose probe is on no room's floor),
- *     turned by `north`. One is the main entrance (`street`); of several, the widest by nominal
- *     width, and a tie is refused (`tie`).
- *  2. Otherwise (no `site`, or no candidate faces the street), the widest candidate (`widest`).
- *     A tie is refused (`tie`), and so is a widest door that is not a hinged leaf while a hinged
- *     candidate exists (`kind-conflict`): that is a patio slider wider than the front door, which
- *     width alone would crown, and equally a clinic's sliding front door beside a hinged fire
- *     exit. The two read the same, so neither is chosen.
- *  3. No candidate: refused (`no-candidate`).
- * A refusal keeps every way in, exactly as before, and the fact still says why.
+ * **The choice, and when it is refused** (ADR 0005: report the ambiguity, never guess; a
+ * deterministic bad heuristic is still an arranger, so WIDTH never decides: a wider back or
+ * delivery door is not a front door). The candidates are the storey's exterior DOORS (a leaf: a
+ * cased opening is not a front door) that are not a `garage` door and do not open onto an
+ * `outdoor balcony` ({@link doorFacesBalcony}). Each step must single out exactly one door, or
+ * the next step is asked:
+ *  0. One candidate: it is the only door from the ground (`sole`).
+ *  1. The candidates opening into an entrance space: a room whose uses ({@link roomUses}) include
+ *     entry, hall or circulation and no private or service use (`entry-room`). Of several, step 2
+ *     is asked of those alone.
+ *  2. With `site`, the HINGED candidates whose wall faces `site.street`: the outward side of the
+ *     host wall, probed one wall thickness off each face (the side whose probe is on no room's
+ *     floor), turned by `north` (`street`). A slider on the street is a shop front or a patio
+ *     door as often as a front door, so it is never chosen here.
+ *  3. Otherwise refused: `tie` (the doors nothing singled out are listed), or `no-candidate`.
+ * A storey a shaft arrives on from below names none (`upper-storey`): which of its exterior doors
+ * is a way in at all is PS0.3's question. A refusal keeps every way in, exactly as before, and
+ * the fact still says why.
  *
  * **The ways a walk keeps** ({@link walkWays}): the main entrance; every `garage` door (a
  * vehicle entrance by its authored kind: whoever arrives by car starts there); and every other
@@ -50,7 +53,9 @@ import {
   type MainEntranceFact,
   pointInRoomBox,
   type RoomBox,
+  roomUses,
 } from "../analyze.js";
+import type { UseKind } from "../ast.js";
 import { wallFaceProbes } from "../geometry.js";
 import type { RDoor, ROpening, ROutdoor, RRoom, ResolvedPlan } from "../ir.js";
 import { type CompassLetter, deriveSite, toCompass } from "../site.js";
@@ -64,10 +69,17 @@ export interface EntranceInputs {
   roomRects: ReadonlyMap<string, RoomBox>;
   site: ResolvedPlan["site"];
   north: ResolvedPlan["north"];
+  /** A shaft arrives on this storey from a storey below (`levelsEnteredFromBelow`): it names
+   *  no main entrance (basis `upper-storey`), and its walk keeps every way in. */
+  upperStorey?: boolean;
 }
 
 /** The {@link EntranceInputs} of a resolved storey. */
-export function entranceInputs(ir: ResolvedPlan, roomRects: ReadonlyMap<string, RoomBox>): EntranceInputs {
+export function entranceInputs(
+  ir: ResolvedPlan,
+  roomRects: ReadonlyMap<string, RoomBox>,
+  upperStorey = false,
+): EntranceInputs {
   return {
     rooms: ir.elements.filter((e): e is RRoom => e.kind === "room"),
     doors: ir.elements.filter((e): e is RDoor => e.kind === "door"),
@@ -76,6 +88,7 @@ export function entranceInputs(ir: ResolvedPlan, roomRects: ReadonlyMap<string, 
     roomRects,
     site: ir.site,
     north: ir.north,
+    ...(upperStorey ? { upperStorey } : {}),
   };
 }
 
@@ -122,46 +135,64 @@ function doorFacing(d: RDoor, roomRects: ReadonlyMap<string, RoomBox>, turns: 0 
   return toCompass(page, turns);
 }
 
-/** The doors of `ds` at the greatest nominal width, in order. */
-function widest(ds: readonly RDoor[]): RDoor[] {
-  let max = Number.NEGATIVE_INFINITY;
-  for (const d of ds) if (d.width > max) max = d.width;
-  return ds.filter((d) => d.width === max);
-}
-
 /** A door with a hinged leaf: the default kind, or `hinged` written out. */
 const hinged = (d: RDoor): boolean => d.doorKind === undefined || d.doorKind === "hinged";
+
+/** Uses that make a room an entrance space: a hall, an entry or circulation. */
+const ENTRY_USES: ReadonlySet<UseKind> = new Set<UseKind>(["entry", "hall", "circulation"]);
+/** Uses that make a room private or service, never a front door's room whatever else it is. */
+const NOT_ENTRY_USES: ReadonlySet<UseKind> = new Set<UseKind>([
+  "bedroom",
+  "bath",
+  "wc",
+  "storage",
+  "utility",
+  "garage",
+]);
+
+/** Does the room read as an entrance space ({@link roomUses}): an entry, hall or circulation
+ *  use, and no private or service use beside it? */
+function isEntryRoom(r: RRoom | undefined): boolean {
+  if (!r) return false;
+  const uses = roomUses(r);
+  return [...uses].some((u) => ENTRY_USES.has(u)) && ![...uses].some((u) => NOT_ENTRY_USES.has(u));
+}
 
 /**
  * The storey's main entrance ({@link MainEntranceFact}; the rule is this module's header), or
  * `null` on a storey with one entrance or none: there is nothing to choose, and no fact.
+ * Width never decides: a wider back or delivery door is not a front door.
  */
 export function mainEntranceOf(graph: AccessGraph, inp: EntranceInputs): MainEntranceFact | null {
   if (graph.entrances.length <= 1) return null;
+  // PS0.3: an upper storey's exterior doors open onto decks and terraces; which of them is a
+  // way in at all is that card's question, so the fact is not asked here.
+  if (inp.upperStorey === true) return { door: null, basis: "upper-storey", candidates: [] };
   const doors = new Map(inp.doors.map((d) => [d.id, d]));
-  const cands: RDoor[] = [];
+  const rooms = new Map(inp.rooms.map((r) => [r.id, r]));
+  const cands: Array<{ door: RDoor; room: string }> = [];
   for (const w of entranceWays(graph, inp)) {
     const d = doors.get(w.doorId);
-    if (w.kind === "door" && d && d.doorKind !== "garage" && !w.balcony) cands.push(d);
+    if (w.kind === "door" && d && d.doorKind !== "garage" && !w.balcony) cands.push({ door: d, room: w.room });
   }
+  const ids = (cs: readonly { door: RDoor }[]): string[] => cs.map((c) => c.door.id);
   if (cands.length === 0) return { door: null, basis: "no-candidate", candidates: [] };
+  // The only door from the ground there is: nothing is chosen.
+  if (cands.length === 1) return { door: cands[0]!.door.id, basis: "sole", candidates: ids(cands) };
+  // (a) The door into an entrance space.
+  const entry = cands.filter((c) => isEntryRoom(rooms.get(c.room)));
+  if (entry.length === 1) return { door: entry[0]!.door.id, basis: "entry-room", candidates: ids(entry) };
+  const pool = entry.length > 1 ? entry : cands;
+  // (b) The hinged door on the street side, within the doors (a) left.
   if (inp.site) {
     const turns = northQuarterTurns(inp.north);
     const street = deriveSite(inp.site).street;
-    const onStreet = cands.filter((d) => doorFacing(d, inp.roomRects, turns) === street);
-    if (onStreet.length > 0) {
-      const top = widest(onStreet);
-      return top.length === 1
-        ? { door: top[0]!.id, basis: "street", candidates: onStreet.map((d) => d.id) }
-        : { door: null, basis: "tie", candidates: top.map((d) => d.id) };
-    }
+    const onStreet = pool.filter((c) => hinged(c.door) && doorFacing(c.door, inp.roomRects, turns) === street);
+    if (onStreet.length === 1) return { door: onStreet[0]!.door.id, basis: "street", candidates: ids(onStreet) };
+    if (onStreet.length > 1) return { door: null, basis: "tie", candidates: ids(onStreet) };
   }
-  const top = widest(cands);
-  if (top.length > 1) return { door: null, basis: "tie", candidates: top.map((d) => d.id) };
-  const w = top[0]!;
-  if (!hinged(w) && cands.some(hinged))
-    return { door: null, basis: "kind-conflict", candidates: [w.id, ...cands.filter(hinged).map((d) => d.id)] };
-  return { door: w.id, basis: "widest", candidates: cands.map((d) => d.id) };
+  // (c) Nothing singles one door out.
+  return { door: null, basis: "tie", candidates: ids(pool) };
 }
 
 /** Door hops from the entrance `door` (its room is 1) without going outside, per room. */

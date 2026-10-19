@@ -69,6 +69,7 @@ import { deriveSite, planCenterOfRooms, type SiteFacts, toCompass, windowFacingP
 import {
   type ArrivingRun,
   arrivalRuns,
+  levelsEnteredFromBelow,
   type RVertical,
   roomOfVertical,
   type VerticalConnection,
@@ -1120,6 +1121,8 @@ function summarize(
   facts: readonly DescribeFact[] = [],
   /** The runs a shaft-reached storey is walked from — see `computeCirculation`. */
   arrivals: readonly ArrivingRun[] = [],
+  /** A shaft arrives on this storey from below: it names no main entrance (PS0.10/PS0.3). */
+  upperStorey = false,
 ): Omit<SceneSummary, "ok" | "diagnostics"> {
   const roomEls = ir.elements.filter((e): e is RRoom => e.kind === "room");
   const doorEls = ir.elements.filter((e): e is RDoor => e.kind === "door");
@@ -1306,7 +1309,7 @@ function summarize(
   // than one entrance. Circulation keeps measuring each room from its nearest entrance.
   const access = withMainEntrance(
     buildDoorAccessGraph(roomEls, doorEls, tol, undefined, openingEls),
-    entranceInputs(ir, roomRects),
+    entranceInputs(ir, roomRects, upperStorey),
   );
   const circulation = computeCirculation(
     roomEls,
@@ -1489,7 +1492,13 @@ function inZone(member: string | undefined, path: string): boolean {
 function buildVerticalReport(
   levels: readonly ResolvedLevel[],
   tol: number,
-): { report: VerticalReport; arrivals: ReadonlyMap<number, readonly ArrivingRun[]> } | undefined {
+):
+  | {
+      report: VerticalReport;
+      arrivals: ReadonlyMap<number, readonly ArrivingRun[]>;
+      fromBelow: ReadonlySet<number>;
+    }
+  | undefined {
   const inputs = levels.map((l) => ({ level: l.level, ir: l.ir }));
   const connections = verticalConnections(inputs);
   if (connections.length === 0) return undefined;
@@ -1502,6 +1511,7 @@ function buildVerticalReport(
   return {
     report: { connections, reachable_levels: [...reach.reachable].sort((a, b) => a - b) },
     arrivals: arrivalRuns(inputs, grounded, roomReach),
+    fromBelow: levelsEnteredFromBelow(connections),
   };
 }
 
@@ -1582,14 +1592,20 @@ function summarizeResolved(
       ? levels.map((l) => ({
           level: l.level,
           ...(l.name !== undefined ? { name: l.name } : {}),
-          ...summarize(l.ir, tol, opts.facts, arrivalsOn(l.level)),
+          ...summarize(l.ir, tol, opts.facts, arrivalsOn(l.level), building?.fromBelow.has(l.level) ?? false),
         }))
       : undefined;
 
   return {
     ok: true,
     // The lowest storey's arrivals, so the top level still repeats `levels[0]` exactly.
-    ...summarize(ir, tol, opts.facts, levels.length > 0 ? arrivalsOn(levels[0]!.level) : []),
+    ...summarize(
+      ir,
+      tol,
+      opts.facts,
+      levels.length > 0 ? arrivalsOn(levels[0]!.level) : [],
+      levels.length > 0 ? (building?.fromBelow.has(levels[0]!.level) ?? false) : false,
+    ),
     ...(perLevel ? { levels: perLevel } : {}),
     ...(vertical ? { vertical } : {}),
     diagnostics,

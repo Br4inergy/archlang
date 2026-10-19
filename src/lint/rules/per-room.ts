@@ -28,7 +28,7 @@ import { mm, shortfall } from "../measure.js";
 import type { UseKind } from "../../ast.js";
 import type { RRoom } from "../../ir.js";
 import type { LintContext, LintRule } from "../context.js";
-import type { LintRuleset } from "../ruleset.js";
+import { DEFAULT_RULESET, type LintRuleset } from "../ruleset.js";
 import { itemWords, pasteSet, roomDefiningItems } from "../defining.js";
 import type { PasteFailure } from "../fixture-paste.js";
 
@@ -147,7 +147,9 @@ const USE_FLOOR_SOURCE: Partial<Record<UseKind, string>> = {
 export function roomAreaFloor(r: RRoom, rules: LintRuleset): { m2: number; use: UseKind | null } | null {
   const uses = [...roomUses(r)];
   if (uses.length === 0) return { m2: rules.minRoomAreaM2, use: null };
-  let best: { m2: number; use: UseKind | null } | null = null;
+  // `at-least-generic` (a profile or caller that set the generic floor): it holds every room.
+  let best: { m2: number; use: UseKind | null } | null =
+    rules.roomAreaFloorMode === "at-least-generic" ? { m2: rules.minRoomAreaM2, use: null } : null;
   for (const u of uses) {
     const own = Object.hasOwn(rules.minRoomAreaByUseM2, u) ? rules.minRoomAreaByUseM2[u] : undefined;
     if (own === null) continue; // exempt
@@ -172,7 +174,11 @@ export const perRoomRules: LintRule = {
       const floor = roomAreaFloor(r, rules);
       if (floor !== null && a < floor.m2) {
         const noun = floor.use === null ? "" : (USE_FLOOR_NOUN[floor.use] ?? `a room used as ${floor.use}`);
-        const source = floor.use === null ? undefined : USE_FLOOR_SOURCE[floor.use];
+        // The source is cited only for the floor it gives: the default value, still in force.
+        const source =
+          floor.use !== null && floor.m2 === DEFAULT_RULESET.minRoomAreaByUseM2[floor.use]
+            ? USE_FLOOR_SOURCE[floor.use]
+            : undefined;
         out.push({
           severity: "warning",
           code: "W_ROOM_TOO_SMALL",

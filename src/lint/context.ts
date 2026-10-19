@@ -44,6 +44,9 @@ export interface BuildingContext {
    * single-storey plan, whose one context counts its own. A count, never a time.
    */
   attributionMeasures?: { left: number; storeys: number };
+  /** A shaft arrives on this storey from a storey below (`levelsEnteredFromBelow`): it names no
+   *  main entrance, and its walk keeps every way in (PS0.10; PS0.3 owns the upper storeys). */
+  enteredFromBelow?: boolean;
 }
 
 const NO_BUILDING: BuildingContext = {
@@ -160,7 +163,7 @@ export function buildLintContext(
     (accessMemo ??= buildDoorAccessGraph(rooms, doors, rules.tolMm, undefined, openings));
   const mainOf = (): MainEntranceFact | null => {
     if (waysMemo === null) {
-      const inp = entranceInputs(ir, roomRects);
+      const inp = entranceInputs(ir, roomRects, building.enteredFromBelow === true);
       const fact = mainEntranceOf(access(), inp);
       waysMemo = { fact, keep: walkWays(access(), inp, fact) };
     }

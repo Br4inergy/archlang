@@ -295,41 +295,43 @@
  * when a door is named) on every storey with more than one entrance, and nothing else; every
  * storey's SVG, `lint()` and `compile().diagnostics` are byte-identical, and the previous
  * `describe()` put back reproduces each previous row. The fact per example is in
- * `./byte-identity-baseline.ts`, "`describe().access` names the main entrance".
+ * `./byte-identity-baseline.ts`, "`describe().access` names the main entrance". Thirteen of them
+ * re-measured again in the PS0.10 review round (width no longer decides), `describe()` only:
+ * the first measurement's `describe()` put back reproduces each first row.
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
   ["examples/aquarium.arch", "9b8e70c3cd7838abbb883062d3abd06dfb54ec7336f523bb4369ad917301cbb4"],
   ["examples/attached.arch", "591f4199087b7f7fcab65af3cab3f12dbe062456954e7ef0f02969a974d34b93"],
-  ["examples/bungalow.arch", "6b8516f0cf7828366634bf0453c1e1ecc19bfbb1a97d203f60f78eeb8428cfcb"],
-  ["examples/classroom-block.arch", "8090a88994c6211a060d6f2e548a87c7cbcec8d1e8be00017194aeab6faea023"], // added with the example, re-measured for net area, see header
+  ["examples/bungalow.arch", "789618aa886b446ce66de0e73c1417ca2d570c8f55a3a08125dc7b1a4529e1ff"],
+  ["examples/classroom-block.arch", "48ee65709fc9f1b2875c7b96fd680d03a8012811d0bd18bc4a3a45422f19fe79"], // added with the example, re-measured for net area, see header
   ["examples/clinic.arch", "fac5d9fab49df93fe8cbff6cc0bf26b9e84b1a32c26128e155d0eeb5da99feb1"],
-  ["examples/corner-cafe.arch", "cfc1de39f72b6946a7f6a7953478bda54aad547b94c04f9a8a04f180bd92be63"], // added with the example, re-measured for net area, see header
+  ["examples/corner-cafe.arch", "d6fc478a0e72c1774a9dca2f9af4a04dadd3fa518bdec5211aec400ec47808e6"], // added with the example, re-measured for net area, see header
   ["examples/courtyard-house.arch", "4a6c2594c8297071e217968266791a9ce35d8c639cd32605fbf3f5afdd3db59b"],
   ["examples/furnished-flat.arch", "4eb26e5f4ea04859bd96da44cd7db791a9da347d462143478e00b184de54a70b"],
   ["examples/gallery-l.arch", "cc37c7d8d73b535358978674f3c5da26af87af4d066e6cd67a8bd1f8506e7f5f"],
-  ["examples/garden-house.arch", "3506cadfa5aed4c2aa839ff26d04ebc38f8981801ca4d0f14ac34a1182b9df0a"], // re-measured, see header
+  ["examples/garden-house.arch", "ac4dcad493ec3aaaa39e0bc90d4459a8c2b24f14185989f1dea54e9665fdf825"], // re-measured, see header
   ["examples/garden-loft.arch", "eb6ba7bdcd33231cd0cfd2072a1a99e2b416be039e6efc2cc0a5ea76129738f2"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
-  ["examples/hillside-villa.arch", "3ea454598ba34a492fac3e30285b404d33957624ac5722ef92ee0c722ab123b9"], // re-measured, see header
+  ["examples/hillside-villa.arch", "b45bfad516ef6868370893f52c9b7f41692730bd6e8fdb9a0daac1c6324dfd31"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
   ["examples/laneway-house.arch", "1f6ebf00734dcfc07c8e43cea510f19cd101819b858a23a4ded11258d3e0a4b9"],
-  ["examples/library.arch", "b06d9ed40997452b0d436d2ffbf934e5dfe5e2a2c34f2eaed4bc361e300e8648"],
-  ["examples/materials.arch", "daf748056810271159aa27585a0199c5940dbb5484ad4216354dc87b77ee0b07"],
+  ["examples/library.arch", "dd9416875948cac4447e19c4c3540824aadddee208af2ca5fc7236f7e9133e67"],
+  ["examples/materials.arch", "8d9b58a1bc8dcdccb6d530b0f2d246777406e2eaa25849a3128de0dfcd850398"],
   ["examples/museum-wing.arch", "6e01f37f15c674c544fac6651e9f3bd32d4d6e4865fdafba36ed97feca9ff33a"],
-  ["examples/museum-wings.arch", "47d9d778587203da4e6dc11c715397a94450d9b8f911944d77bcf787dfd97903"], // re-measured, see header
-  ["examples/museum.arch", "64764fa1a76437857f34deb5214527690cf4dfebbca38169b303d3e3b97974da"],
+  ["examples/museum-wings.arch", "273fcdf2e5493e731893362b345c15804299d81d30c681a0d11fd78adfe605b6"], // re-measured, see header
+  ["examples/museum.arch", "9cef24555d4447feb381dc9a5b75fba06ea9cb8edb3e53fa2daca0a3cbc27d0e"],
   ["examples/one-room.arch", "e12596f5401f097b5cf431fda952e96fc6523d7ca6a97c1518ffe6dd64e72cbe"],
   ["examples/parametric.arch", "4b4e50a6118cdca922c93a88e9c783abe17fd7d29458e27f98f0400721c2c8c7"],
-  ["examples/practice-office.arch", "e6cfa942256df5232df4a78f2a3026bfe002f4af01c9cf9934d6b84cc7a8d288"], // added with the example, re-measured for net area, see header
+  ["examples/practice-office.arch", "469f2d99f8911d59d91d2e7c0fdfaf21628cb5cfc92d3a0f08634699d57e2012"], // added with the example, re-measured for net area, see header
   ["examples/relational.arch", "f1c37e433fca8d5618a3558ebd48865933ca2f7ede0a836df13a1e09ab213a60"],
   ["examples/sheet-notes.arch", "0104550fc3b3a39a71c1a005da79c3db5ea10ae21d9739e11a6d1f18ee7b7420"], // re-measured, see header
   ["examples/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
-  ["examples/terrace-row.arch", "baa26989c9680cabd1b2fc5cf95be8f1a7f51e30aae29c016961570c51cbd315"],
+  ["examples/terrace-row.arch", "c1de2b1e232b6163575841b4c15b2d0232f5be3b55a3679f3227fe42224b8f15"],
   ["examples/themed.arch", "083872e0955d587897a87084c2f0bfe395856b02c643d7a8920e02f4bde870c1"],
   ["examples/tiny-house.arch", "cbd44f2c14aa28ea42f1fac0c7029f6257e6d7bcaab42c21ec290cecc3bd1933"],
-  ["examples/townhouse.arch", "89458403d38d4feb2022fa9fb545e30e5c24ef50f206467c07a6de05e2f410d1"],
-  ["examples/transit-hall.arch", "1e3048ec586c063831b46ccfc0bdad5e3fddee37dbb185427bcde38257e2262c"],
+  ["examples/townhouse.arch", "143b6881f738ef249024a7e321f50f6d646873197b1d763a2ae235d89daec807"],
+  ["examples/transit-hall.arch", "afd83228631414e11386c173a39587155019ee31a209829e1cb9fedef25e71ce"],
   ["examples/two-bed.arch", "7a99d973cc7db9e33f46534d4abf6cc879fb32559b13d4459606242e8687dec8"],
   ["examples/two-storey.arch", "149f588042915fa01fc8cb12088d2f53fc975342441bf9f5c787995640cd73e6"],
   ["test/fixtures/axes-grid.arch", "a0a729cd0ec5bbfd90353f47e0fc9d3ee45601b66dbb67df459f54165465e8ff"],

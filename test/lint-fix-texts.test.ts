@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve as resolvePath } from "node:path";
 import { describe, expect, it } from "vitest";
 import { compile, describe as describePlan, ERROR_CATALOG, lint } from "../src/index.js";
-import { DEFAULT_RULESET, LINT_PROFILES } from "../src/lint.js";
+import { buildingContexts, DEFAULT_RULESET, LINT_PROFILES } from "../src/lint.js";
 import { KITCHEN_FIX, WET_FIX } from "../src/lint/rules/per-room.js";
 import type { World } from "../src/world.js";
 import { resolvePlan } from "../src/analyze.js";
@@ -441,13 +441,13 @@ function widenIn(src: string, hints: readonly string[]): string | null {
   return out;
 }
 
-/** How many rooms labelled `label` read under `min` (or are blocked), over every storey. */
 /**
  * Each storey's `describe()` facts (rooms + circulation), with the circulation replaced by the
  * walk `W_PATH_TOO_NARROW` reads where the two differ: on a storey that names a main entrance
  * and keeps fewer ways in (plan-soundness PS0.10, `src/analyze/entrance.ts`), the rule judges
  * the walk from the main entrance, while `describe().circulation` measures each room from its
- * nearest entrance. Such a storey has a front door of its own, so no shaft arrival enters it.
+ * nearest entrance. Each storey is walked with the building context `lint()` gives it (its
+ * arriving shafts, and whether a shaft arrives from below), exactly as the rule walks it.
  */
 function ruleStoreys(src: string, world: World | undefined): unknown[] {
   type S = { circulation?: unknown };
@@ -455,10 +455,11 @@ function ruleStoreys(src: string, world: World | undefined): unknown[] {
   const storeys = facts.levels ?? [facts];
   const { ir, levels } = resolvePlan(src, world ? { world } : {});
   const irs = levels.length > 0 ? levels.map((l) => l.ir) : ir ? [ir] : [];
+  const building = levels.length > 0 ? buildingContexts(levels, DEFAULT_RULESET.tolMm) : null;
   return storeys.map((s, i) => {
     const st = irs[i];
     if (!st || !s.circulation) return s;
-    const ctx = buildLintContext(st, DEFAULT_RULESET);
+    const ctx = buildLintContext(st, DEFAULT_RULESET, building?.get(levels[i]!.level));
     if (ctx.walkAccess() === ctx.access()) return s;
     const walk = computeCirculation(
       ctx.rooms,
@@ -471,11 +472,13 @@ function ruleStoreys(src: string, world: World | undefined): unknown[] {
       undefined,
       ctx.verticals,
       ctx.voids,
+      ctx.building.arrivalShafts,
     );
     return { ...s, circulation: walk };
   });
 }
 
+/** How many rooms labelled `label` read under `min` (or are blocked), over every storey. */
 function narrowRooms(src: string, world: World | undefined, label: string, min: number): number {
   type Storey = {
     rooms?: { id: string; label?: string }[];

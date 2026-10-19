@@ -424,10 +424,10 @@ export const RULE_CLASS: Readonly<Record<string, RuleClass>> = {
 /**
  * Rules that judge a route from the storey's MAIN entrance (plan-soundness PS0.10,
  * `src/analyze/entrance.ts`) on top of their {@link RuleClass}. With a `site`, the main entrance
- * is the door whose wall faces `site.street`, a compass fact: turning the building under a
- * fixed `north` can make another door the one on the street. So these rules are compared only
- * when the entrance gate holds (no `site`, north co-rotated, or a translation), as
- * `describe().access.mainEntrance` is.
+ * may be the hinged door whose wall faces `site.street`, a compass fact: turning the building
+ * under a fixed `north` can leave no door on the street. So these rules, and
+ * `describe().access.mainEntrance`, are compared exactly when P₀ and gP name the same main
+ * entrance on every storey (a refusal on both sides counts: both walk from every way in).
  */
 export const ENTRANCE_RULES: ReadonlySet<string> = new Set(["path-too-narrow", "room-via-private", "wet-room-door"]);
 
@@ -692,9 +692,9 @@ export function summaryFacts(
   inv("fences", s.fences ?? null);
   inv("heights", s.heights ?? null);
   {
-    // The main entrance is a compass fact when the plan has a `site` (the street-side door),
-    // so it is its own fact, compared under the entrance gate (`ENTRANCE_RULES`); the rest of
-    // the access graph is invariant.
+    // The main entrance can be a compass fact (the street-side door), so it is its own fact,
+    // compared under the entrance gate (`ENTRANCE_RULES`); the rest of the access graph is
+    // invariant.
     const { mainEntrance, rooms, ...access } = s.access;
     inv("access", { ...access, rooms: rooms.map(({ depthFromMainEntrance: _d, ...r }) => r) });
     if (gate.entrance !== false)
@@ -1129,8 +1129,8 @@ export interface Comparison {
   sheet: boolean;
   /** Compare the operative scale and scale-class rules (fixed scale, or axes kept)? */
   scale: boolean;
-  /** Compare the main-entrance facts and {@link ENTRANCE_RULES} (no `site`, north co-rotated,
-   *  or a translation)? */
+  /** Compare the main-entrance facts and {@link ENTRANCE_RULES}? Set by
+   *  {@link compareObservations}: exactly when P₀ and gP name the same main entrance. */
   entrance: boolean;
 }
 
@@ -1143,23 +1143,29 @@ export interface Comparison {
 export function gateFor(
   g: GroupElement,
   f: Frame,
-  opts: { aligned: boolean; coNorth?: boolean; autoScale?: boolean; site?: boolean },
+  opts: { aligned: boolean; coNorth?: boolean; autoScale?: boolean },
 ): Comparison {
   return {
     raster: opts.aligned || g.translate === true,
     compass: opts.coNorth === true || g.translate === true,
     sheet: !swapsAxes(f),
     scale: !swapsAxes(f) || opts.autoScale !== true,
-    entrance: opts.site !== true || opts.coNorth === true || g.translate === true,
+    entrance: true,
   };
 }
 
 /** Everything {@link gateFor} needs to know about P₀. */
-export const gateFacts = (obs0: Observation): { aligned: boolean; autoScale: boolean; site: boolean } => ({
+export const gateFacts = (obs0: Observation): { aligned: boolean; autoScale: boolean } => ({
   aligned: latticeAligned(obs0.ir),
   autoScale: obs0.summary.sheet?.scale_auto === true,
-  site: obs0.summary.site !== undefined,
 });
+
+/** The main entrance each storey names (`null` where the fact refuses or is absent), top level
+ *  first: the entrance gate's key. */
+const mainDoors = (s: SceneSummary): (string | null)[] => [
+  s.access.mainEntrance?.door ?? null,
+  ...(s.levels ?? []).map((l) => l.access.mainEntrance?.door ?? null),
+];
 
 /**
  * The full P₀ → gP comparison: `describe()` facts, per-rule lint facts (gated), and — when
@@ -1170,8 +1176,12 @@ export function compareObservations(
   obsG: Observation,
   f: Frame,
   northG: NorthDir,
-  gate: Comparison,
+  gateIn: Comparison,
 ): Violation[] {
+  const gate: Comparison = {
+    ...gateIn,
+    entrance: gateIn.entrance && JSON.stringify(mainDoors(obs0.summary)) === JSON.stringify(mainDoors(obsG.summary)),
+  };
   const facts0 = new Map([...summaryFacts(obs0.summary, obs0.src, gate), ...lintFacts(obs0, gate)]);
   const factsG = new Map([...summaryFacts(obsG.summary, obsG.src, gate), ...lintFacts(obsG, gate)]);
   if (gate.raster) {

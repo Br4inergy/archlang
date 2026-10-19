@@ -290,6 +290,11 @@ function distPointToRect(px: number, py: number, r: BBox): number {
 }
 
 /** @internal The whole-plan nav grid; exported only so the grid searches' signatures can be. */
+/** A nav grid built once and shared ({@link computeCirculation}'s `navCache`). */
+export interface NavCache {
+  grid?: NavGrid | null;
+}
+
 export interface NavGrid {
   minX: number;
   minY: number;
@@ -1630,6 +1635,8 @@ function buildNav(
   /** The shafts this storey is reached by, each with the room it lands in — read ONLY
    *  when the storey has no exterior entrance of its own ({@link ShaftArrival}). */
   arrivals: readonly ShaftArrival[] = [],
+  /** A grid already built from these same inputs ({@link NavCache}). */
+  cache?: NavCache,
 ): Nav {
   // A storey with an exterior entrance walks from it, whatever shafts land here; one
   // without walks from where its shafts land, or not at all.
@@ -1671,19 +1678,27 @@ function buildNav(
     }))
     .filter((c) => c.at !== undefined);
 
-  const g = buildGrid(
-    rooms,
-    walls,
-    connectors,
-    furniture,
-    verticals,
-    voids,
-    roomIndexById,
-    tol,
-    bodyRadius,
-    viaShaft ? arrivals : [],
-  );
-  if (!g) return { kind: "none" };
+  let built: NavGrid | null;
+  if (cache && cache.grid !== undefined) built = cache.grid;
+  else {
+    built = buildGrid(
+      rooms,
+      walls,
+      connectors,
+      furniture,
+      verticals,
+      voids,
+      roomIndexById,
+      tol,
+      bodyRadius,
+      viaShaft ? arrivals : [],
+    );
+    if (cache) cache.grid = built;
+  }
+  if (!built) return { kind: "none" };
+  // Seeding stamps entrance widths into `clearMm`, the one array touched after the build, so a
+  // shared grid is seeded on its own copy of it.
+  const g: NavGrid = cache ? { ...built, clearMm: built.clearMm.slice() } : built;
 
   // Each room's full free-cell list, row-major (route bottlenecks seed the whole source
   // room so its internal crowding can't cap the route), and the point it is measured to.
@@ -2216,7 +2231,16 @@ export function computeCirculation(
    *  instead of being null. Append-only: omitting it (or a storey with a front door)
    *  changes nothing. */
   arrivals: readonly ArrivingRun[] = [],
+  /**
+   * Shared by two models of ONE storey that differ only in which entrances seed the walk
+   * (`src/lint/rules/circulation-facts.ts`: the main entrance's walk and the nearest-entrance
+   * one, PS0.10): the nav grid depends on the rooms, walls, connectors between rooms, furniture,
+   * runs, voids and body radius, never on the entrances, so the second model reuses the first
+   * one's grid. Append-only: omitting it builds the grid as before.
+   */
+  share: { navCache?: NavCache } = {},
 ): CirculationModel | null {
+  const navCache = share.navCache;
   // The room each arriving run lands in, read off the plan as given — the same
   // `roomOfVertical` that names `verticalReach`'s arrival rooms. A run standing in no room
   // lands nowhere a walk could start.
@@ -2245,7 +2269,20 @@ export function computeCirculation(
     edges: a.edges,
     roomId: a.roomId,
   }));
-  const nav = buildNav(rooms, walls, doors, openings, furniture, verticals, voids, access, tol, bodyRadiusMm, shafts);
+  const nav = buildNav(
+    rooms,
+    walls,
+    doors,
+    openings,
+    furniture,
+    verticals,
+    voids,
+    access,
+    tol,
+    bodyRadiusMm,
+    shafts,
+    navCache,
+  );
   if (nav.kind === "none") return null;
   // Rooms the modeled doors reach: the only ones a walkability verdict is meaningful
   // for. A room with no door path is W_ROOM_UNREACHABLE's business, not this model's. On a

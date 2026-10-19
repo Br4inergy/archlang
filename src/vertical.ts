@@ -256,6 +256,19 @@ export function verticalConnections(levels: readonly VerticalLevelInput[]): Vert
 }
 
 /**
+ * The storeys a shaft arrives on from a storey below: every level of a connection but its
+ * lowest. Identity only, like {@link verticalConnections}. Such a storey names no main
+ * entrance (`src/analyze/entrance.ts`, basis `upper-storey`): an exterior door up there opens
+ * onto a deck, a terrace or a balcony, not the ground. Whether a person truly arrives there is
+ * PS0.3's question (the upper-storey sibling of PS0.10), still open; this is the identity fact.
+ */
+export function levelsEnteredFromBelow(connections: readonly VerticalConnection[]): ReadonlySet<number> {
+  const out = new Set<number>();
+  for (const c of connections) for (const l of c.levels.slice(1)) out.add(l);
+  return out;
+}
+
+/**
  * Which storeys are reachable from the outside once vertical connections are counted,
  * and — for a storey with no exterior door of its own — the rooms a person arrives in.
  *

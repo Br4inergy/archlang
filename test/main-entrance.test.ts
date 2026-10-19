@@ -27,7 +27,8 @@ describe("PS0.10 — the main entrance", () => {
     const src = read(`${FIRST_CONTACT}/1-apartment.arch`);
     const s = describePlan(src);
     expect(s.access.entrances).toEqual(["d_front", "d_bal"]);
-    expect(s.access.mainEntrance).toEqual({ door: "d_front", basis: "widest", candidates: ["d_front"] });
+    // The balcony slider is no candidate, so the front door is the only door from the ground.
+    expect(s.access.mainEntrance).toEqual({ door: "d_front", basis: "sole", candidates: ["d_front"] });
     // The audit's proof: with the balcony door made a window, the same warning appears.
     const masked = src.replace(
       "door id=d_bal   sliding on w_s at 2000 width 2000",
@@ -38,30 +39,23 @@ describe("PS0.10 — the main entrance", () => {
     expect(d!.message).toContain('"Laundry" squeezes to 400 mm and stops there');
     expect(d!.message).not.toContain("d_front");
     expect(d!.hints!.at(-1)).toBe(
-      "Measured from the main entrance `d_front` (the widest door from outside, garage and balcony doors aside). The other door from outside, `d_bal`, is not counted as a way in, because the main entrance reaches its room from inside.",
+      "Measured from the main entrance `d_front` (the only door from outside, garage and balcony doors aside). The other door from outside, `d_bal`, is a way into its own room only, since the main entrance reaches that room from inside.",
     );
   });
 
-  it("T2: with no `site`, a patio slider wider than the hinged front door is refused; with `site` the street door decides", () => {
+  it("T2: the door into the hall is the main entrance, so the living room behind the patio is measured from it", () => {
     const src = read(`${FIRST_CONTACT}/5-townhouse.arch`);
     const ground = (s: ReturnType<typeof describePlan>) => s.levels!.find((l) => l.level === 0)!;
-    // Width alone would crown the patio door; the plan does not say which is the front door.
+    // Width never decides: the 1600 mm patio slider is not the front door; the door into the Hall is.
     expect(ground(describePlan(src)).access.mainEntrance).toEqual({
-      door: null,
-      basis: "kind-conflict",
-      candidates: ["g_patio", "g_front"],
-    });
-    expect(narrow(src)).toEqual([]); // refused: every way in is kept, as before
-    // The plan's own comment says the street is to the south.
-    const sited = src.replace("  north up\n", "  north up\n  site { street south }\n");
-    expect(ground(describePlan(sited)).access.mainEntrance).toEqual({
       door: "g_front",
-      basis: "street",
+      basis: "entry-room",
       candidates: ["g_front"],
     });
-    expect(narrow(sited).map((d) => d.message)).toEqual([
+    // Living has no door of its own from outside: from the front door, the sofa seals it. The
+    // kitchen opens onto the garden through the patio door itself, which is a way into it.
+    expect(narrow(src).map((d) => d.message)).toEqual([
       'The walk from the entrance to "Living" squeezes to 200 mm and stops there — no way in is wider, so no route reaches the room (500 mm below the 700 mm minimum).',
-      'The walk from the entrance to "Kitchen / Dining" squeezes to 200 mm and stops there — no way in is wider, so no route reaches the room (500 mm below the 700 mm minimum).',
     ]);
   });
 
@@ -79,11 +73,19 @@ describe("PS0.10 — the main entrance", () => {
   door id=d_b ${side}
 }`;
 
-  it("two equal hinged doors and no `site`: refused as a tie, and nothing is chosen", () => {
-    const src = twoDoors("at (1500,0) width 900 wall shell", "at (4500,0) width 900 wall shell");
+  it("two doors into rooms that are not entrance spaces, and no `site`: refused as a tie, and it says so", () => {
+    // Both doors open into the living room; nothing singles one out, width included.
+    const src = twoDoors("at (4500,0) width 900 wall shell", "at (5500,5000) width 1200 wall shell").replace(
+      "door id=d_hl on p at 2500 width 900",
+      "door id=d_hl on p at 2500 width 700",
+    );
     const s = describePlan(src);
     expect(s.access.mainEntrance).toEqual({ door: null, basis: "tie", candidates: ["d_a", "d_b"] });
     expect(s.access.rooms.every((r) => !("depthFromMainEntrance" in r))).toBe(true);
+    // The walk keeps every way in, and the warning says the main entrance was refused.
+    const [d] = narrow(src);
+    expect(d!.message).toContain('"Hall" squeezes to 640 mm');
+    expect(d!.hints!.at(-1)).toBe("Measured from every exterior door because no main entrance could be named (tie).");
   });
 
   it("a room reached only by its own door from outside keeps that door, and reads depthFromMainEntrance null", () => {
@@ -93,12 +95,65 @@ describe("PS0.10 — the main entrance", () => {
       `room id=r_store at (6000,0) size 2000x5000 label "Store" uses storage`,
     );
     const s = describePlan(src);
-    expect(s.access.mainEntrance).toEqual({ door: "d_a", basis: "widest", candidates: ["d_a", "d_b"] });
+    expect(s.access.mainEntrance).toEqual({ door: "d_a", basis: "entry-room", candidates: ["d_a"] });
     expect(s.access.rooms.map((r) => [r.id, r.depthFromEntrance, r.depthFromMainEntrance])).toEqual([
       ["r_hall", 1, 1],
       ["r_live", 2, 2],
       ["r_store", 1, null],
     ]);
+  });
+
+  // The review round's probes (test/main-entrance-fixtures/): each pins the fact, and that lint says
+  // exactly what it said before PS0.10 (no false warning on a room that has its own door, on the
+  // hall that holds the front door, or from a wider back or delivery door crowned by width).
+  const FIX = "test/main-entrance-fixtures";
+  const NOT_EQUATOR =
+    'W_ROOM_NOT_EQUATOR_FACING: Room "Living" has 1 window(s), none facing S (the equator side in the northern hemisphere) — they face N.';
+  const UTILITY_640 =
+    'W_PATH_TOO_NARROW: The walk from the entrance to "Utility" squeezes to 640 mm (60 mm below the 700 mm minimum) — the bottleneck is the door between "Living" and "Utility", 640 mm clear.';
+  const probes: Array<[string, unknown, string[] | null]> = [
+    // A 1000 mm back door into the Utility beside the 900 mm front door into the Hall.
+    ["p1b-wider-back.arch", { door: "d_front", basis: "entry-room", candidates: ["d_front"] }, []],
+    // The same, 10 mm wider at grid 10.
+    ["p1c-grid10.arch", { door: "d_front", basis: "entry-room", candidates: ["d_front"] }, []],
+    // The front door on the side wall, the back door on the street side.
+    ["p2-side-front.arch", { door: "d_front", basis: "entry-room", candidates: ["d_front"] }, [NOT_EQUATOR]],
+    // A 2400 mm slider on the street beside the hinged front door into the Hall: step (a) names
+    // the Hall's door; the Utility, which has no door of its own, read 640 mm before PS0.10 too.
+    [
+      "p3-street-slider.arch",
+      { door: "d_front", basis: "entry-room", candidates: ["d_front"] },
+      [UTILITY_640, NOT_EQUATOR],
+    ],
+    // Four doors, none into an entrance space and no `site`: refused, a 1100 mm delivery door included.
+    [
+      "p4-cafe-delivery1100.arch",
+      { door: null, basis: "tie", candidates: ["d_entry_a", "d_entry_b", "d_back", "d_delivery"] },
+      null,
+    ],
+    // A 2400 mm courtyard slider into Living loses to the hinged door into the Entry hall at step (a).
+    ["c1-courtyard.arch", { door: "d_front", basis: "entry-room", candidates: ["d_front"] }, [NOT_EQUATOR]],
+    // The kitchen has its own back door: from the front it is behind the bedroom, but that door is
+    // a way into it, so W_ROOM_VIA_PRIVATE does not say it is reached only through the bedroom.
+    ["v1-privacy.arch", { door: "d_front", basis: "entry-room", candidates: ["d_front"] }, []],
+  ];
+  it.each(probes)("probe %s: the fact, and lint as before", (name, fact, lintAsBefore) => {
+    const src = read(`${FIX}/${name}`);
+    expect(describePlan(src).access.mainEntrance).toEqual(fact);
+    const got = lint(src).map((d) => `${d.code}: ${d.message}`);
+    if (lintAsBefore) expect(got).toEqual(lintAsBefore);
+    else expect(got.filter((m) => m.startsWith("W_PATH_TOO_NARROW") || m.startsWith("W_ROOM_VIA_PRIVATE"))).toEqual([]);
+  });
+
+  it("an upper storey a stair arrives on names no main entrance, and walks from every way in (PS0.3)", () => {
+    const src = read(`${FIX}/p5-upper-terrace.arch`);
+    const s = describePlan(src);
+    expect(s.levels!.map((l) => l.access.mainEntrance ?? null)).toEqual([
+      null,
+      { door: null, basis: "upper-storey", candidates: [] },
+    ]);
+    // The two deck doors open into the bedrooms; nothing is measured from either of them as a front door.
+    expect(lint(src).map((d) => d.code)).toEqual(["W_ENTRANCE_INTO_PRIVATE", "W_ENTRANCE_INTO_PRIVATE"]);
   });
 
   it("a storey with one entrance or none gains no key at all", () => {

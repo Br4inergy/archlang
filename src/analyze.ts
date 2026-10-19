@@ -766,7 +766,7 @@ export interface AccessRoomNode {
 }
 
 /** How {@link MainEntranceFact.door} was chosen, or why the choice was refused. */
-export type MainEntranceBasis = "street" | "widest" | "tie" | "kind-conflict" | "no-candidate";
+export type MainEntranceBasis = "sole" | "entry-room" | "street" | "tie" | "no-candidate" | "upper-storey";
 
 /**
  * Which exterior door is the storey's front door (plan-soundness PS0.10), when the plan says so
@@ -776,9 +776,10 @@ export interface MainEntranceFact {
   /** The main entrance's id, or `null` when the choice is refused. */
   door: string | null;
   basis: MainEntranceBasis;
-  /** The doors the deciding step compared, in entrance order: the street-side doors; the tied
-   *  widest doors; the widest door, then the hinged doors it conflicts with; or every
-   *  candidate the widest was chosen from. Empty with `no-candidate`. */
+  /** The doors the deciding step compared, in entrance order: the one door (`sole`), the doors
+   *  into an entrance space (`entry-room`), the hinged street-side doors (`street`, or `tie`
+   *  when several), or the doors nothing singled out (`tie`). Empty with `no-candidate` and
+   *  `upper-storey`. */
   candidates: string[];
 }
 
