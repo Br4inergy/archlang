@@ -318,7 +318,7 @@ const PAGE_META = [
   [
     "/adr/0028-rooms-primary-derived-walls",
     "ADR 28 — rooms primary, walls derived",
-    "Rooms may be primary: room-edge datums, one whole-tiling form that derives every wall from the rooms, pairwise wall forms and openings placed by relation; wall-first authoring stays legal and byte-identical.",
+    "Rooms may be primary: room-edge datums, one form deriving every wall from the room tiling, pairwise wall forms and relational openings; wall-first authoring stays legal.",
   ],
 ] as const;
 
