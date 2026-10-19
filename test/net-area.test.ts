@@ -21,10 +21,18 @@
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import fc from "fast-check";
 import { describe as suite, expect, it } from "vitest";
 import { compile, describe as describePlan, roomSchedule } from "../src/index.js";
 import { resolvePlan, roomAreaMm2 } from "../src/analyze.js";
-import { MAX_NET_CURVES, netAreaBands, netAreaDetail, roomNetAreaMm2 } from "../src/analyze/net-area.js";
+import {
+  MAX_NET_CURVES,
+  MAX_NET_PROBE_WORK,
+  netAreaBands,
+  netAreaDetail,
+  roomNetAreaMm2,
+} from "../src/analyze/net-area.js";
+import { pointInPolygon, polygonInsideTest, VERTEX_EPS } from "../src/geometry/polygon.js";
 import type { RRoom, RWall } from "../src/ir.js";
 import type { World } from "../src/world.js";
 import { oracleNetArea } from "./net-area-oracle.js";
@@ -318,6 +326,101 @@ suite("net area — omitted, never approximated", () => {
   });
 });
 
+/**
+ * PS0.14: the boundary walk is charged as a COUNT before it runs (`MAX_NET_PROBE_WORK`), so a
+ * room with hundreds of vertices crossed by hundreds of free-standing walls is refused, not
+ * measured for a minute. The comb: S long partitions inside a 40 m box, a room whose T teeth
+ * cross every one of them, and K tiny stubs outside it (the shape the PR #204 red-team found).
+ */
+function comb(S: number, T: number, K: number): string {
+  const W = 40000;
+  const H = 40000;
+  const o = [`plan "comb" {`, `wall exterior thickness 200 { (0,0) (${W},0) (${W},${H}) (0,${H}) close }`];
+  for (let i = 0; i < S; i++)
+    o.push(`wall partition thickness 20 { (1000,${1000 + i * 300}) (${W - 1000},${1000 + i * 300}) }`);
+  const p = (W - 4000) / T;
+  const pts: Array<[number, number]> = [[1500, 400]];
+  for (let t = 0; t < T; t++) {
+    const x0 = Math.round(2000 + t * p);
+    const x1 = Math.round(2000 + t * p + p / 2);
+    pts.push([x0, 400], [x0, H - 500], [x1, H - 500], [x1, 400]);
+  }
+  pts.push([W - 1500, 400], [W - 1500, 300], [1500, 300]);
+  o.push(`room id=comb polygon ${pts.map(([x, y]) => `(${x},${y})`).join(" ")} label "Comb" uses storage`);
+  for (let k = 0; k < K; k++) {
+    const x = -20000 - (k % 40) * 500;
+    const y = Math.floor(k / 40) * 500;
+    o.push(`wall partition thickness 20 { (${x},${y}) (${x + 300},${y}) }`);
+  }
+  o.push("}");
+  return o.join("\n");
+}
+
+suite("net area — the probe walk is charged before it runs (PS0.14)", () => {
+  // Measured when written. The count is what is pinned, never a time: on the tree before the
+  // charge, `arch describe` took 2.8 s, 21 s and 41 s on these three.
+  const COMBS = [
+    { S: 60, T: 100, K: 400, work: 59_647_352 },
+    { S: 100, T: 200, K: 600, work: 358_857_912 },
+    { S: 125, T: 300, K: 800, work: 928_066_112 },
+  ];
+  for (const { S, T, K, work } of COMBS) {
+    it(`comb ${S}/${T}/${K} is refused on its count (${work}), and describe() omits its net area`, () => {
+      const src = comb(S, T, K);
+      const { ir } = resolvePlan(src);
+      const room = ir!.elements.find((e): e is RRoom => e.kind === "room" && e.id === "comb")!;
+      const d = netAreaDetail(room, netAreaBands(ir!.walls));
+      // Under the edge cap, so it is the walk's charge that refuses it, not MAX_NET_CURVES.
+      expect(d.curves).toBeLessThanOrEqual(MAX_NET_CURVES);
+      expect(d).toMatchObject({ ok: false, reason: "too-much-work", work });
+      expect(work).toBeGreaterThan(MAX_NET_PROBE_WORK);
+      const s = describePlan(src);
+      expect("net_area_m2" in s.rooms.find((r) => r.id === "comb")!).toBe(false);
+      expect("net_floor_area_m2" in s.totals).toBe(false);
+    });
+  }
+
+  it("the corpus's largest ring (aquarium's 56-vertex concourse) is measured as before, far inside the cap", () => {
+    const { ir } = resolvePlan(readFileSync(resolvePath("examples/aquarium.arch"), "utf8"));
+    const room = ir!.elements.find((e): e is RRoom => e.kind === "room" && e.id === "concourse")!;
+    expect(room.poly?.length).toBe(56);
+    const d = netAreaDetail(room, netAreaBands(ir!.walls));
+    expect(d).toMatchObject({ ok: true, work: 34_272 });
+    expect(d.work! * 100).toBeLessThan(MAX_NET_PROBE_WORK);
+    const row = describePlan(readFileSync(resolvePath("examples/aquarium.arch"), "utf8")).rooms.find(
+      (r) => r.id === "concourse",
+    )!;
+    expect(row.net_area_m2).toBe(544.72);
+    expect(row.area_m2).toBe(564.56);
+  });
+
+  it("the binned inside test is pointInPolygon, point for point, on degenerate rings", () => {
+    // Small integer rings: collinear runs, horizontal edges, repeated vertices and spikes; the
+    // queries include every vertex, every edge midpoint and a lattice through them all.
+    const ring = fc.array(fc.record({ x: fc.integer({ min: -6, max: 6 }), y: fc.integer({ min: -6, max: 6 }) }), {
+      minLength: 3,
+      maxLength: 40,
+    });
+    fc.assert(
+      fc.property(ring, fc.constantFrom(0, VERTEX_EPS, 0.5), (pts, tol) => {
+        const test = polygonInsideTest(pts, tol);
+        const qs: Array<[number, number]> = [];
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i]!;
+          const b = pts[(i + 1) % pts.length]!;
+          qs.push([a.x, a.y], [(a.x + b.x) / 2, (a.y + b.y) / 2], [a.x + 1e-7, a.y - 1e-7]);
+        }
+        for (let x = -7; x <= 7; x += 0.5) for (let y = -7; y <= 7; y += 0.5) qs.push([x, y]);
+        for (const [x, y] of qs) {
+          if (test.inside(x, y) !== pointInPolygon(x, y, pts, tol)) return false;
+        }
+        return true;
+      }),
+      { numRuns: 300 },
+    );
+  });
+});
+
 // ---------------------------------------------------------------------------
 
 const CORPUS_DIRS = [
@@ -381,6 +484,7 @@ suite("net area — every room of the corpus against the grid oracle", () => {
     const bad: string[] = [];
     let rooms = 0;
     let worst = 0;
+    let maxWork = 0;
     for (const s of storeys) {
       const bands = netAreaBands(s.walls);
       for (const r of s.rooms) {
@@ -390,6 +494,7 @@ suite("net area — every room of the corpus against the grid oracle", () => {
           bad.push(`${s.where} ${r.id}: omitted (${d.reason})`);
           continue;
         }
+        maxWork = Math.max(maxWork, d.work);
         if (!(d.covered >= 0 && d.covered <= d.gross))
           bad.push(`${s.where} ${r.id}: covered ${d.covered} of ${d.gross}`);
         if (d.gross > 0 && !(d.gross - d.covered > 0)) bad.push(`${s.where} ${r.id}: no floor left`);
@@ -403,5 +508,9 @@ suite("net area — every room of the corpus against the grid oracle", () => {
     expect(bad).toEqual([]);
     // Measured when written: 2,412 mm² (0.0024 m²) at worst over 586 rooms.
     expect(worst).toBeLessThan(10_000);
+    // The probe-work charge (PS0.14): measured when written, 174,720 at most (the star30
+    // fixture's corridor), more than a hundred times inside MAX_NET_PROBE_WORK.
+    expect(maxWork).toBe(174_720);
+    expect(maxWork * 100).toBeLessThan(MAX_NET_PROBE_WORK);
   }, 600_000);
 });

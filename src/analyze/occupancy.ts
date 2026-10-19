@@ -59,6 +59,24 @@ export function roomCellSizeMm(areaMm2: number): number {
   return Math.max(MIN_CELL_MM, Math.ceil(Math.sqrt(areaMm2 / MAX_CELLS_ROOM)));
 }
 
+/** Two distances closer than this (mm) are a tie: the same pair of points read in a turned or
+ *  flipped frame differs only by rounding noise, many orders of magnitude below it. */
+const TIE_MM = 1e-6;
+
+/**
+ * The cells along one axis whose CLOSED span holds coordinate `v` (relative to the room's
+ * min corner), as an inclusive index range clamped into the grid: one cell, or the two either
+ * side of a cell line `v` lies on (to {@link TIE_MM}, since a stretched cell is not exact in
+ * floats) — the occupancy-grid twin of the nav grid's `axisCells` (`circulation.ts`).
+ */
+function spanCells(v: number, cell: number, n: number): [number, number] {
+  const line = Math.round(v / cell);
+  const clampI = (i: number): number => Math.min(n - 1, Math.max(0, i));
+  if (Math.abs(line * cell - v) <= TIE_MM) return [clampI(line - 1), clampI(line)];
+  const f = clampI(Math.floor(v / cell));
+  return [f, f];
+}
+
 /**
  * Compute, per room, how much clear floor its doorways can reach. Deterministic and
  * allocation-light: one boolean grid per room, 4-connected BFS from the doorway cells.
@@ -149,53 +167,52 @@ export function computeRoomClearances(
     // inward column/row is blocked by furniture contributes no seed (it's sealed).
     const seen = new Uint8Array(nx * ny);
     const queue: number[] = [];
+    const seed = (k: number): void => {
+      if (!seen[k]) {
+        seen[k] = 1;
+        queue.push(k);
+      }
+    };
     for (const c of onPerim) {
-      const ix = Math.min(nx - 1, Math.max(0, Math.floor((c.at.x - rb.x) / cellW)));
-      const iy = Math.min(ny - 1, Math.max(0, Math.floor((c.at.y - rb.y) / cellH)));
+      // Every cell whose CLOSED span holds the connector, per axis: one, or the two either
+      // side of a cell line the connector sits on. Flooring alone put a doorway on a line on
+      // its +x/+y side, so a mirrored plan seeded the other side — a different column, which
+      // furniture could seal on one side only (backlog PS0.13).
+      const [ixLo, ixHi] = spanCells(c.at.x - rb.x, cellW, nx);
+      const [iyLo, iyHi] = spanCells(c.at.y - rb.y, cellH, ny);
       // A POLYGON room's doorway is not on a bbox side, so "step inward perpendicular to
-      // the edge it lies on" has no meaning: seed the FREE cell nearest the connector
-      // instead (ties row-major, so the choice is deterministic). Equivalent in spirit —
+      // the edge it lies on" has no meaning: seed the FREE cells nearest the connector
+      // instead — EVERY one at the nearest distance (to a micron), never a row-major first,
+      // which is a page-order pick a turn or flip does not preserve. Equivalent in spirit —
       // you stand in the doorway and take the first clear floor — and a doorway sealed by
       // furniture still contributes no seed, because a blocked cell is never free.
       if (r.poly) {
-        let bestK = -1;
         let bestD = Infinity;
-        for (let jy = 0; jy < ny; jy++) {
-          const cy = rb.y + (jy + 0.5) * cellH;
-          for (let jx = 0; jx < nx; jx++) {
-            const k = jy * nx + jx;
-            if (!free[k]) continue;
-            const d = Math.hypot(rb.x + (jx + 0.5) * cellW - c.at.x, cy - c.at.y);
-            if (d < bestD) {
-              bestD = d;
-              bestK = k;
-            }
-          }
-        }
+        const dist = (k: number): number =>
+          Math.hypot(rb.x + ((k % nx) + 0.5) * cellW - c.at.x, rb.y + (Math.floor(k / nx) + 0.5) * cellH - c.at.y);
+        for (let k = 0; k < free.length; k++) if (free[k]) bestD = Math.min(bestD, dist(k));
         // Out of reach of the doorway (further than a cell diagonal + the tolerance) is
         // a sealed entrance, not a seed.
         const reach = Math.hypot(cellW, cellH) + tolMm;
-        if (bestK >= 0 && bestD <= reach && !seen[bestK]) {
-          seen[bestK] = 1;
-          queue.push(bestK);
-        }
+        if (bestD <= reach) for (let k = 0; k < free.length; k++) if (free[k] && dist(k) <= bestD + TIE_MM) seed(k);
         continue;
       }
-      // Inward step from whichever edge the connector lies on.
+      // Inward step from whichever edge the connector lies on, from each of its cells.
       const dx = Math.abs(c.at.x - rb.x) <= tolMm ? 1 : Math.abs(c.at.x - (rb.x + rb.w)) <= tolMm ? -1 : 0;
       const dy = Math.abs(c.at.y - rb.y) <= tolMm ? 1 : Math.abs(c.at.y - (rb.y + rb.h)) <= tolMm ? -1 : 0;
-      for (let step = 0; step < nx + ny; step++) {
-        const sx = Math.min(nx - 1, Math.max(0, ix + dx * step));
-        const sy = Math.min(ny - 1, Math.max(0, iy + dy * step));
-        const k = sy * nx + sx;
-        if (free[k]) {
-          if (!seen[k]) {
-            seen[k] = 1;
-            queue.push(k);
+      for (let ix = ixLo; ix <= ixHi; ix++) {
+        for (let iy = iyLo; iy <= iyHi; iy++) {
+          for (let step = 0; step < nx + ny; step++) {
+            const sx = Math.min(nx - 1, Math.max(0, ix + dx * step));
+            const sy = Math.min(ny - 1, Math.max(0, iy + dy * step));
+            const k = sy * nx + sx;
+            if (free[k]) {
+              seed(k);
+              break;
+            }
+            if ((dx === 0 || sx === (dx > 0 ? nx - 1 : 0)) && (dy === 0 || sy === (dy > 0 ? ny - 1 : 0))) break;
           }
-          break;
         }
-        if ((dx === 0 || sx === (dx > 0 ? nx - 1 : 0)) && (dy === 0 || sy === (dy > 0 ? ny - 1 : 0))) break;
       }
     }
     let reached = queue.length;
