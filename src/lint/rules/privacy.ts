@@ -769,7 +769,7 @@ export const wetRoomDoor: LintRule = {
         ...ctx.at(w),
         message:
           `${quoted(ctx, w)} is a passage: its ${mine.length} connectors join ${listed(joined)}, so the way between ` +
-          `${names.join(" and ")} runs through a ${noun}. A ${noun} should be a dead end off circulation, not a route between rooms ` +
+          `${listed(names)} runs through a ${noun}. A ${noun} should be a dead end off circulation, not a route between rooms ` +
           "(Ching's pass-through rule; privacy and hygiene).",
         hints,
       });

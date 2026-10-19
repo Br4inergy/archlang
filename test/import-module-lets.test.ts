@@ -468,7 +468,8 @@ const BASELINE: [string, string][] = [
   ["examples/clinic.arch", "fac5d9fab49df93fe8cbff6cc0bf26b9e84b1a32c26128e155d0eeb5da99feb1"],
   ["examples/corner-cafe.arch", "d6fc478a0e72c1774a9dca2f9af4a04dadd3fa518bdec5211aec400ec47808e6"], // added with the example, re-measured for net area, see header
   ["examples/courtyard-house.arch", "6ed177a87b487397decc32787c289ebaed4fa30108dd3be95d5cb87470dc6e14"], // re-measured for PS2.4, see header
-  ["examples/furnished-flat.arch", "4eb26e5f4ea04859bd96da44cd7db791a9da347d462143478e00b184de54a70b"],
+  // Re-measured 2026-10-20 (PS2.19), `describe()` only: "Utility" reads `utility` (`byte-identity-baseline.ts`).
+  ["examples/furnished-flat.arch", "c66caa1865a7b96d6edf80fa48a2d53eac0efa6475198983a3babb5b1b56a894"],
   ["examples/gallery-l.arch", "cc37c7d8d73b535358978674f3c5da26af87af4d066e6cd67a8bd1f8506e7f5f"],
   // Re-measured because the EXAMPLE changed (backlog D.1, its doubled chairs removed), and again
   // for the legend's ground swatches (backlog D.3, level 1's SVG only): the same row, with the
@@ -544,7 +545,9 @@ const BASELINE: [string, string][] = [
   ["eval/goldens/dims-auto-cottage.arch", "ca327599910fd97d0f8ced7ea4f03bb93312541b92e12119e12e976b0e76b5d8"],
   ["eval/goldens/galley-kitchen.arch", "af379acc431baaa7728fde7eee94f2a34fef2e4303ab967cabb029a7b3837669"],
   ["eval/goldens/l-shaped-flat.arch", "9634e0daba1977009de1013018e4f774212ae7632c2079600864ef25fa972255"],
-  ["eval/goldens/office.arch", "d41de65cecffa58bbb655304278fee8143bfb2100b3d9177512ffebbd3729eab"],
+  // Re-measured 2026-10-20 (PS2.19), `describe()` only: "Open Office" reads `office`; the PREVIOUS
+  // `describe()` with the new SVG, `lint()` and diagnostics reproduces d41de65c….
+  ["eval/goldens/office.arch", "f4725500de360cfdbe3ef3f9306204edc2819d45b28a7ca31d3d22dd000f022e"],
   ["eval/goldens/open-plan-loft.arch", "2efcf0fdc611e4c017621e8de25030ea3a7afed4069a6816217ba2f7cfca762a"],
   ["eval/goldens/reception-suite.arch", "2d52aba12f849f3dc957f45d1ec9b615ef180c66c82008b3e36e4ea77b0ce21b"],
   ["eval/goldens/relational-studio.arch", "845f133cddc2eb0f98d363b611c4bccfc87a69ca5554cdd316350030d2883bd5"],

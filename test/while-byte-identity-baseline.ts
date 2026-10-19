@@ -320,7 +320,8 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/clinic.arch", "fac5d9fab49df93fe8cbff6cc0bf26b9e84b1a32c26128e155d0eeb5da99feb1"],
   ["examples/corner-cafe.arch", "d6fc478a0e72c1774a9dca2f9af4a04dadd3fa518bdec5211aec400ec47808e6"], // added with the example, re-measured for net area, see header
   ["examples/courtyard-house.arch", "6ed177a87b487397decc32787c289ebaed4fa30108dd3be95d5cb87470dc6e14"], // re-measured for PS2.4, see header
-  ["examples/furnished-flat.arch", "4eb26e5f4ea04859bd96da44cd7db791a9da347d462143478e00b184de54a70b"],
+  // Re-measured 2026-10-20 (PS2.19), `describe()` only: "Utility" reads `utility` (`byte-identity-baseline.ts`).
+  ["examples/furnished-flat.arch", "c66caa1865a7b96d6edf80fa48a2d53eac0efa6475198983a3babb5b1b56a894"],
   ["examples/gallery-l.arch", "cc37c7d8d73b535358978674f3c5da26af87af4d066e6cd67a8bd1f8506e7f5f"],
   ["examples/garden-house.arch", "3506cadfa5aed4c2aa839ff26d04ebc38f8981801ca4d0f14ac34a1182b9df0a"], // re-measured, see header
   ["examples/garden-loft.arch", "eb6ba7bdcd33231cd0cfd2072a1a99e2b416be039e6efc2cc0a5ea76129738f2"],

@@ -408,8 +408,13 @@ describe("review fixes (PR #199)", () => {
 
   it("a passage names every room it joins, and an existing door means remove, not re-host", () => {
     const [d] = of(C3C_PASSAGE, "W_WET_ROOM_DOOR");
+    // PS2.19: the label-only "Office" classifies as an office, so it is one of the rooms the
+    // passage joins (it was skipped as unclassified), and three names are listed with commas.
     expect(d!.message).toMatch(
-      /its 3 connectors join "Living", "Office" and "Hall", so the way between "Living" and "Hall"/,
+      /its 3 connectors join "Living", "Office" and "Hall", so the way between "Living", "Office" and "Hall"/,
+    );
+    expect(d!.hints![1]).toBe(
+      '"Office" (r_b) already opens onto "Hall" (r_hall) through d_b: remove d_bb, and the bathroom is no longer on the way.',
     );
     expect(d!.hints![0]).toBe(
       '"Living" (r_a) already opens onto "Hall" (r_hall) through d_a: remove d_ba, and the bathroom is no longer on the way.',

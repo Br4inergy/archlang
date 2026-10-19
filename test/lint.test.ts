@@ -41,7 +41,7 @@ describe("lint — rules fire on the right violation", () => {
   it("W_ROOM_TOO_SMALL on a tiny room, with a span", () => {
     const ds = lint(`plan "P" {
       units mm
-      room id=r at (0,0) size 1000x1000 label "Closet"
+      room id=r at (0,0) size 1000x1000 label "Nook"
       door at (0,500) width 900
     }`);
     const d = ds.find((x) => x.code === "W_ROOM_TOO_SMALL");

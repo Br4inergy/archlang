@@ -2084,7 +2084,7 @@ room at (1000,0) size 2000x2000   # warning
 **Fix.** Increase its `size`, or merge it into an adjacent space.
 
 ```arch static
-room at (0,0) size 1000x1000 label "Closet"   # lint: 1 m²
+room at (0,0) size 1000x1000 label "Nook"     # lint: 1 m²
 ```
 
 ## W_ROOM_UNREACHABLE

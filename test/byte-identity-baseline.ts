@@ -1253,6 +1253,22 @@
  * moved in `while-byte-identity-baseline.ts`, `import-module-lets.test.ts`,
  * `garage-byte-identity.test.ts`, `outdoor-byte-identity.test.ts` and
  * `roof-void-byte-identity.test.ts`. No other row in this table moved.
+ *
+ * ## `furnished-flat`: both rows re-measured — the label classifier's fallback vocabulary
+ *
+ * 2026-10-20, plan-soundness PS2.19. Case (1), a compiler change, in `describe()` only.
+ * `classifyLabelUses` (`src/vocabulary.ts`) reads `FALLBACK_USE_VOCABULARY` (storage, office,
+ * utility, a nursery, a water closet) for a label its table leaves empty. Field by field, one
+ * room: `r_util` "Utility" (no authored `uses`) goes `uses` `[]` → `["utility"]` and `room_type`
+ * `Room` → `Storage` (the type an authored `uses utility` already gets). Every storey's SVG,
+ * `lint()` (default and `accessibility-advisory`), `compile().diagnostics` and the circulation
+ * overlay are byte-identical, swept per payload over `examples/`, `test/`, `eval/`, `docs/` and
+ * every `arch` fence (478 rows) before (a `git archive` of `fcb3074`) and after. Hashing the NEW
+ * SVG + `lint()` (+ `compile().diagnostics`) with the PREVIOUS `describe()` reproduces both
+ * previous rows (0d00a6d6…, dab3b998…) and the rows in `while-byte-identity-baseline.ts`,
+ * `import-module-lets.test.ts` (4eb26e5f…; there also `eval/goldens/office.arch`, d41de65c…,
+ * whose label-only "Open Office" reads `office`) and `garage-byte-identity.test.ts`. No other
+ * row in this table moved.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -1265,7 +1281,7 @@ export const BASELINE: [string, string][] = [
   ["clinic", "5d1f3ac0f05d759faa0cb55fcc1059e4e140fef7004974606eda28d2957d9174"],
   ["corner-cafe", "e83933d36bfe1ee9c892994ba38b13a5494a862c8dfce2b417e3f6981091b813"], // added with the example, re-measured for net area, see header
   ["courtyard-house", "a7778b04f1111a33de39134c1eb726fda7d50c07c4d14961dc8683ef69838ba6"], // re-measured for PS2.4, see header
-  ["furnished-flat", "0d00a6d601630e8bbfa2f15a0536bcbf8ccbb82fbfcea50b21b6586339a851d7"],
+  ["furnished-flat", "59035e95b2541a6e3b2ab67818aea6f9e087abc8bc262377f92e75e030f06c9a"],
   ["gallery-l", "ef97490e9b951d76396df52427ba6673b0cce29489dfdf4232dc4d0876fe691d"],
   ["garden-house", "762dc08b4a28a20f55285b0a4fd9f6067b7c24420b63885a7ee6356457285239"], // re-measured, see header
   ["garden-loft", "7161ddddda40ba6f520128b2196fdbba997e5f3b82674dbf2ee09495d763dc1d"],
@@ -1313,7 +1329,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["clinic", "6abf1b490c46e473a3330d3acf61e35a0b9524f33ebaa0d7881dafebcf014261"],
   ["corner-cafe", "94ee873e35d96aae534476e6a965e767482632b49920ca62ed01af844888b54f"], // added with the example, re-measured for net area, see header
   ["courtyard-house", "29260fb6e7c46a27c6048457c73ef25a52d63af1086ce74496ea72e81d7f5d4f"], // re-measured for PS2.4, see header
-  ["furnished-flat", "dab3b998a75ba65679021c8ae9282cb785d8daf69e6c0d64c39aea0c35a36fa5"],
+  ["furnished-flat", "abd789cdd3940cf2c6ef569014fa94ad1e74ede43fa44f53b81a73d471cfaf3c"],
   ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
   ["garden-house", "cb0adce49a5e153b366de219ed8d1f4751427020c80c7a51d539646d184fc907"], // re-measured, see header
   ["garden-loft", "77bddbf7b08d49b0845e5268bb267a602b93002dfa20175e9218e5156dc435d1"],
