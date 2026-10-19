@@ -112,7 +112,7 @@ for (const { group, items } of EXAMPLE_GROUPS) {
 // ---- lint-profile selector (advisory rule sets) ----
 // One-line description of what each profile tightens, shown under the selector.
 const LINT_PROFILE_CAPTIONS: Record<string, string> = {
-  "residential-basic": "Default — doors ≥ 700 mm, habitable rooms ≥ 4 m².",
+  "residential-basic": "Default — doors ≥ 700 mm, habitable rooms ≥ 4 m²; every plan judged as a dwelling.",
   "accessibility-advisory": "Stricter — doors ≥ 850 mm, rooms ≥ 5 m², 150 mm door-swing clearance.",
 };
 for (const name of LINT_PROFILE_NAMES) {

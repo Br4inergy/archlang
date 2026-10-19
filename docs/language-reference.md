@@ -2462,7 +2462,7 @@ machine-readable, image-free output:
   `W_CIRCUITOUS_PATH`…). Pick a ruleset with `--profile`:
 
   ```
-  archlang lint plan.arch --profile residential-basic        # default: ≥700 mm doors, ≥4 m² rooms (WC 1.1, bath 2.0; store/hall none)
+  archlang lint plan.arch --profile residential-basic        # the default's ≥700 mm doors, ≥4 m² rooms (WC 1.1, bath 2.0; store/hall none), every plan judged as a dwelling
   archlang lint plan.arch --profile accessibility-advisory   # stricter: ≥850 mm doors, ≥5 m² every room, swing clearance
   ```
 
