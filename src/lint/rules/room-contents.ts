@@ -2,8 +2,8 @@
  * Room-contents advisories (plan-soundness PS2.8, PS2.9): a habitable room with no window, and
  * a furnished room missing the piece that defines it. Both read a room's use from
  * {@link roomUses} (its `uses`, else its label through `src/vocabulary.ts`); a room with no
- * classified use is skipped silently here (the lint coverage report is where an unclassified
- * room is meant to show, not a guess in these rules). Neither reads `site` or any other storey.
+ * classified use is skipped and declared through `ctx.skip` (the lint coverage report is where
+ * an unclassified room shows, not a guess in these rules). Neither reads `site` or any other storey.
  */
 
 import {
@@ -103,18 +103,25 @@ function arcWindowUnattributed(ctx: LintContext, r: RRoom): boolean {
  * of its walls. The window test is `W_BEDROOM_NO_WINDOW`'s ({@link roomHasWindow}, the fact
  * `describe().windows[].room` is built from), so lint and describe read one attribution. A
  * bedroom is that rule's report, never this one's: one code per room. A bath, WC, hall or any
- * other use is never asked, and a room with no classified use is skipped silently. A room bounded
- * by an arc wall edge carrying a window the analysis gives to no room is skipped too
- * (attribution unknown; PS0.12): its bay may well light it.
+ * other use is never asked, and a room with no classified use is skipped (declared to the
+ * coverage report). A room bounded by an arc wall edge carrying a window the analysis gives to
+ * no room is skipped too (attribution unknown; PS0.12, declared as `arc-window-unattributed`):
+ * its bay may well light it.
  */
 export const habitableNoWindow: LintRule = {
   name: "habitable-no-window",
+  family: "daylight",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const r of ctx.rooms) {
       const uses = roomUses(r);
+      if (uses.size === 0) ctx.skip("no-uses", r);
       const kind = HABITABLE.find(([u]) => uses.has(u));
-      if (kind === undefined || isBedroom(r) || roomHasWindow(ctx, r) || arcWindowUnattributed(ctx, r)) continue;
+      if (kind === undefined || isBedroom(r) || roomHasWindow(ctx, r)) continue;
+      if (arcWindowUnattributed(ctx, r)) {
+        ctx.skip("arc-window-unattributed", r);
+        continue;
+      }
       const along = outsideWallsAlong(ctx, r);
       // Only an authored id can be named back to the author; a generated one is not in the source.
       const named = along.filter((id) => ctx.ir.walls.find((w) => w.id === id)?._idAuthored === true);
@@ -150,16 +157,20 @@ const spoken = (category: string): string => category.replace(/_/g, " ");
  * held piece does the job of its own family and of the one the catalogue says it `serves`
  * (`double_bed` serves `bed`), the reading `finish` uses. An empty room is never reported, and
  * neither are the wet and kitchen uses of a room `W_ROOM_NO_FIXTURE` already reports. A room
- * with no classified use is skipped silently. No machine fix: where a piece goes is the
- * author's decision; the hint quotes statements checked together.
+ * with no classified use is skipped (declared to the coverage report). No machine fix: where a
+ * piece goes is the author's decision; the hint quotes statements checked together.
  */
 export const roomMissingDefining: LintRule = {
   name: "room-missing-defining",
+  family: "contents",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const r of ctx.rooms) {
       const uses = [...roomUses(r)];
-      if (uses.length === 0) continue;
+      if (uses.length === 0) {
+        ctx.skip("no-uses", r);
+        continue;
+      }
       const rect = ctx.roomRects.get(r.id)!;
       const held: RFurniture[] = ctx.furniture.filter((f) => {
         const fr = rectOf(f);

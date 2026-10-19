@@ -355,7 +355,7 @@ $ archlang score plan.arch --brief brief.json --json
 
 architectural soundness warnings
 
-**Input:** `<file.arch|->` · **Output:** W_* warnings (narrowed by --code/--severity; `filtered`/`total_diagnostics` mark a filtered result)
+**Input:** `<file.arch|->` · **Output:** W_* warnings (narrowed by --code/--severity; `filtered`/`total_diagnostics` mark a filtered result), then a `coverage` block naming the rule families skipped and why
 
 | Flag | Does |
 | --- | --- |
@@ -609,7 +609,7 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 
 | Flag | Does |
 | --- | --- |
-| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 118 KB of it (spec = the language, 30 KB; workflow = the agent loop, 24 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 40 KB) |
+| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 118 KB of it (spec = the language, 30 KB; workflow = the agent loop, 24 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 41 KB) |
 | `--json` | structured result on stdout, messages on stderr |
 
 **Examples**
@@ -618,7 +618,7 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 # the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 $ archlang context
 
-# just the diagnostic catalog (40 KB) — read one section instead of paying for the whole 118 KB bundle
+# just the diagnostic catalog (41 KB) — read one section instead of paying for the whole 118 KB bundle
 $ archlang context --section errors
 ```
 

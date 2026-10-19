@@ -51,9 +51,18 @@ function isHabitable(r: RRoom): boolean {
 
 export const roomNotEquatorFacing: LintRule = {
   name: "room-not-equator-facing",
+  family: "orientation",
   check(ctx: LintContext): Diagnostic[] {
     const site = ctx.ir.site;
-    if (!site) return [];
+    if (!site) {
+      // Declared only when the rule had something to judge: a habitable room with a window.
+      const judgeable = ctx.rooms.some((r) => {
+        const rect = ctx.roomRects.get(r.id);
+        return isHabitable(r) && rect && ctx.windows.some((w) => pointOnRoomEdge(w.at, rect, ctx.rules.tolMm));
+      });
+      if (judgeable) ctx.skip("no-site");
+      return [];
+    }
 
     const facts = deriveSite(site);
     const turns = northQuarterTurns(ctx.ir.north);
@@ -61,6 +70,7 @@ export const roomNotEquatorFacing: LintRule = {
     const out: Diagnostic[] = [];
 
     for (const r of ctx.rooms) {
+      if (roomUses(r).size === 0) ctx.skip("no-uses", r);
       if (!isHabitable(r)) continue;
       const rect = ctx.roomRects.get(r.id);
       if (!rect) continue;

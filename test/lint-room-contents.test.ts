@@ -328,7 +328,11 @@ describe("W_ROOM_MISSING_DEFINING", () => {
         applied++;
       }
     }
-    expect(applied).toBe(6); // three firing cases × two profiles
+    // Every `done` case of the folder fires and is cleared, under both profiles: read from the
+    // headers, so a case added to the folder is counted without retyping a number here.
+    const done = cases.filter((f) => /^# status: done$/m.test(readFileSync(join(dir, f), "utf8"))).length;
+    expect(done).toBeGreaterThanOrEqual(3);
+    expect(applied).toBe(done * 2);
   });
 
   it("guard: every use whose furnish row marks a piece required has a reading here", () => {

@@ -12,6 +12,7 @@ import type { Diagnostic } from "../diagnostics.js";
 import { segmentsOfWall, type WallSegment } from "../geometry.js";
 import type { RDoor, RFurniture, ROpening, RRoom, RVoid, RWindow, ResolvedPlan } from "../ir.js";
 import { type ArrivingRun, type RVertical, verticalsOf } from "../vertical.js";
+import type { LintFamily, LintSkipReason } from "./coverage.js";
 import type { LintRuleset } from "./ruleset.js";
 
 /**
@@ -129,6 +130,14 @@ export interface LintContext {
    * guess.
    */
   frameOf(el: { _instance?: string }): D4 | null;
+  /**
+   * Declare that the running rule declined to judge something: the coverage seam
+   * (`src/lint/coverage.ts`, PS2.13). Pass the room when the skip is about one room, nothing
+   * for a plan-level skip. The family is the rule's own {@link LintRule.family}, attached by
+   * the fold. It records only: what a rule returns never depends on it, and a context built
+   * outside `lint()` (tests, `furnish`) drops every note.
+   */
+  skip(reason: LintSkipReason, room?: RRoom): void;
 }
 
 /** What {@link LintContext.at} needs off an element: where it is, and in which file. */
@@ -141,13 +150,20 @@ export interface DiagnosticSite {
 export interface LintRule {
   /** Stable name for tests/debugging (not user-facing). */
   name: string;
+  /** The family the coverage report files this rule's runs and skips under. */
+  family: LintFamily;
   check(ctx: LintContext): Diagnostic[];
 }
+
+/** Where {@link LintContext.skip} sends a note; the default drops it. */
+export type SkipSink = (reason: LintSkipReason, room?: RRoom) => void;
+const DROP_SKIP: SkipSink = () => {};
 
 export function buildLintContext(
   ir: ResolvedPlan,
   rules: LintRuleset,
   building: BuildingContext = NO_BUILDING,
+  onSkip: SkipSink = DROP_SKIP,
 ): LintContext {
   const rooms = ir.elements.filter((e): e is RRoom => e.kind === "room");
   const doors = ir.elements.filter((e): e is RDoor => e.kind === "door");
@@ -202,5 +218,6 @@ export function buildLintContext(
       framesMemo ??= new Map((ir.instances ?? []).map((i) => [i.name, fromSpelling(i.rotate, i.mirror)]));
       return framesMemo.get(el._instance) ?? null;
     },
+    skip: onSkip,
   };
 }

@@ -247,6 +247,17 @@ export { unifiedDiff } from "./unified-diff.js";
 // Pure; the ruleset is data. Surfaced as `arch lint`.
 export { lint, DEFAULT_RULESET, LINT_PROFILES, LINT_PROFILE_NAMES } from "./lint.js";
 export type { LintOptions, LintRuleset } from "./lint.js";
+// The lint coverage report (PS2.13): which rule families ran or skipped, and why. Beside
+// `lint()`'s diagnostics, never inside them, so `lint()`'s output is unchanged.
+export { lintCoverage, lintWithCoverage } from "./lint.js";
+export type {
+  LintCoverage,
+  LintCoverageFamily,
+  LintCoverageSkip,
+  LintFamily,
+  LintSkipReason,
+  LintUnclassifiedRoom,
+} from "./lint.js";
 // Explicit opt-in source-to-source corrector (ADR 0006): never part of compile().
 export { repair } from "./repair.js";
 export type { RepairResult, RepairChange, RepairNote } from "./repair.js";

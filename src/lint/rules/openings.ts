@@ -623,6 +623,7 @@ const idHint = (el: Hosted): string => `The ${KIND_WORD[el.kind]} is "${el.id}" 
  */
 export const openingAtJunction: LintRule = {
   name: "opening-at-junction",
+  family: "openings",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const all = openingsOnRuns(ctx);
@@ -735,6 +736,7 @@ function doubleDoor(p: Hosted, q: Hosted): boolean {
  */
 export const openingOverlap: LintRule = {
   name: "opening-overlap",
+  family: "openings",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const all = openingsOnRuns(ctx);
@@ -840,6 +842,7 @@ function straddlesRooms(
  */
 export const connectorAmbiguous: LintRule = {
   name: "connector-ambiguous",
+  family: "openings",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const edges = ctx.access().edges;
