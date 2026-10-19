@@ -978,9 +978,10 @@ opening or fixed counter on it; two rooms that are each kitchen, dining or livin
 open-plan pair and are exempt. `W_FLOOR_UNASSIGNED` fires when a closed region of floor the
 walls enclose is less than 95 % covered by rooms (an `outdoor` surface, a `void` or a stair
 also counts as cover), and names the rooms beside the empty floor. A walled pocket with no
-door into it and no room on it, such as a duct, is not reported. `W_ROOM_OUTSIDE_SHELL` fires
-when part of a room lies outside every wall, and says nothing on a plan whose walls enclose
-no region. All three measure the shapes themselves, so curved walls and circular rooms are
+door or window into it and no room on it, such as a duct, is not reported. A wall counts as
+the boundary between two rooms when its body stands on their shared edge, not merely near
+it. `W_ROOM_OUTSIDE_SHELL` fires when part of a room lies outside every wall, and only for a
+room most of whose floor is inside walls: with no closed shell around it, it says nothing. All three measure the shapes themselves, so curved walls and circular rooms are
 measured exactly.
 
 Narrow a noisy report with `--code` or `--severity` — on `lint` and on `validate`:

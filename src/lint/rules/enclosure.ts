@@ -10,24 +10,29 @@
  *
  * **From the shapes.** The run two rooms share is read off their own rings: a pair of
  * parallel edges within `tolMm` of each other (the room-adjacency test), checked by probing
- * just past each edge that one room's floor is on each side ({@link pointInRoomBox}). What
- * stands on the run is measured along the line midway between the two edges: the straight
- * wall centrelines within `tolMm` of it (`edgeWallCover`, the measure `W_ROOM_NOT_ENCLOSED`
- * reads a wet room's perimeter with, here generalised to any pair of rooms), the span of every
- * door and cased opening on it, and the extent along it of every fixed counter that stands
- * across it. A curved wall backs no straight run (its chord is not a wall). Walled faces and
+ * just past each edge that one room's floor is on each side ({@link pointInRoomBox}); pieces on
+ * one line that meet are merged, so a vertex on a ring cannot split a gap. What stands on the
+ * run is measured along the line midway between the two edges: every straight wall whose BODY
+ * (centreline ± half its thickness, plus {@link WALL_BODY_SLACK_MM}) meets the gap between the
+ * edges (`edgeWallCover` with a body test; `W_ROOM_NOT_ENCLOSED` reads the same function by
+ * centreline, unchanged), the span of every door and cased opening on it, and the extent of
+ * every fixed counter that straddles the line, which closes a stretch only when what it leaves
+ * open there is no wider than a doorway. A curved wall backs no straight run (its chord is not
+ * a wall). Walled faces and
  * the outside are the holes and the exterior of the joined wall bands (`src/analyze/wall-faces.ts`),
  * measured in closed form against the rooms' own shapes — arcs and circle rooms included. A
  * bounding box only skips what cannot meet.
  *
  * **Exemptions, and why.** Two rooms whose uses (`roomUses`: their `uses`, else the label
  * vocabulary — never an id) are each one of kitchen, dining or living are an open-plan pair:
- * the missing wall is the design. A walled face with no door or cased opening into it and no
- * room bordering its empty floor is a sealed pocket (a duct, a spandrel behind a curved wall),
- * not floor anyone forgot: it is not reported. Floor under an `outdoor` surface, a `void` or a
- * stair, lift or escalator is assigned, though it is no room. `W_ROOM_OUTSIDE_SHELL` is silent
- * on a storey whose walls close no face at all: with no shell there is no inside to be outside
- * of, and the rule refuses rather than guesses (ADR 0005).
+ * the missing wall is the design. A walled face with no door, cased opening or window into it
+ * and no room bordering its empty floor is a sealed pocket (a duct, a spandrel behind a curved
+ * wall), not floor anyone forgot: it is not reported. Floor under an `outdoor` surface, a `void`
+ * or a stair, lift or escalator is assigned, though it is no room. `W_ROOM_OUTSIDE_SHELL` judges
+ * only a room most of whose floor (an exact area) lies inside walled faces: anything else (no
+ * closed face at all, a column ring or a closed WC box beside the room, a shell left open at its
+ * door) gives it no shell to be outside of, and the rule refuses rather than guesses (ADR 0005).
+ * Both face rules are silent on a storey past the face bounds (`src/analyze/wall-faces.ts`).
  *
  * Messages name rooms by label and walls by kind; element ids are in the hints only. No rule
  * offers a machine fix: a wall, a room edge or a surface is a design decision.
@@ -35,7 +40,14 @@
 
 import type { Point } from "../../ast.js";
 import { edgeWallCover, type RoomBox, pointInRoomBox, rectOf, roomRing, roomUses } from "../../analyze.js";
-import { type FaceRoom, faceCover, roomOutside, type WallFaces, wallFaces } from "../../analyze/wall-faces.js";
+import {
+  type FaceRoom,
+  faceCover,
+  roomOutside,
+  type WallFaces,
+  type WallFacesRefused,
+  wallFaces,
+} from "../../analyze/wall-faces.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import { distPointToWallSegment, wallFaceProbes } from "../../geometry.js";
 import { edgeMid, edgeTangentAt } from "../../geometry/band.js";
@@ -63,13 +75,18 @@ const BOUNDARY_FIXTURES: ReadonlySet<string> = new Set(["counter", "bar_counter"
  */
 const RUN_PROBE_MM = 50;
 
+/**
+ * The share of a room's floor that must lie inside walled faces before `W_ROOM_OUTSIDE_SHELL`
+ * judges the rest of it against them: most of it. Below that, the faces are not the room's
+ * shell (a column ring, a closed WC box beside it, a shell open at the entrance).
+ */
+const MIN_INSIDE_SHARE = 0.5;
+
 /** The thinnest partition a quoted wall statement gets when the rooms meet edge to edge. */
 const DEFAULT_PARTITION_MM = 100;
 
 /** Float dust on whole-millimetre geometry. */
 const EPS = 1e-6;
-
-const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** `"A"`, `"A" and "B"`, `"A", "B" and "C"`. */
 function listOf(names: readonly string[]): string {
@@ -88,6 +105,16 @@ function runWords(p: Point, q: Point): string {
 
 // ─── W_BOUNDARY_NO_WALL ────────────────────────────────────────────────────────────────
 
+/**
+ * How far past its centreline-plus-half-thickness a wall's body may stand and still be read as
+ * standing on a boundary (mm): a wall drawn on the room edges' line, or with a face on it, is
+ * on it; one standing a room's depth inside is not.
+ */
+const WALL_BODY_SLACK_MM = 50;
+
+/** Two runs on lines this close (mm) are one line. */
+const SAME_LINE_MM = 1;
+
 /** One run two rooms share, measured along the line midway between their edges. */
 interface SharedRun {
   /** The run's ends on the midline. */
@@ -96,8 +123,18 @@ interface SharedRun {
   len: number;
   /** Distance between the two rooms' edges (0 when drawn on one centreline). */
   sep: number;
-  /** The longest stretch with nothing standing on it, in mm from `p`. */
-  gap: [number, number];
+}
+
+/** One stretch of a run with nothing standing on it, and what the run holds besides. */
+interface OpenStretch {
+  run: SharedRun;
+  /** Along-run interval (mm from `run.p`). */
+  lo: number;
+  hi: number;
+  /** Nothing at all stands on the run: no wall, door, opening or counter anywhere on it. */
+  bare: boolean;
+  /** A door or cased opening stands somewhere on the run. */
+  connector: boolean;
 }
 
 /** Complement of `covered` within `[0, len]`: the uncovered stretches, in order. */
@@ -117,80 +154,137 @@ function gapsOf(covered: Array<[number, number]>, len: number): Array<[number, n
 }
 
 /**
- * Every run rooms `a` and `b` share, with what stands on it. Each is a pair of parallel ring
- * edges within `tolMm` that overlap along their length, with `a`'s floor on one side and
- * `b`'s on the other just past the edges at the run's middle (rooms that overlap or nest
- * share no boundary).
+ * Every run rooms `a` and `b` share. A piece is a pair of parallel ring edges within `tolMm`
+ * that overlap along their length, with `a`'s floor on one side and `b`'s on the other just
+ * past the edges at the piece's middle (rooms that overlap or nest share no boundary). Pieces
+ * on one line are then merged where they meet, so a vertex on a ring (an edge split in two)
+ * does not split the run and hide a gap across it.
  */
 function sharedRuns(ctx: LintContext, a: RRoom, b: RRoom): SharedRun[] {
   const ba = ctx.roomRects.get(a.id)!;
   const bb = ctx.roomRects.get(b.id)!;
   const tol = ctx.rules.tolMm;
-  const out: SharedRun[] = [];
   const ringA = roomRing(ba);
   const ringB = roomRing(bb);
-  const straight = ctx.wallSegs.filter((s) => !s.arc);
+  const inA = (p: Point): boolean => pointInRoomBox(p, ba);
+  const inB = (p: Point): boolean => pointInRoomBox(p, bb);
+  // Pieces in a canonical frame: direction `u` pointing east (or south when vertical), the
+  // midline at offset `c` along `n`, the piece from `s0` to `s1` along `u`.
+  const pieces: Array<{ u: Point; n: Point; c: number; s0: number; s1: number; sep: number }> = [];
   for (let i = 0; i < ringA.length; i++) {
     const a1 = ringA[i]!;
     const a2 = ringA[(i + 1) % ringA.length]!;
     const la = Math.hypot(a2.x - a1.x, a2.y - a1.y);
     if (la < EPS) continue;
-    const u = { x: (a2.x - a1.x) / la, y: (a2.y - a1.y) / la };
-    const n = { x: -u.y, y: u.x };
+    const e = { x: (a2.x - a1.x) / la, y: (a2.y - a1.y) / la };
+    const en = { x: -e.y, y: e.x };
     for (let j = 0; j < ringB.length; j++) {
       const b1 = ringB[j]!;
       const b2 = ringB[(j + 1) % ringB.length]!;
       if (collinearOverlapLength(a1, a2, b1, b2, tol) <= EPS) continue;
-      const off = (b1.x - a1.x) * n.x + (b1.y - a1.y) * n.y;
-      const t1 = (b1.x - a1.x) * u.x + (b1.y - a1.y) * u.y;
-      const t2 = (b2.x - a1.x) * u.x + (b2.y - a1.y) * u.y;
+      const off = (b1.x - a1.x) * en.x + (b1.y - a1.y) * en.y;
+      const t1 = (b1.x - a1.x) * e.x + (b1.y - a1.y) * e.y;
+      const t2 = (b2.x - a1.x) * e.x + (b2.y - a1.y) * e.y;
       const lo = Math.max(0, Math.min(t1, t2));
       const hi = Math.min(la, Math.max(t1, t2));
       if (hi - lo <= EPS) continue;
-      const at = (t: number): Point => ({
-        x: a1.x + u.x * t + (n.x * off) / 2,
-        y: a1.y + u.y * t + (n.y * off) / 2,
-      });
+      const at = (t: number): Point => ({ x: a1.x + e.x * t + (en.x * off) / 2, y: a1.y + e.y * t + (en.y * off) / 2 });
       const mid = at((lo + hi) / 2);
       const d = Math.abs(off) / 2 + RUN_PROBE_MM;
-      const plus = { x: mid.x + n.x * d, y: mid.y + n.y * d };
-      const minus = { x: mid.x - n.x * d, y: mid.y - n.y * d };
-      const inA = (p: Point): boolean => pointInRoomBox(p, ba);
-      const inB = (p: Point): boolean => pointInRoomBox(p, bb);
+      const plus = { x: mid.x + en.x * d, y: mid.y + en.y * d };
+      const minus = { x: mid.x - en.x * d, y: mid.y - en.y * d };
       const opposite =
         (inA(minus) && inB(plus) && !inA(plus) && !inB(minus)) ||
         (inA(plus) && inB(minus) && !inA(minus) && !inB(plus));
       if (!opposite) continue;
+      const u = e.x > EPS || (Math.abs(e.x) <= EPS && e.y > 0) ? e : { x: -e.x, y: -e.y };
+      const n = { x: -u.y, y: u.x };
       const p = at(lo);
       const q = at(hi);
-      const len = hi - lo;
-      const covered: Array<[number, number]> = [...edgeWallCover(p, q, straight, tol)];
-      const along = (x: Point): number => (x.x - p.x) * u.x + (x.y - p.y) * u.y;
-      const across = (x: Point): number => (x.x - p.x) * n.x + (x.y - p.y) * n.y;
-      for (const c of ctx.connectors) {
-        if (Math.abs(across(c.at)) > tol) continue;
-        const s = along(c.at);
-        covered.push([s - c.width / 2, s + c.width / 2]);
-      }
-      for (const f of ctx.furniture) {
-        if (!BOUNDARY_FIXTURES.has(f.category)) continue;
-        const r = rectOf(f);
-        const corners = [
-          { x: r.x, y: r.y },
-          { x: r.x + r.w, y: r.y },
-          { x: r.x + r.w, y: r.y + r.h },
-          { x: r.x, y: r.y + r.h },
-        ];
-        const ns = corners.map(across);
-        if (Math.max(...ns) < -d || Math.min(...ns) > d) continue;
-        const ss = corners.map(along);
-        covered.push([Math.min(...ss), Math.max(...ss)]);
-      }
-      const gaps = gapsOf(covered, len);
-      if (gaps.length === 0) continue;
-      const gap = gaps.reduce((w, g) => (g[1] - g[0] > w[1] - w[0] ? g : w));
-      out.push({ p, q, len, sep: Math.abs(off), gap });
+      const sp = p.x * u.x + p.y * u.y;
+      const sq = q.x * u.x + q.y * u.y;
+      pieces.push({ u, n, c: p.x * n.x + p.y * n.y, s0: Math.min(sp, sq), s1: Math.max(sp, sq), sep: Math.abs(off) });
     }
+  }
+  // Merge pieces on one line that meet or overlap, in a deterministic order.
+  pieces.sort((x, y) => x.u.x - y.u.x || x.u.y - y.u.y || x.c - y.c || x.s0 - y.s0);
+  const out: SharedRun[] = [];
+  let cur: (typeof pieces)[number] | null = null;
+  const flush = (): void => {
+    if (!cur) return;
+    const p = { x: cur.u.x * cur.s0 + cur.n.x * cur.c, y: cur.u.y * cur.s0 + cur.n.y * cur.c };
+    const q = { x: cur.u.x * cur.s1 + cur.n.x * cur.c, y: cur.u.y * cur.s1 + cur.n.y * cur.c };
+    out.push({ p, q, len: cur.s1 - cur.s0, sep: cur.sep });
+  };
+  for (const x of pieces) {
+    const sameLine =
+      cur !== null &&
+      Math.abs(cur.u.x - x.u.x) <= EPS &&
+      Math.abs(cur.u.y - x.u.y) <= EPS &&
+      Math.abs(cur.c - x.c) <= SAME_LINE_MM;
+    if (cur !== null && sameLine && x.s0 <= cur.s1 + EPS) {
+      cur = { u: cur.u, n: cur.n, c: cur.c, s0: cur.s0, s1: Math.max(cur.s1, x.s1), sep: Math.max(cur.sep, x.sep) };
+      continue;
+    }
+    flush();
+    cur = { ...x };
+  }
+  flush();
+  return out;
+}
+
+/**
+ * The open stretches of one shared run: where no wall body (`edgeWallCover` with a
+ * {@link WallBodyTest}: the wall's centreline ± half its thickness, plus
+ * {@link WALL_BODY_SLACK_MM}, meets the gap between the two room edges), no door and no cased
+ * opening stands. A fixed counter closes a stretch only when it STRADDLES the line and what it
+ * leaves open there totals no more than a doorway (`maxBoundaryGapMm`); a token counter in a
+ * wide gap closes nothing.
+ */
+function openStretches(ctx: LintContext, run: SharedRun): OpenStretch[] {
+  const { p, q, len, sep } = run;
+  const u = { x: (q.x - p.x) / len, y: (q.y - p.y) / len };
+  const n = { x: -u.y, y: u.x };
+  const along = (x: Point): number => (x.x - p.x) * u.x + (x.y - p.y) * u.y;
+  const across = (x: Point): number => (x.x - p.x) * n.x + (x.y - p.y) * n.y;
+  const straight = ctx.wallSegs.filter((s) => !s.arc);
+  const covered = edgeWallCover(p, q, straight, ctx.rules.tolMm, { halfGap: sep / 2, slack: WALL_BODY_SLACK_MM });
+  let connector = false;
+  for (const c of ctx.connectors) {
+    const half = (c.host?.thickness ?? 0) / 2;
+    if (Math.abs(across(c.at)) - half - WALL_BODY_SLACK_MM > sep / 2) continue;
+    const s = along(c.at);
+    if (s + c.width / 2 <= 0 || s - c.width / 2 >= len) continue;
+    covered.push([s - c.width / 2, s + c.width / 2]);
+    connector = true;
+  }
+  const counters: Array<[number, number]> = [];
+  for (const f of ctx.furniture) {
+    if (!BOUNDARY_FIXTURES.has(f.category)) continue;
+    const r = rectOf(f);
+    const corners = [
+      { x: r.x, y: r.y },
+      { x: r.x + r.w, y: r.y },
+      { x: r.x + r.w, y: r.y + r.h },
+      { x: r.x, y: r.y + r.h },
+    ];
+    const ns = corners.map(across);
+    if (!(Math.min(...ns) < 0 && Math.max(...ns) > 0)) continue;
+    const ss = corners.map(along);
+    counters.push([Math.min(...ss), Math.max(...ss)]);
+  }
+  const bareRun = covered.length === 0 && counters.length === 0;
+  const out: OpenStretch[] = [];
+  for (const [lo, hi] of gapsOf(covered, len)) {
+    const inGap = counters
+      .map(([a, b]): [number, number] => [Math.max(a, lo), Math.min(b, hi)])
+      .filter(([a, b]) => b > a)
+      .map(([a, b]): [number, number] => [a - lo, b - lo]);
+    if (inGap.length > 0) {
+      const leftOpen = gapsOf(inGap, hi - lo).reduce((t, [a, b]) => t + (b - a), 0);
+      if (leftOpen <= ctx.rules.maxBoundaryGapMm + EPS) continue;
+    }
+    out.push({ run, lo, hi, bare: bareRun, connector });
   }
   return out;
 }
@@ -201,9 +295,10 @@ const boxesNear = (a: RoomBox, b: RoomBox, tol: number): boolean =>
 
 /**
  * `W_BOUNDARY_NO_WALL`: two rooms share an edge run on which a stretch longer than a doorway
- * (`maxBoundaryGapMm`) has no wall, door, cased opening or fixed counter. One warning per pair,
- * on the later-declared room, measuring the longest such stretch. An open-plan pair (both
- * kitchen, dining or living) is exempt; a circle room shares no straight run.
+ * (`maxBoundaryGapMm`) has no wall, door, cased opening or closing counter
+ * ({@link openStretches}). One warning per pair, on the later-declared room, measuring the
+ * longest such stretch. An open-plan pair (both kitchen, dining or living) is exempt; a circle
+ * room shares no straight run.
  */
 export const boundaryNoWall: LintRule = {
   name: "boundary-no-wall",
@@ -214,7 +309,7 @@ export const boundaryNoWall: LintRule = {
     const rooms = ctx.rooms;
     const thinnest = ctx.ir.walls.reduce(
       (t, w) => (w.category === "partition" ? Math.min(t, w.thickness) : t),
-      Infinity,
+      Number.POSITIVE_INFINITY,
     );
     for (let j = 0; j < rooms.length; j++) {
       const b = rooms[j]!;
@@ -226,35 +321,37 @@ export const boundaryNoWall: LintRule = {
         const ua = [...roomUses(a)];
         const ub = [...roomUses(b)];
         if (ua.some((x) => OPEN_PLAN.has(x)) && ub.some((x) => OPEN_PLAN.has(x))) continue;
-        const runs = sharedRuns(ctx, a, b);
-        if (runs.length === 0) continue;
-        const worst = runs.reduce((w, r) => (r.gap[1] - r.gap[0] > w.gap[1] - w.gap[0] ? r : w));
-        const gapLen = worst.gap[1] - worst.gap[0];
+        const stretches = sharedRuns(ctx, a, b).flatMap((run) => openStretches(ctx, run));
+        if (stretches.length === 0) continue;
+        const worst = stretches.reduce((w, s) => (s.hi - s.lo > w.hi - w.lo ? s : w));
+        const gapLen = worst.hi - worst.lo;
         if (gapLen <= max + EPS) continue;
-        const u = {
-          x: (worst.q.x - worst.p.x) / worst.len,
-          y: (worst.q.y - worst.p.y) / worst.len,
-        };
+        const { run } = worst;
+        const u = { x: (run.q.x - run.p.x) / run.len, y: (run.q.y - run.p.y) / run.len };
         // The open stretch's two ends, west/north end first, so the quoted wall reads the way
         // a person writes one whatever direction the room's ring runs.
-        const ends = [worst.gap[0], worst.gap[1]]
-          .map((s) => ({ x: worst.p.x + u.x * s, y: worst.p.y + u.y * s }))
+        const ends = [worst.lo, worst.hi]
+          .map((s) => ({ x: run.p.x + u.x * s, y: run.p.y + u.y * s }))
           .sort((m, k) => Math.round(m.x) - Math.round(k.x) || m.y - k.y);
         const g0 = ends[0]!;
         const g1 = ends[1]!;
         const na = `"${ctx.labelOf(a)}"`;
         const nb = `"${ctx.labelOf(b)}"`;
-        const all = Math.abs(gapLen - worst.len) <= EPS;
-        const fact = all
-          ? `they meet along ${mm(worst.len)} mm ${runWords(worst.p, worst.q)} with no wall, door or opening anywhere on it`
-          : `they meet along ${mm(worst.len)} mm ${runWords(worst.p, worst.q)}, and ${mm(gapLen)} mm of it (${runWords(g0, g1).replace(/^on the line /, "")}) has no wall, door or opening`;
-        const thick = worst.sep > EPS ? worst.sep : Number.isFinite(thinnest) ? thinnest : DEFAULT_PARTITION_MM;
+        const reason = (it: string): string =>
+          worst.connector
+            ? `A door or opening on the run joins them, but through ${it} they are one space, so privacy and enclosure are read as if it were walled.`
+            : `Through ${it} they are one space that anyone walks through, but no door or opening joins them in the plan, so routes, privacy and enclosure are read as if it were walled.`;
+        const message =
+          worst.bare && Math.abs(gapLen - run.len) <= EPS
+            ? `${na} and ${nb} have no wall between them: they meet along ${mm(run.len)} mm ${runWords(run.p, run.q)} with no wall, door or opening anywhere on it, wider than a ${mm(max)} mm doorway. ${reason("that boundary")}`
+            : `The boundary between ${na} and ${nb} is open for ${mm(gapLen)} mm (${runWords(g0, g1).replace(/^on the line /, "")}), wider than a ${mm(max)} mm doorway: they meet along ${mm(run.len)} mm ${runWords(run.p, run.q)}, and that stretch has no wall, door or opening. ${reason("that stretch")}`;
+        const thick = run.sep > EPS ? run.sep : Number.isFinite(thinnest) ? thinnest : DEFAULT_PARTITION_MM;
         const stmt = `wall partition thickness ${mm(thick)} { (${mm(g0.x)},${mm(g0.y)}) (${mm(g1.x)},${mm(g1.y)}) }`;
         out.push({
           severity: "warning",
           code: "W_BOUNDARY_NO_WALL",
           ...ctx.at(b),
-          message: `${cap(na)} and ${nb} have no wall between them: ${fact}, wider than a ${mm(max)} mm doorway. Without a wall they are one space that anyone walks through, but no door or opening joins them in the plan, so routes, privacy and enclosure are read as if the wall were there.`,
+          message,
           hints: [
             `Draw the missing partition, e.g. \`${stmt}\`, and put a \`door\` in it if the two rooms should connect.`,
             `If they are one space by design, draw that wall with a cased \`opening\` across the gap, so the plan says how they join.`,
@@ -271,15 +368,27 @@ export const boundaryNoWall: LintRule = {
 // ─── walled faces (W_FLOOR_UNASSIGNED, W_ROOM_OUTSIDE_SHELL) ──────────────────────────
 
 /** The faces of a storey, computed once per resolved plan and shared by both rules. */
-const FACES = new WeakMap<ResolvedPlan, WallFaces | null>();
+const FACES = new WeakMap<ResolvedPlan, WallFaces | WallFacesRefused | null>();
+/**
+ * The storey's faces, or `null` when there are none to read or a count was over its bound
+ * ({@link WallFacesRefused}: past `MAX_FACE_WALL_SEGMENTS` or `MAX_ENCLOSURE_FACES`), in which
+ * case both face rules are silent on the storey.
+ */
 const facesOf = (ir: ResolvedPlan): WallFaces | null => {
   if (!FACES.has(ir)) FACES.set(ir, wallFaces(ir.walls));
-  return FACES.get(ir) ?? null;
+  const wf = FACES.get(ir) ?? null;
+  // TODO(PS2.13): once the lint coverage seam (`ctx.skip`, PR #203) lands, report a refused
+  // storey as a coverage skip naming the bound instead of staying silent.
+  if (wf === null || "refused" in wf) return null;
+  return wf;
 };
 
-/** Does a door or cased opening open into face `fi` (one host thickness off either face)? */
-function faceHasWayIn(ctx: LintContext, wf: WallFaces, fi: number): boolean {
-  return ctx.connectors.some((c) => {
+/**
+ * Does a door, cased opening or window open into face `fi` (one host thickness off either of
+ * its host's faces)? A face with none of them and no room on its empty floor is sealed.
+ */
+function faceHasOpening(ctx: LintContext, wf: WallFaces, fi: number): boolean {
+  return [...ctx.connectors, ...ctx.windows].some((c) => {
     if (!c.host) return false;
     const probes = wallFaceProbes(c.host, c.at, Math.max(c.host.thickness, 1));
     return wf.faceAt(probes.plus) === fi || wf.faceAt(probes.minus) === fi;
@@ -360,7 +469,7 @@ export const floorUnassigned: LintRule = {
       if (covered >= ctx.rules.minFaceCoverRatio - EPS) continue;
       if (c.unassigned / 1_000_000 < ctx.rules.minUnassignedM2 - EPS) continue;
       const bordering = c.bordering.filter((k) => k < ctx.rooms.length).map((k) => ctx.rooms[k]!);
-      if (bordering.length === 0 && !faceHasWayIn(ctx, wf, fi)) continue;
+      if (bordering.length === 0 && !faceHasOpening(ctx, wf, fi)) continue;
       const walls = wallsRound(ctx, wf, fi);
       const beyond = bordering.length === 0 ? roomsBeyond(ctx, wf, fi) : [];
       const names = (rs: readonly RRoom[]): string => listOf(rs.map((r) => `"${ctx.labelOf(r)}"`));
@@ -394,7 +503,8 @@ export const floorUnassigned: LintRule = {
             bordering.length > 0
               ? `Extend ${listOf(bordering.map((r) => `"${ctx.labelOf(r)}"`))} over it, draw a room on it, or move the walls in to the rooms' edges.`
               : "Draw a room on it, or move the walls so they enclose only rooms.",
-            "If it is open ground (a courtyard, a light well), draw it as an `outdoor` surface; if it is a void or a shaft, draw that `void` or stair.",
+            "If it is open ground (a courtyard, a light well), draw it as an `outdoor` surface; if it is a shaft, draw its stair or lift.",
+            "Accept it if the floor is a sealed void: then draw it as a `void`, so the plan says so.",
             ...(idHint ? [`${idHint}.`] : []),
           ],
         },
@@ -420,6 +530,11 @@ export const roomOutsideShell: LintRule = {
     for (const r of ctx.rooms) {
       const o = roomOutside(wf, r);
       if (!o || o.area / 1_000_000 < ctx.rules.minOutsideShellM2 - EPS) continue;
+      // A shell to judge against: most of the room's floor (an exact area, not a sample) lies
+      // inside walled faces. A room standing mostly outside every face (beside a column ring or
+      // a closed WC box, or behind a shell left open at its door) has no closed shell of its
+      // own, and the rule says nothing rather than invent one (ADR 0005).
+      if (o.inFaces < MIN_INSIDE_SHARE * o.gross) continue;
       const m2 = fmt2(Math.round(o.area / 10_000) / 100);
       const depth = o.depth >= 0.5 ? `, up to ${mm(o.depth)} mm past their outer face` : "";
       out.push({
@@ -429,7 +544,7 @@ export const roomOutsideShell: LintRule = {
         message: `Room "${ctx.labelOf(r)}" has ${m2} m² of its floor outside the building's walls${depth}. A room drawn past the outside wall has floor no wall encloses, usually a room resized or moved while its walls stayed put.`,
         hints: [
           `Bring "${ctx.labelOf(r)}" back inside the walls (resize or move it so its edge meets the outside wall), or move the outside wall out to the room's edge.`,
-          "Accept it if that part is meant to be outside (a terrace, a balcony, a porch): draw it as an `outdoor` surface rather than a room.",
+          "If that part is meant to be outside (a terrace, a balcony, a porch), it is not a room: draw it as an `outdoor` surface instead and keep the room inside the walls.",
           `The room is "${r.id}".`,
         ],
       });

@@ -19,7 +19,8 @@
 # Both obvious repairs were measured, and both cost more than they buy:
 #
 #   * A cased `opening` on a wall-free boundary clears W_ROOM_DISCONNECTED from
-#     `arch lint` and raises W_OPENING_OFF_WALL from `arch validate`: one warning
+#     `arch lint` and raises W_OPENING_OFF_WALL from `arch validate` — `lint` is the
+#     soundness layer alone, `validate` is parse + resolve + lint. That is one warning
 #     traded for another, and the second one is the true one.
 #   * Absolute partitions at x=5000 and y=4000 would compile clean and would make this
 #     file a plan whose ROOMS reflow and whose WALLS silently do not — the trap the file

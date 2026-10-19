@@ -1198,8 +1198,15 @@
  *     `outdoor[]` and `totals.outdoor_area_m2`.
  *   - `relational`: `W_BOUNDARY_NO_WALL` ×3, the language limit its header already documents
  *     (relational rooms cannot carry walls). Not fixed; the header now counts seven deliberate
- *     warnings, rewritten to the same length in UTF-16 code units, so no span moves. SVG and
- *     `describe()` byte-identical; `lint()` is the previous list plus the three.
+ *     warnings (+90 code units above every diagnostic). SVG and `describe()` byte-identical
+ *     with the previous source; `cc165f4`'s `lint()` on the new source is its `lint()` on the
+ *     previous one with every span +90, and the new `lint()` is that list plus the three.
+ *
+ * Review round 1 (same day) moved `lint()` again, and only `lint()`: the boundary rule's
+ * wording (a partial gap reads "the boundary … is open for N mm"), its run merging, wall-body
+ * test and counter test, and the face rule's accept-if hint. `relational`'s rows and the moved
+ * fixture rows elsewhere (`diff-a`, `zones-levels`, `zones-wings`) were re-measured with the same
+ * proofs against `cc165f4`; `aquarium` and `courtyard-house` lint clean and did not move.
  * After (2) `aquarium` and `courtyard-house` lint exactly as before (1) (both clean); each row
  * below is the new measurement with this file's digest bodies.
  */
@@ -1230,7 +1237,7 @@ export const BASELINE: [string, string][] = [
   ["one-room", "9519d5c396d8644e840a1520e6d84f75a8306d1309abebcbd61aa59560fda364"],
   ["parametric", "0300b6e01a4a0f10827b84dfaa21c9a89a4bfa15c008ce01ab6900118b6bc60a"],
   ["practice-office", "f5c1021b3038aebf47428842c16949862466cb6ef309be181329b34f4f0ae848"], // added with the example, re-measured for net area, see header
-  ["relational", "6a98fe3eaa7a4b9b8cbf0e577e0f6474711d0ac8606d3ea3b8f74450964f9f2d"], // re-measured for PS2.4, see header
+  ["relational", "0725cbcad5270584cc69f8e457971bf07494110365956c72d83ea910d9565e8f"], // re-measured for PS2.4, see header
   ["sheet-notes", "f4ab64ec80be43d25a5949c971b07b00696f8fc2ab3927af72442ab70e8f551f"], // re-measured, see header
   ["studio", "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f"],
   ["terrace-row", "6ab8d421e44c3dc52a72afe92da903e273df513087de54af0f007a0c9a1efacd"], // re-measured, see header
@@ -1278,7 +1285,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["one-room", "fbbd7f194ce4ff25444b4a5e58d32ae1919f01a25e20f9ab8bf6aa9d7475def5"],
   ["parametric", "d84db7c3f3d204692228fbec364808644f6f5c9bbb5b6a4d2a44347ad388dad3"],
   ["practice-office", "fc365df8e34d7b28347c0e01631fb59d2cd3348404a7715110d178ed5aa000c1"], // added with the example, re-measured for net area, see header
-  ["relational", "e6dc5573a778c5e8b2fb3b9ac2e91e36210f06174e90b2ede2a04af56d3f0c7e"], // re-measured for PS2.4, see header
+  ["relational", "7bf5bed995082c538cce85c5263b55283e972c502f2742f82f0e3c7e3fb067bd"], // re-measured for PS2.4, see header
   ["sheet-notes", "8a72d4737654ecebe5fa7cce4590d84c70d3c73556115298e2a1c2eadde7d0f9"], // added with the example, see header
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["terrace-row", "a4f349004a91e8687abd946b14aa8ba7721a0fd5c173ad89dfc9cfe5fbe486f9"],

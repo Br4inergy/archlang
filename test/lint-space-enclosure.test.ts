@@ -3,7 +3,14 @@ import { dirname, join, resolve as resolvePath } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildDoorAccessGraph, DEFAULT_TOL, resolvePlan } from "../src/analyze.js";
 import { computeCirculation } from "../src/analyze/circulation.js";
-import { MAX_FACE_WALL_SEGMENTS } from "../src/analyze/wall-faces.js";
+import {
+  faceCover,
+  MAX_ENCLOSURE_FACES,
+  MAX_FACE_WALL_SEGMENTS,
+  MAX_WALL_CONTACTS,
+  roomOutside,
+  wallFaces,
+} from "../src/analyze/wall-faces.js";
 import { lint } from "../src/index.js";
 import type { RDoor, RFurniture, ROpening, RRoom, RVoid } from "../src/ir.js";
 import { LINT_RULES } from "../src/lint/rules/index.js";
@@ -54,7 +61,9 @@ describe("W_BOUNDARY_NO_WALL", () => {
     const upTo = (x: number): string => `  wall id=p partition thickness 100 { (0,4000) (${x},4000) }\n`;
     expect(codesOf(LIVING_OVER(upTo(5100)))).not.toContain("W_BOUNDARY_NO_WALL");
     const [d] = only(LIVING_OVER(upTo(5050)), "W_BOUNDARY_NO_WALL");
-    expect(d!.message).toContain("and 950 mm of it (y 4000, x 5050–6000) has no wall, door or opening");
+    expect(d!.message).toMatch(
+      /^The boundary between "Upper" and "Lower" is open for 950 mm \(y 4000, x 5050–6000\), wider than a 900 mm doorway: they meet along 6000 mm on the line y 4000, x 0–6000, and that stretch has no wall, door or opening\. Through that stretch they are one space that anyone walks through, but no door or opening joins them/,
+    );
     expect(codesOf(LIVING_OVER(upTo(5050)), { ruleset: { maxBoundaryGapMm: 950 } })).not.toContain(
       "W_BOUNDARY_NO_WALL",
     );
@@ -373,5 +382,203 @@ describe("circulation-reachable implies access-reachable, on the corpus", () => 
       const ds = only(readFileSync(f, "utf8"), "W_BOUNDARY_NO_WALL", { world: worldFor(dirname(f)) });
       expect(ds.length, f).toBeGreaterThan(0);
     }
+  });
+});
+
+// ─── review round 1 (red-team repros, each reduced from the reviewer's file) ───────────
+
+/** A plan from the reviewer's repro shape: no units line, mm by default. */
+const P = (body: string): string => `plan "t" {\n${body}\n}\n`;
+const SHELL_67 = "wall exterior thickness 200 { (0,0) (6000,0) (6000,7000) (0,7000) close }";
+
+describe("review round 1 — W_BOUNDARY_NO_WALL", () => {
+  const split = (bedroom: string): string =>
+    P(`${SHELL_67}
+wall partition thickness 100 { (0,4000) (2200,4000) }
+wall partition thickness 100 { (3800,4000) (6000,4000) }
+room at (0,0) size 6000x4000 label "Study" uses office
+${bedroom}`);
+
+  it("merges collinear pieces of a run, so a ring vertex cannot hide a gap across it (b1)", () => {
+    const control = split('room polygon (0,4000) (6000,4000) (6000,7000) (0,7000) label "Bedroom" uses bedroom');
+    const vertex = split(
+      'room polygon (0,4000) (3000,4000) (6000,4000) (6000,7000) (0,7000) label "Bedroom" uses bedroom',
+    );
+    const msg = (s: string) => only(s, "W_BOUNDARY_NO_WALL").map((d) => d.message.split(":")[0]);
+    expect(msg(control)).toEqual([
+      'The boundary between "Study" and "Bedroom" is open for 1600 mm (y 4000, x 2200–3800), wider than a 900 mm doorway',
+    ]);
+    expect(msg(vertex)).toEqual(msg(control));
+  });
+
+  it("counts a counter only along its own extent and only when it straddles the line (b2, b3)", () => {
+    const tiny = P(`${SHELL_67}
+wall partition thickness 100 { (0,4000) (2100,4000) }
+wall partition thickness 100 { (3900,4000) (6000,4000) }
+room at (0,0) size 6000x4000 label "Study" uses office
+room at (0,4000) size 6000x3000 label "Bedroom" uses bedroom
+furniture counter at (2950,3950) size 100x100`);
+    // 100 mm of counter in an 1800 mm gap leaves 1700 open: still over a doorway.
+    expect(codesOf(tiny)).toContain("W_BOUNDARY_NO_WALL");
+    const short = P(`${SHELL_67}
+room at (0,0) size 6000x4000 label "Study" uses office
+room at (0,4000) size 6000x3000 label "Bedroom" uses bedroom
+furniture counter at (500,3360) size 5000x600`);
+    // y 3360–3960: 40 mm short of the line, inside one room. It closes nothing.
+    expect(codesOf(short)).toContain("W_BOUNDARY_NO_WALL");
+    // Across the line it closes what it covers; the 300 mm left at each end (600 in all) is under a doorway.
+    expect(codesOf(short.replace("at (500,3360) size 5000x600", "at (300,3700) size 5400x600"))).not.toContain(
+      "W_BOUNDARY_NO_WALL",
+    );
+  });
+
+  it("counts a wall by its BODY on the boundary: 190 mm inside one room is not it (b4), a thick wall with a face on it is (b5)", () => {
+    const wall = (w: string): string =>
+      P(`${SHELL_67}
+${w}
+room at (0,0) size 6000x4000 label "Study" uses office
+room at (0,4000) size 6000x3000 label "Bedroom" uses bedroom`);
+    expect(codesOf(wall("wall partition thickness 100 { (0,4190) (6000,4190) }"))).toContain("W_BOUNDARY_NO_WALL");
+    expect(codesOf(wall("wall partition thickness 500 { (0,4250) (6000,4250) }"))).not.toContain("W_BOUNDARY_NO_WALL");
+    // The body's slack is 50 mm: a 100 mm wall whose face stands 50 mm off the line still counts, 51 does not.
+    expect(codesOf(wall("wall partition thickness 100 { (0,4100) (6000,4100) }"))).not.toContain("W_BOUNDARY_NO_WALL");
+    expect(codesOf(wall("wall partition thickness 100 { (0,4101) (6000,4101) }"))).toContain("W_BOUNDARY_NO_WALL");
+  });
+
+  it("words a partial gap as an open stretch, and says a door joins them only when one does (h1)", () => {
+    const src = P(`${SHELL_67}
+wall id=p partition thickness 100 { (0,4000) (3500,4000) }
+door on p at 1500 width 800
+room at (0,0) size 6000x4000 label "Study" uses office
+room at (0,4000) size 6000x3000 label "Bedroom" uses bedroom`);
+    const [d] = only(src, "W_BOUNDARY_NO_WALL");
+    expect(d!.message).toBe(
+      'The boundary between "Study" and "Bedroom" is open for 2500 mm (y 4000, x 3500–6000), wider than a 900 mm doorway: they meet along 6000 mm on the line y 4000, x 0–6000, and that stretch has no wall, door or opening. A door or opening on the run joins them, but through that stretch they are one space, so privacy and enclosure are read as if it were walled.',
+    );
+    expect(d!.message).not.toContain("no door or opening joins them");
+  });
+});
+
+describe("review round 1 — W_FLOOR_UNASSIGNED", () => {
+  const corner = (extra: string): string =>
+    P(`wall exterior thickness 200 { (0,0) (9000,0) (9000,6000) (0,6000) close }
+wall partition thickness 100 { (6000,0) (6000,3000) (9000,3000) }
+${extra}
+room at (0,0) size 6000x6000 label "Living" uses living
+room polygon (6000,3000) (9000,3000) (9000,6000) (6000,6000) label "Kitchen" uses kitchen`);
+
+  it("does not call a forgotten room with a window a sealed pocket (f2, and with a door)", () => {
+    expect(codesOf(corner(""))).not.toContain("W_FLOOR_UNASSIGNED");
+    expect(codesOf(corner("window at (7500,0) width 1200"))).toContain("W_FLOOR_UNASSIGNED");
+    expect(codesOf(corner("window at (7500,0) width 1200\ndoor at (6000,1500) width 800"))).toContain(
+      "W_FLOOR_UNASSIGNED",
+    );
+  });
+
+  it("keeps library's drum spandrels silent: sealed, no door, no window", () => {
+    const src = readFileSync("examples/library.arch", "utf8");
+    expect(codesOf(src, { world: worldFor("examples") })).not.toContain("W_FLOOR_UNASSIGNED");
+  });
+
+  it("ends its hints with the accept-if clause for a sealed void", () => {
+    const [d] = only(corner("window at (7500,0) width 1200"), "W_FLOOR_UNASSIGNED");
+    expect(d!.hints).toContain(
+      "Accept it if the floor is a sealed void: then draw it as a `void`, so the plan says so.",
+    );
+  });
+});
+
+describe("review round 1 — W_ROOM_OUTSIDE_SHELL needs a shell", () => {
+  it("is silent beside a column ring, a closed WC box, or behind a shell left open at its door (g3, g2, f1)", () => {
+    const g3 = P(`wall exterior thickness 200 { (0,0) (8000,0) (8000,6000) }
+wall partition thickness 100 { (4000,0) (4000,4000) }
+wall partition thickness 100 { (6000,3000) (6400,3000) (6400,3400) (6000,3400) close }
+room at (0,0) size 4000x6000 label "Living" uses living
+room at (4000,0) size 5000x6000 label "Bedroom" uses bedroom`);
+    const g2 = P(`wall exterior thickness 200 { (0,0) (8000,0) (8000,6000) }
+wall partition thickness 100 { (4000,0) (4000,4000) }
+wall partition thickness 100 { (500,4500) (2500,4500) (2500,5800) (500,5800) close }
+door at (1500,4500) width 700
+room at (0,0) size 4000x6000 label "Living" uses living
+room at (4000,0) size 5000x6000 label "Bedroom" uses bedroom
+room at (500,4500) size 2000x1300 label "WC" uses wc`);
+    const f1 = P(`wall exterior thickness 200 { (2000,0) (8000,0) (8000,6000) (0,6000) (0,0) (800,0) }
+wall partition thickness 100 { (4000,0) (4000,6000) }
+door at (4000,3000) width 800
+room at (0,0) size 4000x6000 label "Living" uses living
+room at (4000,0) size 4000x6000 label "Bedroom" uses bedroom`);
+    for (const s of [g3, g2, f1]) expect(codesOf(s)).not.toContain("W_ROOM_OUTSIDE_SHELL");
+  });
+
+  it("still reports a room mostly inside the shell (room-past-shell, widen-after, a loft past its storey's walls)", () => {
+    const corpus = (n: string): string =>
+      readFileSync(join("test/defect-corpus/space-not-enclosed", `${n}.arch`), "utf8");
+    expect(codesOf(corpus("room-past-shell"))).toContain("W_ROOM_OUTSIDE_SHELL");
+    expect(codesOf(corpus("widen-after-outside-shell"))).toContain("W_ROOM_OUTSIDE_SHELL");
+    const loft = P(`level 1 {
+  wall exterior thickness 200 { (0,0) (10000,0) (10000,6000) (0,6000) close }
+  door at (2000,0) width 900
+  room at (0,0) size 10000x6000 label "Hall" uses hall
+  stair id=s1 at (8000,1000) size 1000x3000 dir up
+}
+level 2 {
+  wall exterior thickness 200 { (0,0) (6000,0) (6000,6000) (0,6000) close }
+  room at (0,0) size 9000x6000 label "Loft" uses bedroom
+  stair id=s1 at (8000,1000) size 1000x3000 dir down
+}`);
+    expect(only(loft, "W_ROOM_OUTSIDE_SHELL").map((d) => [d.level, d.message.split(". A room")[0]])).toEqual([
+      [2, 'Room "Loft" has 17.4 m² of its floor outside the building\'s walls, up to 2900 mm past their outer face'],
+    ]);
+  });
+});
+
+describe("review round 1 — the face rules are bounded by counts, charged before the work", () => {
+  /** The reviewer's lattice: an n × n grid of 1 m cells and one hall over all of it. */
+  const lattice = (n: number, hallW = n * 1000): string => {
+    const L = n * 1000;
+    const walls: string[] = [`wall exterior thickness 200 { (0,0) (${L},0) (${L},${L}) (0,${L}) close }`];
+    for (let i = 1; i < n; i++)
+      walls.push(
+        `wall partition thickness 100 { (${i * 1000},0) (${i * 1000},${L}) }`,
+        `wall partition thickness 100 { (0,${i * 1000}) (${L},${i * 1000}) }`,
+      );
+    return P(`${walls.join("\n")}\nroom at (0,0) size ${hallW}x${L} label "Hall" uses hall`);
+  };
+  const facesOfLattice = (n: number) => {
+    const { ir } = resolvePlan(lattice(n));
+    return { ir: ir!, wf: wallFaces(ir!.walls) };
+  };
+
+  it("measures a lattice just under MAX_ENCLOSURE_FACES with a flat count of loop tests per probe", () => {
+    const n = Math.floor(Math.sqrt(MAX_ENCLOSURE_FACES));
+    const per: number[] = [];
+    for (const m of [5, 10, n]) {
+      const { ir, wf } = facesOfLattice(m);
+      if (!wf || "refused" in wf) throw new Error(`lattice ${m} refused`);
+      expect(wf.faces).toHaveLength(m * m);
+      const rooms = ir.elements.filter((e): e is RRoom => e.kind === "room");
+      for (let i = 0; i < wf.faces.length; i++) faceCover(wf, i, rooms);
+      for (const r of rooms) roomOutside(wf, r);
+      // A scan of every hole per probe would test about m² / 2 loops per probe; the grid tests ~1.33.
+      expect(wf.work.loopTests).toBeLessThanOrEqual(2 * wf.work.probes);
+      per.push(wf.work.probes / (m * m));
+    }
+    // And the probes per face do not grow with the face count.
+    expect(Math.max(...per)).toBeLessThanOrEqual(1.05 * Math.min(...per));
+  });
+
+  it("refuses a lattice just over MAX_ENCLOSURE_FACES, and one over MAX_WALL_CONTACTS before joining it", () => {
+    const n = Math.floor(Math.sqrt(MAX_ENCLOSURE_FACES)) + 1;
+    expect(facesOfLattice(n).wf).toEqual({ refused: "too-many-faces", count: n * n });
+    const big = facesOfLattice(41).wf;
+    expect(big && "refused" in big && big.refused).toBe("too-many-wall-contacts");
+    expect(big && "refused" in big && big.count).toBe(MAX_WALL_CONTACTS + 1);
+  });
+
+  it("so both face rules are silent on the refused lattice, and speak just under the bound", () => {
+    const n = Math.floor(Math.sqrt(MAX_ENCLOSURE_FACES));
+    // A hall drawn 2 m past the east wall: outside the shell, and most of it inside.
+    expect(codesOf(lattice(n, n * 1000 + 2000))).toContain("W_ROOM_OUTSIDE_SHELL");
+    expect(codesOf(lattice(n + 1, (n + 1) * 1000 + 2000))).not.toContain("W_ROOM_OUTSIDE_SHELL");
   });
 });
