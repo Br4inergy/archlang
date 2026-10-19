@@ -182,6 +182,85 @@ export function pointInPolygon(px: number, py: number, pts: readonly Point[], bo
   return inside;
 }
 
+/** A ring's {@link pointInPolygon}, answered from an index built once (see {@link polygonInsideTest}). */
+export interface PolygonInsideTest {
+  inside(px: number, py: number): boolean;
+  /** The most edges one query reads: the fullest y-band, or 0 for a ring with no edge. */
+  maxEdgesPerQuery: number;
+}
+
+/** Most y-bands one ring is binned into (memory is edges × bands spanned). */
+const MAX_Y_BANDS = 64;
+
+/**
+ * {@link pointInPolygon} for many points against one ring, with its edges binned by **y-band**,
+ * so a query reads only the edges whose y-range (grown by `boundaryTol` and a rounding margin)
+ * reaches its band. Returns exactly `pointInPolygon(px, py, pts, boundaryTol)` for every point:
+ *
+ *  - an edge whose closed y-range, so grown, misses `py` can neither straddle `py` (the
+ *    crossing test needs `py` inside it) nor lie within `boundaryTol` of the point (the nearest
+ *    point of a segment lies in its y-range, up to a few ulps that the margin covers);
+ *  - binning is by the same monotone `floor((v − minY) / h)` for an edge's grown ends and for
+ *    the query, so a query's band lists every edge whose grown range holds `py`;
+ *  - each surviving edge runs the same two expressions, in the same orientation, as
+ *    {@link pointOnPolygonEdge} and the crossing loop; the on-edge result is an OR and the
+ *    crossing result a parity, so the reduced order cannot change either.
+ *
+ * It saves work only where the bands thin the ring out: a comb whose teeth span every band
+ * still reads them all (`maxEdgesPerQuery` says so, and a caller charges it).
+ */
+export function polygonInsideTest(pts: readonly Point[], boundaryTol = VERTEX_EPS): PolygonInsideTest {
+  const n = pts.length;
+  if (n === 0) return { inside: () => false, maxEdgesPerQuery: 0 };
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const p of pts) {
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  // Far above any rounding of a segment's nearest point (a few ulps of 2^25 mm is ~1e-8).
+  const margin = (lo: number, hi: number): number => boundaryTol + 1e-6 + 1e-12 * (Math.abs(lo) + Math.abs(hi));
+  const bands = Math.max(1, Math.min(MAX_Y_BANDS, Math.ceil(Math.sqrt(n))));
+  const h = maxY > minY ? (maxY - minY) / bands : 1;
+  const bandOf = (v: number): number => Math.min(bands - 1, Math.max(0, Math.floor((v - minY) / h)));
+  const bins: number[][] = Array.from({ length: bands }, () => []);
+  let lowest = Infinity;
+  let highest = -Infinity;
+  for (let k = 0; k < n; k++) {
+    const a = pts[k]!;
+    const b = pts[(k + 1) % n]!;
+    const lo = Math.min(a.y, b.y);
+    const hi = Math.max(a.y, b.y);
+    const m = margin(lo, hi);
+    lowest = Math.min(lowest, lo - m);
+    highest = Math.max(highest, hi + m);
+    for (let i = bandOf(lo - m), e = bandOf(hi + m); i <= e; i++) bins[i]!.push(k);
+  }
+  let maxEdgesPerQuery = 0;
+  for (const b of bins) maxEdgesPerQuery = Math.max(maxEdgesPerQuery, b.length);
+  return {
+    maxEdgesPerQuery,
+    inside(px: number, py: number): boolean {
+      // No edge's grown range reaches `py`: no crossing and no edge within tolerance.
+      if (!(py >= lowest && py <= highest)) return false;
+      const bin = bins[bandOf(py)]!;
+      const p = { x: px, y: py };
+      for (const k of bin) if (distPointToSegment(p, pts[k]!, pts[(k + 1) % n]!) <= boundaryTol) return true;
+      let inside = false;
+      for (const k of bin) {
+        // pointInPolygon's pair (i, j = i − 1) is this edge read from its far end.
+        const a = pts[(k + 1) % n]!;
+        const b = pts[k]!;
+        if (a.y > py !== b.y > py) {
+          const xAt = a.x + ((py - a.y) * (b.x - a.x)) / (b.y - a.y);
+          if (px < xAt) inside = !inside;
+        }
+      }
+      return inside;
+    },
+  };
+}
+
 /** Lattice resolution of the label-point search: `LABEL_GRID + 1` samples per axis. */
 export const LABEL_GRID = 10;
 /** Refinement rounds around the incumbent, each searching half the previous span. */

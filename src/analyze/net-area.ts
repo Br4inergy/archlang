@@ -28,11 +28,13 @@
  * band face on the room's edge, two bands face to face) is counted once. No tessellation,
  * no sampling and no bounding box enters the figure.
  *
- * The answer is OMITTED (`undefined`) rather than approximated when it cannot be trusted:
- * when the room's box meets more than {@link MAX_NET_CURVES} band and room edges (the
- * work is quadratic in them), or when the boundary integral comes out outside
- * `[−ε, area + ε]` or not finite — a sign that a configuration defeated the split. A
- * caller then omits the field and every total that would include it.
+ * The answer is OMITTED (`undefined`) rather than approximated when it cannot be trusted
+ * or cannot be afforded: when the room's box meets more than {@link MAX_NET_CURVES} band and
+ * room edges (the split is quadratic in them), when the walk over the split's pieces would
+ * cost more than {@link MAX_NET_PROBE_WORK} (a count charged before it runs: a ring of
+ * hundreds of vertices crossed by hundreds of walls), or when the boundary integral comes
+ * out outside `[−ε, area + ε]` or not finite — a sign that a configuration defeated the
+ * split. A caller then omits the field and every total that would include it.
  *
  * Pure, synchronous, deterministic. Arc pieces read their angles through `Math.atan2`
  * and `Math.cos`/`Math.sin`, which are not exactly rounded across engines, so a room
@@ -45,7 +47,7 @@ import type { Arc } from "../geometry/arc.js";
 import { type BandWall, type EdgeLoop, PointInterner, loopBBox, loopsContain, wallBand } from "../geometry/band.js";
 import type { GridBox } from "../geometry/grid-index.js";
 import { circleCircle, lineCircleParams, lineLineParams, meetLines } from "../geometry/intersect.js";
-import { pointInPolygon, polygonArea } from "../geometry/polygon.js";
+import { polygonArea, polygonInsideTest } from "../geometry/polygon.js";
 
 /**
  * The most room-and-band edges one room's measurement may read. Past it the pair loop
@@ -153,8 +155,15 @@ export function netAreaWorkUnits(
 
 /** The measurement behind {@link roomNetAreaMm2}, unclamped, for callers that must see it. */
 export type NetAreaDetail =
-  | { ok: true; gross: number; covered: number; curves: number }
-  | { ok: false; gross: number; reason: "too-many-edges" | "inconsistent"; curves: number };
+  | { ok: true; gross: number; covered: number; curves: number; work: number }
+  | {
+      ok: false;
+      gross: number;
+      reason: "too-many-edges" | "too-much-work" | "inconsistent";
+      curves: number;
+      /** The probe work charged ({@link netAreaProbeWork}); absent when refused before it was counted. */
+      work?: number;
+    };
 
 /**
  * The room's net internal area in mm² (see the module header), or `undefined` when it is
@@ -252,7 +261,7 @@ const ON_MM = 1e-6;
 const T_EPS = 1e-12;
 
 /** A crossing on one curve: its parameter and the point itself. */
-interface Split {
+export interface Split {
   t: number;
   p: Point;
 }
@@ -364,6 +373,8 @@ const PROBE_MM = 1e-4;
 export interface RoomRegion {
   curves: Curve[];
   inside: (p: Point) => boolean;
+  /** The most ring edges one {@link RoomRegion.inside} call reads (1 for a circle). */
+  insideCost: number;
   box: GridBox;
   gross: number;
 }
@@ -376,6 +387,7 @@ export function roomRegion(r: NetAreaRoom): RoomRegion {
     return {
       curves: [arcCurve({ center: c, r: rad, a: east, b: east, sweep: TAU, start: 0 })],
       inside: (p) => Math.hypot(p.x - c.x, p.y - c.y) < rad,
+      insideCost: 1,
       box: { minX: c.x - rad, minY: c.y - rad, maxX: c.x + rad, maxY: c.y + rad },
       gross: Math.PI * rad * rad,
     };
@@ -388,12 +400,16 @@ export function roomRegion(r: NetAreaRoom): RoomRegion {
         { x: r.at.x + r.size.w, y: r.at.y + r.size.h },
         { x: r.at.x, y: r.at.y + r.size.h },
       ];
+  // The ring binned by y-band once, so each of the many probes reads only its band's edges;
+  // exactly `pointInPolygon(p.x, p.y, ring, 0)` on every point (`polygonInsideTest`).
+  const test = polygonInsideTest(ring, 0);
   return {
     curves: ring
       .map((a, i) => ({ a, b: ring[(i + 1) % ring.length]! }))
       .filter(({ a, b }) => a.x !== b.x || a.y !== b.y)
       .map(({ a, b }): Curve => ({ t: "line", a, b, box: lineBox(a, b) })),
-    inside: (p) => pointInPolygon(p.x, p.y, ring, 0),
+    inside: (p) => test.inside(p.x, p.y),
+    insideCost: test.maxEdgesPerQuery,
     box: lineBox(
       { x: Math.min(...ring.map((p) => p.x)), y: Math.min(...ring.map((p) => p.y)) },
       { x: Math.max(...ring.map((p) => p.x)), y: Math.max(...ring.map((p) => p.y)) },
@@ -413,6 +429,29 @@ export interface BoundaryPiece {
 }
 
 /**
+ * Split every curve at every crossing with every other (the first half of
+ * {@link regionBoundary}), so a caller can count the pieces ({@link pieceCount}) and charge the
+ * walk over them before it runs. Quadratic in `curves.length`; the caller caps that.
+ */
+export function splitCurves(curves: readonly Curve[]): Split[][] {
+  const splits: Split[][] = curves.map(() => []);
+  for (let i = 0; i < curves.length; i++) {
+    for (let j = i + 1; j < curves.length; j++) {
+      if (!boxesMeet(curves[i]!.box, curves[j]!.box, ON_MM)) continue;
+      cross(curves[i]!, curves[j]!, splits[i]!, splits[j]!);
+    }
+  }
+  return splits;
+}
+
+/** The pieces {@link regionBoundary} walks over `splits`, at most: each curve's crossings + 1. */
+export function pieceCount(splits: readonly (readonly Split[])[]): number {
+  let n = 0;
+  for (const s of splits) n += s.length + 1;
+  return n;
+}
+
+/**
  * The area (mm², signed as measured, unclamped) of a region `S` whose boundary lies on
  * `curves`, by Green's theorem (see the module header): every curve is split at every
  * crossing with every other, closed form; a piece bounds `S` exactly when `inS` differs on
@@ -427,16 +466,8 @@ export function regionBoundary(
   inS: (p: Point) => boolean,
   origin: Point,
   onPiece?: (piece: BoundaryPiece) => void,
+  splits: readonly (readonly Split[])[] = splitCurves(curves),
 ): number {
-  // Split every curve at every crossing with every other.
-  const splits: Split[][] = curves.map(() => []);
-  for (let i = 0; i < curves.length; i++) {
-    for (let j = i + 1; j < curves.length; j++) {
-      if (!boxesMeet(curves[i]!.box, curves[j]!.box, ON_MM)) continue;
-      cross(curves[i]!, curves[j]!, splits[i]!, splits[j]!);
-    }
-  }
-
   // Walk each piece; keep it once if it bounds the region, signed by its side.
   const seen = new PointInterner();
   const counted = new Set<string>();
@@ -444,7 +475,7 @@ export function regionBoundary(
   curves.forEach((c, i) => {
     const ts: Split[] = [
       { t: 0, p: curvePoint(c, 0) },
-      ...splits[i]!.sort((p, q) => p.t - q.t),
+      ...[...splits[i]!].sort((p, q) => p.t - q.t),
       { t: 1, p: curvePoint(c, 1) },
     ];
     for (let k = 0; k + 1 < ts.length; k++) {
@@ -477,28 +508,54 @@ export function regionBoundary(
  */
 export function netAreaDetail(r: NetAreaRoom, bands: readonly NetAreaBand[]): NetAreaDetail {
   // The room as a region: its own boundary curves and its own inside test.
-  const { curves: roomCurves, inside: inRoom, box: roomBox, gross } = roomRegion(r);
-  if (!(gross > 0)) return { ok: true, gross: Math.max(0, gross), covered: 0, curves: 0 };
+  const { curves: roomCurves, inside: inRoom, insideCost, box: roomBox, gross } = roomRegion(r);
+  if (!(gross > 0)) return { ok: true, gross: Math.max(0, gross), covered: 0, curves: 0, work: 0 };
 
   const near = bands.filter((b) => boxesMeet(b.box, roomBox, 0));
-  if (near.length === 0) return { ok: true, gross, covered: 0, curves: 0 };
+  if (near.length === 0) return { ok: true, gross, covered: 0, curves: 0, work: 0 };
   const inBands = (p: Point): boolean =>
     near.some(
       (b) =>
         p.x >= b.box.minX && p.x <= b.box.maxX && p.y >= b.box.minY && p.y <= b.box.maxY && loopsContain(b.loops, p),
     );
-  const inS = (p: Point): boolean => inRoom(p) && inBands(p);
+  // The cheap band test first: most probes off a room edge are on no band, and the room's own
+  // test (a walk over its ring) is then never asked. Both are pure, so the order is invisible.
+  const inS = (p: Point): boolean => inBands(p) && inRoom(p);
 
   const curves: Curve[] = [...roomCurves, ...near.flatMap((b) => b.loops.flatMap(curvesOfLoop))];
   if (curves.length > MAX_NET_CURVES) return { ok: false, gross, reason: "too-many-edges", curves: curves.length };
 
-  const covered = regionBoundary(curves, inS, { x: roomBox.minX, y: roomBox.minY });
+  // The split is held under MAX_NET_CURVES² pair tests; the walk over its pieces is charged
+  // here, as a count, before it runs.
+  const splits = splitCurves(curves);
+  const bandEdges = near.reduce((n, b) => n + b.loops.reduce((m, l) => m + l.length, 0), 0);
+  const work = netAreaProbeWork(pieceCount(splits), near.length + bandEdges, insideCost);
+  if (work > MAX_NET_PROBE_WORK) return { ok: false, gross, reason: "too-much-work", curves: curves.length, work };
+
+  const covered = regionBoundary(curves, inS, { x: roomBox.minX, y: roomBox.minY }, undefined, splits);
 
   const eps = 1e-9 * gross + 1e-3;
   if (!Number.isFinite(covered) || covered < -eps || covered > gross + eps) {
-    return { ok: false, gross, reason: "inconsistent", curves: curves.length };
+    return { ok: false, gross, reason: "inconsistent", curves: curves.length, work };
   }
-  return { ok: true, gross, covered, curves: curves.length };
+  return { ok: true, gross, covered, curves: curves.length, work };
+}
+
+/**
+ * The most probe work one room's net area may cost ({@link netAreaProbeWork}). Past it the
+ * walk is not run and the figure is omitted (`too-much-work`), like a room past
+ * {@link MAX_NET_CURVES}. The corpus maximum is pinned beside it in `test/net-area.test.ts`
+ * and stays far inside it.
+ */
+export const MAX_NET_PROBE_WORK = 20_000_000;
+
+/**
+ * An upper bound on the work of the boundary walk, as a count: every piece is probed on both
+ * sides, and each probe may ask every nearby band (its box, then each of its edges) and then
+ * the room's own inside test (the fullest y-band of its ring).
+ */
+export function netAreaProbeWork(pieces: number, bandCost: number, insideCost: number): number {
+  return 2 * pieces * (bandCost + insideCost);
 }
 
 /** A stable key for an interned point (the interner returns one object per position). */

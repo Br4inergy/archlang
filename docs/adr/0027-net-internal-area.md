@@ -72,11 +72,16 @@ its angle through `Math.atan2`, which is not exactly rounded across engines, so 
 by a curved band may differ in the last ulps between platforms, far below the 0.01 m² it is
 printed to.
 
-The figure is **omitted** (no `net_area_m2` on the room) rather than approximated in two named
+The figure is **omitted** (no `net_area_m2` on the room) rather than approximated in three named
 cases:
 
 - The room's box meets more than `MAX_NET_CURVES` (2,000) room and band edges. The pair loop
   is quadratic in them, and the cap bounds it. No shipped room reaches 140.
+- The walk over the split's pieces would cost more than `MAX_NET_PROBE_WORK` (20,000,000), a
+  count charged after the split and before the walk: 2 × pieces × (the nearby bands' boxes and
+  edges + the edges of the fullest y-band of the room's ring). A ring of hundreds of vertices
+  crossed by hundreds of free-standing walls stays under the edge cap and still took a minute
+  to walk. No shipped room is charged more than 175,000.
 - The boundary integral is not finite, or falls outside `[−ε, area + ε]` with
   `ε = 10⁻⁹ · area + 10⁻³ mm²`. That is the signature of a configuration the split did not
   resolve. No shipped room triggers it.
