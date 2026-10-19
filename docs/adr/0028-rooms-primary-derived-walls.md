@@ -1,0 +1,228 @@
+# 28. Rooms may be primary: walls and openings derived from room relations
+
+- **Status:** Proposed (plan-soundness decisions D1 and D5, `docs/plans/plan-soundness/README.md`
+  §3; becomes Accepted when the first derived form lands with its byte-identity law)
+- **Date:** 2026-10
+- **Relates to:** [ADR 0004](0004-relational-placement-not-optimizer.md) (relational placement is deterministic
+  arithmetic, not an optimizer), [ADR 0005](0005-no-invisible-architect.md) (refuse, never choose),
+  [ADR 0020](0020-algebraic-core.md) (the algebraic core and its laws), [ADR 0022](0022-exact-decisions-and-bounded-input.md)
+  (exact decisions, bounded input), [ADR 0027](0027-net-internal-area.md) (rooms are drawn on wall
+  centrelines)
+- **Scope:** the language gains room-edge datums, one whole-tiling form (`walls from rooms`), two
+  pairwise wall forms (`wall … between`, `wall … around`), relational opening placement
+  (`door|opening between`, `window on <room>.<edge>`) and hosted offsets measured from a room edge or
+  a wall end. Wall-first authoring stays fully legal. A plan that uses none of the new forms compiles,
+  describes and lints byte for byte as before.
+
+## Context
+
+Every wall in the corpus is written as absolute coordinates (`describe().freedom`: walls 100 %
+absolute, rooms 94 %, openings 55 %). The audits behind the plan-soundness programme
+(`docs/plans/plan-soundness/evidence.md`) found that the three most frequent defect classes in
+AI-written plans are all *writable by omission* in that style:
+
+- a shared room edge with no wall on it (class 2, "space not enclosed"), the single most common
+  blocker in the reconstructed published plan and in the first-contact plans;
+- a room that leaves walled floor unassigned, or lies outside the shell (class 2);
+- an opening that spans a wall junction or a corner, because its position was typed in millimetres
+  with no knowledge of where the meeting wall is (class 1).
+
+The change drills show the second half of the problem: widening one room by 500 mm in
+`examples/studio.arch` touches about 24 literals, and the partition the room grew through stays where
+it was. Lint can only report that afterwards (`W_BOUNDARY_NO_WALL`, `W_ROOM_OUTSIDE_SHELL`,
+`W_OPENING_AT_JUNCTION`, landed 2026-10). Reporting is not the same as making the state unwritable.
+
+Two measured premises decide the shape of the answer (`research/2026-10-18-room-tiling.md`): in
+26 of 34 top-level examples the rooms' area sum equals the plan's centreline bounding-box area
+exactly, so authors already write rooms that tile the building and leave corridors as rooms; and
+236 of 246 rooms are rectangles. A form that derives the walls from the room tiling therefore
+matches how plans are written today, not a hoped-for style.
+
+Prior art (`research/associativity.md` §4 P1, `research/prior-art.md` §1.1): Revit, ArchiCAD,
+Sweet Home 3D and FreeCAD treat walls as primary and derive rooms; Topologic treats cells as primary
+and walls as their shared faces; the generative work that avoids the "missing wall" class (BSP and
+hypergraph formulations) does so by construction, because a wall is the boundary between two cells.
+An LLM author thinks in room graphs. ArchLang already reports that graph (`rooms[].adjacent`, the
+access graph). What it lacks is a way to *write* it.
+
+## Decision
+
+### 1. Resolve order: rooms first, then a frozen datum table, then walls, then openings
+
+`resolve()` places every room first: absolute `at … size`, relational `right-of|left-of|above|below`
+(ADR 0004), `polygon` and `circle`. It then freezes a **datum table** for the storey: for each
+rectangular room its four edge lines and centre, for each grid its axes. Derived walls read the
+table; authored walls are resolved as today; openings resolve last against the final wall set.
+
+Ids are assigned before resolve, so the element registry order is unchanged. Plans that use no new
+form must resolve to the same `ResolvedPlan`; the byte-identity sweep over SVG, `describe()`,
+`lint()` and `compile().diagnostics` is the law for this and is pinned before any form lands
+(card PS3.2).
+
+### 2. Room-edge datums
+
+A rectangular room `r` exposes `r.top`, `r.bottom`, `r.left`, `r.right` (edge lines, in the frame the
+room is authored in: `+y` goes down, so `top` is the smaller `y`), `r.cx`, `r.cy` (centre) and the
+grid axis names already in the language. Datums are read wherever a coordinate is read.
+
+- `north|south|east|west` are accepted as aliases of `top|bottom|left|right` **only** while the plan
+  declares no `site` orientation other than north-up. With any other `site` orientation a compass
+  word in a datum is refused (`E_DATUM_COMPASS`: "the plan's north is not up, so `north` would mean
+  two things; write `top`"). Compass facts belong to `describe()`, frame words belong to datums, and
+  one word must not carry both.
+- Inside a `component`, datums are local-frame words. `place … rotate 90` turns the room's `top`
+  edge into a world `right` edge, and `mirror x` swaps `left` and `right`: the component is written
+  once in its own frame and the instance follows the frame, exactly as its coordinates do
+  (`frame.ts` carries the resolved element; a resolver never sees pre-transformed input).
+- A `polygon` or `circle` room exposes no edge datum and no centre datum in this version
+  (`E_DATUM_SHAPE`, the same refusal relational placement gives them with `E_PLACE_POLY`). A
+  rectilinear polygon may gain named edges later; the honest extension is §8 question 4 of the plan.
+- Datums are exact arithmetic on resolved literals. Grid snapping applies to authored literals, as
+  today; a derived coordinate is never snapped. A derived coordinate off the grid is a fact, not an
+  error, except where a form below says otherwise.
+
+### 3. The headline form: `walls from rooms` (D5)
+
+    walls id=w from rooms exterior <t_ext> partition <t_int> [grid <mm>] {
+      open between <A> and <B> [width <mm> | full]
+      between <A> and <B> thickness <t>
+    }
+
+One statement derives the whole wall set of the storey (or of the component it is written in) from
+the rooms resolved there:
+
+- the **exterior ring** is the rectilinear outline of the union of the room rectangles, drawn as one
+  closed `exterior` wall of thickness `t_ext` on that outline;
+- every **shared edge run** of two rooms becomes one `partition` segment of thickness `t_int` on
+  the shared line, unless an `open between A and B` clause names the pair, in which case the run is
+  left without a wall (`full`, the default) or carries a leaf-less `opening` of the given `width`
+  centred on the run.
+- `between A and B thickness t` overrides the partition thickness for that one pair.
+
+Rooms are centreline shapes (ADR 0027), so a room union tiled exactly by rooms gives an exterior
+ring on the room outline and partitions on the shared lines; nothing moves. The exception list is
+closed at these two clauses. If a third is needed in practice, D5's reversal condition applies and
+the pairwise forms of §4 become the headline.
+
+**Preconditions, each a refusal naming the rooms (ADR 0005):**
+
+| Condition | Code |
+|---|---|
+| Two rooms in the set overlap by more than zero area | `E_ROOMS_OVERLAP` |
+| The union has a hole, or more than one connected component | `E_ROOMS_NOT_TILING` (names the hole's bounding rooms, or one room from each component) |
+| Two room edges are nearly but not exactly collinear, or touch along a run shorter than `t_int` | `E_ROOMS_NOT_TILING` (names the pair and the gap in mm) |
+| A `polygon` or `circle` room is in the set | `E_ROOM_NOT_RECTILINEAR` |
+| An `open between` or `between … thickness` clause names a pair that shares no edge | `E_WALL_BETWEEN_NOT_ADJACENT` |
+| A room edge is off the plan `grid` (or the statement's own `grid`) | `E_ROOM_UNSNAPPED` |
+
+A plan whose corridor is "the leftover" fails the tiling test, and that is the point: the corridor
+must be a room. The class-2 defect-corpus cases must be unwritable in this form (a test writes each
+with `walls from rooms` and asserts the refusal or the wall).
+
+**Derived wall ids.** The statement's `id` is required and is the prefix: the exterior ring is
+`<id>_ext`; the partition between `A` and `B` is `<id>_<A>_<B>` with the two room ids in source
+order. The ids exist so that `on <wall>` and `dim … <wall>` keep working; the preferred way to host
+on a derived wall is the relational form of §5. A clash with an authored id is `E_DUP_ID`.
+
+**Coexistence with authored walls.** An authored wall whose centreline lies on a derived partition's
+line drops the derived segment over the span they share (the author wrote it, so the author's wall,
+material and thickness win); an authored wall anywhere else is kept beside the derived set. Both
+cases are pinned by test. An authored `exterior` wall on the derived ring's outline drops the derived
+ring over that span in the same way.
+
+**Bounds.** Steps are charged to the evaluator meter before allocating: once per room pair for the
+shared-edge scan, once per edge per sweep for the union outline. Both are counts of resolved
+elements, so a plan at the element limit stays inside `MAX_EVAL_STEPS`.
+
+### 4. The pairwise forms (D1): mixed authoring
+
+    wall id=p partition thickness 100 between <A> and <B>
+    wall id=e exterior thickness 200 around [<A> <B> <C>]
+
+`between` resolves to the shared edge run of two rectangular rooms by interval intersection:
+no shared run is `E_WALL_BETWEEN_NOT_ADJACENT`; rooms that are not rectangles are
+`E_ROOM_NOT_RECTILINEAR`. Two rectangles share at most one run, so there is no ambiguity to
+resolve; the code `E_WALL_BETWEEN_AMBIGUOUS` is reserved for the rectilinear-polygon extension.
+`around` resolves to the rectilinear union outline of the listed rooms, refusing a hole or a second
+component with `E_WALL_AROUND_NOT_SIMPLE`. These are the forms for a plan that derives some walls
+and types others.
+
+### 5. Openings by relation
+
+    door id=d hinged between <A> and <B> [at <t> | <mm> from <A>.<edge> | <mm> from start|end | center] width <mm> …
+    opening id=o between <A> and <B> [at …] width <mm>
+    window id=win on <A>.<edge> [at …] width <mm> …
+
+`between` resolves to the one wall on the pair's shared run, derived or authored (none:
+`E_OPENING_NO_SHARED_WALL`). The default position is `center`. `window on A.top` picks the exterior
+wall segment on that edge (none, or a partition: `E_WINDOW_EDGE_INTERIOR`). Hosted offsets gain the
+same datums on the existing forms: `on <wall> at 150 from end`, `on <wall> at 150 from <A>.<edge>`,
+`on <wall> at axis 3`.
+
+**The nib is enforced, never slid.** If the resolved position leaves a jamb nearer than
+`max(100 mm, host thickness)` to a meeting wall face, the opening is refused with `E_OPENING_NIB`
+naming the clearance, the meeting wall and the nearest legal position. The lint rule
+`W_OPENING_AT_JUNCTION` uses the same measure for openings placed by hand; the relational form turns
+the warning into a refusal because the author asked for a derived position and the compiler must not
+choose a different one (ADR 0004, ADR 0005).
+
+### 6. Facts
+
+`describe().walls[]` gains, only on derived walls, an additive `derived` field:
+`{ from: "rooms" | "between" | "around", between?: [A, B], statement: <id> }`. `freedom` counts a
+derived wall as relational. `describe()` of a plan with no derived wall does not change.
+
+### 7. Teaching order
+
+`spec.llm.md` and `skills/archlang/SKILL.md` lead with the room-graph form: rooms, then `walls from
+rooms`, then `door between`, then furniture. The wall-first grammar stays, after it. Prior art says a
+minimal task-scoped grammar helps an LLM author and the full grammar does not; the first example an
+agent sees should be the one that cannot express the top three defect classes.
+
+## Consequences
+
+- The class-2 defects (missing shared wall, unassigned floor, room outside the shell) and the
+  junction half of class 1 become unrepresentable in a plan written in the headline form. Lint keeps
+  reporting them for wall-first plans.
+- "The room grows, the walls follow" becomes true for every derived wall and every relational
+  opening: the widening drill (`repro/widen-before.arch` → `repro/widen-after.arch`) moves the
+  partition and its door with the room, with no literal to forget.
+- Resolve order changes for every plan. The byte-identity law is therefore the gate for PS3.2, not
+  a consequence to re-measure: if the order change moves any corpus byte, the card stops.
+- Derived wall ids widen the id namespace by one convention (`<id>_ext`, `<id>_<A>_<B>`). An author
+  who needs a wall the convention cannot name writes it by hand.
+- Compass words in datums are restricted to north-up plans. This is deliberate: the alternative,
+  compass datums that rotate with `site`, would make `living.north` move when `site` changes, which
+  no author expects of a wall.
+
+## Alternatives considered
+
+- **Walls primary, rooms derived** (Revit, ArchiCAD): fits a drafter at a screen, not an author who
+  writes a room graph; it also cannot make a missing wall unwritable, because the room is then the
+  derived thing and a missing wall simply merges two rooms.
+- **Pairwise forms as the headline** (D1 as first written): every pair must still be enumerated, so
+  a shared edge with no wall is still writable by omission. Kept as the mixed-authoring forms (D5).
+- **A constraint solver that keeps walls on room edges**: refused by ADR 0004 and ADR 0005. Every
+  derivation here is closed-form with every target named; where the arithmetic has no single answer
+  the compiler refuses.
+- **Snapping a derived opening to the nearest legal nib**: a silent choice (ADR 0005). Refuse and
+  name the legal position instead.
+
+## Reversal conditions
+
+Recorded with D1 and D5 in the plan:
+
+- the resolve-order change cannot be made byte-identical for plans that use no new form, or the
+  `place`-frame semantics of datums cannot be made sound: ship datums in wall points only and keep
+  `between` as an explicit `arch` transform;
+- the exception list of `walls from rooms` needs a third clause in practice, or its preconditions
+  refuse more than a quarter of the corpus when the examples are rewritten: the pairwise forms become
+  the headline and `walls from rooms` is dropped.
+
+## Acceptance (cards PS3.0, PS3.2–PS3.4)
+
+- Byte-identity sweep green with the new resolve order and no new form in use.
+- `examples/relational.arch` and `examples/two-bed.arch` rewritten in the headline form lint clean
+  of the class-1 and class-2 codes, and the widening drill moves walls and doors with the room.
+- Each class-2 defect-corpus case, written with `walls from rooms`, is refused or gains the wall.
+- Every refusal code above has a catalogue entry, a span on the offending clause, and a test.

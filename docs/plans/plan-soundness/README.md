@@ -331,7 +331,15 @@ surface; relational keeps its deliberate warnings. PS0.10–PS0.12 are PR #211 (
 
 ### PS3 · Relation-first authoring (D1 + D5; needs an ADR)
 
-**PS3.1 · ADR: rooms may be primary; walls and openings may be derived from room relations.** `todo`
+**PS3.1 · ADR: rooms may be primary; walls and openings may be derived from room relations.**
+Drafted 2026-10-20 as `docs/adr/0028-rooms-primary-derived-walls.md` (status Proposed until the
+first derived form lands with its byte-identity law). Settled there: datums are frame words
+(`top|bottom|left|right`, `cx|cy`; compass aliases only on north-up plans, `E_DATUM_COMPASS`
+otherwise); polygon/circle rooms expose no datum (`E_DATUM_SHAPE`); `walls from rooms` has exactly
+two exception clauses (`open between A and B [width|full]`, `between A and B thickness t`) and six
+refusals; derived ids `<id>_ext` / `<id>_<A>_<B>`; an authored wall on a derived line wins over
+the shared span; relational openings refuse a short nib (`E_OPENING_NIB`) instead of sliding; the
+resolve-order byte-identity sweep is PS3.2's gate, not a consequence. The original brief follows.
 - Settle: grammar; datum names (`north/south/east/west` plus aliases, `cx/cy`, `axis n`);
   refusal codes (`E_WALL_BETWEEN_NOT_ADJACENT`, `E_WALL_BETWEEN_AMBIGUOUS`, polygon/circle rooms
   refused like relational placement); `place`-frame semantics; grid snapping; how `around` treats
