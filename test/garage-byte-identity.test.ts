@@ -163,10 +163,17 @@ const ROOT = join(HERE, "..");
 // they reproduce as well. The account is in ./byte-identity-baseline.ts ("EVERY row
 // re-measured, once"). Those schedule rows were re-measured once more, alone, when the
 // AREA column took the label `AREA (CENTRELINE, m²)`; SEMANTIC_BASELINE did not move.
+// `laneway-house` and `bungalow`, both rows each, re-measured for plan-soundness PS0.10:
+// `describe().access` gains the appended `mainEntrance` (`d_front`, the door on the `site`
+// street side) and each room's `depthFromMainEntrance`; SVG and `lint()` byte-identical, and
+// the previous describe() put back reproduces every previous row (./byte-identity-baseline.ts,
+// "`describe().access` names the main entrance"). `bungalow` re-measured again in the PS0.10
+// review round (its fact became `entry-room`), describe() only, the same way, and again in
+// review round 2 (its fact became `street`).
 const BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f",
-  "laneway-house.arch": "62b3fdb835ccc7eb565f982ed7930d99cfced87bbf4ae9d6bb5410e4945d255c",
-  "bungalow.arch": "d76e52dd1b75a347c84afba5350175032513776572f268839ee550883b564ae9",
+  "laneway-house.arch": "6b064cc3a3f173f8ae7d94a5030e1f66e2b84a108047fed2a79d645f1526dfc3",
+  "bungalow.arch": "38f10b3a35b6e821a0b6aaa90795e5c195bd7bb1bc2665c399a6d1dcbbf637dd",
   // Re-measured for the `overhead` flag. Its SOURCE gained two statements —
   // a `range_hood` over the stove and a `mirror` over the basin, the two correct drawings
   // the missing flag had kept out of the flagship — so this plan is a different building
@@ -192,8 +199,8 @@ const BASELINE: Readonly<Record<string, string>> = {
  */
 const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a",
-  "laneway-house.arch": "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0",
-  "bungalow.arch": "f35202195cf872e00bf31d62fffa7c783d04cfac55e7339154a048c496e8fc3a",
+  "laneway-house.arch": "f3afd6b57e647c471d8efbfe92f824549cdd54b82c1f8a9d530e7e4f4112d7ab",
+  "bungalow.arch": "9cd9231204f6b07bee5ddfa6b67d92dabad26fbfce3c8705beb086048a6e579d",
   // `furnished-flat.arch` is the ONE value in this table that is not the original `5298b99`
   // measurement, and the exception proves the rule rather than bending it. Its SOURCE keeps
   // being edited -- seven of the new families in the furniture pass, then a `range_hood` and a `mirror`

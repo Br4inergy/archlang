@@ -74,7 +74,10 @@ export type LintSkipReason =
   | "no-kitchen-fixtures"
   /** The storey's walls enclose more regions, or more nested or crowded ones, than the face
    *  rules' counted budget measures (`src/analyze/wall-faces.ts`, charged before the work). */
-  | "enclosure-budget";
+  | "enclosure-budget"
+  /** The storey has more than one way in and names no main entrance (PS0.10: a tie, no
+   *  candidate, or an upper storey), so a route is judged from every exterior door. */
+  | "no-main-entrance";
 
 /** What each family checks, as the human coverage line names it. */
 export const FAMILY_NOUN: Readonly<Record<LintFamily, string>> = {
@@ -110,6 +113,7 @@ export const SKIP_WHY: Readonly<Record<LintSkipReason, string>> = {
   "unsupported-host-geometry": "the door's wall is angled or curved",
   "no-kitchen-fixtures": "the room holds no kitchen fixtures to locate the kitchen",
   "enclosure-budget": "too much wall geometry to measure",
+  "no-main-entrance": "no main entrance could be named",
 };
 
 /**

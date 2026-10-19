@@ -256,6 +256,33 @@ export function verticalConnections(levels: readonly VerticalLevelInput[]): Vert
 }
 
 /**
+ * The storeys a shaft arrives on from a storey below that has a door from the ground of its own
+ * (`hasWayIn`: a main-entrance candidate, `src/analyze/entrance.ts`). A basement with no
+ * such door does not make the floor above it an upper storey; a walk-out basement does.
+ * Identity only, like {@link verticalConnections}. Such a storey names no main
+ * entrance (`src/analyze/entrance.ts`, basis `upper-storey`): an exterior door up there opens
+ * onto a deck, a terrace or a balcony, not the ground. Whether a person truly arrives there is
+ * PS0.3's question (the upper-storey sibling of PS0.10), still open; this is the identity fact.
+ */
+export function levelsEnteredFromBelow(
+  connections: readonly VerticalConnection[],
+  hasWayIn: (level: number) => boolean,
+): ReadonlySet<number> {
+  const out = new Set<number>();
+  // Asked once per storey: the answer builds that storey's access graph.
+  const known = new Map<number, boolean>();
+  const wayIn = (level: number): boolean => {
+    const seen = known.get(level);
+    if (seen !== undefined) return seen;
+    const v = hasWayIn(level);
+    known.set(level, v);
+    return v;
+  };
+  for (const c of connections) for (const l of c.levels) if (c.levels.some((b) => b < l && wayIn(b))) out.add(l);
+  return out;
+}
+
+/**
  * Which storeys are reachable from the outside once vertical connections are counted,
  * and — for a storey with no exterior door of its own — the rooms a person arrives in.
  *

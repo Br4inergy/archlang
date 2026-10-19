@@ -89,7 +89,7 @@ matter — run it yourself for the full object):
 | `rooms[].adjacent` | ids of rooms whose walls touch this one within tolerance (a shared corner alone doesn't count) |
 | `doors[].between` / `openings[].between` | the two spaces the connector joins — a room id or the literal `"exterior"`. For a connector on a wall it is the space probed one wall thickness either side of that wall's centreline, half a thickness past each face (on no floor behind an exterior wall: `"exterior"`), not which room edges the connector's centre point touches. A probe that lands on the boundary two rooms share picks the room covering more of the opening on that side. A side counts only for a room the connector's point touches, so behind a thick wall a probe that reaches a room beyond a shallow one decides nothing |
 | `doors[].straddles` / `openings[].straddles` | every room the opening covers on one side of its wall when that is more than one: a wall runs into the opening (measured just inside each jamb). Listed even when those rooms are the `between` pair. **Present only then** |
-| `windows[].room` | the room the window lights |
+| `windows[].room` | the room the window lights: the first room whose edge the window's centre is on. A window on an `arc` wall edge that no room edge touches is read from the shape instead: the room whose floor lies one wall thickness behind either face, or, for a bay outside a room drawn to the arc's chord, the room the probe enters one wall thickness past the chord along the curve's inward normal, unless a wall stands on or across the chord there. `null` when none of these finds a room |
 | `windows[].facing` | the **true compass** direction the window's wall faces (`N`/`S`/`E`/`W`), read against the plan's [`north`](language-reference.md#plan-settings) setting. Under the default `north up` the top of the drawing is north, so a top-edge window faces `N`; under `north right` compass north points at the page's right edge, so a right-edge window faces `N` and a top-edge one faces `W`. A `north <deg>` bearing snaps to the nearest cardinal (an exact 45° tie rounds clockwise) |
 | `windows[].facingPage` | the same direction **before** `north` is applied — `N` = toward the top of the drawing. **Present only when the declared `north` actually turns the answer**, so a plan on the default `north up` is unchanged |
 | `voids` | the holes in this storey's floor plate — one `{ id, at, size, room }` per [`void`](language-reference.md#void--a-hole-in-the-floor-v1-29). **Present only when the storey declares one.** `room` is the room whose FLOOR contains the opening's centre (`null` when none does — a void in the notch of a U-shaped room belongs to no room, even though it is inside that room's `bbox`). The room's `area_m2` is **not** reduced by it: subtract `size.w × size.h` yourself if you need the net |
@@ -275,6 +275,20 @@ openings) and walks it from the exterior. For the studio:
 | `rooms[].depthFromEntrance` | how many connectors you pass through from the nearest entrance (`1` = opens straight off it); `null` if you can't get there |
 | `rooms[].reachable` | can this room be reached from the exterior at all? |
 | `rooms[].bottleneckClearWidth` | the **narrowest clear width** along the widest path in from the entrance — the real constraint for moving furniture or a wheelchair (a widest-path search, so it reports the best route's worst pinch) |
+| `mainEntrance` | which entrance is the **front door**: `{ door, basis, candidates }`. **Present only on a storey with more than one entrance.** The candidates are the exterior doors with a leaf that are not a `garage` door, do not open onto an `outdoor balcony`, and do not open into a private room (a bedroom, bath or WC with no living, dining, kitchen, entry, hall or circulation use beside it, so a studio's door stays one); width never decides. In order, each step must single out exactly one door: the one door into an entry, hall or circulation room, of any leaf, but only when every other candidate opens into a service room (utility, storage, garage) (`basis: "entry-room"`); else, with `site`, the one **hinged** door not into a service room whose wall faces `site.street` (`"street"`; a wall at 45° faces no single side, and a street side with only service doors is refused); else the only candidate (`"sole"`). Otherwise the choice is refused, `door: null`: `"tie"` (the candidates are listed) or `"no-candidate"`. A storey a stair or lift arrives on from a storey below that has a candidate of its own names none (`"upper-storey"`) |
+| `rooms[].depthFromMainEntrance` | connectors passed from the main entrance (its room is `1`) **without going outside**; `null` for a room reached only through another door from outside. Present only when `mainEntrance.door` names a door. `depthFromEntrance` is unchanged beside it |
+
+When a main entrance is named, lint's `W_PATH_TOO_NARROW`, `W_ROOM_VIA_PRIVATE` and `W_WET_ROOM_DOOR`
+judge a route from it: another door from outside counts as a way in only into a room the main entrance
+cannot reach from inside, or when it is a `garage` door. So a patio or balcony door no longer
+hides a route blocked from the front door. A room with a door of its own from outside is judged by
+that door, and when the walk from the main entrance cannot reach it at all `W_PATH_TOO_NARROW` says
+so with its own message ("From the main entrance the walk to … is blocked; the room is reached only
+through its own door from outside"). When the fact refuses, they measure from every
+exterior door, and the coverage report says so (`no-main-entrance`). Which rooms are reachable at all does not
+change.
+`circulation` below, and `W_CIRCUITOUS_PATH`'s ratio, still measure each room from its nearest
+entrance.
 
 This is what makes a sealed-off room or a wheelchair-impassable corridor visible as
 *data* — the playground's Describe tab draws it as a reachability diagram.
@@ -1034,12 +1048,13 @@ label, as in every lint message. The reasons:
 | `no-uses` | room, reachability, privacy, daylight, contents and orientation checks | a room with no `uses` whose label classifies to no use |
 | `no-site` | orientation | the plan declares no `site` and has a bedroom, living or dining room with a window, so no window has a compass facing |
 | `single-storey` | storey matching | a `stair`, `elevator` or `escalator` on a plan with one storey |
-| `arc-window-unattributed` | daylight | a room bounded by a curved wall edge whose window is attributed to no room |
+| `arc-window-unattributed` | daylight | a room bounded by a curved wall edge whose window the shape attributes to no room (neither face probe finds a floor, and no bay opens into a room through the chord) |
 | `non-rectangular-room` | room and furniture checks | a polygon room: the garage-width check declines a `uses garage` one, and the fixture-orientation check (`W_FIXTURE_BACK_TO_ROOM`) any one |
 | `no-entrance` | reachability, circulation walk, privacy checks | a storey with rooms and no way in (`W_NO_ENTRANCE` still runs) |
 | `balcony-only-entrance` | privacy checks | every door to the outside opens onto a balcony or terrace, which these rules do not count as a way in (the access graph and the walk do) |
 | `unsupported-host-geometry` | door checks | a door on an angled or curved wall, which the doorway-landing and pocket-run checks do not measure |
 | `no-kitchen-fixtures` | privacy checks | a bath or WC door onto a room that is a kitchen and also the living room, which holds no sink, hob, oven, fridge, worktop, island or dishwasher, so `W_WET_ROOM_DOOR` cannot tell whether the door opens onto the kitchen |
+| `no-main-entrance` | circulation walk, privacy checks | a storey with more than one way in whose `access.mainEntrance` names no door (`tie`, `no-candidate`, `upper-storey`), so `W_PATH_TOO_NARROW`, `W_ROOM_VIA_PRIVATE` and `W_WET_ROOM_DOOR` judge a route from every exterior door |
 
 Three more reasons are reserved for families that do not exist yet: `no-brief`,
 `no-dwelling` and `no-operable-window-data`. In human mode `lint` prints one line on stderr

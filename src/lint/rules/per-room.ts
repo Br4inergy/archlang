@@ -19,13 +19,16 @@ import {
   rectOf,
   roomAreaMm2,
   roomUses,
+  windowServesRoom,
 } from "../../analyze.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import { zoneFixtureCategories } from "../../fixtures-catalog.js";
 import { fmt2 } from "../../num-format.js";
 import { mm, shortfall } from "../measure.js";
+import type { UseKind } from "../../ast.js";
 import type { RRoom } from "../../ir.js";
 import type { LintContext, LintRule } from "../context.js";
+import { DEFAULT_RULESET, type LintRuleset } from "../ruleset.js";
 import { itemWords, pasteSet, roomDefiningItems } from "../defining.js";
 import type { PasteFailure } from "../fixture-paste.js";
 
@@ -39,13 +42,13 @@ export const KITCHEN_FIX = zoneFixtureCategories("kitchen");
 export const areaM2 = (r: RRoom): number => Math.round((roomAreaMm2(r) / 1_000_000) * 100) / 100;
 
 /**
- * Does any window sit on the room's perimeter? The one window-attribution fact the daylight
- * rules read (`W_BEDROOM_NO_WINDOW`, `W_HABITABLE_NO_WINDOW`): {@link pointOnRoomEdge} on the
- * room's own shape, the test `describe().windows[].room` is built from (`roomsAtPoint`).
+ * Does any window serve the room? The one window-attribution fact the daylight rules read
+ * (`W_BEDROOM_NO_WINDOW`, `W_HABITABLE_NO_WINDOW`): {@link windowServesRoom}, a window centred
+ * on the room's own perimeter, or one on an arc edge that the shape attributes to it (PS0.12) —
+ * the tests `describe().windows[].room` is built from.
  */
 export function roomHasWindow(ctx: LintContext, r: RRoom): boolean {
-  const rect = ctx.roomRects.get(r.id)!;
-  return ctx.windows.some((win) => pointOnRoomEdge(win.at, rect, ctx.rules.tolMm));
+  return ctx.windows.some((win) => windowServesRoom(win, r.id, ctx.roomRects, ctx.rules.tolMm, ctx.wallSegs));
 }
 
 /**
@@ -123,6 +126,39 @@ export function pasteFailureWhy(ctx: LintContext, failure: PasteFailure): string
         : "no wall of it has a run clear of its doors and furniture for one, so make room first";
 }
 
+/** What a room held to a per-use floor is called in the `W_ROOM_TOO_SMALL` message. */
+const USE_FLOOR_NOUN: Partial<Record<UseKind, string>> = { wc: "a WC", bath: "a bathroom" };
+
+/** The source line of a per-use floor's hint, for the floors `DEFAULT_RULESET` sets. A floor a
+ *  profile or ruleset sets has no source the rule can name, and gets none. */
+const USE_FLOOR_SOURCE: Partial<Record<UseKind, string>> = {
+  wc: "GB 50096-2011 5.4.2 (read as advice) asks at least 1.10 m² for a room with a WC alone.",
+  bath: "GB 50096-2011 5.4.2 (read as advice) asks at least 2.00 m² for a WC or a basin with a shower or bath, and 5.4.1 asks 2.50 m² for all three.",
+};
+
+/**
+ * The area floor `W_ROOM_TOO_SMALL` holds a room to: the highest of its uses' floors
+ * ({@link roomUses}; `LintRuleset.minRoomAreaByUseM2`), where a use with no entry, and a room
+ * with no classified use, take the generic `minRoomAreaM2`. `null` when every use is exempt.
+ *
+ * `use` is the use whose own entry set the floor, or `null` when the generic floor did (it
+ * wins a tie), so a room the per-use table does not lower reads exactly as it always has.
+ */
+export function roomAreaFloor(r: RRoom, rules: LintRuleset): { m2: number; use: UseKind | null } | null {
+  const uses = [...roomUses(r)];
+  if (uses.length === 0) return { m2: rules.minRoomAreaM2, use: null };
+  // `at-least-generic` (a profile or caller that set the generic floor): it holds every room.
+  let best: { m2: number; use: UseKind | null } | null =
+    rules.roomAreaFloorMode === "at-least-generic" ? { m2: rules.minRoomAreaM2, use: null } : null;
+  for (const u of uses) {
+    const own = Object.hasOwn(rules.minRoomAreaByUseM2, u) ? rules.minRoomAreaByUseM2[u] : undefined;
+    if (own === null) continue; // exempt
+    const cand = own === undefined ? { m2: rules.minRoomAreaM2, use: null } : { m2: own, use: u };
+    if (best === null || cand.m2 > best.m2 || (cand.m2 === best.m2 && cand.use === null)) best = cand;
+  }
+  return best;
+}
+
 export const perRoomRules: LintRule = {
   name: "per-room",
   family: "rooms",
@@ -137,15 +173,32 @@ export const perRoomRules: LintRule = {
       // none is not asked (coverage, PS2.13).
       if (roomUses(r).size === 0) ctx.skip("no-uses", r);
 
-      // Implausibly tiny room.
+      // Implausibly tiny room, against the floor its use asks for.
       const a = areaM2(r);
-      if (a < rules.minRoomAreaM2) {
+      const floor = roomAreaFloor(r, rules);
+      if (floor !== null && a < floor.m2) {
+        const noun = floor.use === null ? "" : (USE_FLOOR_NOUN[floor.use] ?? `a room used as ${floor.use}`);
+        // The source is cited only for the floor it gives: the default value, still in force.
+        const source =
+          floor.use !== null && floor.m2 === DEFAULT_RULESET.minRoomAreaByUseM2[floor.use]
+            ? USE_FLOOR_SOURCE[floor.use]
+            : undefined;
         out.push({
           severity: "warning",
           code: "W_ROOM_TOO_SMALL",
           ...at(r),
-          message: `Room "${labelOf(r)}" is only ${a} m² (under ${rules.minRoomAreaM2} m²).`,
-          hints: ["Increase its `size`, or merge it into an adjacent space."],
+          message:
+            floor.use === null
+              ? `Room "${labelOf(r)}" is only ${a} m² (under ${rules.minRoomAreaM2} m²).`
+              : `Room "${labelOf(r)}" is only ${a} m² (under ${fmt2(floor.m2)} m², the floor for ${noun}).`,
+          hints:
+            floor.use === null
+              ? ["Increase its `size`, or merge it into an adjacent space."]
+              : [
+                  ...(source !== undefined ? [source] : []),
+                  "Increase its `size`, or merge it into an adjacent space.",
+                  `If \`${r.id}\` is not ${noun}, say what it is with \`uses …\`: a room's use is read from its \`uses\`, or from its label when it has none.`,
+                ],
         });
       }
 

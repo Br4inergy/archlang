@@ -42,6 +42,7 @@ import {
   roomBox,
   roomsAdjacent,
   roomsAtPoint,
+  arcWindowRoom,
   connectorConnection,
   roomUses,
   buildDoorAccessGraph,
@@ -53,9 +54,10 @@ import {
   type BBox,
   type RoomBox,
 } from "./analyze.js";
-import { outerFaceBounds } from "./geometry.js";
+import { outerFaceBounds, segmentsOfWall, type WallSegment } from "./geometry.js";
 import type { PaperOrientation, PaperSize } from "./sheet.js";
 import { computeCirculation, type CirculationModel } from "./analyze/circulation.js";
+import { entranceInputs, storeyHasEntranceCandidate, withMainEntrance } from "./analyze/entrance.js";
 import { symmetryFacts, type SymmetryFacts } from "./analyze/symmetry.js";
 import { syntaxFacts, type SyntaxFacts } from "./analyze/syntax.js";
 import { roomTypeForUses, buildInputGraph } from "./plan-json.js";
@@ -67,6 +69,7 @@ import { deriveSite, planCenterOfRooms, type SiteFacts, toCompass, windowFacingP
 import {
   type ArrivingRun,
   arrivalRuns,
+  levelsEnteredFromBelow,
   type RVertical,
   roomOfVertical,
   type VerticalConnection,
@@ -109,7 +112,7 @@ export type { SyntaxFacts, SyntaxRoom } from "./analyze/syntax.js";
 // `describe()` is the only public value that surfaces them ({@link SceneSummary.access}),
 // so they leave through the same door they arrive by. Without this a consumer could read
 // `summary.access.rooms[0].reachable` but never *name* the type of the thing it holds.
-export type { AccessEdge, AccessGraph, AccessRoomNode } from "./analyze.js";
+export type { AccessEdge, AccessGraph, AccessRoomNode, MainEntranceBasis, MainEntranceFact } from "./analyze.js";
 
 // Likewise for the door kind: it is a grammar token type, but {@link DoorSummary.kind} is
 // where a consumer of the facts channel meets it.
@@ -1118,6 +1121,8 @@ function summarize(
   facts: readonly DescribeFact[] = [],
   /** The runs a shaft-reached storey is walked from — see `computeCirculation`. */
   arrivals: readonly ArrivingRun[] = [],
+  /** A shaft arrives on this storey from below: it names no main entrance (PS0.10/PS0.3). */
+  upperStorey = false,
 ): Omit<SceneSummary, "ok" | "diagnostics"> {
   const roomEls = ir.elements.filter((e): e is RRoom => e.kind === "room");
   const doorEls = ir.elements.filter((e): e is RDoor => e.kind === "door");
@@ -1203,10 +1208,22 @@ function summarize(
   // `facingPage` key is emitted — so a plan that declares no `north` is byte-identical.
   const northTurns = northQuarterTurns(ir.north);
 
+  // The storey's wall segments, built only when a window stands on an arc edge, the one case
+  // `arcWindowRoom` reads them in.
+  let segsMemo: WallSegment[] | null = null;
+  const segs = (): WallSegment[] => {
+    if (segsMemo === null) segsMemo = ir.walls.flatMap((x) => segmentsOfWall(x));
+    return segsMemo;
+  };
   const windows: WindowSummary[] = windowEls.map((w) => {
     const touching = roomsAtPoint(w.at, roomRects, tol);
-    const room = touching[0] ?? null;
-    const box = room ? (roomRects.get(room) ?? null) : null;
+    const edgeRoom = touching[0] ?? null;
+    // A window on an arc edge no room touches is attributed from the shape (`windowRoom`'s rule
+    // in analyze.ts, PS0.12). Its facing is asked exactly as before, of the edge room only.
+    const room =
+      edgeRoom ??
+      (w.host?.arc ? arcWindowRoom({ at: w.at, width: w.width, host: w.host }, roomRects, tol, segs()) : null);
+    const box = edgeRoom ? (roomRects.get(edgeRoom) ?? null) : null;
     // A POLYGON/CIRCLE room has no four sides to pick the nearest of, and its bounding box
     // would answer for an edge the window is not on — `windowFacingPage` drops it and falls
     // through to the outward-face probe, which is exact at any wall angle and reads the
@@ -1288,7 +1305,12 @@ function summarize(
     return { id: f.id, style: f.style, length_mm: r2(len), closed: f.closed };
   });
 
-  const access = buildDoorAccessGraph(roomEls, doorEls, tol, undefined, openingEls);
+  // The main entrance (PS0.10) rides on the access graph, appended, only on a storey with more
+  // than one entrance. Circulation keeps measuring each room from its nearest entrance.
+  const access = withMainEntrance(
+    buildDoorAccessGraph(roomEls, doorEls, tol, undefined, openingEls),
+    entranceInputs(ir, roomRects, upperStorey),
+  );
   const circulation = computeCirculation(
     roomEls,
     ir.walls,
@@ -1470,7 +1492,13 @@ function inZone(member: string | undefined, path: string): boolean {
 function buildVerticalReport(
   levels: readonly ResolvedLevel[],
   tol: number,
-): { report: VerticalReport; arrivals: ReadonlyMap<number, readonly ArrivingRun[]> } | undefined {
+):
+  | {
+      report: VerticalReport;
+      arrivals: ReadonlyMap<number, readonly ArrivingRun[]>;
+      fromBelow: ReadonlySet<number>;
+    }
+  | undefined {
   const inputs = levels.map((l) => ({ level: l.level, ir: l.ir }));
   const connections = verticalConnections(inputs);
   if (connections.length === 0) return undefined;
@@ -1483,6 +1511,10 @@ function buildVerticalReport(
   return {
     report: { connections, reachable_levels: [...reach.reachable].sort((a, b) => a - b) },
     arrivals: arrivalRuns(inputs, grounded, roomReach),
+    fromBelow: levelsEnteredFromBelow(connections, (n) => {
+      const l = levels.find((x) => x.level === n);
+      return l ? storeyHasEntranceCandidate(l.ir, tol) : false;
+    }),
   };
 }
 
@@ -1563,14 +1595,20 @@ function summarizeResolved(
       ? levels.map((l) => ({
           level: l.level,
           ...(l.name !== undefined ? { name: l.name } : {}),
-          ...summarize(l.ir, tol, opts.facts, arrivalsOn(l.level)),
+          ...summarize(l.ir, tol, opts.facts, arrivalsOn(l.level), building?.fromBelow.has(l.level) ?? false),
         }))
       : undefined;
 
   return {
     ok: true,
     // The lowest storey's arrivals, so the top level still repeats `levels[0]` exactly.
-    ...summarize(ir, tol, opts.facts, levels.length > 0 ? arrivalsOn(levels[0]!.level) : []),
+    ...summarize(
+      ir,
+      tol,
+      opts.facts,
+      levels.length > 0 ? arrivalsOn(levels[0]!.level) : [],
+      levels.length > 0 ? (building?.fromBelow.has(levels[0]!.level) ?? false) : false,
+    ),
     ...(perLevel ? { levels: perLevel } : {}),
     ...(vertical ? { vertical } : {}),
     diagnostics,

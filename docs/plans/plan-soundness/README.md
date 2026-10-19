@@ -224,9 +224,22 @@ Dependencies are by card id. Each card's gate is the backlog floor gate plus wha
 
 ### PS0 · Bugs found by the audit (independent; file and fix first)
 
-Landed: PS0.1 (`between` from wall-face probes at centre and jambs, additive `straddles`; PR #196)
-and PS0.7 (the label classifier emits `living`/`dining`; a living alias yields to any other kind
-but dining; PR #197).
+Landed: PS0.1 (`between` from wall-face probes at centre and jambs, additive `straddles`; PR #196),
+PS0.7 (the label classifier emits `living`/`dining`; a living alias yields to any other kind
+but dining; PR #197), and in PR #211: PS0.11 (`W_ROOM_TOO_SMALL` reads the room's use: WC 1.1 m²,
+bath 2.0 m², store/utility/hall/circulation/entry exempt, knob `minRoomAreaByUseM2` merged per use;
+a profile that sets the generic floor, `accessibility-advisory`'s 5 m², holds every room to it, since
+no researched accessible per-use table exists yet), PS0.12 (a window on an arc edge is attributed
+from the shape: face probes, else through the arc's chord; PS2.8's `arc-window-unattributed` skip
+kept only where that fails) and PS0.10 (`describe().access.mainEntrance` and
+`depthFromMainEntrance`; width never decides: no door into a bedroom, bath or WC is a candidate,
+and the basis is `entry-room` (the one door into an entry, hall or circulation room, only when every
+other door opens into a service room), `street` (the one hinged door facing `site.street`) or `sole`;
+the fact refuses with `tie`, `no-candidate` or `upper-storey` (a storey a shaft arrives on, PS0.3's
+question), declared to the coverage report as `no-main-entrance`. `W_PATH_TOO_NARROW`,
+`W_ROOM_VIA_PRIVATE` and `W_WET_ROOM_DOOR` judge a route from the main entrance; garage doors and
+doors into rooms it cannot reach from inside stay ways in; a room with its own door from outside is
+judged by that door, and reported in its own words when the main entrance cannot reach it).
 
 | Card | Bug (re-measure first; the evidence is in the cited file) | Status |
 |---|---|---|
@@ -237,9 +250,6 @@ but dining; PR #197).
 | PS0.6 | `suggest` connects an unreachable room to *any* reachable neighbour, a bedroom included (`src/suggest.ts` ~364-395), against `skills/archlang/SKILL.md`'s own advice. Rank by neighbour use (hall/circulation/living first, bedroom and bath last) | todo |
 | PS0.8 | `W_PATH_TOO_NARROW` measures pinches on the 100 mm grid and missed a 500 mm diagonal between a bench and a jamb (`repro/gallery-bench-pinch.arch`, `audits/archcanvas-public-examples.md` GW3). Re-measure the case first: the repro lints with the warning in isolation | todo |
 | PS0.9 | `describe` assigns a window between an enclosed room and a covered loggia to the loggia, so lint and describe disagree on bedroom windows (`audits/showcase-and-examples.md` villa-rotonda) | todo |
-| PS0.10 | Reachability and the walk are seeded from every exterior door, so a patio or balcony door masks a route blocked from the front door: `W_ROOM_UNREACHABLE`/`W_PATH_TOO_NARROW` stay silent on a sofa across the hall→living opening (`audits/2026-10-18-first-contact.md` T2, A2; proven by turning the secondary door into a window). Single-storey sibling of PS0.3. Decide the honest fact: report per-entrance reachability, or name a main entrance (the one on `site.street`, else the widest leafed exterior door) and report the rest as secondary | todo |
-| PS0.11 | `W_ROOM_TOO_SMALL` is use-blind (one 4 m² floor), so repairing it inflated a café staff WC to 1.6 × 3.4 m and deleted a linen store (`audits/2026-10-18-first-contact.md` "repair pressure"). Make the floor use-aware (WC, store, utility exempt or at their own floor) before more agents repair against it | todo |
-| PS0.12 | A window hosted on an arc wall segment gets `room: null` in `describe().windows[]` (the bay-window case, `audits/archcanvas-public-examples.md` BB3; `examples/hillside-villa.arch` living-room bay). Every window rule and the daylight facts are blind on bays, so PS2.8 skips rooms with an unattributed arc window instead of guessing. Attribute from the shape: probe one thickness off the arc's concave and convex faces at the window centre | todo |
 
 ### PS1 · The defect corpus (do this before PS2; it is the yardstick)
 
@@ -283,7 +293,7 @@ the landed rows.
 | PS2.2 | `W_OPENING_OVERLAP` | Two openings on one host run whose along-run spans intersect, or whose separating pier is thinner than a mullion (`minMullionMm` 100). *As built (PR #201):* the two leaves of a double door are exempt and move as a pair under `fix`. *Known gap:* the check is per pair of openings on a host, quadratic in openings per wall; fine at corpus sizes, revisit if a wall ever carries hundreds | done |
 | PS2.3 | `W_CONNECTOR_AMBIGUOUS` | An access edge with `ambiguous: true`, or one whose clear span covers more than one room on a face (`describe()` reports this as the additive `straddles` list since PS0.1 landed; the edge stays in the graph with a measured `between`). The message names the rooms on each side. *As built (PR #201):* a straddled room counts only when the clear span covers ≥ `minStraddleCoverMm` (100) of it, net of the meeting wall's body, so a 1 mm overrun is not reported | done |
 | PS2.4 | `W_BOUNDARY_NO_WALL` | Two rooms share an edge run longer than a doorway with no wall or opening on it, unless both rooms' authored `uses` form an open-plan pair (kitchen/dining/living) or a fixed counter stands in the gap (a café servery is a deliberate boundary, `audits/2026-10-18-first-contact.md` C-plan). Plus its dual: a walled face with no room covering ≥ 95 % (unassigned floor), and rooms outside the closed exterior ring (`W_ROOM_OUTSIDE_SHELL`). Generalises `largestPerimeterGap` beyond wet rooms. After it lands, a test pins that circulation-reachable implies access-reachable | todo |
-| PS2.5 | `W_ROOM_VIA_PRIVATE` | Remove a bedroom or bath/WC from the access graph: does any other room (not its own ensuite, wardrobe, storage or balcony) become unreachable? Generalises `W_BATH_VIA_BEDROOM` (keep that code; this is the general case). ResPlan: 0.03–0.06 % of real dwellings do this, so a warning is safe. *As built (PR #199):* seeded from the main entrance only, so a balcony or patio door does not mask the route; a stair landing inside a bedroom is not a cut point; one warning per cut room, not one per room behind it. *Known gap:* a room reachable through either of two parallel private rooms (bedroom A or bedroom B, never a public route) is not reported, because removing one leaves the other | done |
+| PS2.5 | `W_ROOM_VIA_PRIVATE` | Remove a bedroom or bath/WC from the access graph: does any other room (not its own ensuite, wardrobe, storage or balcony) become unreachable? Generalises `W_BATH_VIA_BEDROOM` (keep that code; this is the general case). ResPlan: 0.03–0.06 % of real dwellings do this, so a warning is safe. *As built (PR #199):* seeded from every door to the ground but balcony doors, so a patio door could still mask the route; seeded from the main entrance only since PS0.10 (PR #211), with garage doors and doors into rooms the main entrance cannot reach from inside kept as ways in, and a room with its own door to the ground never reported; a stair landing inside a bedroom is not a cut point; one warning per cut room, not one per room behind it. *Known gap:* a room reachable through either of two parallel private rooms (bedroom A or bedroom B, never a public route) is not reported, because removing one leaves the other | done |
 | PS2.6 | `W_WET_ROOM_DOOR` | A bath/WC whose only connector is a leaf-less opening to a habitable room; a bath/WC door onto a kitchen or dining room (GB 50096 5.4.3); a bath with two or more connectors acting as a passage (the PS2.5 test covers part of this) | done (PR #199) |
 | PS2.7 | `W_ENTRANCE_INTO_PRIVATE` | The exterior door's room is a bedroom or bath (ResPlan: never). Kitchen entry is advice-level under profiles only. `examples/garden-house.arch` moved its garage door to swing into the kitchen so the rule reports nothing there | done (PR #199) |
 | PS2.8 | `W_HABITABLE_NO_WINDOW` | Extend the bedroom rule to living, dining and kitchen (needs PS0.7). *As built (PR #200):* a room with a window whose host is an arc segment is skipped, not judged, until PS0.12 attributes it (`hillside-villa`'s bay was glazed and dimensioned instead). *Open:* the kitchen arm reads a dwelling; an office kitchenette has no daylight duty, so scope it to a residential profile or a dwelling declaration (PS2.14, PS2.18) | done |
