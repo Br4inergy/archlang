@@ -12,6 +12,7 @@ import type { Diagnostic } from "../diagnostics.js";
 import { segmentsOfWall, type WallSegment } from "../geometry.js";
 import type { RDoor, RFurniture, ROpening, RRoom, RVoid, RWindow, ResolvedPlan } from "../ir.js";
 import { type ArrivingRun, type RVertical, verticalsOf } from "../vertical.js";
+import type { DwellingReading } from "../analyze/dwelling.js";
 import type { EnclosureBudgetCap, LintFamily, LintSkipReason } from "./coverage.js";
 import type { LintRuleset } from "./ruleset.js";
 
@@ -48,9 +49,12 @@ export interface BuildingContext {
   /** A shaft arrives on this storey from a storey below (`levelsEnteredFromBelow`): it names no
    *  main entrance, and its walk keeps every way in (PS0.10; PS0.3 owns the upper storeys). */
   enteredFromBelow?: boolean;
+  /** What the whole plan's rooms read as (`dwellingReading`, PS2.18), read once over every
+   *  storey. Absent means a dwelling, so a context built outside `lint()` judges as before. */
+  dwelling?: DwellingReading;
 }
 
-const NO_BUILDING: BuildingContext = {
+export const NO_BUILDING: BuildingContext = {
   multiStorey: false,
   verticalPeerIds: new Set(),
   arrivalRooms: [],
@@ -145,6 +149,15 @@ export interface LintContext {
 export interface DiagnosticSite {
   span?: Diagnostic["span"];
   _file?: string;
+}
+
+/**
+ * Whether a rule that describes a defect of a home judges this plan (PS2.18): always under
+ * {@link LintRuleset.assumeDwelling} (`residential-basic`), otherwise unless the plan reads as
+ * non-residential. A rule that gets `false` declines and files a `non-dwelling` skip.
+ */
+export function judgesAsDwelling(ctx: LintContext): boolean {
+  return ctx.rules.assumeDwelling || ctx.building.dwelling !== "non-residential";
 }
 
 /** One architectural-soundness rule (or an order-preserving composite of several). */

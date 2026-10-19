@@ -19,7 +19,8 @@
 import { buildingRoomReach, DEFAULT_TOL, resolvePlan, roomUses, storeyGrounded } from "./analyze.js";
 import type { ResolvedLevel, ResolvedPlan, RRoom } from "./ir.js";
 import type { Diagnostic, Span } from "./diagnostics.js";
-import { type BuildingContext, buildLintContext } from "./lint/context.js";
+import { type BuildingContext, buildLintContext, NO_BUILDING } from "./lint/context.js";
+import { dwellingReading } from "./analyze/dwelling.js";
 import { foldCoverage, type LintCoverage, type LintUnclassifiedRoom, type SkipNote } from "./lint/coverage.js";
 import { MAX_ATTRIBUTION_MEASURES } from "./lint/rules/circulation-facts.js";
 import { ONCE_PER_PLACEMENT_CODES } from "./lint/rules/dims.js";
@@ -85,8 +86,15 @@ export function lintWithCoverage(
 
   const notes: SkipNote[] = [];
   const unclassified: LintUnclassifiedRoom[] = [];
+  // PS2.18: read once over every storey's rooms; recorded only when it is not a dwelling, so a
+  // dwelling's contexts are exactly the ones they were.
+  const storeyIrs = levels.length > 0 ? levels.map((l) => l.ir) : [ir];
+  const nonResidential =
+    dwellingReading(storeyIrs.flatMap((p) => p.elements.filter((e): e is RRoom => e.kind === "room"))) ===
+    "non-residential";
   if (levels.length > 0) {
     const byLevel = buildingContexts(levels, rules.tolMm);
+    if (nonResidential) for (const b of byLevel.values()) b.dwelling = "non-residential";
     const out = levels.flatMap((l) => {
       unclassified.push(...unclassifiedRooms(l.ir, l.level));
       return lintOne(l.ir, rules, byLevel.get(l.level), notes, l.level).map((d) => ({ ...d, level: l.level }));
@@ -98,7 +106,10 @@ export function lintWithCoverage(
   }
   unclassified.push(...unclassifiedRooms(ir));
   return {
-    diagnostics: reconcileSharedFixes(lintOne(ir, rules, undefined, notes), [{ ir }]),
+    diagnostics: reconcileSharedFixes(
+      lintOne(ir, rules, nonResidential ? { ...NO_BUILDING, dwelling: "non-residential" } : undefined, notes),
+      [{ ir }],
+    ),
     coverage: foldCoverage(LINT_RULES, notes, unclassified, 1),
   };
 }

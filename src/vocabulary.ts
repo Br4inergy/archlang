@@ -353,3 +353,42 @@ export function matchesLivingDining(text: string): boolean {
   const { uses } = classifyLabelUses(text);
   return uses.includes("living") || uses.includes("dining");
 }
+
+/**
+ * Words that read a room's label as part of a building people do not live in (plan-soundness
+ * PS2.18): a café, shop, clinic, school or office. Read by `dwellingReading`
+ * (`src/analyze/dwelling.ts`) alone, never by {@link classifyLabelUses}: they give no
+ * {@link UseKind}, so no room's `uses` and nothing `describe()` reports changes.
+ *
+ * Measured against every room label in the corpus (examples/, test/, eval/, docs/ and the doc
+ * fences) before it shipped: no plan with a bedroom carries one. "Reception" is a UK house's
+ * sitting room as often as a clinic's front desk, and "lobby" an entrance lobby in a flat;
+ * neither appears in a dwelling of the corpus, so both stay, and a bedroom does not overrule
+ * them (a shop with a flat above reads as non-residential: a known limit until PS2.14 declares
+ * dwellings, and `residential-basic` judges such a plan as a dwelling).
+ */
+export const NON_RESIDENTIAL_WORDS: readonly string[] = Object.freeze([
+  "cafe",
+  "café",
+  "restaurant",
+  "shop",
+  "retail",
+  "clinic",
+  "consulting",
+  "waiting",
+  "reception",
+  "servery",
+  "staff room",
+  "classroom",
+  "lobby",
+  "meeting",
+]);
+
+/** {@link NON_RESIDENTIAL_WORDS}, prepared once when this module loads. */
+const PREPARED_NON_RESIDENTIAL = prepareEntry({ canonical: NON_RESIDENTIAL_WORDS, aliases: [] });
+
+/** The first {@link NON_RESIDENTIAL_WORDS} entry a label's text reads, token-bounded as every
+ *  vocabulary word is, or `null`. */
+export function nonResidentialWord(text: string): string | null {
+  return matchPrepared(tokensOf(text), PREPARED_NON_RESIDENTIAL)?.word ?? null;
+}

@@ -40,8 +40,8 @@ describe("lint profiles", () => {
     expect(codes(src, "accessibility-advisory")).toContain("W_ROOM_TOO_SMALL");
   });
 
-  it("residential-basic is identical to the shipped default (empty override)", () => {
-    expect(LINT_PROFILES["residential-basic"]).toEqual({});
+  it("residential-basic keeps the shipped thresholds and only judges every plan as a dwelling (PS2.18)", () => {
+    expect(LINT_PROFILES["residential-basic"]).toEqual({ assumeDwelling: true });
   });
 
   it("an explicit ruleset still wins over the profile", () => {

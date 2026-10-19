@@ -80,7 +80,12 @@ export type LintSkipReason =
   | "no-main-entrance"
   /** The lint run spent its count of quoted fixture sets to re-lint (`MAX_HINT_VERIFICATIONS`,
    *  `src/lint/defining.ts`), so a later room's hint quotes none (PS2.17). */
-  | "hint-budget";
+  | "hint-budget"
+  /** The plan reads as a building people do not live in (`dwellingReading`,
+   *  `src/analyze/dwelling.ts`: an office and no bedroom or living room, or a café, shop or clinic label), so a
+   *  rule that describes a defect of a home declines (PS2.18). Not `no-dwelling`, which waits
+   *  for declared dwellings (PS2.14). `residential-basic` judges every plan as a dwelling. */
+  | "non-dwelling";
 
 /** What each family checks, as the human coverage line names it. */
 export const FAMILY_NOUN: Readonly<Record<LintFamily, string>> = {
@@ -118,6 +123,7 @@ export const SKIP_WHY: Readonly<Record<LintSkipReason, string>> = {
   "enclosure-budget": "too much wall geometry to measure",
   "no-main-entrance": "no main entrance could be named",
   "hint-budget": "the run checked as many quoted fixture placements as it may, so later hints quote none",
+  "non-dwelling": "the plan reads as non-residential",
 };
 
 /**

@@ -23,7 +23,7 @@ import { familyOf, servedBy } from "../../furnish-table.js";
 import { distPointToWallSegment } from "../../geometry.js";
 import type { RFurniture, RRoom } from "../../ir.js";
 import { fmt2 } from "../../num-format.js";
-import type { LintContext, LintRule } from "../context.js";
+import { judgesAsDwelling, type LintContext, type LintRule } from "../context.js";
 import { definingItems, itemWords, pasteSet, useNoun } from "../defining.js";
 import { areaM2, lacksZoneFixture, pasteFailureWhy, roomHasWindow } from "./per-room.js";
 
@@ -106,7 +106,9 @@ function arcWindowUnattributed(ctx: LintContext, r: RRoom): boolean {
  * other use is never asked, and a room with no classified use is skipped (declared to the
  * coverage report). A room bounded by an arc wall edge carrying a window the analysis gives to
  * no room is skipped too (attribution unknown; PS0.12, declared as `arc-window-unattributed`):
- * its bay may well light it.
+ * its bay may well light it. A room whose only habitable use is kitchen is judged only on a plan
+ * that reads as a dwelling (PS2.18, {@link judgesAsDwelling}): on a café or an office it is
+ * declared as `non-dwelling`, window or not. Living and dining rooms are judged on every plan.
  */
 export const habitableNoWindow: LintRule = {
   name: "habitable-no-window",
@@ -117,7 +119,13 @@ export const habitableNoWindow: LintRule = {
       const uses = roomUses(r);
       if (uses.size === 0) ctx.skip("no-uses", r);
       const kind = HABITABLE.find(([u]) => uses.has(u));
-      if (kind === undefined || isBedroom(r) || roomHasWindow(ctx, r)) continue;
+      if (kind === undefined || isBedroom(r)) continue;
+      // PS2.18: a kitchen's daylight is a dwelling's need; an office kitchenette has no such duty.
+      if (kind[0] === "kitchen" && !judgesAsDwelling(ctx)) {
+        ctx.skip("non-dwelling", r);
+        continue;
+      }
+      if (roomHasWindow(ctx, r)) continue;
       if (arcWindowUnattributed(ctx, r)) {
         ctx.skip("arc-window-unattributed", r);
         continue;

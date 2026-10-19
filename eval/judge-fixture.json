@@ -442,7 +442,7 @@
     {
       "id": "small-office",
       "valid": true,
-      "lintWarnings": 4,
+      "lintWarnings": 3,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -511,7 +511,7 @@
     {
       "id": "core-and-shell",
       "valid": true,
-      "lintWarnings": 2,
+      "lintWarnings": 1,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -1366,7 +1366,7 @@
     {
       "id": "reception-suite",
       "valid": true,
-      "lintWarnings": 7,
+      "lintWarnings": 6,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
@@ -2061,7 +2061,7 @@
     {
       "id": "sized-office-mix",
       "valid": true,
-      "lintWarnings": 7,
+      "lintWarnings": 6,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],
