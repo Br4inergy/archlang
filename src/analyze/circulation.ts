@@ -293,6 +293,8 @@ function distPointToRect(px: number, py: number, r: BBox): number {
 /** A nav grid built once and shared ({@link computeCirculation}'s `navCache`). */
 export interface NavCache {
   grid?: NavGrid | null;
+  /** The rooms' floors on that grid ({@link roomFloors}). */
+  floors?: { roomCells: number[][]; seed: Point[]; poles: Point[][] };
 }
 
 export interface NavGrid {
@@ -1716,30 +1718,9 @@ function buildNav(
   // exact centre — `library`'s drum read (25000.000000000004, 15999.999999999995) — which
   // decided a tie between the four cells round a lattice corner by rounding noise instead
   // of by `roomRep`'s key, and the noise does not turn with the plan.
-  const roomCells: number[][] = rooms.map(() => []);
-  const seed = rects.map((rb) =>
-    snapPoint(rb.poly ? polygonLabelPoint(rb.poly) : { x: rb.x + rb.w / 2, y: rb.y + rb.h / 2 }),
-  );
-  // A pole of inaccessibility is found by a scan that keeps the FIRST of equally wide arms
-  // (a page-order tie), so such a room is measured to every widest pole the same scan finds
-  // on the ring turned or flipped — the orbit — and its walk is the shortest of them.
-  const poles = rects.map((rb) => (rb.poly ? labelPointOrbit(rb.poly).map(snapPoint) : []));
-  // A room is its FLOOR: the cells walkable before any threshold was carved. A cell belongs
-  // to the room whose rectangle holds its centre, so a doorway's opened wall cells can lie in
-  // a room; they read the door's width, and a room read at its best cell took them, reporting
-  // the door for a floor reached only through a narrower pinch just past it. They are the way
-  // in and out (a walk or route crosses them), never where a room is reached or a route
-  // starts. A room with no floor cell at all keeps the cells it has.
-  const openedCells: number[][] = rooms.map(() => []);
-  for (let k = 0; k < g.free.length; k++) {
-    const ri = g.roomIdx[k]!;
-    if (!g.free[k] || ri < 0) continue;
-    (g.opened?.[k] ? openedCells : roomCells)[ri]!.push(k);
-  }
-  roomCells.forEach((cells, ri) => {
-    if (cells.length === 0) roomCells[ri] = openedCells[ri]!;
-  });
-
+  const floors = cache?.floors ?? roomFloors(g, rooms, rects);
+  if (cache) cache.floors = floors;
+  const { roomCells, seed, poles } = floors;
   const entranceId = viaShaft ? arrivals[0]!.run.id : access.entrances[0]!;
   const entrancePoint = viaShaft ? entryMidpoint(arrivals[0]!.run, arrivals[0]!.edges[0]!) : atById.get(entranceId);
 
@@ -1824,6 +1805,42 @@ function buildNav(
     entranceId,
     entrancePoint,
   };
+}
+
+/**
+ * Each room's floor cells, the point its facts are measured to, and its widest poles, read off
+ * a built grid ({@link buildNav}). They depend on the grid and the rooms alone, never on the
+ * entrances, so two models sharing a grid share them too ({@link NavCache}).
+ */
+function roomFloors(
+  g: NavGrid,
+  rooms: readonly RRoom[],
+  rects: readonly RoomBox[],
+): { roomCells: number[][]; seed: Point[]; poles: Point[][] } {
+  const roomCells: number[][] = rooms.map(() => []);
+  const seed = rects.map((rb) =>
+    snapPoint(rb.poly ? polygonLabelPoint(rb.poly) : { x: rb.x + rb.w / 2, y: rb.y + rb.h / 2 }),
+  );
+  // A pole of inaccessibility is found by a scan that keeps the FIRST of equally wide arms
+  // (a page-order tie), so such a room is measured to every widest pole the same scan finds
+  // on the ring turned or flipped — the orbit — and its walk is the shortest of them.
+  const poles = rects.map((rb) => (rb.poly ? labelPointOrbit(rb.poly).map(snapPoint) : []));
+  // A room is its FLOOR: the cells walkable before any threshold was carved. A cell belongs
+  // to the room whose rectangle holds its centre, so a doorway's opened wall cells can lie in
+  // a room; they read the door's width, and a room read at its best cell took them, reporting
+  // the door for a floor reached only through a narrower pinch just past it. They are the way
+  // in and out (a walk or route crosses them), never where a room is reached or a route
+  // starts. A room with no floor cell at all keeps the cells it has.
+  const openedCells: number[][] = rooms.map(() => []);
+  for (let k = 0; k < g.free.length; k++) {
+    const ri = g.roomIdx[k]!;
+    if (!g.free[k] || ri < 0) continue;
+    (g.opened?.[k] ? openedCells : roomCells)[ri]!.push(k);
+  }
+  roomCells.forEach((cells, ri) => {
+    if (cells.length === 0) roomCells[ri] = openedCells[ri]!;
+  });
+  return { roomCells, seed, poles };
 }
 
 /** The eight signed permutations of D4 as `[a, b, c, d]`: `(x, y) ↦ (a·x + b·y, c·x + d·y)`. */
@@ -2236,11 +2253,14 @@ export function computeCirculation(
    * (`src/lint/rules/circulation-facts.ts`: the main entrance's walk and the nearest-entrance
    * one, PS0.10): the nav grid depends on the rooms, walls, connectors between rooms, furniture,
    * runs, voids and body radius, never on the entrances, so the second model reuses the first
-   * one's grid. Append-only: omitting it builds the grid as before.
+   * one's grid. `routes: false`: the caller reads no key route from this model (the second of
+   * the two reads its rooms only), so the routes are not walked and `routes` is empty.
+   * Append-only: omitting it builds the grid and walks the routes as before.
    */
-  share: { navCache?: NavCache } = {},
+  share: { navCache?: NavCache; routes?: boolean } = {},
 ): CirculationModel | null {
   const navCache = share.navCache;
+  const walkRoutes = share.routes !== false;
   // The room each arriving run lands in, read off the plan as given — the same
   // `roomOfVertical` that names `verticalReach`'s arrival rooms. A run standing in no room
   // lands nowhere a walk could start.
@@ -2507,10 +2527,10 @@ export function computeCirculation(
 
   const livingDining = rooms.map((r, i) => (isLivingOrDining(r) ? i : -1)).filter((i) => i >= 0);
   const wetRooms = rooms.map((r, i) => (isWetRoom(r) ? i : -1)).filter((i) => i >= 0);
-  for (let i = 0; i < rooms.length; i++) {
+  for (let i = 0; i < rooms.length && walkRoutes; i++) {
     if (isKitchen(rooms[i]!)) addNearestRoute(i, livingDining);
   }
-  for (let i = 0; i < rooms.length; i++) {
+  for (let i = 0; i < rooms.length && walkRoutes; i++) {
     if (isBedroom(rooms[i]!)) addNearestRoute(i, wetRooms);
   }
 

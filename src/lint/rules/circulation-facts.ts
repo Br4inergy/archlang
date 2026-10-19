@@ -111,7 +111,8 @@ function circulationOf(ctx: LintContext, from: "walk" | "nearest" = "walk"): Cir
     // rules measure it instead of going silent while reachability already treats those
     // landings as the storey's way in.
     ctx.building.arrivalShafts,
-    { navCache: shared(ctx) },
+    // The nearest-entrance model, when it is a second one, is read for its rooms alone.
+    { navCache: shared(ctx), routes: from === "walk" },
   );
   cache.set(ctx, model);
   return model;
