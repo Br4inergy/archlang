@@ -670,7 +670,8 @@ const COMMANDS: ManifestCommand[] = [
       QUIET_FLAG,
     ],
     input: "<file.arch|->",
-    output: "W_* warnings (narrowed by --code/--severity; `filtered`/`total_diagnostics` mark a filtered result)",
+    output:
+      "W_* warnings (narrowed by --code/--severity; `filtered`/`total_diagnostics` mark a filtered result), then a `coverage` block naming the rule families skipped and why",
     examples: [
       { cmd: "archlang lint plan.arch --json", note: "architectural soundness warnings as data, each with a fix" },
       {

@@ -481,6 +481,26 @@ export function connectorFaces(
   return [read("minus"), read("plus")];
 }
 
+/**
+ * The doorway's face on one side of its host wall, half the host's thickness from the
+ * centreline: `[jamb, centre, jamb]`, the jambs at the ends of the connector's width along
+ * the host run (on the arc itself for a curved host). The same three stations
+ * {@link connectorFaces} probes, set on the face rather than past it; a distance from the
+ * doorway into a room is measured from this path.
+ */
+export function connectorFacePath(
+  c: Pick<AccessConnector, "at"> & { host: NonNullable<AccessConnector["host"]>; width: number },
+  side: "minus" | "plus",
+): [Point, Point, Point] {
+  const d = c.host.thickness / 2;
+  const half = c.width / 2;
+  return [
+    wallFaceProbes(c.host, alongHost(c.host, c.at, -half), d)[side],
+    wallFaceProbes(c.host, c.at, d)[side],
+    wallFaceProbes(c.host, alongHost(c.host, c.at, half), d)[side],
+  ];
+}
+
 /** The pair `a`/`b` in `roomRects` order with `exterior` first — the order
  *  {@link doorConnections} uses — so it depends on no page direction. */
 function orderedPair(a: string, b: string, roomRects: Map<string, RoomBox>): [string, string] {

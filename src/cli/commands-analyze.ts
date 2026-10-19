@@ -12,6 +12,7 @@ import {
   describeLevel,
   DESCRIBE_FACTS,
   lint,
+  lintWithCoverage,
   LINT_PROFILE_NAMES,
   ERROR_CODES,
   diagnosticToJson,
@@ -31,10 +32,13 @@ import type {
   SceneSummary,
   FreedomElement,
   FreedomReport,
+  LintCoverage,
 } from "../index.js";
 // Internal (not part of the public surface): parse → link → resolve without
 // rendering — validate/lint need only the diagnostics, never the SVG.
 import { resolvePlan } from "../analyze.js";
+// The one human line of the lint coverage report (internal: only `lint` prints it).
+import { coverageLine } from "../lint/coverage.js";
 // The zero-dep levenshtein behind every "did you mean" hint the CLI prints.
 import { closest } from "../expr.js";
 import { CLI_NAME } from "../manifest.js";
@@ -435,8 +439,18 @@ function parseDiagFilter(args: Args): DiagFilter | CheckError {
  *
  * `filter` narrows only what is PRINTED. `e`/`w`/`ok` are computed from `diags` — the
  * unfiltered set — so a display filter can never turn a failing plan into exit 0.
+ *
+ * `coverage` (only `lint` passes it, and only when the rules ran) is APPENDED: a `coverage`
+ * key after `diagnostics` in JSON, and in human mode one line on stderr when something was
+ * skipped, nothing otherwise. Every byte before it is what it was without it.
  */
-function report(source: string, diags: Diagnostic[], args: Args, filter: DiagFilter = {}): number {
+function report(
+  source: string,
+  diags: Diagnostic[],
+  args: Args,
+  filter: DiagFilter = {},
+  coverage?: LintCoverage,
+): number {
   const e = diags.filter((d) => d.severity === "error").length;
   const w = diags.length - e;
   const ok = e === 0 && (!args.strict || w === 0);
@@ -450,11 +464,14 @@ function report(source: string, diags: Diagnostic[], args: Args, filter: DiagFil
       strict: args.strict ?? false,
       ...(active ? { filtered: true, total_diagnostics: diags.length } : {}),
       diagnostics: shown.map((d) => diagnosticToJson(source, d)),
+      ...(coverage ? { coverage } : {}),
     });
   } else {
     emitDiagnosticsHuman(source, shown, args.quiet);
     if (!args.quiet) {
       if (active) process.stderr.write(`  (display filter: showing ${shown.length} of ${diags.length} diagnostics)\n`);
+      const skipped = coverage ? coverageLine(coverage) : null;
+      if (skipped) process.stderr.write(`  ${skipped}\n`);
       if (ok) process.stdout.write(`✓ ok${w ? ` (${w} warning${w === 1 ? "" : "s"})` : ""}\n`);
       else if (e === 0) process.stdout.write(`✗ ${w} warning${w === 1 ? "" : "s"} (--strict)\n`);
       else process.stdout.write(`✗ ${e} error${e === 1 ? "" : "s"}, ${w} warning${w === 1 ? "" : "s"}\n`);
@@ -709,6 +726,9 @@ export function cmdLint(args: Args): number {
     // Render-free: resolvePlan carries every diagnostic compile() would.
     const { diagnostics } = resolvePlan(source, { world });
     const errs = diagnostics.filter((d) => d.severity === "error");
-    return report(source, errs.length ? errs : lint(source, { world, profile: args.profile }), args, filter);
+    if (errs.length) return report(source, errs, args, filter);
+    // One run of the rules gives the diagnostics `lint()` returns and the coverage report.
+    const linted = lintWithCoverage(source, { world, profile: args.profile });
+    return report(source, linted.diagnostics, args, filter, linted.coverage ?? undefined);
   });
 }

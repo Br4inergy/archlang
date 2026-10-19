@@ -23,6 +23,7 @@ import type { LintContext, LintRule } from "../context.js";
 
 export const noEntrance: LintRule = {
   name: "no-entrance",
+  family: "reachability",
   check({ rooms, access, building }: LintContext): Diagnostic[] {
     const reachedByShaft = building.arrivalRooms.length > 0;
     if (rooms.length > 0 && !access().hasEntrance && !reachedByShaft) {

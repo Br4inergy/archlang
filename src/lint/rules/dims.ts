@@ -54,6 +54,7 @@ import type { LintContext, LintRule } from "../context.js";
 
 export const dimInside: LintRule = {
   name: "dim-inside",
+  family: "annotation",
   check(ctx: LintContext): Diagnostic[] {
     const dims = ctx.ir.elements.filter((e): e is RDim => e.kind === "dim");
     if (dims.length === 0 || ctx.roomRects.size === 0) return [];
@@ -141,6 +142,7 @@ export const dimInside: LintRule = {
  */
 export const dimOverlap: LintRule = {
   name: "dim-overlap",
+  family: "annotation",
   check(ctx: LintContext): Diagnostic[] {
     const dims = ctx.ir.elements.filter((e): e is RDim => e.kind === "dim");
     if (dims.length < 2) return [];
@@ -216,6 +218,7 @@ export const dimOverlap: LintRule = {
  */
 export const openingNotDimensioned: LintRule = {
   name: "opening-not-dimensioned",
+  family: "annotation",
   check({ ir, doors, windows, openings, at }: LintContext): Diagnostic[] {
     if (ir.autoDims !== "all") return [];
     const missed = unchainedOpenings(ir);
