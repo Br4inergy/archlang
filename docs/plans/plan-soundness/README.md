@@ -340,8 +340,10 @@ otherwise, and only in the root frame); polygon/circle rooms expose no datum
 has exactly three clauses (`open between A and B [width]` which always derives an opening,
 `between A and B thickness t`, `except R …`), holes legal only under exact `outdoor`/`void` cover,
 preconditions decided exactly with no tolerance row; derived walls have NO author-facing id and are
-addressed by relation (`between A and B`, `on A.top`, PS3.5's `containing`); a canonical direction
-rule for derived walls; an authored wall exactly on a derived line wins over the shared span and the
+addressed by relation (`between A and B`, `on A.top`, PS3.5's `containing`, and PS3.7's
+`against <room>.<edge>` pulled forward so furniture can back onto a derived partition); a canonical
+direction rule for derived walls (inner courtyard rings run counter-clockwise so `swing in` keeps
+its meaning); `open` spans the clear span between meeting wall faces; a `void` hole derives no wall; an authored wall exactly on a derived line wins over the shared span and the
 drop is reported in `describe().derived_walls[]`; relational openings refuse a short nib
 (`E_OPENING_NIB`, same measure as `W_OPENING_AT_JUNCTION`) instead of sliding and a door's position
 is required; the resolve-order byte-identity sweep, diagnostics order included, is PS3.2's gate. The

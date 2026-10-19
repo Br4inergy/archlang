@@ -86,8 +86,9 @@ grid axis names already in the language. Datums are read wherever a coordinate i
   once in its own frame and the instance follows the frame, exactly as its coordinates do
   (`frame.ts` carries the resolved element; a resolver never sees pre-transformed input). From the
   root, `west.main.top` names the placed room `west.main`'s edge in **world** words (the last
-  dotted segment is the datum; a room that has a child element named `top`, `cx` or the like is
-  refused with `E_DATUM_NAME`).
+  dotted segment is the datum; a dotted path whose last segment could be read both as a datum word
+  and as an element id inside the instance, such as an instance `west` holding an element `top`, is
+  refused with `E_DATUM_NAME` rather than resolved either way).
 - A `polygon` or `circle` room exposes no datum in this version (`E_ROOM_NOT_RECTANGLE`, the same
   condition relational placement refuses with `E_PLACE_POLY`). A rectilinear polygon may gain named
   edges later; the honest extension is §8 question 4 of the plan.
@@ -95,7 +96,7 @@ grid axis names already in the language. Datums are read wherever a coordinate i
 ### 3. The headline form: `walls from rooms` (D5)
 
     walls from rooms exterior <t_ext> partition <t_int> {
-      open between <A> and <B> [width <mm>] [id=<name>]
+      open [id=<name>] between <A> and <B> [width <mm>]
       between <A> and <B> thickness <t>
       except <R> …
     }
@@ -105,16 +106,23 @@ component) from the rooms resolved there, excluding `except` rooms. There may be
 per group (`E_WALLS_FROM_ROOMS_DUP`). It derives:
 
 - the **exterior ring**: the rectilinear outline of the union of the room rectangles, drawn as one
-  closed `exterior` wall of thickness `t_ext`. A hole in the union is legal only when `outdoor` or
-  `void` surfaces declared in the same group cover it exactly (a courtyard, an atrium); the hole's
-  outline is then drawn as a second, inner `exterior` ring. Any other hole, and any second
-  edge-connected component, is `E_ROOMS_NOT_TILING`.
+  closed `exterior` wall of thickness `t_ext`. A hole in the union is legal in two cases: covered
+  exactly by `outdoor` surfaces declared in the same group (a courtyard), when the hole's outline is
+  drawn as a second, inner `exterior` ring; or covered exactly by a `void` (an atrium, a stair
+  well), when no wall is derived round it and the author adds a balustrade or wall by hand. Any
+  other hole, any second edge-connected component, and a union that touches its own hole at a
+  single vertex (a pinch) are `E_ROOMS_NOT_TILING`.
 - every **shared edge run** of two rooms (a positive-length overlap of two facing edges on one
   line) as one `partition` segment of thickness `t_int` on that line, unless an `open between A and
-  B` clause names the pair. `open` without `width` derives a leaf-less `opening` across the whole
-  run; with `width` a centred one. Either is an ordinary opening (in the access graph, in
-  `describe().openings[]`), with an auto-assigned id unless the clause gives one, so an open-plan
-  join is a stated connection, not a gap `W_BOUNDARY_NO_WALL` would report.
+  B` clause names the pair. `open` without `width` derives a leaf-less `opening` across the **clear
+  span** of the run, between the faces of the walls that meet it at each end (so it carries no nib
+  and trips neither `E_OPENING_NIB` nor `W_OPENING_AT_JUNCTION`); with `width` one centred on that
+  clear span. Either is an ordinary opening (in the access graph, in `describe().openings[]`), with
+  an auto-assigned id unless the clause gives one, so an open-plan join is a stated connection, not
+  a gap `W_BOUNDARY_NO_WALL` would report. The drawing therefore shows an open-plan pair as two
+  jamb lines with the meeting walls' piers at the ends, which is what the plan says. A
+  `door|opening between A and B` on a pair the author declared `open` is `E_WALL_BETWEEN_OPEN`:
+  the run is already voided.
 - `between A and B thickness t` overrides the partition thickness for that one pair.
 
 Rooms are centreline shapes (ADR 0027), so a room union tiled exactly by rooms gives an exterior
@@ -134,8 +142,9 @@ rooms (ADR 0005):**
 | The union has a hole not covered exactly by `outdoor`/`void`, or more than one edge-connected component (rooms touching only at a corner are not connected) | `E_ROOMS_NOT_TILING` (names the hole's bounding rooms, or one room from each component) |
 | A shared run is shorter than `t_int` | `E_PARTITION_TOO_SHORT` (names the pair and the run) |
 | A `polygon` or `circle` room is in the set and not excluded | `E_ROOM_NOT_RECTANGLE` |
-| An `open between`, `between … thickness` or `except` clause names a pair that shares no run, or a room not in the group | `E_WALL_BETWEEN_NOT_ADJACENT` / `E_LAYOUT_REF` |
-| An authored wall lies on a pair the author also declared `open` | `E_WALL_BETWEEN_OPEN` |
+| An `open between` or `between … thickness` clause names a pair that shares no run | `E_WALL_BETWEEN_NOT_ADJACENT` |
+| A clause names a room that is not in the group (or is a polygon/circle) | `E_WALL_BETWEEN_ROOM` |
+| An authored wall lies on a pair the author also declared `open`, or a relational opening targets such a pair | `E_WALL_BETWEEN_OPEN` |
 
 There is no tolerance row: a 1 mm jog in the outline is a legal tiling whose ring follows the jog,
 and a 1 mm interior gap is a hole. A plan whose corridor is "the leftover" fails the tiling test,
@@ -143,19 +152,27 @@ and that is the point: the corridor must be a room. The class-2 defect-corpus ca
 unwritable in this form (a test writes each with `walls from rooms` and asserts the refusal or the
 wall).
 
-**Direction of a derived wall**, which hinge, swing and `from start|end` read: the exterior ring
-starts at its vertex with the smallest `y`, then the smallest `x`, and runs clockwise on the page
-(first along `+x`); an inner ring the same; a partition starts at its end with the smaller `y`,
-then the smaller `x`, so a horizontal run grows along `+x` and a vertical run along `+y`. `swing
-into <room>` and `hinge near start|end` are the recommended words on a derived wall; `swing in|out`
-means what it means on any wall of that direction (plan card PS3.8 adds `inward|outward`).
+**Direction of a derived wall**, which hinge, swing, `from start|end` and `segment <n>` read: the
+exterior ring starts at its vertex with the smallest `y`, then the smallest `x`, and runs clockwise
+on the page (first along `+x`), so the floor is on the `in` side of travel; an inner ring round a
+courtyard starts the same way and runs **counter-clockwise**, so the floor is again on the `in`
+side and `swing in` opens into the building on both rings; a partition starts at its end with the
+smaller `y`, then the smaller `x`, so a horizontal run grows along `+x` and a vertical run along
+`+y`. `swing into <room>` and `hinge near start|end` are the recommended words on a derived wall;
+`swing in|out` means what it means on any wall of that direction (plan card PS3.8 adds
+`inward|outward`).
 
 **Addressing.** Derived walls have **no author-facing id**. They are addressed by relation: an
-opening by `between A and B` or `on A.<edge>` (§5), a dimension or selector by `containing A.<edge>`
-(plan card PS3.5). `describe()` names them in a machine field only (`A|B`, `exterior`, `exterior#2`
-for an inner ring), never as identifiers, so nothing collides with the id namespace, instance ids
-stay dotted references only, and auto-id rooms stay unreferenced (P7). An author who needs a wall
-by id writes it by hand.
+opening by `between A and B` or `on A.<edge>` (§5), furniture by `against <room>.<edge>` (§5a), a
+selector by `containing A.<edge>` (plan card PS3.5). Internally each derived wall carries an id no
+identifier can spell (`A|B` with the room ids in source order, `exterior`, `exterior#2` for an inner
+ring) with `_idAuthored = false`, so the keyed internals (heights, hosting, lint, furnish) work
+unchanged and nothing can collide with an authored id; `describe()` prints that name only in
+`derived_walls[]` and in `heights.walls[]`. A lint hint about a derived host quotes the relational
+form (`between A and B at …`), never `on A|B`. Plan JSON exports the `walls from rooms` statement
+and the relational openings as written; derived children are not exported as walls, and `arch fix`
+and `suggest` never emit a derived child as an authored one. `roof overhang` counts only the outer
+ring among its candidates. An author who needs a wall by id writes it by hand.
 
 **Coexistence with authored walls.** An authored wall whose centreline is exactly collinear with a
 derived segment and overlaps it with positive length drops the derived segment over the shared
@@ -166,15 +183,18 @@ any wall. Every dropped span is reported in the facts (§6) so the drop is never
 are pinned by test.
 
 **Scope across instances.** A component's derivation sees only the component's rooms (ADR 0016),
-so two instances of one component each derive their own ring; where two instances abut, two
-coincident exterior walls result, exactly as two authored instances draw today. A root derivation
-sees only root-declared rooms; instance rooms are covered by their component's own statement.
+so two instances of one component each derive their own ring; where two instances abut, or a root
+room abuts a placed instance's room, two coincident exterior walls result on the shared line,
+exactly as two authored instances draw today. A root derivation sees only root-declared rooms;
+instance rooms are covered by their component's own statement.
 
-**Bounds, charged before allocating.** Shared runs come from one sort of the room edges per axis
-and a sweep, charged as `n log n + runs` steps on the evaluator meter; the union outline is one
-sweep over the sorted edges. Derived walls and openings count toward `MAX_ELEMENTS` and toward the
-drawing budget like authored ones, and a tiling that would exceed either is refused with the
-existing `E_ELEMENT_LIMIT` / `E_DRAWING_LIMIT` before anything is built.
+**Bounds, charged before allocating.** At expansion the statement counts toward `MAX_ELEMENTS` with
+the upper bound of what it can derive (at most `3n` partitions and `4n` ring vertices for `n`
+rooms), so a tiling that could exceed the cap is `E_ELEMENT_LIMIT` before resolve. At resolve the
+shared runs come from one sort of the room edges per axis and a sweep, charged as `n log n + 3n`
+steps on the evaluator meter before the sweep runs; the union outline is one sweep over the sorted
+edges. Derived children count toward the drawing budget like authored ones in `compile()`
+(`E_DRAWING_LIMIT`); `describe()` and `lint()` resolve the same children under the step meter.
 
 **Implementation shape.** `walls from rooms` is one element kind (one `src/elements/` module with
 `drawCost` and `bounds()`), whose resolution yields its wall and opening children. The children
@@ -215,21 +235,41 @@ same way. Positions are measured along the shared run or the edge, not along the
   the run nowhere, is `E_OPENING_DATUM`. `from start|end` reads the direction of §3. `at axis n` on
   a run parallel to that axis is refused the same way.
 - Hosted offsets gain the same datums on the existing forms: `on <wall> at 150 from end`,
-  `on <wall> at 150 from <A>.<edge>`, `on <wall> at axis 3`.
+  `on <wall> at 150 from <A>.<edge>`, `on <wall> at axis 3`. On a hosted wall the datum line must
+  cross the host run at exactly one point (`E_OPENING_DATUM` otherwise), and the offset runs from
+  that crossing along the host's own direction; the other way is written `from end`.
 
 **The nib is enforced, never slid.** If the resolved position leaves a jamb nearer than
 `max(100 mm, host thickness / 2)` to a meeting wall face, the opening is refused with
-`E_OPENING_NIB` naming the clearance, the meeting wall and the nearest legal position. This is the
-measure `W_OPENING_AT_JUNCTION` uses for hand-placed openings (`minJunctionNibMm`,
-`junctionNibThicknessRatio`), including its exemption for a cased opening flush with a meeting
-wall face; the relational form turns the warning into a refusal because the author asked for a
-derived position and the compiler must not choose a different one (ADR 0004, ADR 0005).
+`E_OPENING_NIB` naming the clearance, the meeting wall and the nearest legal position. These are
+the **default values** of the measure `W_OPENING_AT_JUNCTION` uses for hand-placed openings
+(`minJunctionNibMm`, `junctionNibThicknessRatio`), including its exemption for a cased opening flush
+with a meeting wall face; `compile()` reads no lint profile, so a profile that changes the lint's
+numbers does not change the refusal. The relational form turns the warning into a refusal because
+the author asked for a derived position and the compiler must not choose a different one (ADR 0004,
+ADR 0005).
+
+### 5a. Furniture against a room edge
+
+    furniture id=f wardrobe against <A>.<edge> [offset <mm>] in <A>
+
+`against wall <id|category>` needs a unique wall id and refuses a category that matches several
+walls, so furniture could never back onto a derived partition (a tiling has many). The form above,
+pulled forward from plan card PS3.7, backs a piece onto a room's own edge: the piece's back face
+lies on the edge line's room-side wall face when a wall stands there (derived or authored, any
+thickness), or on the edge line itself when nothing does; `offset` runs along the edge in the
+room's frame from its start corner (`top`/`bottom` from `left`, `left`/`right` from `top`). It is
+closed-form, needs no wall id, and `examples/two-bed.arch`'s wardrobe and shower rewrite to it.
+`against wall exterior [segment <n>]` keeps working when the ring is the only exterior wall, with
+segments numbered along the ring's direction rule; an inner ring or an authored exterior wall beside
+the ring makes `exterior` ambiguous, as today.
 
 ### 6. Facts
 
 `describe()` gains one key, present only on a plan that derived something: `derived_walls[]`, one
 row per derived wall with `{ from: "rooms" | "between" | "around", name: "A|B" | "exterior" |
-"exterior#n", between?: [A, B], statement?: <id>, dropped?: [{ x1, y1, x2, y2, by: <wall id> }] }`.
+"exterior#n", between?: [A, B], dropped?: [{ x1, y1, x2, y2, by: <wall id> }] }` (`name` is the
+internal id of §3; for the pairwise forms it is the authored wall id).
 `freedom` gains a `walls` family, and openings gain the placement value `relational`, both emitted
 only when a derived wall or a relational opening exists. `describe()` of a plan with none of them
 does not change by a byte.
@@ -255,8 +295,11 @@ be the one that cannot express the top three defect classes.
 - Resolve order changes for every plan. The byte-identity law, diagnostics order included, is the
   gate for PS3.2, not a consequence to re-measure: if the order change moves any corpus byte, the
   card stops.
-- Derived walls have no ids. Dimensions and selectors reach them through plan card PS3.5's
-  `containing <room>.<edge>`; until that lands, a derived wall cannot be dimensioned by name.
+- Derived walls have no ids. Openings reach them by `between`/`on <room>.<edge>`, furniture by
+  `against <room>.<edge>`, selectors by plan card PS3.5's `containing <room>.<edge>`; plain `dim`
+  takes points, which may now be datums. What is lost by name is only `against wall <id>` on a
+  derived partition (replaced by §5a) and `roof overhang wall <id>` (the outer ring is the one
+  candidate; an authored exterior wall beside it makes the roof ambiguous, as it is today).
 - Compass words in datums are restricted to north-up root frames. The alternative, compass datums
   that rotate with `north` or with `place`, would make `living.north` move when the plan is turned,
   which no author expects of a wall.
@@ -293,8 +336,11 @@ Recorded with D1 and D5 in the plan:
 
 ## Acceptance (cards PS3.0, PS3.2–PS3.4)
 
-- Before any form lands: a probe runs the six §3 preconditions over every corpus storey and reports
-  the refusal share, replacing the area-sum premise with the exact one.
+- Before any form lands: a probe runs the four preconditions that need no clause (overlap, tiling
+  with the hole and pinch rules, too-short run, non-rectangle) over every corpus storey, excluding
+  rooms whose uses are outdoor (balcony, terrace, garden) as `except` would, and reports the
+  refusal share, replacing the area-sum premise with the exact one. D5's quarter threshold is read
+  from that figure.
 - Byte-identity sweep green with the new resolve order and no new form in use, diagnostics order
   included.
 - `examples/relational.arch` and `examples/two-bed.arch` rewritten in the headline form lint clean
