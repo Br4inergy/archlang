@@ -76,10 +76,16 @@ export const useNoun = (use: UseKind): string => NOUN[use] ?? use;
 /** An item's words: its category, then the ones tried in its place. */
 export const itemWords = (i: FurnishItem): string[] => [i.category, ...(i.or ?? [])];
 
-/** The footprint a word of `item` is pasted at: the item's first size for its own category, else the catalogue's. */
-function footprintOf(item: FurnishItem, word: string): { along: number; depth: number } | null {
-  const size = word === item.category ? item.sizes?.[0] : undefined;
-  return size ? { along: size[0], depth: size[1] } : defaultFootprint(word);
+/**
+ * The footprints a word of `item` is pasted at, in the order tried: every one of the item's
+ * sizes for its own category (as `finish` tries them: a worktop's 600 mm module, then its
+ * 400 mm one), else the catalogue's.
+ */
+function footprintsOf(item: FurnishItem, word: string): { along: number; depth: number }[] {
+  const sizes = word === item.category ? item.sizes : undefined;
+  if (sizes && sizes.length > 0) return sizes.map(([along, depth]) => ({ along, depth }));
+  const fp = defaultFootprint(word);
+  return fp ? [fp] : [];
 }
 
 /**
@@ -100,9 +106,7 @@ export function pasteSet(
   for (const item of items) {
     let first: { footprint: { along: number; depth: number } | null; failure: PasteFailure } | null = null;
     let placed = false;
-    for (const w of itemWords(item)) {
-      const fp = footprintOf(item, w);
-      if (fp === null) continue;
+    for (const [w, fp] of itemWords(item).flatMap((w) => footprintsOf(item, w).map((fp) => [w, fp] as const))) {
       const paste = pasteFixture(here, room, w, fp.along, fp.depth);
       if ("stmt" in paste) {
         stmts.push(paste.stmt);
@@ -124,7 +128,7 @@ export function pasteSet(
     if (!placed)
       return {
         item,
-        footprint: first?.footprint ?? footprintOf(item, item.category),
+        footprint: first?.footprint ?? footprintsOf(item, item.category)[0] ?? null,
         failure: first?.failure ?? "no-room",
       };
   }

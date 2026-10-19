@@ -465,6 +465,10 @@ suite("a module `let` that fails reports as it does in the module", () => {
  * `eval/goldens/core-and-shell.arch`, seven `eval/fidelity-plans`): they gain the worktop
  * finding or a `W_ROOM_NO_FIXTURE` hint that quotes the worktop, and the new SVG, `describe()`
  * and `compile().diagnostics` with the PREVIOUS `lint()` reproduce each previous row.
+ * Review round 1 (same card): the hint's placement search tries the worktop's 400 mm module
+ * too, as `finish` does, so `core-and-shell` and five `eval/fidelity-plans` quote paste-able
+ * statements again (sink, stove and worktop) where the first commit's hint said "make room
+ * first"; `lint()` only, and the first commit's `lint()` put back reproduces each of its rows.
  */
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
@@ -548,7 +552,7 @@ const BASELINE: [string, string][] = [
   ["eval/goldens/attach-openings.arch", "a0ac00b106622e0d3d049b88dccfd35700f0c634649941d190f55651fb6c36a6"],
   ["eval/goldens/bungalow.arch", "2205e6505a37378b5d3e54f64066abfafb1bea07a67b62d5f08c724162842168"],
   ["eval/goldens/compact-studio.arch", "7af1ccb4b35aca496489c382593142d103d9d2a52958a17fb3980576b81b4cd7"],
-  ["eval/goldens/core-and-shell.arch", "fce492889daf848da45aa11b6d686658ddafdb6ca94a47e5e75949a5d6fe5484"],
+  ["eval/goldens/core-and-shell.arch", "ddcdc0c99ec28ae9d29d557b19c9fb866644e293ea2c8ec69abb7c97779be226"],
   ["eval/goldens/dims-auto-cottage.arch", "ca327599910fd97d0f8ced7ea4f03bb93312541b92e12119e12e976b0e76b5d8"],
   ["eval/goldens/galley-kitchen.arch", "af379acc431baaa7728fde7eee94f2a34fef2e4303ab967cabb029a7b3837669"],
   ["eval/goldens/l-shaped-flat.arch", "9634e0daba1977009de1013018e4f774212ae7632c2079600864ef25fa972255"],
@@ -578,15 +582,15 @@ const BASELINE: [string, string][] = [
   ],
   [
     "eval/fidelity-plans/min-bedroom-flat.faithful.arch",
-    "fceaeec9d0bd1ea45779941bad6187a35f31d2a2f2d3c43be3a36711cddc17b6",
+    "849b77f80e0b45648fdd9f4b55da31fdeaae4bd16831e59933f9f590d1693821",
   ],
   [
     "eval/fidelity-plans/min-bedroom-flat.laundered.arch",
-    "631e1a0cbf749fc3ef3162f2d86bc35821d8cf9a47f254af338295a5788d6015",
+    "939244eeb49bda4e93fbc18d42644b36abf74949506a6b8b239f83a313c83a78",
   ],
   [
     "eval/fidelity-plans/over-programmed-flat.laundered.arch",
-    "21e5a7346724c8575f3d054849576d50ba2bd4a51859bc1f8be804f1213a262f",
+    "7340c22c8401c015133f24cda5fd3bb36cfe08d08b25b48379e5340aab50ccb3",
   ],
   [
     "eval/fidelity-plans/two-bed-min-area.faithful.arch",
@@ -598,11 +602,11 @@ const BASELINE: [string, string][] = [
   ],
   [
     "eval/fidelity-plans/wide-doorways.faithful.arch",
-    "e6551d5bad9fed3acd7b8265abab0e3eff0666b0fd6fc5b3e657e7e6e8f077ef",
+    "2ce59bd2c5c613503fa5ff562c83ef4527ee6af9f9cbbd7b78856d4717c8a335",
   ],
   [
     "eval/fidelity-plans/wide-doorways.laundered.arch",
-    "e1c65a01b868d6ef360543701b67996dd1e673c42e1cb3fae57336c6f19cf398",
+    "c3a5e6f53a1a903834500e5706145a485adf6f11cff315a02eddc36a86aa5751",
   ],
   ["eval/faults/blocked-doorway.arch", "7f35390a12c0e596cd2bc43d0f9d3c34ffcbb5cf373b0c6159fa4ba72f68fd3c"],
   ["eval/faults/combined.arch", "d3740a0d13d8117fa16eb80308713f68f0b645d193ebaca01ef23f85784cec6d"],

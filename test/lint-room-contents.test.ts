@@ -261,7 +261,7 @@ describe("W_ROOM_MISSING_DEFINING", () => {
         `${WINS}${pieces.map((p, i) => `  furniture ${p} against wall shell segment 1 offset ${800 + 900 * i} in r_b\n`).join("")}`,
       );
     expect(only(kit(["fridge"]), "W_ROOM_MISSING_DEFINING").map((d) => d.message)).toEqual([
-      '"Kitchen" is furnished (fridge) but has no kitchen sink and no stove and no counter or worktop: the pieces that make it a kitchen.',
+      '"Kitchen" is furnished (fridge) but has no kitchen sink, no stove and no counter or worktop: the pieces that make it a kitchen.',
     ]);
     expect(codesOf(kit(["sink", "hob", "fridge"]))).toContain("W_ROOM_MISSING_DEFINING");
     expect(codesOf(kit(["sink", "hob", "worktop", "fridge"]))).not.toContain("W_ROOM_MISSING_DEFINING");
@@ -615,6 +615,15 @@ ${extra}}
       "furniture counter against wall shell segment 3 offset 3800 side left size 400x600 in r_x",
     );
     expect(codes(src)).not.toContain("W_ROOM_MISSING_DEFINING");
+  });
+
+  it("the empty-kitchen hint tries the 400 mm worktop too, as finish does, so it still quotes statements", () => {
+    // Review round 1: the hint tried the 600 mm module alone and told this kitchen to "make
+    // room first", where main had quoted a sink and a stove.
+    const src = readFileSync(resolvePath(__dirname, "../eval/fidelity-plans/min-bedroom-flat.faithful.arch"), "utf8");
+    const [d] = lint(src).filter((x) => x.code === "W_ROOM_NO_FIXTURE" && x.message.startsWith("Kitchen"));
+    expect(d!.hints![0]).not.toContain("does not fit");
+    expect(d!.hints![0]).toContain("`furniture counter in r_live anchor top-left flush size 400x600`");
   });
 
   it("leaves the kitchen out whole, and says so, when no worktop fits: never a sink and a hob alone", () => {

@@ -194,7 +194,8 @@ export const USE_VOCABULARY = Object.freeze({
  * carries `uses` says `storage`; "Study", "Office" and "Consulting" say `office`; "Utility",
  * "Laundry" and "Plant" say `utility`.
  *
- *   - `bedroom` "nursery" is an alias: a day nursery is a childcare room, not a bedroom.
+ *   - `bedroom` "nursery" is an alias, and the phrase "day nursery" (a childcare room, not a
+ *     bedroom) keeps it from classifying at all.
  *   - `wc` "water closet" is an alias, and its match keeps "closet" from reading as storage.
  *   - `storage` covers a wardrobe, closet or dressing room: the room PS2.5 lets sit behind
  *     a bedroom. "Dressing", "Linen" and "Cellar" are aliases (a cellar may be lived in).
@@ -226,6 +227,9 @@ export const FALLBACK_USE_VOCABULARY = Object.freeze({
 const PREPARED_USE = Object.freeze(
   Object.fromEntries(Object.entries(USE_VOCABULARY).map(([k, v]) => [k, prepareEntry(v)])),
 ) as Readonly<Record<keyof typeof USE_VOCABULARY, PreparedEntry>>;
+
+/** The one phrase that keeps "nursery" from reading as a bedroom: a day nursery is childcare. */
+const PREPARED_DAY_NURSERY = prepareEntry({ canonical: ["day nursery"], aliases: [] });
 
 /** {@link FALLBACK_USE_VOCABULARY}, prepared the same way. */
 const PREPARED_FALLBACK = Object.freeze(
@@ -325,8 +329,9 @@ export function classifyLabelUses(text: string): LabelClassification {
   // table above gives a use to is classified exactly as before; only an empty answer can gain
   // one. In order: bedroom, wc, storage (not after a water closet), office, utility.
   if (uses.length === 0) {
+    // A "Day Nursery" is a childcare room, not a bedroom: that phrase gives no use at all.
     const nursery = matchPrepared(toks, PREPARED_FALLBACK.bedroom);
-    if (nursery) add("bedroom", nursery);
+    if (nursery && !matchPrepared(toks, PREPARED_DAY_NURSERY)) add("bedroom", nursery);
     const closetWc = matchPrepared(toks, PREPARED_FALLBACK.wc);
     if (closetWc) add("wc", closetWc);
     const storage = closetWc ? null : matchPrepared(toks, PREPARED_FALLBACK.storage);

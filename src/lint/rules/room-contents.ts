@@ -189,7 +189,12 @@ export const roomMissingDefining: LintRule = {
       if (missing.length === 0) continue;
       const items = missing.flatMap((m) => m.items);
       const pieces = [...new Set(held.map((f) => spoken(f.category)))].join(", ");
-      const lacks = items.map((i) => `no ${itemWords(i).map(spoken).join(" or ")}`).join(" and ");
+      const lackList = items.map((i) => `no ${itemWords(i).map(spoken).join(" or ")}`);
+      // "no A, no B and no C", as `W_WET_ROOM_DOOR` lists rooms, never "no A and no B and no C".
+      const lacks =
+        lackList.length <= 1
+          ? (lackList[0] ?? "")
+          : `${lackList.slice(0, -1).join(", ")} and ${lackList[lackList.length - 1]}`;
       const nouns = missing.map((m) => `a ${useNoun(m.use)}`).join(" and ");
       const paste = pasteSet(ctx, r, items);
       const add =

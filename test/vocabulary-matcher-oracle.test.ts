@@ -36,7 +36,8 @@
  * empty. `oldClassifyLabelUses` is NOT edited for it: it stays the pre-PS2.19 code, and
  * `compareLabel` asserts the new answer equals it wherever it is non-empty, which is the
  * byte-identity claim itself. Where it is empty, the new answer must be the per-word reading
- * of the fallback rows (`oldFallback`, in the oracle's own style), so those lines are gated too.
+ * of the fallback rows (`oldFallback`, in the oracle's own style; "day nursery" keeps "nursery"
+ * from giving a bedroom), so those lines are gated too.
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -155,7 +156,7 @@ function oldFallback(text: string): { uses: UseKind[]; aliases: AliasMatch[] } {
     if (!m.canonical) aliases.push({ kind, word: m.word });
   };
   const nursery = oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.bedroom);
-  if (nursery) add("bedroom", nursery);
+  if (nursery && !oldSynonymMatchesLabel("day nursery", text)) add("bedroom", nursery);
   const wc = oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.wc);
   if (wc) add("wc", wc);
   const storage = wc ? null : oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.storage);

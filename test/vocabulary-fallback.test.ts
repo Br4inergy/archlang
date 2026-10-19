@@ -47,6 +47,9 @@ describe("classifyLabelUses — the fallback kinds", () => {
       uses: ["bedroom"],
       aliases: [{ kind: "bedroom", word: "nursery" }],
     });
+    // A day nursery is a childcare room, not a bedroom: it stays unclassified.
+    expect(classifyLabelUses("Day Nursery")).toEqual({ uses: [], aliases: [] });
+    expect(classifyLabelUses("Day-Nursery 2")).toEqual({ uses: [], aliases: [] });
     expect(classifyLabelUses("Dressing Room")).toEqual({
       uses: ["storage"],
       aliases: [{ kind: "storage", word: "dressing" }],
