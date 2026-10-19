@@ -335,11 +335,17 @@ surface; relational keeps its deliberate warnings. PS0.10–PS0.12 are PR #211 (
 Drafted 2026-10-20 as `docs/adr/0028-rooms-primary-derived-walls.md` (status Proposed until the
 first derived form lands with its byte-identity law). Settled there: datums are frame words
 (`top|bottom|left|right`, `cx|cy`; compass aliases only on north-up plans, `E_DATUM_COMPASS`
-otherwise); polygon/circle rooms expose no datum (`E_DATUM_SHAPE`); `walls from rooms` has exactly
-two exception clauses (`open between A and B [width|full]`, `between A and B thickness t`) and six
-refusals; derived ids `<id>_ext` / `<id>_<A>_<B>`; an authored wall on a derived line wins over
-the shared span; relational openings refuse a short nib (`E_OPENING_NIB`) instead of sliding; the
-resolve-order byte-identity sweep is PS3.2's gate, not a consequence. The original brief follows.
+otherwise, and only in the root frame); polygon/circle rooms expose no datum
+(`E_ROOM_NOT_RECTANGLE`); snapping stays "snap the evaluated value" (ADR 0004); `walls from rooms`
+has exactly three clauses (`open between A and B [width]` which always derives an opening,
+`between A and B thickness t`, `except R …`), holes legal only under exact `outdoor`/`void` cover,
+preconditions decided exactly with no tolerance row; derived walls have NO author-facing id and are
+addressed by relation (`between A and B`, `on A.top`, PS3.5's `containing`); a canonical direction
+rule for derived walls; an authored wall exactly on a derived line wins over the shared span and the
+drop is reported in `describe().derived_walls[]`; relational openings refuse a short nib
+(`E_OPENING_NIB`, same measure as `W_OPENING_AT_JUNCTION`) instead of sliding and a door's position
+is required; the resolve-order byte-identity sweep, diagnostics order included, is PS3.2's gate. The
+original brief follows.
 - Settle: grammar; datum names (`north/south/east/west` plus aliases, `cx/cy`, `axis n`);
   refusal codes (`E_WALL_BETWEEN_NOT_ADJACENT`, `E_WALL_BETWEEN_AMBIGUOUS`, polygon/circle rooms
   refused like relational placement); `place`-frame semantics; grid snapping; how `around` treats
