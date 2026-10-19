@@ -693,11 +693,18 @@ export const pathTooNarrow: LintRule = {
     const warnedIn = (fs: ReadonlyMap<string, { bottleneckClearWidthMm: number }>, seal: ReadonlyMap<string, number>) =>
       rooms.filter((r) => !seal.has(r.id) && (fs.get(r.id)?.bottleneckClearWidthMm ?? min) < min).map((r) => r.id);
     const widths = (c: CirculationModel) => new Map(c.rooms.map((rc) => [rc.roomId, rc.bottleneckClearWidthMm]));
-    // ONE count of re-measures for both views (MAX_ATTRIBUTION_MEASURES per run). The full view is
-    // attributed first, over the rooms judged by their own door alone, so they read as before
-    // PS0.10; the walk view takes what is left, and a room it cannot afford gets the unattributed
-    // hints.
+    // ONE count of re-measures for both views (MAX_ATTRIBUTION_MEASURES per run). The walk from the
+    // main entrance is attributed first: its pinches are what PS0.10 judges. The rooms judged by
+    // their own door alone take what is left in the full view, and a room neither can afford gets
+    // the unattributed hints.
     const measures = ctx.building.attributionMeasures ?? { left: MAX_ATTRIBUTION_MEASURES, storeys: 0 };
+    const namedWalk = attributeBottlenecks(
+      ctx,
+      widths(circ),
+      warnedIn(facts.walk, seals.walk).filter((id) => !own.has(id)),
+      walk,
+      measures,
+    );
     const namedFull =
       own.size > 0
         ? attributeBottlenecks(
@@ -708,13 +715,6 @@ export const pathTooNarrow: LintRule = {
             measures,
           )
         : null;
-    const namedWalk = attributeBottlenecks(
-      ctx,
-      widths(circ),
-      warnedIn(facts.walk, seals.walk).filter((id) => !own.has(id)),
-      walk,
-      measures,
-    );
     const named = {
       get: (id: string): AccessEdge[] | undefined => (own.has(id) ? namedFull?.get(id) : namedWalk.get(id)),
     };

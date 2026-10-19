@@ -269,7 +269,16 @@ export function levelsEnteredFromBelow(
   hasWayIn: (level: number) => boolean,
 ): ReadonlySet<number> {
   const out = new Set<number>();
-  for (const c of connections) for (const l of c.levels) if (c.levels.some((b) => b < l && hasWayIn(b))) out.add(l);
+  // Asked once per storey: the answer builds that storey's access graph.
+  const known = new Map<number, boolean>();
+  const wayIn = (level: number): boolean => {
+    const seen = known.get(level);
+    if (seen !== undefined) return seen;
+    const v = hasWayIn(level);
+    known.set(level, v);
+    return v;
+  };
+  for (const c of connections) for (const l of c.levels) if (c.levels.some((b) => b < l && wayIn(b))) out.add(l);
   return out;
 }
 
