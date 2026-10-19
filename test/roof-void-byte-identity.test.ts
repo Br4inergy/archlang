@@ -241,8 +241,7 @@ import { type CompilerApi, semanticDigestWith } from "./byte-identity-digest.js"
 // the concourse and cafe; its SUMMARY row moves with describe(). Field by field in
 // ./byte-identity-baseline.ts ("Six plans re-measured again").
 const BASELINE: [string, string][] = [
-  // laneway-house re-measured 2026-10-19 (PR #203 review round 1, `W_WET_ROOM_DOOR`, lint only): see `./byte-identity-baseline.ts`.
-  ["laneway-house", "fe93208cc4f1f7d51b5399b0d1b771e4dd893629a2914f0084d780d935540002"],
+  ["laneway-house", "fe584e22b63295a27537b93db681c7fb5ab1968caa27761cb97191e331d964d2"],
   ["studio", "fe06b9554615b4722732d13e7976991b7469d03387e8846ad83f54f83f3cbde7"],
   ["gallery-l", "7ab8ddd688e0a9fabb909fbfd910879a5e247ae4ae846412350951cd49dea6f0"],
   ["aquarium", "4dcfa86da1e9b655ae0f1962a2226df79486705c7b08de021280ed82c8183318"],
@@ -250,8 +249,7 @@ const BASELINE: [string, string][] = [
 
 /** The SUMMARY half of the same law — see the header. Re-measured once, for `aquarium`, because its rooms were wrong. */
 const SEMANTIC_BASELINE: [string, string][] = [
-  // laneway-house re-measured 2026-10-19 (PR #203 review round 1, `W_WET_ROOM_DOOR`, lint only): see `./byte-identity-baseline.ts`.
-  ["laneway-house", "34835749c62ab93aee21bfd8bea7bd8728434ac4072cf0b6f1b0a46720185adf"],
+  ["laneway-house", "3aa2e2ebe39c9b72d24943e533df6e14a6a1390a56f1c12dd6067fa0b37e9ec0"],
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["gallery-l", "de9bca051b67782aacf3416af87c5531778a64d4d3524aba5a60c25deaac3c90"],
   ["aquarium", "0c0ff87fb446fe2dea2db1cc0560f6e840066c0a4a9afa192cee4387badde556"],

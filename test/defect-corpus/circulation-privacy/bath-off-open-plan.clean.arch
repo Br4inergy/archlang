@@ -1,9 +1,10 @@
 # class: circulation-privacy
 # twin-of: bath-off-open-plan
-# origin: audits/2026-10-18-first-contact.md S1 with d_bath moved onto the entrance
+# origin: audits/2026-10-18-first-contact.md S1 with the kitchen run moved to the far wall of the room
 # expect: none
-# fact: d_bath (y 3200-4000 on w_v) joins the bathroom to the entrance (uses entry); its swing clears the basin
-#   under every profile (no W_SWING_OBSTRUCTED under accessibility-advisory)
+# fact: d_bath still opens onto "Living / Kitchen", but its nearest kitchen fixture, the stove (x 1300-1900,
+#   y 100-700 against the north wall), is 3147 mm from the doorway's face (y 2950, x 4100-4900), at least
+#   the 1500 mm wetDoorKitchenProximityMm; the door and every other statement are the case's
 plan "Bathroom opening onto the open-plan living room" {
   units mm
   grid 50
@@ -15,11 +16,11 @@ plan "Bathroom opening onto the open-plan living room" {
   room id=r_bath at (3000,3000) size 3000x2000 label "Bathroom" uses bath
   door id=d_front at (1500,5000) width 900 wall shell swing into r_entry
   opening id=o_entry at (1500,3000) width 900 wall w_h
-  door id=d_bath at (3000,3600) width 800 wall w_v swing into r_bath
+  door id=d_bath at (4500,3000) width 800 wall w_h swing into r_bath
   window at (3000,0) width 2400 wall shell
   furniture kitchen_sink against wall shell segment 0 offset 800 in r_main
   furniture stove against wall shell segment 0 offset 1600 in r_main
-  furniture table at (3600,1300) size 1600x900
+  furniture table at (3600,600) size 1600x900
   furniture shower against wall shell segment 1 offset 4450 in r_bath
   furniture wc against wall shell segment 2 offset 1700 in r_bath
   furniture basin against wall shell segment 2 offset 2500 in r_bath

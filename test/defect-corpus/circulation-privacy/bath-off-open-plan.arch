@@ -1,12 +1,13 @@
 # class: circulation-privacy
 # origin: audits/2026-10-18-first-contact.md S1 (first-contact-plans/3-studio.arch d_bath opens onto the
-#   living/kitchen/dining room, 2.0 m from the kitchenette); README PS2.6. Decided 2026-10-19 (coordinator, review
-#   round 1 of PR #203): W_WET_ROOM_DOOR's exemption for a kitchen that is also the living room was narrowed; a
-#   kitchen warns unless it is the storey's only room that is not a bath or WC (a studio's one room)
+#   living/kitchen/dining room); README PS2.6. Decided 2026-10-19 (coordinator, review round 1 of PR #203,
+#   S1 revision): a kitchen that is also the living or dining room counts where a kitchen fixture stands
+#   nearer the bath door than wetDoorKitchenProximityMm (1500); here the kitchen run is beside the door
 # expect: W_WET_ROOM_DOOR
 # status: done
-# fact: the bathroom's only door, d_bath, joins it to "Living / Kitchen" (uses living kitchen dining), and the
-#   entrance, a second room that is not wet, does not touch it
+# fact: the bathroom's only door, d_bath (x 4100-4900 on w_h, face y 2950 on the living side), opens onto
+#   "Living / Kitchen" (uses living kitchen dining) 400 mm from its kitchen_sink (x 2900-3700) and 1300 mm
+#   from its stove (x 2200-2800), both against w_h; measured from the doorway's face
 plan "Bathroom opening onto the open-plan living room" {
   units mm
   grid 50
@@ -20,9 +21,9 @@ plan "Bathroom opening onto the open-plan living room" {
   opening id=o_entry at (1500,3000) width 900 wall w_h
   door id=d_bath at (4500,3000) width 800 wall w_h swing into r_bath
   window at (3000,0) width 2400 wall shell
-  furniture kitchen_sink against wall shell segment 0 offset 800 in r_main
-  furniture stove against wall shell segment 0 offset 1600 in r_main
-  furniture table at (3600,1300) size 1600x900
+  furniture kitchen_sink against wall w_h offset 3300 in r_main
+  furniture stove against wall w_h offset 2500 in r_main
+  furniture table at (3600,600) size 1600x900
   furniture shower against wall shell segment 1 offset 4450 in r_bath
   furniture wc against wall shell segment 2 offset 1700 in r_bath
   furniture basin against wall shell segment 2 offset 2500 in r_bath

@@ -67,7 +67,10 @@ export type LintSkipReason =
    *  count as a way in (the access graph and the walk do). */
   | "balcony-only-entrance"
   /** The door's host wall is angled or curved, which the rule does not measure. */
-  | "unsupported-host-geometry";
+  | "unsupported-host-geometry"
+  /** A room that is a kitchen and also the living or dining room holds no kitchen fixture, so
+   *  the rule cannot tell which end of it is the kitchen. */
+  | "no-kitchen-fixtures";
 
 /** What each family checks, as the human coverage line names it. */
 export const FAMILY_NOUN: Readonly<Record<LintFamily, string>> = {
@@ -100,6 +103,7 @@ export const SKIP_WHY: Readonly<Record<LintSkipReason, string>> = {
   "no-operable-window-data": "windows carry no operable-sash data",
   "balcony-only-entrance": "the only way in is a balcony or terrace door",
   "unsupported-host-geometry": "the door's wall is angled or curved",
+  "no-kitchen-fixtures": "the room holds no kitchen fixtures to locate the kitchen",
 };
 
 /** One recorded skip, as the fold collects it. */

@@ -279,12 +279,6 @@
  *   - The seven examples `accessible`, `corner-cafe`, `hillside-villa`, `practice-office`,
  *     `relational`, `terrace-row`, `two-storey` also had their SOURCE fixed for the defects the
  *     rules found (listed there), so their rows carry those edits too.
- *
- * `examples/garden-loft.arch` and `examples/laneway-house.arch` re-measured on 2026-10-19
- * (review round 1 of PR #203): `lint()` gains one `W_WET_ROOM_DOOR` each (an open-plan kitchen
- * now counts unless it is the storey's only room that is not wet). Nothing else moved; with the
- * narrowed lines reverted both rows reproduce (the swap-back proof is in
- * `./byte-identity-baseline.ts`, "`W_WET_ROOM_DOOR` counts an open-plan kitchen").
  */
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
@@ -298,11 +292,11 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/furnished-flat.arch", "4eb26e5f4ea04859bd96da44cd7db791a9da347d462143478e00b184de54a70b"],
   ["examples/gallery-l.arch", "cc37c7d8d73b535358978674f3c5da26af87af4d066e6cd67a8bd1f8506e7f5f"],
   ["examples/garden-house.arch", "32889de233fcb6d33704ff9daa31a098ec33f0febdc14bf0ea74f52e2fe93976"], // re-measured, see header
-  ["examples/garden-loft.arch", "9773c00cf1a291d3e6496af19f63c4288086857376c536de0dda05e7976da950"],
+  ["examples/garden-loft.arch", "eb6ba7bdcd33231cd0cfd2072a1a99e2b416be039e6efc2cc0a5ea76129738f2"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
   ["examples/hillside-villa.arch", "a3e70591a0c8dd388878225e9d7dcbe54511690f7ab23b23e6ede1919c6e7092"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
-  ["examples/laneway-house.arch", "7a6cd105f20eeba826b0647f174a70149dbeac87eceebb44b59863aff4bf2d88"],
+  ["examples/laneway-house.arch", "d87dea46b06ea13b539e0a7c03674038e15762d15948a7bc27632e1b8afd11e2"],
   ["examples/library.arch", "3e8f00d70f63d840a1e2ead5c926cea204751fada57e5de028709bec4d091334"],
   ["examples/materials.arch", "29bb896c24060364f51b4cbad9d4065a21dc40444e6e95024bc85cf276b54e9c"],
   ["examples/museum-wing.arch", "6e01f37f15c674c544fac6651e9f3bd32d4d6e4865fdafba36ed97feca9ff33a"],
