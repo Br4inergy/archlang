@@ -315,6 +315,11 @@ const PAGE_META = [
     "ADR 27 — net area beside centreline area",
     "describe() reports each room's net internal area: its shape inset by half of each bounding wall's thickness, exact, beside the unchanged centreline area_m2.",
   ],
+  [
+    "/adr/0028-rooms-primary-derived-walls",
+    "ADR 28 — rooms primary, walls derived",
+    "Rooms may be primary: room-edge datums, one form deriving every wall from the room tiling, pairwise wall forms and relational openings; wall-first authoring stays legal.",
+  ],
 ] as const;
 
 type PageMeta = { readonly title: string; readonly description: string };

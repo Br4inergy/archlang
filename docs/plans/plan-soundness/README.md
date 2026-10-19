@@ -331,7 +331,23 @@ surface; relational keeps its deliberate warnings. PS0.10–PS0.12 are PR #211 (
 
 ### PS3 · Relation-first authoring (D1 + D5; needs an ADR)
 
-**PS3.1 · ADR: rooms may be primary; walls and openings may be derived from room relations.** `todo`
+**PS3.1 · ADR: rooms may be primary; walls and openings may be derived from room relations.**
+Drafted 2026-10-20 as `docs/adr/0028-rooms-primary-derived-walls.md` (status Proposed until the
+first derived form lands with its byte-identity law). Settled there: datums are frame words
+(`top|bottom|left|right`, `cx|cy`; compass aliases only on north-up plans, `E_DATUM_COMPASS`
+otherwise, and only in the root frame); polygon/circle rooms expose no datum
+(`E_ROOM_NOT_RECTANGLE`); snapping stays "snap the evaluated value" (ADR 0004); `walls from rooms`
+has exactly three clauses (`open between A and B [width]` which always derives an opening,
+`between A and B thickness t`, `except R …`), holes legal only under exact `outdoor`/`void` cover,
+preconditions decided exactly with no tolerance row; derived walls have NO author-facing id and are
+addressed by relation (`between A and B`, `on A.top`, PS3.5's `containing`, and PS3.7's
+`against <room>.<edge>` pulled forward so furniture can back onto a derived partition); a canonical
+direction rule for derived walls (inner courtyard rings run counter-clockwise so `swing in` keeps
+its meaning); `open` spans the clear span between meeting wall faces; a `void` hole derives no wall; an authored wall exactly on a derived line wins over the shared span and the
+drop is reported in `describe().derived_walls[]`; relational openings refuse a short nib
+(`E_OPENING_NIB`, same measure as `W_OPENING_AT_JUNCTION`) instead of sliding and a door's position
+is required; the resolve-order byte-identity sweep, diagnostics order included, is PS3.2's gate. The
+original brief follows.
 - Settle: grammar; datum names (`north/south/east/west` plus aliases, `cx/cy`, `axis n`);
   refusal codes (`E_WALL_BETWEEN_NOT_ADJACENT`, `E_WALL_BETWEEN_AMBIGUOUS`, polygon/circle rooms
   refused like relational placement); `place`-frame semantics; grid snapping; how `around` treats
