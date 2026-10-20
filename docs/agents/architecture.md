@@ -8,8 +8,9 @@ source (.arch)
   └─ src/parser.ts       → PlanNode (src/ast.ts); recovers, never throws (recovery is guided by
                          the failed statement's indentation); memoised by content
   └─ src/import.ts       links `import`s through the World seam (the one I/O phase)
-  └─ src/ir.ts           resolve(): scripting, grid snap, auto-ids, host openings,
-                         relational placement (src/layout.ts) → ResolvedPlan
+  └─ src/ir.ts           resolve(): scripting, grid snap, auto-ids, then per group: rooms +
+                         relational placement (src/layout.ts), the frozen datum table
+                         (src/room-datums.ts), walls, host openings → ResolvedPlan
   └─ src/scene-build.ts  toScene() → Scene (src/scene.ts)
        └─ src/wall-lowering.ts  every wall in one joinery pass (geometry/band, intersect, joinery)
   └─ src/view/           toIso(): the axonometric, a sibling of toScene (DEPRECATED, ADR 0021)
