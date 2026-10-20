@@ -100,6 +100,9 @@ exports[`golden SVG snapshots > renders bungalow.arch deterministically 1`] = `
 <path d="M 100,8288 L 100,7712 A 12 12 0 0 1 112,7700 L 738,7700 A 12 12 0 0 1 750,7712 L 750,8288 A 12 12 0 0 1 738,8300 L 112,8300 A 12 12 0 0 1 100,8288 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
 <line x1="659" y1="8300" x2="659" y2="7700" stroke="#a8a29a" stroke-width="13"/>
 <line x1="704.5" y1="8096" x2="704.5" y2="7904" stroke="#6c6864" stroke-width="18"/>
+<polygon points="100,6200 100,5600 700,5600 700,6200" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<line x1="127" y1="6200" x2="127" y2="5600" stroke="#a8a29a" stroke-width="13"/>
+<line x1="664" y1="6200" x2="664" y2="5600" stroke="#a8a29a" stroke-width="13"/>
 <path d="M 3050,7673 L 3050,7127 A 27 27 0 0 1 3077,7100 L 3473,7100 A 27 27 0 0 1 3500,7127 L 3500,7673 A 27 27 0 0 1 3473,7700 L 3077,7700 A 27 27 0 0 1 3050,7673 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
 <path d="M 3311,7172 A 120.17 120.17 0 0 1 3410.79,7225.21 A 313.68 313.68 0 0 1 3410.79,7574.79 A 120.17 120.17 0 0 1 3311,7628 A 120.17 120.17 0 0 1 3211.21,7574.79 A 313.68 313.68 0 0 1 3211.21,7225.21 A 120.17 120.17 0 0 1 3311,7172 Z" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
 <path d="M 3311,7202.6 A 92.52 92.52 0 0 1 3389.63,7246.37 A 291.54 291.54 0 0 1 3389.63,7553.63 A 92.52 92.52 0 0 1 3311,7597.4 A 92.52 92.52 0 0 1 3232.37,7553.63 A 291.54 291.54 0 0 1 3232.37,7246.37 A 92.52 92.52 0 0 1 3311,7202.6 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="13"/>
@@ -2363,9 +2366,9 @@ exports[`golden SVG snapshots > renders clinic.arch deterministically 1`] = `
 `;
 
 exports[`golden SVG snapshots > renders corner-cafe.arch deterministically 1`] = `
-"<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="420mm" height="297mm" viewBox="-13500 -6910 42000 29700" font-family="Helvetica, Arial, sans-serif">
+"<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="420mm" height="297mm" viewBox="-13500 -6740 42000 29700" font-family="Helvetica, Arial, sans-serif">
 <defs><pattern id="poche" patternUnits="userSpaceOnUse" width="120" height="120" patternTransform="rotate(45)"><rect width="120" height="120" fill="#e9e4db"/><line x1="0" y1="0" x2="0" y2="120" stroke="#b9b1a4" stroke-width="12.6"/></pattern></defs>
-<rect x="-13500" y="-6910" width="42000" height="29700" fill="#ffffff"/>
+<rect x="-13500" y="-6740" width="42000" height="29700" fill="#ffffff"/>
 <g id="A-FLOR" inkscape:groupmode="layer" inkscape:label="A-FLOR">
 <polygon points="0,0 9000,0 9000,10000 0,10000" fill="#fbfaf7"/>
 <polygon points="9000,7000 11000,7000 11000,10000 9000,10000" fill="#fbfaf7"/>
@@ -2457,6 +2460,9 @@ exports[`golden SVG snapshots > renders corner-cafe.arch deterministically 1`] =
 <circle cx="11000" cy="439" r="28.47" fill="#ffffff" stroke="#a8a29a" stroke-width="13"/>
 <circle cx="11000" cy="163" r="21" fill="none" stroke="#a8a29a" stroke-width="13"/>
 <line x1="11000" y1="184" x2="11000" y2="307.6" stroke="#a8a29a" stroke-width="13"/>
+<polygon points="11550,100 12150,100 12150,700 11550,700" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<line x1="11550" y1="127" x2="12150" y2="127" stroke="#a8a29a" stroke-width="13"/>
+<line x1="11550" y1="664" x2="12150" y2="664" stroke="#a8a29a" stroke-width="13"/>
 <polygon points="12300,100 12900,100 12900,700 12300,700" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
 <path d="M 12351,136 L 12849,136 A 15 15 0 0 1 12864,151 L 12864,529 A 15 15 0 0 1 12849,544 L 12351,544 A 15 15 0 0 1 12336,529 L 12336,151 A 15 15 0 0 1 12351,136 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
 <circle cx="12474.12" cy="244.12" r="76.7" fill="none" stroke="#a8a29a" stroke-width="13"/>
@@ -2899,7 +2905,7 @@ exports[`golden SVG snapshots > renders corner-cafe.arch deterministically 1`] =
 <text x="-28" y="17635" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">TOTAL</text>
 <text x="4578" y="17635" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">150.00</text>
 <text x="5978" y="17635" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central" font-weight="600">142.33</text>
-<polygon points="6350,13385 9050,13385 9050,17805 6350,17805" fill="none" stroke="#333333" stroke-width="18"/>
+<polygon points="6350,13385 9050,13385 9050,18145 6350,18145" fill="none" stroke="#333333" stroke-width="18"/>
 <text x="6404" y="13555" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central" font-weight="600">LEGEND</text>
 <line x1="6350" y1="13725" x2="9050" y2="13725" stroke="#333333" stroke-width="18"/>
 <path d="M 6404,13793 L 6796,13793 L 6796,13997 L 6404,13997 Z" fill="url(#poche)" fill-rule="nonzero"/>
@@ -2940,65 +2946,70 @@ exports[`golden SVG snapshots > renders corner-cafe.arch deterministically 1`] =
 <text x="6904" y="14915" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">kitchen_sink</text>
 <line x1="6350" y1="15085" x2="9050" y2="15085" stroke="#333333" stroke-width="13"/>
 <polygon points="6404,15153 6796,15153 6796,15357 6404,15357" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<path d="M 6421.34,15165.24 L 6778.66,15165.24 A 5.1 5.1 0 0 1 6783.76,15170.34 L 6783.76,15298.86 A 5.1 5.1 0 0 1 6778.66,15303.96 L 6421.34,15303.96 A 5.1 5.1 0 0 1 6416.24,15298.86 L 6416.24,15170.34 A 5.1 5.1 0 0 1 6421.34,15165.24 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6510.2" cy="15202" r="26.08" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6510.2" cy="15202" r="14.34" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6689.8" cy="15202" r="26.08" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6689.8" cy="15202" r="14.34" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6510.2" cy="15267.2" r="18.91" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6510.2" cy="15267.2" r="10.4" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6689.8" cy="15267.2" r="18.91" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6689.8" cy="15267.2" r="10.4" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6482.4" cy="15335.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6560.8" cy="15335.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6639.2" cy="15335.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6717.6" cy="15335.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
-<text x="6904" y="15255" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">stove</text>
+<line x1="6404" y1="15162.18" x2="6796" y2="15162.18" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6404" y1="15344.76" x2="6796" y2="15344.76" stroke="#a8a29a" stroke-width="13"/>
+<text x="6904" y="15255" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">counter</text>
 <line x1="6350" y1="15425" x2="9050" y2="15425" stroke="#333333" stroke-width="13"/>
-<path d="M 6408.08,15493 L 6791.92,15493 A 4.08 4.08 0 0 1 6796,15497.08 L 6796,15692.92 A 4.08 4.08 0 0 1 6791.92,15697 L 6408.08,15697 A 4.08 4.08 0 0 1 6404,15692.92 L 6404,15497.08 A 4.08 4.08 0 0 1 6408.08,15493 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<line x1="6404" y1="15668.44" x2="6796" y2="15668.44" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6521.6" y1="15668.44" x2="6521.6" y2="15697" stroke="#6c6864" stroke-width="18"/>
-<line x1="6600" y1="15682.72" x2="6725.44" y2="15682.72" stroke="#6c6864" stroke-width="18"/>
-<text x="6904" y="15595" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">fridge</text>
+<polygon points="6404,15493 6796,15493 6796,15697 6404,15697" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<path d="M 6421.34,15505.24 L 6778.66,15505.24 A 5.1 5.1 0 0 1 6783.76,15510.34 L 6783.76,15638.86 A 5.1 5.1 0 0 1 6778.66,15643.96 L 6421.34,15643.96 A 5.1 5.1 0 0 1 6416.24,15638.86 L 6416.24,15510.34 A 5.1 5.1 0 0 1 6421.34,15505.24 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6510.2" cy="15542" r="26.08" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6510.2" cy="15542" r="14.34" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6689.8" cy="15542" r="26.08" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6689.8" cy="15542" r="14.34" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6510.2" cy="15607.2" r="18.91" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6510.2" cy="15607.2" r="10.4" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6689.8" cy="15607.2" r="18.91" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6689.8" cy="15607.2" r="10.4" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6482.4" cy="15675.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6560.8" cy="15675.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6639.2" cy="15675.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6717.6" cy="15675.58" r="6.12" fill="#a8a29a" stroke="#a8a29a" stroke-width="13"/>
+<text x="6904" y="15595" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">stove</text>
 <line x1="6350" y1="15765" x2="9050" y2="15765" stroke="#333333" stroke-width="13"/>
-<path d="M 6406.45,15833 L 6793.55,15833 A 2.45 2.45 0 0 1 6796,15835.45 L 6796,16034.55 A 2.45 2.45 0 0 1 6793.55,16037 L 6406.45,16037 A 2.45 2.45 0 0 1 6404,16034.55 L 6404,15835.45 A 2.45 2.45 0 0 1 6406.45,15833 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<path d="M 6411.75,15839.12 L 6788.25,15839.12 A 1.63 1.63 0 0 1 6789.88,15840.75 L 6789.88,16029.25 A 1.63 1.63 0 0 1 6788.25,16030.88 L 6411.75,16030.88 A 1.63 1.63 0 0 1 6410.12,16029.25 L 6410.12,15840.75 A 1.63 1.63 0 0 1 6411.75,15839.12 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<text x="6904" y="15935" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">table</text>
+<path d="M 6408.08,15833 L 6791.92,15833 A 4.08 4.08 0 0 1 6796,15837.08 L 6796,16032.92 A 4.08 4.08 0 0 1 6791.92,16037 L 6408.08,16037 A 4.08 4.08 0 0 1 6404,16032.92 L 6404,15837.08 A 4.08 4.08 0 0 1 6408.08,15833 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<line x1="6404" y1="16008.44" x2="6796" y2="16008.44" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6521.6" y1="16008.44" x2="6521.6" y2="16037" stroke="#6c6864" stroke-width="18"/>
+<line x1="6600" y1="16022.72" x2="6725.44" y2="16022.72" stroke="#6c6864" stroke-width="18"/>
+<text x="6904" y="15935" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">fridge</text>
 <line x1="6350" y1="16105" x2="9050" y2="16105" stroke="#333333" stroke-width="13"/>
-<path d="M 6452,16189.32 L 6748,16189.32 A 24.48 24.48 0 0 1 6772.48,16213.8 L 6772.48,16352.52 A 24.48 24.48 0 0 1 6748,16377 L 6452,16377 A 24.48 24.48 0 0 1 6427.52,16352.52 L 6427.52,16213.8 A 24.48 24.48 0 0 1 6452,16189.32 Z" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
-<path d="M 6416.24,16173 L 6783.76,16173 A 12.24 12.24 0 0 1 6796,16185.24 A 12.24 12.24 0 0 1 6783.76,16197.48 L 6416.24,16197.48 A 12.24 12.24 0 0 1 6404,16185.24 A 12.24 12.24 0 0 1 6416.24,16173 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<text x="6904" y="16275" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">chair</text>
+<path d="M 6406.45,16173 L 6793.55,16173 A 2.45 2.45 0 0 1 6796,16175.45 L 6796,16374.55 A 2.45 2.45 0 0 1 6793.55,16377 L 6406.45,16377 A 2.45 2.45 0 0 1 6404,16374.55 L 6404,16175.45 A 2.45 2.45 0 0 1 6406.45,16173 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<path d="M 6411.75,16179.12 L 6788.25,16179.12 A 1.63 1.63 0 0 1 6789.88,16180.75 L 6789.88,16369.25 A 1.63 1.63 0 0 1 6788.25,16370.88 L 6411.75,16370.88 A 1.63 1.63 0 0 1 6410.12,16369.25 L 6410.12,16180.75 A 1.63 1.63 0 0 1 6411.75,16179.12 Z" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<text x="6904" y="16275" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">table</text>
 <line x1="6350" y1="16445" x2="9050" y2="16445" stroke="#333333" stroke-width="13"/>
-<path d="M 6408.08,16513 L 6791.92,16513 A 4.08 4.08 0 0 1 6796,16517.08 L 6796,16712.92 A 4.08 4.08 0 0 1 6791.92,16717 L 6408.08,16717 A 4.08 4.08 0 0 1 6404,16712.92 L 6404,16517.08 A 4.08 4.08 0 0 1 6408.08,16513 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<line x1="6404" y1="16547" x2="6796" y2="16547" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6404" y1="16581" x2="6796" y2="16581" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6404" y1="16615" x2="6796" y2="16615" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6404" y1="16649" x2="6796" y2="16649" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6404" y1="16683" x2="6796" y2="16683" stroke="#a8a29a" stroke-width="13"/>
-<text x="6904" y="16615" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">bench</text>
+<path d="M 6452,16529.32 L 6748,16529.32 A 24.48 24.48 0 0 1 6772.48,16553.8 L 6772.48,16692.52 A 24.48 24.48 0 0 1 6748,16717 L 6452,16717 A 24.48 24.48 0 0 1 6427.52,16692.52 L 6427.52,16553.8 A 24.48 24.48 0 0 1 6452,16529.32 Z" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
+<path d="M 6416.24,16513 L 6783.76,16513 A 12.24 12.24 0 0 1 6796,16525.24 A 12.24 12.24 0 0 1 6783.76,16537.48 L 6416.24,16537.48 A 12.24 12.24 0 0 1 6404,16525.24 A 12.24 12.24 0 0 1 6416.24,16513 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<text x="6904" y="16615" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">chair</text>
 <line x1="6350" y1="16785" x2="9050" y2="16785" stroke="#333333" stroke-width="13"/>
-<polygon points="6404,16853 6796,16853 6796,17057 6404,17057" fill="none" stroke="#6c6864" stroke-width="18" stroke-dasharray="108 72"/>
-<line x1="6404" y1="17024.36" x2="6796" y2="17024.36" stroke="#a8a29a" stroke-width="13" stroke-dasharray="108 72"/>
-<text x="6904" y="16955" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">upper_cabinet</text>
+<path d="M 6408.08,16853 L 6791.92,16853 A 4.08 4.08 0 0 1 6796,16857.08 L 6796,17052.92 A 4.08 4.08 0 0 1 6791.92,17057 L 6408.08,17057 A 4.08 4.08 0 0 1 6404,17052.92 L 6404,16857.08 A 4.08 4.08 0 0 1 6408.08,16853 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<line x1="6404" y1="16887" x2="6796" y2="16887" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6404" y1="16921" x2="6796" y2="16921" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6404" y1="16955" x2="6796" y2="16955" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6404" y1="16989" x2="6796" y2="16989" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6404" y1="17023" x2="6796" y2="17023" stroke="#a8a29a" stroke-width="13"/>
+<text x="6904" y="16955" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">bench</text>
 <line x1="6350" y1="17125" x2="9050" y2="17125" stroke="#333333" stroke-width="13"/>
-<path d="M 6670.56,17265.77 A 29.29 29.29 0 0 1 6697.92,17295 A 29.29 29.29 0 0 1 6670.56,17324.23 A 35.17 35.17 0 0 1 6629.23,17365.56 A 29.29 29.29 0 0 1 6600,17392.92 A 29.29 29.29 0 0 1 6570.77,17365.56 A 35.17 35.17 0 0 1 6529.44,17324.23 A 29.29 29.29 0 0 1 6502.08,17295 A 29.29 29.29 0 0 1 6529.44,17265.77 A 35.17 35.17 0 0 1 6570.77,17224.44 A 29.29 29.29 0 0 1 6600,17197.08 A 29.29 29.29 0 0 1 6629.23,17224.44 A 35.17 35.17 0 0 1 6670.56,17265.77 Z" fill="#eef3e7" stroke="#6c6864" stroke-width="18"/>
-<circle cx="6600" cy="17295" r="41.13" fill="none" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6641.13" y1="17295" x2="6668.54" y2="17295" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6629.08" y1="17324.08" x2="6648.47" y2="17343.47" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6600" y1="17336.13" x2="6600" y2="17363.54" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6570.92" y1="17324.08" x2="6551.53" y2="17343.47" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6558.87" y1="17295" x2="6531.46" y2="17295" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6570.92" y1="17265.92" x2="6551.53" y2="17246.53" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6600" y1="17253.87" x2="6600" y2="17226.46" stroke="#a8a29a" stroke-width="13"/>
-<line x1="6629.08" y1="17265.92" x2="6648.47" y2="17246.53" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6600" cy="17295" r="5.88" fill="#6c6864" stroke="#6c6864" stroke-width="18"/>
-<text x="6904" y="17295" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">plant</text>
+<polygon points="6404,17193 6796,17193 6796,17397 6404,17397" fill="none" stroke="#6c6864" stroke-width="18" stroke-dasharray="108 72"/>
+<line x1="6404" y1="17364.36" x2="6796" y2="17364.36" stroke="#a8a29a" stroke-width="13" stroke-dasharray="108 72"/>
+<text x="6904" y="17295" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">upper_cabinet</text>
 <line x1="6350" y1="17465" x2="9050" y2="17465" stroke="#333333" stroke-width="13"/>
-<polygon points="6404,17533 6796,17533 6796,17659.48 6404,17659.48" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
-<line x1="6404" y1="17618.68" x2="6796" y2="17618.68" stroke="#a8a29a" stroke-width="13"/>
-<circle cx="6502" cy="17696.2" r="28.56" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
-<circle cx="6698" cy="17696.2" r="28.56" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
-<text x="6904" y="17635" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">bar_counter</text>
+<path d="M 6670.56,17605.77 A 29.29 29.29 0 0 1 6697.92,17635 A 29.29 29.29 0 0 1 6670.56,17664.23 A 35.17 35.17 0 0 1 6629.23,17705.56 A 29.29 29.29 0 0 1 6600,17732.92 A 29.29 29.29 0 0 1 6570.77,17705.56 A 35.17 35.17 0 0 1 6529.44,17664.23 A 29.29 29.29 0 0 1 6502.08,17635 A 29.29 29.29 0 0 1 6529.44,17605.77 A 35.17 35.17 0 0 1 6570.77,17564.44 A 29.29 29.29 0 0 1 6600,17537.08 A 29.29 29.29 0 0 1 6629.23,17564.44 A 35.17 35.17 0 0 1 6670.56,17605.77 Z" fill="#eef3e7" stroke="#6c6864" stroke-width="18"/>
+<circle cx="6600" cy="17635" r="41.13" fill="none" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6641.13" y1="17635" x2="6668.54" y2="17635" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6629.08" y1="17664.08" x2="6648.47" y2="17683.47" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6600" y1="17676.13" x2="6600" y2="17703.54" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6570.92" y1="17664.08" x2="6551.53" y2="17683.47" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6558.87" y1="17635" x2="6531.46" y2="17635" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6570.92" y1="17605.92" x2="6551.53" y2="17586.53" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6600" y1="17593.87" x2="6600" y2="17566.46" stroke="#a8a29a" stroke-width="13"/>
+<line x1="6629.08" y1="17605.92" x2="6648.47" y2="17586.53" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6600" cy="17635" r="5.88" fill="#6c6864" stroke="#6c6864" stroke-width="18"/>
+<text x="6904" y="17635" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">plant</text>
+<line x1="6350" y1="17805" x2="9050" y2="17805" stroke="#333333" stroke-width="13"/>
+<polygon points="6404,17873 6796,17873 6796,17999.48 6404,17999.48" fill="#f4f2ee" stroke="#6c6864" stroke-width="18"/>
+<line x1="6404" y1="17958.68" x2="6796" y2="17958.68" stroke="#a8a29a" stroke-width="13"/>
+<circle cx="6502" cy="18036.2" r="28.56" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
+<circle cx="6698" cy="18036.2" r="28.56" fill="#ffffff" stroke="#6c6864" stroke-width="18"/>
+<text x="6904" y="17975" font-size="190" fill="#333333" text-anchor="start" dominant-baseline="central">bar_counter</text>
 </g>
 <g><polygon points="14650,-1375 14425,-655 14650,-812.5 14875,-655" fill="#333333" transform="rotate(0 14650 -925)"/><text x="14650" y="-1583" font-size="260" fill="#333333" text-anchor="middle" dominant-baseline="central">N</text></g>
 <g><rect x="-100" y="12425" width="1000" height="140" fill="#333333"/><rect x="900" y="12425" width="1000" height="140" fill="none" stroke="#333333" stroke-width="18"/><text x="-100" y="12765" font-size="200" fill="#333333" text-anchor="start" dominant-baseline="central">0</text><text x="1900" y="12765" font-size="200" fill="#333333" text-anchor="middle" dominant-baseline="central">2 m</text></g>
@@ -4674,6 +4685,9 @@ exports[`golden SVG snapshots > renders garden-loft.arch deterministically 1`] =
 <circle cx="439" cy="1900" r="28.47" fill="#ffffff" stroke="#a8a29a" stroke-width="8.32"/>
 <circle cx="163" cy="1900" r="21" fill="none" stroke="#a8a29a" stroke-width="8.32"/>
 <line x1="184" y1="1900" x2="307.6" y2="1900" stroke="#a8a29a" stroke-width="8.32"/>
+<polygon points="100,3000 100,2400 700,2400 700,3000" fill="#f4f2ee" stroke="#6c6864" stroke-width="11.52"/>
+<line x1="127" y1="3000" x2="127" y2="2400" stroke="#a8a29a" stroke-width="8.32"/>
+<line x1="664" y1="3000" x2="664" y2="2400" stroke="#a8a29a" stroke-width="8.32"/>
 <path d="M 1460.8,2050 L 2739.2,2050 A 10.8 10.8 0 0 1 2750,2060.8 L 2750,2939.2 A 10.8 10.8 0 0 1 2739.2,2950 L 1460.8,2950 A 10.8 10.8 0 0 1 1450,2939.2 L 1450,2060.8 A 10.8 10.8 0 0 1 1460.8,2050 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="11.52"/>
 <path d="M 1484.2,2077 L 2715.8,2077 A 7.2 7.2 0 0 1 2723,2084.2 L 2723,2915.8 A 7.2 7.2 0 0 1 2715.8,2923 L 1484.2,2923 A 7.2 7.2 0 0 1 1477,2915.8 L 1477,2084.2 A 7.2 7.2 0 0 1 1484.2,2077 Z" fill="none" stroke="#a8a29a" stroke-width="8.32"/>
 <path d="M 459.5,3750 L 2240.5,3750 A 59.5 59.5 0 0 1 2300,3809.5 L 2300,4540.5 A 59.5 59.5 0 0 1 2240.5,4600 L 459.5,4600 A 59.5 59.5 0 0 1 400,4540.5 L 400,3809.5 A 59.5 59.5 0 0 1 459.5,3750 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="11.52"/>
@@ -6988,6 +7002,9 @@ exports[`golden SVG snapshots > renders laneway-house.arch deterministically 1`]
 <circle cx="439" cy="2000" r="28.47" fill="#ffffff" stroke="#a8a29a" stroke-width="8.9"/>
 <circle cx="163" cy="2000" r="21" fill="none" stroke="#a8a29a" stroke-width="8.9"/>
 <line x1="184" y1="2000" x2="307.6" y2="2000" stroke="#a8a29a" stroke-width="8.9"/>
+<polygon points="100,3100 100,2500 700,2500 700,3100" fill="#f4f2ee" stroke="#6c6864" stroke-width="12.32"/>
+<line x1="127" y1="3100" x2="127" y2="2500" stroke="#a8a29a" stroke-width="8.9"/>
+<line x1="664" y1="3100" x2="664" y2="2500" stroke="#a8a29a" stroke-width="8.9"/>
 <path d="M 1460.8,2800 L 2739.2,2800 A 10.8 10.8 0 0 1 2750,2810.8 L 2750,3689.2 A 10.8 10.8 0 0 1 2739.2,3700 L 1460.8,3700 A 10.8 10.8 0 0 1 1450,3689.2 L 1450,2810.8 A 10.8 10.8 0 0 1 1460.8,2800 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="12.32"/>
 <path d="M 1484.2,2827 L 2715.8,2827 A 7.2 7.2 0 0 1 2723,2834.2 L 2723,3665.8 A 7.2 7.2 0 0 1 2715.8,3673 L 1484.2,3673 A 7.2 7.2 0 0 1 1477,3665.8 L 1477,2834.2 A 7.2 7.2 0 0 1 1484.2,2827 Z" fill="none" stroke="#a8a29a" stroke-width="8.9"/>
 <path d="M 413,4150 L 1187,4150 A 63 63 0 0 1 1250,4213 L 1250,6087 A 63 63 0 0 1 1187,6150 L 413,6150 A 63 63 0 0 1 350,6087 L 350,4213 A 63 63 0 0 1 413,4150 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="12.32"/>
@@ -11866,8 +11883,8 @@ exports[`golden SVG snapshots > renders relational.arch deterministically 1`] = 
 <path d="M 7620.8,797.04 L 7620.8,1002.96 A 15.84 15.84 0 0 1 7604.96,1018.8 A 15.84 15.84 0 0 1 7589.12,1002.96 L 7589.12,797.04 A 15.84 15.84 0 0 1 7604.96,781.2 A 15.84 15.84 0 0 1 7620.8,797.04 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="13.12"/>
 <path d="M 5681,1736 L 5969,1736 A 54 54 0 0 1 6023,1790 L 6023,2096 A 54 54 0 0 1 5969,2150 L 5681,2150 A 54 54 0 0 1 5627,2096 L 5627,1790 A 54 54 0 0 1 5681,1736 Z" fill="#ffffff" stroke="#6c6864" stroke-width="13.12"/>
 <path d="M 5627,1700 L 6023,1700 A 27 27 0 0 1 6050,1727 A 27 27 0 0 1 6023,1754 L 5627,1754 A 27 27 0 0 1 5600,1727 A 27 27 0 0 1 5627,1700 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="13.12"/>
-<path d="M 6881,1736 L 7169,1736 A 54 54 0 0 1 7223,1790 L 7223,2096 A 54 54 0 0 1 7169,2150 L 6881,2150 A 54 54 0 0 1 6827,2096 L 6827,1790 A 54 54 0 0 1 6881,1736 Z" fill="#ffffff" stroke="#6c6864" stroke-width="13.12"/>
-<path d="M 6827,1700 L 7223,1700 A 27 27 0 0 1 7250,1727 A 27 27 0 0 1 7223,1754 L 6827,1754 A 27 27 0 0 1 6800,1727 A 27 27 0 0 1 6827,1700 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="13.12"/>
+<path d="M 6281,1736 L 6569,1736 A 54 54 0 0 1 6623,1790 L 6623,2096 A 54 54 0 0 1 6569,2150 L 6281,2150 A 54 54 0 0 1 6227,2096 L 6227,1790 A 54 54 0 0 1 6281,1736 Z" fill="#ffffff" stroke="#6c6864" stroke-width="13.12"/>
+<path d="M 6227,1700 L 6623,1700 A 27 27 0 0 1 6650,1727 A 27 27 0 0 1 6623,1754 L 6227,1754 A 27 27 0 0 1 6200,1727 A 27 27 0 0 1 6227,1700 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="13.12"/>
 <polygon points="7900,2400 7900,3200 7300,3200 7300,2400" fill="#f4f2ee" stroke="#6c6864" stroke-width="13.12"/>
 <path d="M 7780,2570.05 L 7780,3029.95 A 43.8 43.8 0 0 1 7736.2,3073.75 L 7385.8,3073.75 A 43.8 43.8 0 0 1 7342,3029.95 L 7342,2570.05 A 43.8 43.8 0 0 1 7385.8,2526.25 L 7736.2,2526.25 A 43.8 43.8 0 0 1 7780,2570.05 Z" fill="#ffffff" stroke="#6c6864" stroke-width="13.12"/>
 <circle cx="7561" cy="2800" r="28.47" fill="#ffffff" stroke="#a8a29a" stroke-width="9.48"/>
@@ -11887,6 +11904,9 @@ exports[`golden SVG snapshots > renders relational.arch deterministically 1`] = 
 <circle cx="7363" cy="3540" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="9.48"/>
 <circle cx="7363" cy="3660" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="9.48"/>
 <circle cx="7363" cy="3780" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="9.48"/>
+<polygon points="7900,1800 7900,2400 7300,2400 7300,1800" fill="#f4f2ee" stroke="#6c6864" stroke-width="13.12"/>
+<line x1="7873" y1="1800" x2="7873" y2="2400" stroke="#a8a29a" stroke-width="9.48"/>
+<line x1="7336" y1="1800" x2="7336" y2="2400" stroke="#a8a29a" stroke-width="9.48"/>
 <path d="M 7900,4353.52 L 7900,4646.48 A 23.52 23.52 0 0 1 7876.48,4670 L 7755.52,4670 A 23.52 23.52 0 0 1 7732,4646.48 L 7732,4353.52 A 23.52 23.52 0 0 1 7755.52,4330 L 7876.48,4330 A 23.52 23.52 0 0 1 7900,4353.52 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="13.12"/>
 <path d="M 7238.5,4500 A 121.51 121.51 0 0 1 7295.52,4397.02 A 373.97 373.97 0 0 1 7692.48,4397.02 A 121.51 121.51 0 0 1 7749.5,4500 A 121.51 121.51 0 0 1 7692.48,4602.98 A 373.97 373.97 0 0 1 7295.52,4602.98 A 121.51 121.51 0 0 1 7238.5,4500 Z" fill="#ffffff" stroke="#6c6864" stroke-width="13.12"/>
 <path d="M 7276.9,4500 A 91.53 91.53 0 0 1 7320.51,4422.01 A 294.71 294.71 0 0 1 7629.09,4422.01 A 91.53 91.53 0 0 1 7672.7,4500 A 91.53 91.53 0 0 1 7629.09,4577.99 A 294.71 294.71 0 0 1 7320.51,4577.99 A 91.53 91.53 0 0 1 7276.9,4500 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="9.48"/>
@@ -12202,6 +12222,9 @@ exports[`golden SVG snapshots > renders terrace-row.arch deterministically 1`] =
 <path d="M 5275,8412 L 5275,8988 A 12 12 0 0 1 5263,9000 L 4637,9000 A 12 12 0 0 1 4625,8988 L 4625,8412 A 12 12 0 0 1 4637,8400 L 5263,8400 A 12 12 0 0 1 5275,8412 Z" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
 <line x1="4716" y1="8400" x2="4716" y2="9000" stroke="#9fc0e6" stroke-width="25.94"/>
 <line x1="4670.5" y1="8604" x2="4670.5" y2="8796" stroke="#c8dbf1" stroke-width="35.92"/>
+<polygon points="2400,6450 3000,6450 3000,7050 2400,7050" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
+<line x1="2400" y1="6477" x2="3000" y2="6477" stroke="#9fc0e6" stroke-width="25.94"/>
+<line x1="2400" y1="7014" x2="3000" y2="7014" stroke="#9fc0e6" stroke-width="25.94"/>
 <path d="M 9196,3850 L 10554,3850 A 21 21 0 0 0 10575,3829 L 10575,1971 A 21 21 0 0 0 10554,1950 L 9196,1950 A 21 21 0 0 0 9175,1971 L 9175,3829 A 21 21 0 0 0 9196,3850 Z" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
 <path d="M 9196,3850 L 10554,3850 A 21 21 0 0 0 10575,3829 L 10575,3764.5 L 9175,3764.5 L 9175,3829 A 21 21 0 0 0 9196,3850 Z" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
 <path d="M 9352.27,3707.5 L 9735.07,3707.5 A 102.6 102.6 0 0 0 9837.67,3604.9 L 9837.67,3468.1 A 102.6 102.6 0 0 0 9735.07,3365.5 L 9352.27,3365.5 A 102.6 102.6 0 0 0 9249.67,3468.1 L 9249.67,3604.9 A 102.6 102.6 0 0 0 9352.27,3707.5 Z" fill="#0b3d6b" stroke="#9fc0e6" stroke-width="25.94"/>
@@ -12269,6 +12292,9 @@ exports[`golden SVG snapshots > renders terrace-row.arch deterministically 1`] =
 <path d="M 5525,8388 L 5525,7812 A 12 12 0 0 1 5537,7800 L 6163,7800 A 12 12 0 0 1 6175,7812 L 6175,8388 A 12 12 0 0 1 6163,8400 L 5537,8400 A 12 12 0 0 1 5525,8388 Z" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
 <line x1="6084" y1="8400" x2="6084" y2="7800" stroke="#9fc0e6" stroke-width="25.94"/>
 <line x1="6129.5" y1="8196" x2="6129.5" y2="8004" stroke="#c8dbf1" stroke-width="35.92"/>
+<polygon points="7800,5850 8400,5850 8400,6450 7800,6450" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
+<line x1="7800" y1="5877" x2="8400" y2="5877" stroke="#9fc0e6" stroke-width="25.94"/>
+<line x1="7800" y1="6414" x2="8400" y2="6414" stroke="#9fc0e6" stroke-width="25.94"/>
 <path d="M 12404,4450 L 11046,4450 A 21 21 0 0 1 11025,4429 L 11025,2571 A 21 21 0 0 1 11046,2550 L 12404,2550 A 21 21 0 0 1 12425,2571 L 12425,4429 A 21 21 0 0 1 12404,4450 Z" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
 <path d="M 12404,4450 L 11046,4450 A 21 21 0 0 1 11025,4429 L 11025,4364.5 L 12425,4364.5 L 12425,4429 A 21 21 0 0 1 12404,4450 Z" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
 <path d="M 12247.73,4307.5 L 11864.93,4307.5 A 102.6 102.6 0 0 1 11762.33,4204.9 L 11762.33,4068.1 A 102.6 102.6 0 0 1 11864.93,3965.5 L 12247.73,3965.5 A 102.6 102.6 0 0 1 12350.33,4068.1 L 12350.33,4204.9 A 102.6 102.6 0 0 1 12247.73,4307.5 Z" fill="#0b3d6b" stroke="#9fc0e6" stroke-width="25.94"/>
@@ -12336,6 +12362,9 @@ exports[`golden SVG snapshots > renders terrace-row.arch deterministically 1`] =
 <path d="M 16675,8412 L 16675,8988 A 12 12 0 0 1 16663,9000 L 16037,9000 A 12 12 0 0 1 16025,8988 L 16025,8412 A 12 12 0 0 1 16037,8400 L 16663,8400 A 12 12 0 0 1 16675,8412 Z" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
 <line x1="16116" y1="8400" x2="16116" y2="9000" stroke="#9fc0e6" stroke-width="25.94"/>
 <line x1="16070.5" y1="8604" x2="16070.5" y2="8796" stroke="#c8dbf1" stroke-width="35.92"/>
+<polygon points="13500,6450 14100,6450 14100,7050 13500,7050" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
+<line x1="13500" y1="6477" x2="14100" y2="6477" stroke="#9fc0e6" stroke-width="25.94"/>
+<line x1="13500" y1="7014" x2="14100" y2="7014" stroke="#9fc0e6" stroke-width="25.94"/>
 <path d="M 20596,3850 L 21954,3850 A 21 21 0 0 0 21975,3829 L 21975,1971 A 21 21 0 0 0 21954,1950 L 20596,1950 A 21 21 0 0 0 20575,1971 L 20575,3829 A 21 21 0 0 0 20596,3850 Z" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
 <path d="M 20596,3850 L 21954,3850 A 21 21 0 0 0 21975,3829 L 21975,3764.5 L 20575,3764.5 L 20575,3829 A 21 21 0 0 0 20596,3850 Z" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
 <path d="M 20752.27,3707.5 L 21135.07,3707.5 A 102.6 102.6 0 0 0 21237.67,3604.9 L 21237.67,3468.1 A 102.6 102.6 0 0 0 21135.07,3365.5 L 20752.27,3365.5 A 102.6 102.6 0 0 0 20649.67,3468.1 L 20649.67,3604.9 A 102.6 102.6 0 0 0 20752.27,3707.5 Z" fill="#0b3d6b" stroke="#9fc0e6" stroke-width="25.94"/>
@@ -12403,6 +12432,9 @@ exports[`golden SVG snapshots > renders terrace-row.arch deterministically 1`] =
 <path d="M 16925,8388 L 16925,7812 A 12 12 0 0 1 16937,7800 L 17563,7800 A 12 12 0 0 1 17575,7812 L 17575,8388 A 12 12 0 0 1 17563,8400 L 16937,8400 A 12 12 0 0 1 16925,8388 Z" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
 <line x1="17484" y1="8400" x2="17484" y2="7800" stroke="#9fc0e6" stroke-width="25.94"/>
 <line x1="17529.5" y1="8196" x2="17529.5" y2="8004" stroke="#c8dbf1" stroke-width="35.92"/>
+<polygon points="19200,5850 19800,5850 19800,6450 19200,6450" fill="#0e4a82" stroke="#c8dbf1" stroke-width="35.92"/>
+<line x1="19200" y1="5877" x2="19800" y2="5877" stroke="#9fc0e6" stroke-width="25.94"/>
+<line x1="19200" y1="6414" x2="19800" y2="6414" stroke="#9fc0e6" stroke-width="25.94"/>
 </g>
 <g id="A-WALL" inkscape:groupmode="layer" inkscape:label="A-WALL">
 <path d="M -125,2100 L -125,475 L 500,475 L 500,725 L 125,725 L 125,2100 Z M -125,3300 L 125,3300 L 125,4550 L 1900,4550 L 1900,4650 L 125,4650 L 125,6350 L 400,6350 L 400,6450 L 125,6450 L 125,9475 L 250,9475 L 250,9725 L -125,9725 Z M 10300,-125 L 10925,-125 L 10925,475 L 11300,475 L 11300,725 L 10925,725 L 10925,4550 L 12700,4550 L 12700,4650 L 10925,4650 L 10925,6350 L 11200,6350 L 11200,6450 L 10925,6450 L 10925,9475 L 11050,9475 L 11050,9725 L 10675,9725 L 10675,9125 L 10550,9125 L 10550,8875 L 10675,8875 L 10675,5850 L 10400,5850 L 10400,5750 L 10675,5750 L 10675,4050 L 8900,4050 L 8900,3950 L 10675,3950 L 10675,125 L 10300,125 Z M 1050,9475 L 1225,9475 L 1225,9725 L 1050,9725 Z M 11850,9475 L 12025,9475 L 12025,9725 L 11850,9725 Z M 12200,6350 L 16675,6350 L 16675,4650 L 15800,4650 L 15800,4550 L 16675,4550 L 16675,725 L 16350,725 L 16350,475 L 16675,475 L 16675,-125 L 17250,-125 L 17250,125 L 16925,125 L 16925,3950 L 17800,3950 L 17800,4050 L 16925,4050 L 16925,5750 L 20800,5750 L 20800,5850 L 16925,5850 L 16925,8875 L 17200,8875 L 17200,9125 L 16925,9125 L 16925,9725 L 16400,9725 L 16400,9475 L 16675,9475 L 16675,6450 L 12200,6450 Z M 12700,475 L 13600,475 L 13600,725 L 12700,725 Z M 12975,9475 L 15400,9475 L 15400,9725 L 12975,9725 Z M 13500,4550 L 14550,4550 L 14550,725 L 14400,725 L 14400,475 L 15850,475 L 15850,725 L 14650,725 L 14650,4550 L 15000,4550 L 15000,4650 L 13500,4650 Z M 1400,6350 L 5275,6350 L 5275,4650 L 4400,4650 L 4400,4550 L 5275,4550 L 5275,725 L 4950,725 L 4950,475 L 5275,475 L 5275,-125 L 5850,-125 L 5850,125 L 5525,125 L 5525,3950 L 6400,3950 L 6400,4050 L 5525,4050 L 5525,5750 L 9400,5750 L 9400,5850 L 5525,5850 L 5525,8875 L 5800,8875 L 5800,9125 L 5525,9125 L 5525,9725 L 5000,9725 L 5000,9475 L 5275,9475 L 5275,6450 L 1400,6450 Z M 17750,-125 L 19200,-125 L 19200,125 L 19050,125 L 19050,3950 L 19500,3950 L 19500,4050 L 18600,4050 L 18600,3950 L 18950,3950 L 18950,125 L 17750,125 Z M 18200,8875 L 20025,8875 L 20025,9125 L 18200,9125 Z M 1900,475 L 2200,475 L 2200,725 L 1900,725 Z M 20000,-125 L 20300,-125 L 20300,125 L 20000,125 Z M 20300,3950 L 22075,3950 L 22075,2700 L 22325,2700 L 22325,9125 L 21950,9125 L 21950,8875 L 22075,8875 L 22075,5850 L 21800,5850 L 21800,5750 L 22075,5750 L 22075,4050 L 20300,4050 Z M 20975,8875 L 21150,8875 L 21150,9125 L 20975,9125 Z M 21700,-125 L 22325,-125 L 22325,1500 L 22075,1500 L 22075,125 L 21700,125 Z M 2175,9475 L 4000,9475 L 4000,9725 L 2175,9725 Z M 2700,4550 L 3150,4550 L 3150,725 L 3000,725 L 3000,475 L 4450,475 L 4450,725 L 3250,725 L 3250,4550 L 3600,4550 L 3600,4650 L 2700,4650 Z M 6350,-125 L 7800,-125 L 7800,125 L 7650,125 L 7650,3950 L 8100,3950 L 8100,4050 L 7200,4050 L 7200,3950 L 7550,3950 L 7550,125 L 6350,125 Z M 6800,8875 L 8625,8875 L 8625,9125 L 6800,9125 Z M 8600,-125 L 8900,-125 L 8900,125 L 8600,125 Z M 9575,8875 L 9750,8875 L 9750,9125 L 9575,9125 Z" fill="url(#poche)" fill-rule="nonzero"/>
@@ -12749,6 +12781,9 @@ exports[`golden SVG snapshots > renders tiny-house.arch deterministically 1`] = 
 <path d="M 1512,100 L 2088,100 A 12 12 0 0 1 2100,112 L 2100,738 A 12 12 0 0 1 2088,750 L 1512,750 A 12 12 0 0 1 1500,738 L 1500,112 A 12 12 0 0 1 1512,100 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="12.8"/>
 <line x1="1500" y1="659" x2="2100" y2="659" stroke="#a8a29a" stroke-width="9.24"/>
 <line x1="1704" y1="704.5" x2="1896" y2="704.5" stroke="#6c6864" stroke-width="12.8"/>
+<polygon points="100,1100 100,700 700,700 700,1100" fill="#f4f2ee" stroke="#6c6864" stroke-width="12.8"/>
+<line x1="127" y1="1100" x2="127" y2="700" stroke="#a8a29a" stroke-width="9.24"/>
+<line x1="664" y1="1100" x2="664" y2="700" stroke="#a8a29a" stroke-width="9.24"/>
 <path d="M 5386,100 L 6214,100 A 36 36 0 0 1 6250,136 L 6250,964 A 36 36 0 0 1 6214,1000 L 5386,1000 A 36 36 0 0 1 5350,964 L 5350,136 A 36 36 0 0 1 5386,100 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="12.8"/>
 <path d="M 5422,154 L 6178,154 A 18 18 0 0 1 6196,172 L 6196,928 A 18 18 0 0 1 6178,946 L 5422,946 A 18 18 0 0 1 5404,928 L 5404,172 A 18 18 0 0 1 5422,154 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="9.24"/>
 <line x1="5423.09" y1="173.09" x2="5765" y2="515" stroke="#a8a29a" stroke-width="9.24"/>
@@ -12871,8 +12906,8 @@ exports[`golden SVG snapshots > renders tiny-house.arch deterministically 1`] = 
 <polygon points="7100,1160 7140,1160 7140,1840 7100,1840" fill="none" stroke="#1b1b1b" stroke-width="12.8"/>
 </g>
 <g id="A-ANNO-TEXT" inkscape:groupmode="layer" inkscape:label="A-ANNO-TEXT">
-<text x="1060" y="932" font-size="240" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Living / Sleep</text>
-<text x="1060" y="1196" font-size="176" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">14.8 m²</text>
+<text x="4240" y="1772" font-size="240" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Living / Sleep</text>
+<text x="4240" y="2036" font-size="176" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">14.8 m²</text>
 <text x="6150" y="1352" font-size="240" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Wet room</text>
 <text x="6150" y="1616" font-size="176" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">4.8 m²</text>
 </g>
@@ -12961,6 +12996,9 @@ exports[`golden SVG snapshots > renders townhouse.arch as one page per level > t
 <path d="M 150,8088 L 150,7512 A 12 12 0 0 1 162,7500 L 788,7500 A 12 12 0 0 1 800,7512 L 800,8088 A 12 12 0 0 1 788,8100 L 162,8100 A 12 12 0 0 1 150,8088 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
 <line x1="709" y1="8100" x2="709" y2="7500" stroke="#a8a29a" stroke-width="6.5"/>
 <line x1="754.5" y1="7896" x2="754.5" y2="7704" stroke="#6c6864" stroke-width="9"/>
+<polygon points="150,10500 150,9900 750,9900 750,10500" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
+<line x1="177" y1="10500" x2="177" y2="9900" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="714" y1="10500" x2="714" y2="9900" stroke="#a8a29a" stroke-width="6.5"/>
 <path d="M 1910.8,8400 L 3289.2,8400 A 10.8 10.8 0 0 1 3300,8410.8 L 3300,9289.2 A 10.8 10.8 0 0 1 3289.2,9300 L 1910.8,9300 A 10.8 10.8 0 0 1 1900,9289.2 L 1900,8410.8 A 10.8 10.8 0 0 1 1910.8,8400 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
 <path d="M 1934.2,8427 L 3265.8,8427 A 7.2 7.2 0 0 1 3273,8434.2 L 3273,9265.8 A 7.2 7.2 0 0 1 3265.8,9273 L 1934.2,9273 A 7.2 7.2 0 0 1 1927,9265.8 L 1927,8434.2 A 7.2 7.2 0 0 1 1934.2,8427 Z" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
 </g>
@@ -15015,6 +15053,9 @@ exports[`golden SVG snapshots > renders two-bed.arch deterministically 1`] = `
 <circle cx="489" cy="1900" r="28.47" fill="#ffffff" stroke="#a8a29a" stroke-width="13.06"/>
 <circle cx="213" cy="1900" r="21" fill="none" stroke="#a8a29a" stroke-width="13.06"/>
 <line x1="234" y1="1900" x2="357.6" y2="1900" stroke="#a8a29a" stroke-width="13.06"/>
+<polygon points="150,3000 150,2400 750,2400 750,3000" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>
+<line x1="177" y1="3000" x2="177" y2="2400" stroke="#a8a29a" stroke-width="13.06"/>
+<line x1="714" y1="3000" x2="714" y2="2400" stroke="#a8a29a" stroke-width="13.06"/>
 <path d="M 2942,600 L 3758,600 A 42 42 0 0 1 3800,642 L 3800,1158 A 42 42 0 0 1 3758,1200 L 2942,1200 A 42 42 0 0 1 2900,1158 L 2900,642 A 42 42 0 0 1 2942,600 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>
 <path d="M 2936,600 L 2972,600 L 2972,1167.6 A 32.4 32.4 0 0 1 2939.6,1200 L 2936,1200 A 36 36 0 0 1 2900,1164 L 2900,636 A 36 36 0 0 1 2936,600 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>
 <path d="M 3728,600 L 3764,600 A 36 36 0 0 1 3800,636 L 3800,1164 A 36 36 0 0 1 3764,1200 L 3760.4,1200 A 32.4 32.4 0 0 1 3728,1167.6 L 3728,600 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>
@@ -15171,6 +15212,9 @@ exports[`golden SVG snapshots > renders two-storey.arch as one page per level > 
 <circle cx="4340" cy="4187" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="6.5"/>
 <circle cx="4460" cy="4187" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="6.5"/>
 <circle cx="4580" cy="4187" r="18" fill="#a8a29a" stroke="#a8a29a" stroke-width="6.5"/>
+<polygon points="4800,3650 5400,3650 5400,4250 4800,4250" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
+<line x1="4800" y1="3677" x2="5400" y2="3677" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="4800" y1="4214" x2="5400" y2="4214" stroke="#a8a29a" stroke-width="6.5"/>
 </g>
 <g id="A-FLOR-STRS" inkscape:groupmode="layer" inkscape:label="A-FLOR-STRS">
 <polygon points="100,1500 1000,1500 1000,4100 100,4100" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>

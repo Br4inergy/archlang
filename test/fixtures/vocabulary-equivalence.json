@@ -265,8 +265,8 @@
     {
       "id": "r_open",
       "label": "Open Office",
-      "uses": [],
-      "room_type": "Room"
+      "uses": ["office"],
+      "room_type": "StudyRoom"
     },
     {
       "id": "r_meet",
@@ -1077,8 +1077,8 @@
     {
       "id": "r_util",
       "label": "Utility",
-      "uses": [],
-      "room_type": "Room"
+      "uses": ["utility"],
+      "room_type": "Storage"
     },
     {
       "id": "r_hall",

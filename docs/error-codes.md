@@ -1990,7 +1990,7 @@ room polygon (0,0) (6000,0) (6000,6000) (0,6000) label "Hall" at (9000,9000)   #
 
 *warning* — A furnished room is missing the piece that defines it.
 
-**Cause.** The room holds at least one piece of furniture, so it has been furnished, but not the piece its use is defined by: a bedroom with no bed, a bathroom with no bathtub or shower, a WC with no WC, a kitchen with no sink or no hob, a dining room with no dining table. The defining pieces are read from the furnish table `finish` furnishes from (`FURNISH_TABLE`), so `finish` never writes a room this rule reports. A piece counts when its footprint centre is on the room's floor (its polygon when it has one), and a piece does the job of its own family and of the one the catalogue says it serves (a `double_bed` is a bed, a `table` is a dining table, a `hob` is a stove). An EMPTY room is never reported (an empty bathroom or kitchen is `W_ROOM_NO_FIXTURE`'s report), living rooms and studies are not checked (no single piece defines them), and a room with no classified use is skipped.
+**Cause.** The room holds at least one piece of furniture, so it has been furnished, but not the piece its use is defined by: a bedroom with no bed, a bathroom with no bathtub or shower, a WC with no WC, a kitchen with no sink, no hob or no worktop (a `counter`), a dining room with no dining table. The defining pieces are read from the furnish table `finish` furnishes from (`FURNISH_TABLE`), so `finish` never writes a room this rule reports. A piece counts when its footprint centre is on the room's floor (its polygon when it has one), and a piece does the job of its own family and of the one the catalogue says it serves (a `double_bed` is a bed, a `table` is a dining table, a `hob` is a stove). An EMPTY room is never reported (an empty bathroom or kitchen is `W_ROOM_NO_FIXTURE`'s report), living rooms and studies are not checked (no single piece defines them), and a room with no classified use is skipped.
 
 **Fix.** Add the missing piece; the hint quotes statements checked together, clear of the room's walls, doors and furniture, when they fit. If the room is not what its use says, change its `uses`. There is no machine fix: where the piece goes is a design decision.
 
@@ -2084,7 +2084,7 @@ room at (1000,0) size 2000x2000   # warning
 **Fix.** Increase its `size`, or merge it into an adjacent space.
 
 ```arch static
-room at (0,0) size 1000x1000 label "Closet"   # lint: 1 m²
+room at (0,0) size 1000x1000 label "Nook"     # lint: 1 m²
 ```
 
 ## W_ROOM_UNREACHABLE

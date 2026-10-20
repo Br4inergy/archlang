@@ -94,13 +94,16 @@ plan "Tiny House" {
   window id=s_bench  at (4300,2800) width 1200 wall shell
   window id=e_wet    at (7000,1500) width 600  wall shell
 
-  # ---- galley: three catalogued fixtures, no coordinates --------------------
+  # ---- galley: four catalogued fixtures, no coordinates ---------------------
   # `offset` is the distance of the piece's CENTRE along shell segment 0 — the north
   # run, walked from (0,0) — and the footprints come from the catalogue, so no width,
-  # depth or wall face is written down twice.
+  # depth or wall face is written down twice. The worktop turns the corner onto the
+  # west wall (segment 3, walked from (0,2800)), the one run left beside the sink: a
+  # 400 mm module, so the gable window keeps its schedule tag clear.
   furniture kitchen_sink against wall shell segment 0 offset 500  in r_main
   furniture stove        against wall shell segment 0 offset 1200 in r_main
   furniture fridge       against wall shell segment 0 offset 1800 in r_main
+  furniture counter      against wall shell segment 3 offset 1900 size 400x600 in r_main
 
   # ---- wet room -------------------------------------------------------------
   # Anchored to the room and `flush`, so each piece measures from the backing wall's

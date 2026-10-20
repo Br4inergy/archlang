@@ -172,8 +172,10 @@ const ROOT = join(HERE, "..");
 // review round 2 (its fact became `street`).
 const BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f",
-  "laneway-house.arch": "6b064cc3a3f173f8ae7d94a5030e1f66e2b84a108047fed2a79d645f1526dfc3",
-  "bungalow.arch": "38f10b3a35b6e821a0b6aaa90795e5c195bd7bb1bc2665c399a6d1dcbbf637dd",
+  // laneway-house, bungalow and two-bed re-measured 2026-10-20 (PS2.17), a worktop in each kitchen;
+  // see `byte-identity-baseline.ts`, "a worktop in every example kitchen", for the swap-back proof.
+  "laneway-house.arch": "78dddfdf45d0dd82e6e98f8bc270060421ab7361080a18be74fdd3558e28e348",
+  "bungalow.arch": "7e4b4f8e97cd44c1f03f2fa8aa9ae85ee1568a17dc5743c384e55590196eb1e5",
   // Re-measured for the `overhead` flag. Its SOURCE gained two statements —
   // a `range_hood` over the stove and a `mirror` over the basin, the two correct drawings
   // the missing flag had kept out of the flagship — so this plan is a different building
@@ -182,12 +184,13 @@ const BASELINE: Readonly<Record<string, string>> = {
   // Re-measured again 2026-10-18 (PS2.1): its bedroom-2 south window moved 4400 → 4450, off a
   // 50 mm nib beside the partition, so only the SVG moved; the previous SVG with the new
   // describe() + lint() reproduces the previous row (./byte-identity-baseline.ts, "Six examples").
-  "furnished-flat.arch": "0d00a6d601630e8bbfa2f15a0536bcbf8ccbb82fbfcea50b21b6586339a851d7",
+  // Re-measured 2026-10-20 (PS2.19): "Utility" now classifies as `utility`; see `byte-identity-baseline.ts`.
+  "furnished-flat.arch": "59035e95b2541a6e3b2ab67818aea6f9e087abc8bc262377f92e75e030f06c9a",
   // Re-measured 2026-10-18 (PS0.7): "Kitchen / Living" now classifies as `kitchen living`, so
   // `describe()` moves (uses + room_type) and nothing else; see ./byte-identity-baseline.ts,
   // "the label classifier emits living", for the swap-back proof. Re-measured again the same day
   // (PS2.5): `lint()` gains three W_ROOM_VIA_PRIVATE; see "the circulation-and-privacy rules".
-  "two-bed.arch": "cd4cfa738aaec6019d4b39f81b69f8f9a3a69327c62f890c3b4f5d35e66b7fef",
+  "two-bed.arch": "4f1707b820f441fb405c2b1438bd2c1b4b620f5494e751e78d5c3e894c52a5c7",
 };
 
 /**
@@ -199,8 +202,9 @@ const BASELINE: Readonly<Record<string, string>> = {
  */
 const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a",
-  "laneway-house.arch": "f3afd6b57e647c471d8efbfe92f824549cdd54b82c1f8a9d530e7e4f4112d7ab",
-  "bungalow.arch": "9cd9231204f6b07bee5ddfa6b67d92dabad26fbfce3c8705beb086048a6e579d",
+  // laneway-house, bungalow and two-bed re-measured 2026-10-20 (PS2.17), as above.
+  "laneway-house.arch": "b1598f1cb7da5fad1a7ba74837d904e2ad5c7aa22d61e28356ecb16cb982344e",
+  "bungalow.arch": "f655bb711665281ce3440d10cb38dc2ca4cdb80343e0a4580d2ca89947078351",
   // `furnished-flat.arch` is the ONE value in this table that is not the original `5298b99`
   // measurement, and the exception proves the rule rather than bending it. Its SOURCE keeps
   // being edited -- seven of the new families in the furniture pass, then a `range_hood` and a `mirror`
@@ -216,9 +220,10 @@ const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
   // auto-id renumbering that inserting two statements mid-file forces on every later piece;
   // `lint()` still returns ONE diagnostic, the same `W_PATH_TOO_NARROW` with the same
   // message and hints, its byte span shifted by the comment lines added above it.
-  "furnished-flat.arch": "dab3b998a75ba65679021c8ae9282cb785d8daf69e6c0d64c39aea0c35a36fa5",
+  // Re-measured 2026-10-20 (PS2.19), `describe()` only: see `byte-identity-baseline.ts`.
+  "furnished-flat.arch": "abd789cdd3940cf2c6ef569014fa94ad1e74ede43fa44f53b81a73d471cfaf3c",
   // Re-measured 2026-10-18 (PS0.7, then PS2.5), the same causes as BASELINE's two-bed row.
-  "two-bed.arch": "71e5d0155b94377968f056dd8efdaf2fd49553d8f3ab7ebb02134c025f99b64b",
+  "two-bed.arch": "f397cf69203454e62a6c9b042f96c56bdba08a5ab59ace07175130c31842aaad",
 };
 
 suite("the outdoor tranche — the byte-identity law", () => {

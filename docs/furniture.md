@@ -543,7 +543,7 @@ fixtures first. The table describes the rooms of a dwelling.
 | `living` | `sofa` 2000 × 900, then 1600 × 900 · `coffee_table` 1000 × 600 (optional) |
 | `dining` | `dining_table` 1800 × 1500, then 1400 × 1300 |
 | `office` | `desk` 1400 × 700, then 1200 × 600 · `office_chair` 500 × 500 (optional) |
-| `kitchen` | `kitchen_sink` · `stove` · `fridge` (optional) |
+| `kitchen` | `kitchen_sink` · `stove` · `counter` or `worktop` 600 × 600, then 400 × 600 · `fridge` (optional) |
 | `bath` | `wc` · `basin` · `bathtub` or `shower` (optional) |
 | `wc` | `wc` · `basin` |
 
@@ -553,9 +553,10 @@ footprint. A room of any other use (`hall`, `circulation`, `entry`, `storage`, `
 carries the tag too. A room larger than 100 m² is not a dwelling room; it is named in
 `unresolved` and left as it is.
 
-A use's wall fixtures form one run: the stove next to the sink, the fridge next to the stove, on
-one wall. A use whose required pieces cannot be placed together is left out whole and named in
-`unresolved`.
+A use's wall fixtures form one run: the stove next to the sink, the worktop next to the stove and
+the fridge next to the worktop, on one wall. A worktop with no room left in the run stands against
+another wall (the other leg of an L, or across a galley), a 400 mm module when 600 does not fit. A
+use whose required pieces cannot be placed together is left out whole and named in `unresolved`.
 
 - **Fill only.** A room gains pieces only when nothing stands on its floor and nothing is
   declared `in` it. A piece stands on a room's floor when its footprint reaches it; a piece

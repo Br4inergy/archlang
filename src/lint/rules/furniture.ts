@@ -209,6 +209,7 @@ function sizeTurnHint(
 export const fixtureBackToRoom: LintRule = {
   name: "fixture-back-to-room",
   family: "furniture",
+  readsFurniture: true,
   check({ furniture, ir, rooms, rules, wallSegs, at, frameOf, skip }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     // A POLYGON room has no north/south/east/west sides, so "which edge is the back?"

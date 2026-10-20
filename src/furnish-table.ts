@@ -111,9 +111,20 @@ export const FURNISH_TABLE: Readonly<Partial<Record<UseKind, readonly FurnishIte
     },
     { category: "office_chair", required: false, place: "front", sizes: [[500, 500]] },
   ],
+  // PS2.17: a worktop is required, so a kitchen is never a sink, a hob and a fridge butted
+  // together with nowhere to prepare food. `finish` stands it in the run beside the hob, and
+  // against another wall only when the run has no room for it (`src/furnish.ts`, `spill`).
   kitchen: [
     ...zoned(kitchen, true, "kitchen_sink"),
     ...zoned(kitchen, true, "stove"),
+    // The catalogue's 600 mm module first, then a 400 mm one, before the kitchen is given up.
+    ...zoned(kitchen, true, "counter", "worktop").map((i) => ({
+      ...i,
+      sizes: [
+        [600, 600],
+        [400, 600],
+      ] as const,
+    })),
     ...zoned(kitchen, false, "fridge"),
   ],
   bath: [...zoned(wet, true, "wc"), ...zoned(wet, true, "basin"), ...zoned(wet, false, "bathtub", "shower")],

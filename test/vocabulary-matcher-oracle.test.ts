@@ -28,6 +28,16 @@
  * exactly that, written in its own per-word style (the `old*` matcher answers every word), and
  * `oldMatchesLivingDining` now reads its classification, as the new `matchesLivingDining` does.
  * Every other kind's lines are untouched, so the gate on them is as strong as it was.
+ *
+ * ## Advanced again on 2026-10-20 for plan-soundness PS2.19
+ *
+ * The classifier gained a fallback vocabulary (`FALLBACK_USE_VOCABULARY`: storage, office,
+ * utility, a nursery and a water closet), read only when every kind above left the label
+ * empty. `oldClassifyLabelUses` is NOT edited for it: it stays the pre-PS2.19 code, and
+ * `compareLabel` asserts the new answer equals it wherever it is non-empty, which is the
+ * byte-identity claim itself. Where it is empty, the new answer must be the per-word reading
+ * of the fallback rows (`oldFallback`, in the oracle's own style; "day nursery" keeps "nursery"
+ * from giving a bedroom), so those lines are gated too.
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -42,6 +52,7 @@ import { extractArchBlocks } from "../src/markdown.js";
 import { parse } from "../src/parser.js";
 import { BUILTIN_REGISTRY } from "../src/registry.js";
 import {
+  FALLBACK_USE_VOCABULARY,
   USE_VOCABULARY,
   type VocabEntry,
   type VocabMatch,
@@ -136,6 +147,27 @@ function oldClassifyLabelUses(text: string): { uses: UseKind[]; aliases: AliasMa
   return { uses, aliases };
 }
 
+/** PS2.19: the fallback rows, read only for a label the classification above left empty. */
+function oldFallback(text: string): { uses: UseKind[]; aliases: AliasMatch[] } {
+  const uses: UseKind[] = [];
+  const aliases: AliasMatch[] = [];
+  const add = (kind: UseKind, m: VocabMatch): void => {
+    uses.push(kind);
+    if (!m.canonical) aliases.push({ kind, word: m.word });
+  };
+  const nursery = oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.bedroom);
+  if (nursery && !oldSynonymMatchesLabel("day nursery", text)) add("bedroom", nursery);
+  const wc = oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.wc);
+  if (wc) add("wc", wc);
+  const storage = wc ? null : oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.storage);
+  if (storage) add("storage", storage);
+  const office = oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.office);
+  if (office) add("office", office);
+  const utility = oldMatchVocabulary(text, FALLBACK_USE_VOCABULARY.utility);
+  if (utility) add("utility", utility);
+  return { uses, aliases };
+}
+
 function oldMatchesLivingDining(text: string): boolean {
   const { uses } = oldClassifyLabelUses(text);
   return uses.includes("living") || uses.includes("dining");
@@ -145,14 +177,19 @@ function oldMatchesLivingDining(text: string): boolean {
  * Harness
  * ------------------------------------------------------------------------- */
 
-const ENTRIES = Object.entries(USE_VOCABULARY) as [string, VocabEntry][];
+const ENTRIES = [...Object.entries(USE_VOCABULARY), ...Object.entries(FALLBACK_USE_VOCABULARY)] as [
+  string,
+  VocabEntry,
+][];
 const USE_WORDS = ENTRIES.flatMap(([, v]) => [...v.canonical, ...v.aliases]);
 const CONCEPT_WORDS = [...Object.keys(CONCEPTS), ...Object.values(CONCEPTS).flatMap((c) => c.labels)];
 
 /** Every public answer for one label, old against new. Returns the classification. */
 function compareLabel(label: string, entries = true): { uses: UseKind[]; aliases: AliasMatch[] } {
   const now = classifyLabelUses(label);
-  const before = oldClassifyLabelUses(label);
+  const pre = oldClassifyLabelUses(label);
+  // PS2.19: identical wherever the pre-fallback answer is non-empty; the fallback's otherwise.
+  const before = pre.uses.length > 0 ? pre : oldFallback(label);
   expect(now, label.slice(0, 80)).toStrictEqual(before);
   expect(matchesLivingDining(label)).toBe(oldMatchesLivingDining(label));
   if (entries)
@@ -230,6 +267,9 @@ const FRAGMENTS: readonly string[] = [
   "En-Suite",
   "Car_Port",
   "living/dining",
+  "Day Nursery",
+  "day-nursery",
+  "Night nursery",
   "Hallmark",
   "bedrooms",
   "2",
@@ -330,6 +370,15 @@ describe("label classification: the one-split matcher against the per-word one",
     expect(synHits).toBeGreaterThan(130);
     expect(tally.suffix).toBeGreaterThan(20);
   }, 120_000);
+
+  it("the fallback's guard phrase: a day nursery is not a bedroom, a night nursery is", () => {
+    // PS2.19 review 2: without these the oracle never met the phrase, and dropping the guard
+    // from the classifier left this file green.
+    for (const l of ["Day Nursery", "day-nursery", "Day_Nursery 2", "Night nursery", "Nursery"]) compareLabel(l);
+    expect(classifyLabelUses("Day Nursery").uses).toEqual([]);
+    expect(classifyLabelUses("day-nursery").uses).toEqual([]);
+    expect(classifyLabelUses("Night nursery").uses).toEqual(["bedroom"]);
+  });
 
   it("the synonym tables' own entries, as labels and against each other", () => {
     const syns = [...new Set([...USE_WORDS, ...CONCEPT_WORDS])];

@@ -9,7 +9,7 @@
    │ │                          ││                                        │ │
    │ │ K                        ·┼                                        │ │
    ┼=┼                          ·                                         ┼=┼
-    =     Kitchen / Living      ·              Master Bedroom              =
+    =  C  Kitchen / Living      ·              Master Bedroom              =
     =                           ·┼                                         =
     =                           ││                                         =
     =   T                       ││                                         =

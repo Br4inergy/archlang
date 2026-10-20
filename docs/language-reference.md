@@ -904,6 +904,16 @@ Living and dining rooms classify from their label the same way: "Living", "Livin
 alias yields to any other kind the label names, except dining: "Family Bathroom" is a bath and
 "Family Foyer" an entry, while "Sitting / Dining" is both living and dining.
 
+A label none of those words classifies falls back to a second list: "Store", "Storage",
+"Closet", "Wardrobe", "Pantry" and "Larder" read as `storage`, "Office" and "Study" as `office`,
+"Utility" and "Laundry" as `utility`. "Dressing", "Linen", "Cellar", "Consulting", "Plant",
+"Boiler" and "Nursery" (a `bedroom`; "Day Nursery", a childcare room, stays unclassified) classify
+through an alias, and "Water Closet" is a `wc`.
+The fallback never adds to a label that already classified: "Kitchen Store" is a kitchen.
+"Balcony", "Terrace", "Studio", "Gallery", "Meeting Room" and "Staff Room" classify to nothing
+(a balcony is an `outdoor` surface, and the others name more than one kind of room), so tag
+them with `uses`; `lint --json` lists rooms left unclassified in its `coverage` block.
+
 **Relational placement (v1.0).** Instead of an absolute `at (x,y)`, a room may be
 positioned **relative to another room** with `right-of` / `left-of` / `below` /
 `above`. The compiler resolves the absolute corner by pure arithmetic in

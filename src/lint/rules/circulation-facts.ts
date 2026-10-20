@@ -650,6 +650,7 @@ function namedClause(doors: readonly AccessEdge[] | null, width: number, ctx: Li
 export const pathTooNarrow: LintRule = {
   name: "path-too-narrow",
   family: "circulation",
+  readsFurniture: "walk",
   check(ctx: LintContext): Diagnostic[] {
     // This storey has started: it no longer needs a measure kept back for it.
     if (ctx.building.attributionMeasures) ctx.building.attributionMeasures.storeys--;
@@ -811,6 +812,9 @@ export const pathTooNarrow: LintRule = {
 export const circuitousPath: LintRule = {
   name: "circuitous-path",
   family: "circulation",
+  // Reads the same nav grid as the walk: a quoted set that closes a way through a room sends
+  // the walk round (measured on multi-room fuzz, `test/lint-hint-paste.test.ts`).
+  readsFurniture: "walk",
   check(ctx: LintContext): Diagnostic[] {
     const circ = measuredCirculationOf(ctx, "nearest");
     if (!circ) return [];

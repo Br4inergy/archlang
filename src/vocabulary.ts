@@ -185,11 +185,56 @@ export const USE_VOCABULARY = Object.freeze({
   garage: { canonical: ["garage"], aliases: ["carport", "car port", "parking"] },
 }) satisfies Record<string, VocabEntry>;
 
+/**
+ * The **fallback** use vocabulary (plan-soundness PS2.19): words read only for a label that
+ * {@link USE_VOCABULARY} leaves with no use at all. Each row is keyed by the {@link UseKind}
+ * it gives; the kinds are existing ones (`uses storage`, `uses office`, `uses utility`
+ * already parse), so no language form is added. The rows are read from what the corpus
+ * authors write: every corpus room labelled "Store", "Pantry", "Linen" or "Cellar" that
+ * carries `uses` says `storage`; "Study", "Office" and "Consulting" say `office`; "Utility",
+ * "Laundry" and "Plant" say `utility`.
+ *
+ *   - `bedroom` "nursery" is an alias, and the phrase "day nursery" (a childcare room, not a
+ *     bedroom) keeps it from classifying at all.
+ *   - `wc` "water closet" is an alias, and its match keeps "closet" from reading as storage.
+ *   - `storage` covers a wardrobe, closet or dressing room: the room PS2.5 lets sit behind
+ *     a bedroom. "Dressing", "Linen" and "Cellar" are aliases (a cellar may be lived in).
+ *   - `office` "study" is canonical and "consulting" an alias (a consulting room is a
+ *     clinic's). "Meeting" and "Staff room" are left out although the corpus tags them
+ *     `office`: `finish` furnishes an office with a desk, which a meeting room or a staff
+ *     room (often a break room) is not defined by.
+ *   - `utility` "plant" and "boiler" are aliases: a plant room is not a laundry.
+ *
+ * Deliberately absent: "balcony" and "terrace". ArchLang draws a balcony as an `outdoor`
+ * surface, not a room, and no {@link UseKind} names an outdoor floor; a room labelled one
+ * stays unclassified, so no use-reading rule judges it as a room people live in, and the lint
+ * coverage report names it. "Studio" and "Gallery" are absent too: a studio is a flat, a
+ * workroom or a dance floor, and a gallery a corridor or an exhibition room.
+ */
+export const FALLBACK_USE_VOCABULARY = Object.freeze({
+  bedroom: { canonical: [], aliases: ["nursery"] },
+  wc: { canonical: [], aliases: ["water closet"] },
+  storage: {
+    canonical: ["storage", "store", "stores", "storeroom", "closet", "wardrobe", "pantry", "larder"],
+    aliases: ["dressing", "linen", "cellar"],
+  },
+  office: { canonical: ["office", "study"], aliases: ["consulting"] },
+  utility: { canonical: ["utility", "laundry"], aliases: ["plant", "boiler"] },
+}) satisfies Partial<Record<UseKind, VocabEntry>>;
+
 /** {@link USE_VOCABULARY} with its words' tokens prepared once, when this module loads: a
  *  constant derived from a constant, never a cache filled by a call. */
 const PREPARED_USE = Object.freeze(
   Object.fromEntries(Object.entries(USE_VOCABULARY).map(([k, v]) => [k, prepareEntry(v)])),
 ) as Readonly<Record<keyof typeof USE_VOCABULARY, PreparedEntry>>;
+
+/** The one phrase that keeps "nursery" from reading as a bedroom: a day nursery is childcare. */
+const PREPARED_DAY_NURSERY = prepareEntry({ canonical: ["day nursery"], aliases: [] });
+
+/** {@link FALLBACK_USE_VOCABULARY}, prepared the same way. */
+const PREPARED_FALLBACK = Object.freeze(
+  Object.fromEntries(Object.entries(FALLBACK_USE_VOCABULARY).map(([k, v]) => [k, prepareEntry(v)])),
+) as Readonly<Record<keyof typeof FALLBACK_USE_VOCABULARY, PreparedEntry>>;
 
 /** One alias-sourced classification: a use kind inferred from a non-canonical (indirect)
  *  vocabulary word, carried so `W_ALIAS_MATCH` can name what it inferred and from what. */
@@ -203,7 +248,8 @@ export interface AliasMatch {
  *  term (the advisory hook for `W_ALIAS_MATCH`). */
 export interface LabelClassification {
   /** Inferred use kinds, in emission order (bedroom, bath/wc, kitchen, entry/hall, garage,
-   *  living, dining). */
+   *  living, dining; then, only when none of those matched, the fallback kinds bedroom, wc,
+   *  storage, office, utility). */
   uses: UseKind[];
   /** Classifications that were inferred from an alias word (empty when all are canonical). */
   aliases: AliasMatch[];
@@ -225,6 +271,11 @@ export interface LabelClassification {
  * ALIAS word is dropped when the label matched any other kind except `dining`, by a canonical
  * word or an alias ("Family Bathroom" is `[bath]`, "Family Foyer" `[entry]`, "Family Room"
  * `[living]` with the alias flagged).
+ *
+ * Last, {@link FALLBACK_USE_VOCABULARY} is read, and only when every kind above left the
+ * label empty: "Store" is `[storage]`, "Study" `[office]`, "Laundry" `[utility]`, "Nursery"
+ * `[bedroom]` (alias flagged), while "Kitchen Store" stays `[kitchen]` and "Family Store"
+ * `[living]`, as they were.
  */
 export function classifyLabelUses(text: string): LabelClassification {
   const uses: UseKind[] = [];
@@ -273,6 +324,23 @@ export function classifyLabelUses(text: string): LabelClassification {
   if (living && (living.canonical || uses.length === 0)) add("living", living);
   const dining = matchPrepared(toks, PREPARED_USE.dining);
   if (dining) add("dining", dining);
+
+  // PS2.19: the fallback words, only for a label nothing above classified. Every label the
+  // table above gives a use to is classified exactly as before; only an empty answer can gain
+  // one. In order: bedroom, wc, storage (not after a water closet), office, utility.
+  if (uses.length === 0) {
+    // A "Day Nursery" is a childcare room, not a bedroom: that phrase gives no use at all.
+    const nursery = matchPrepared(toks, PREPARED_FALLBACK.bedroom);
+    if (nursery && !matchPrepared(toks, PREPARED_DAY_NURSERY)) add("bedroom", nursery);
+    const closetWc = matchPrepared(toks, PREPARED_FALLBACK.wc);
+    if (closetWc) add("wc", closetWc);
+    const storage = closetWc ? null : matchPrepared(toks, PREPARED_FALLBACK.storage);
+    if (storage) add("storage", storage);
+    const office = matchPrepared(toks, PREPARED_FALLBACK.office);
+    if (office) add("office", office);
+    const utility = matchPrepared(toks, PREPARED_FALLBACK.utility);
+    if (utility) add("utility", utility);
+  }
 
   return { uses, aliases };
 }

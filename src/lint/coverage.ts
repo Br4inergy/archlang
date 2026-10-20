@@ -77,7 +77,10 @@ export type LintSkipReason =
   | "enclosure-budget"
   /** The storey has more than one way in and names no main entrance (PS0.10: a tie, no
    *  candidate, or an upper storey), so a route is judged from every exterior door. */
-  | "no-main-entrance";
+  | "no-main-entrance"
+  /** The lint run spent its count of quoted fixture sets to re-lint (`MAX_HINT_VERIFICATIONS`,
+   *  `src/lint/defining.ts`), so a later room's hint quotes none (PS2.17). */
+  | "hint-budget";
 
 /** What each family checks, as the human coverage line names it. */
 export const FAMILY_NOUN: Readonly<Record<LintFamily, string>> = {
@@ -114,6 +117,7 @@ export const SKIP_WHY: Readonly<Record<LintSkipReason, string>> = {
   "no-kitchen-fixtures": "the room holds no kitchen fixtures to locate the kitchen",
   "enclosure-budget": "too much wall geometry to measure",
   "no-main-entrance": "no main entrance could be named",
+  "hint-budget": "the run checked as many quoted fixture placements as it may, so later hints quote none",
 };
 
 /**

@@ -43,6 +43,17 @@
  *     `living kitchen` (its header calls the room living + kitchen; it holds no table);
  *     `room_type` stays `LivingRoom`.
  * Edited by hand to what `describe()` measures, nothing else.
+ *
+ * ## Two rows re-derived on 2026-10-20 (plan-soundness PS2.19): the fallback vocabulary
+ *
+ * `classifyLabelUses` reads a fallback table (storage, office, utility, a nursery, a water
+ * closet) for a label its primary table leaves empty, so only rooms that read `[]` can move.
+ * Exactly two did, each a room with no authored `uses`:
+ *   - `eval/goldens/office.arch` `r_open` "Open Office": `[]`/`Room` → `["office"]`/`StudyRoom`
+ *   - `examples/furnished-flat.arch` `r_util` "Utility": `[]`/`Room` → `["utility"]`/`Storage`
+ * Both types are the ones an authored `uses office` / `uses utility` already gets (rows of the
+ * same table: `sized-office-mix`'s "Open Office", `courtyard-house`'s "Utility"). Edited by hand
+ * to the values the corpus sweep measured, nothing else.
  */
 
 import { readFileSync, readdirSync } from "node:fs";
