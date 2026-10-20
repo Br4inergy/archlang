@@ -780,6 +780,43 @@ export function withStepMeter<T>(
   }
 }
 
+/**
+ * The room-edge datum reader (ADR 0028 §2), installed by the resolver for the phase it is
+ * in: before rooms are placed it refuses every datum, after a group's datum table is frozen
+ * it reads that table. It is consulted only for a dotted name the environment does not bind
+ * (no binding can be dotted), so a plan that reads no datum never reaches it. It returns
+ * `undefined` for a name whose last segment is no datum word, which then stays the
+ * `E_UNKNOWN_REF` it always was. Outside a resolution no reader is installed.
+ */
+export type DatumReader = (name: string, span: Span | undefined, onError: (d: Diagnostic) => void) => Value | undefined;
+let datumReader: DatumReader | undefined;
+/** The reader a user function's BODY is evaluated under, by the function's name: a body has
+ *  no room of its own, so it refuses every datum (its arguments are evaluated before, at the
+ *  call site, under the caller's reader). Inherited by nested {@link withDatumReader} calls
+ *  that do not name one. */
+let bodyReader: ((fn: string) => DatumReader) | undefined;
+
+/**
+ * Run `fn` with `reader` as the datum reader (and, when given, `inBody` as the reader of a
+ * function body), restoring the previous ones after.
+ */
+export function withDatumReader<T>(
+  reader: DatumReader | undefined,
+  fn: () => T,
+  inBody?: (fn: string) => DatumReader,
+): T {
+  const outer = datumReader;
+  const outerBody = bodyReader;
+  datumReader = reader;
+  if (inBody !== undefined) bodyReader = inBody;
+  try {
+    return fn();
+  } finally {
+    datumReader = outer;
+    bodyReader = outerBody;
+  }
+}
+
 /** Built-in dispatch is injected by {@link setBuiltinDispatch} (from builtins.ts)
  *  to avoid a static import cycle. Until set, built-in calls are unknown. */
 let builtinDispatch: ((name: string, args: Value[], onError: (d: Diagnostic) => void, span?: Span) => Value) | null =
@@ -842,6 +879,13 @@ export function evalExpr(e: Expr, env: Env, onError: (d: Diagnostic) => void, de
       case "ref": {
         const v = lookup(env, e.name);
         if (v === undefined) {
+          // A dotted name no binding can spell (`E_DOTTED_DECL`) may be a room-edge datum
+          // (`hall.top`, ADR 0028 §2): the resolver's reader answers it, or declines it
+          // (`undefined`) when its last segment is no datum word.
+          if (datumReader !== undefined && e.name.includes(".")) {
+            const d = datumReader(e.name, e.span, onError);
+            if (d !== undefined) return d;
+          }
           const hint = closest(e.name, [...env.keys()]);
           onError({
             severity: "error",
@@ -955,6 +999,17 @@ function evalCall(e: Extract<Expr, { t: "call" }>, env: Env, onError: (d: Diagno
     callee.params.forEach((p, i) => {
       callEnv.set(p, args[i] ?? NUM0);
     });
+    // The arguments above were evaluated under the caller's datum reader; the body reads no
+    // datum (it would bind room names at the call site), so it runs under the body reader.
+    if (datumReader !== undefined && bodyReader !== undefined) {
+      const outer = datumReader;
+      datumReader = bodyReader(e.callee);
+      try {
+        return evalExpr(callee.body, callEnv, onError, depth + 1);
+      } finally {
+        datumReader = outer;
+      }
+    }
     return evalExpr(callee.body, callEnv, onError, depth + 1);
   }
   if (callee && callee.t === "builtin" && builtinDispatch) {

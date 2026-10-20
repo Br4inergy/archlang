@@ -213,6 +213,34 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "Place the room or the fixture with explicit `at (x,y)` coordinates (a fixture may add `rotate`), or make the referenced room rectangular.",
     "room id=L polygon (0,0) (6000,0) (6000,4000) (3000,4000) (3000,6000) (0,6000)\nfurniture wc in L anchor bottom-left   # error: L is a polygon room",
   ),
+  E_DATUM_BEFORE_ROOMS: E(
+    "E_DATUM_BEFORE_ROOMS",
+    "A room-edge datum is read before any room is placed.",
+    "A datum (`hall.top`, `hall.cx`, …) reads the frozen table of placed rooms, which exists only once every room of the group is placed (ADR 0028 §1). A `let` is evaluated once, when the plan expands, as are loop bounds, conditions, `set`, `place` and component arguments, and the plan settings (`height`, `axes`, the site boundary); a room's own `at`/`size` and relational placement run while the rooms are being placed. None of them can read a datum. Nor can the body of a user function (`let f() = hall.top`): it has no room of its own, so the edge is passed as an argument (`f(hall.top)`), which the caller evaluates.",
+    "Write the datum in the statement that uses it (a wall point, an opening or furniture position, a dimension), or give the room numbers or a relational placement (`right-of|left-of|above|below`) instead of another room's edge.",
+    "room id=hall at (0,0) size 4000x3000\nlet x = hall.right   # error: read when the plan expands",
+  ),
+  E_DATUM_COMPASS: E(
+    "E_DATUM_COMPASS",
+    "A compass word is used as a room-edge datum where it would mean two things.",
+    "`north|south|east|west` alias `top|bottom|right|left` only in the root of a plan whose `north` is `up` (the default). Inside a `place`d component a datum names the component's own frame, which a turn or a mirror carries anywhere on the page, and with any other `north` (a direction or a bearing) the page's top is not north. One word must not carry both meanings, so the compiler refuses (ADR 0028 §2).",
+    "Write the frame word the message names (`top`, `bottom`, `left` or `right`).",
+    "north right\nroom id=hall at (0,0) size 4000x3000\nwall interior thickness 100 { (0, hall.north) (4000, hall.north) }   # error: write hall.top",
+  ),
+  E_DATUM_NAME: E(
+    "E_DATUM_NAME",
+    "A dotted name reads both as a room-edge datum and as an element inside an instance.",
+    "The last segment of a dotted name is read as the datum word (`west.main.top` is the `top` edge of room `west.main`). When the whole path is also the id of an element inside a `place`d instance (an instance `west` holding an element `top`), the name could mean either, and the compiler refuses rather than choose (ADR 0028 §2).",
+    "Rename the element inside the component so its id is no datum word (`top`, `bottom`, `left`, `right`, `cx`, `cy` or a compass word).",
+    "component wing() { room id=top at (0,0) size 3000x3000 }\nplace wing() as west at (0,0)\nwall interior thickness 100 { (0, west.top) (3000, west.top) }   # error: `west.top` is also an element",
+  ),
+  E_DATUM_UNPLACED: E(
+    "E_DATUM_UNPLACED",
+    "A room-edge datum names a room that has no position or no size.",
+    "A datum reads the room's placed rectangle. A relationally placed room that could not be placed (its own `E_LAYOUT_*` error says why) has no position, and a room of zero or negative size has no edge to read.",
+    "Fix the named room's placement or size first; the datum then reads it.",
+    "room id=a right-of ghost size 3000x3000\nwall interior thickness 100 { (a.left, 0) (a.left, 3000) }   # error: a could not be placed",
+  ),
   E_DIM_CURVE_REF: E(
     "E_DIM_CURVE_REF",
     "Invalid `dim radius`/`dim diameter` reference.",
@@ -233,6 +261,13 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "A `room circle at (cx,cy) radius R` has R of zero or less, so it encloses no floor — there is no area, no centroid and no containment test to compute.",
     "Give the room a positive radius in millimetres.",
     "room circle at (5000,5000) radius 0   # error: no floor",
+  ),
+  E_ROOM_NOT_RECTANGLE: E(
+    "E_ROOM_NOT_RECTANGLE",
+    "A room-edge datum names a polygon or circle room.",
+    "Datums (`top`, `bottom`, `left`, `right`, `cx`, `cy`) are the four edges and the centre of a RECTANGULAR room, the same condition relational placement refuses with `E_PLACE_POLY`. A `room polygon` or `room circle` has no such edges, and its bounding box is not its floor, so the compiler refuses instead of guessing (ADR 0028 §2).",
+    "Write the coordinate as a number, or read the datum of a rectangular room.",
+    "room id=L polygon (0,0) (6000,0) (6000,4000) (0,4000)\nwall interior thickness 100 { (L.left, 0) (L.left, 4000) }   # error: L is a polygon room",
   ),
   E_ROOM_POLY_DEGENERATE: E(
     "E_ROOM_POLY_DEGENERATE",
@@ -736,8 +771,8 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   E_UNKNOWN_REF: E(
     "E_UNKNOWN_REF",
     "Unknown reference.",
-    "An expression references a name that is not bound in scope.",
-    "Declare it with `let`, pass it as a parameter, or fix the typo.",
+    "An expression references a name that is not bound in scope, or a room-edge datum (`hall.top`) names a room the plan (or, inside a `place`d component, the component) does not have.",
+    "Declare it with `let`, pass it as a parameter, or fix the typo (for a datum, the room id before the last dot).",
     "let x = y + 1   # error if `y` is undefined",
   ),
   E_WALL_THICKNESS: E(

@@ -37,7 +37,14 @@ import type {
 import type { DoorHinge, DoorKind, DoorSlideDir, DoorSwingDir } from "./grammar/tokens.js";
 import { moduleBindings } from "./import.js";
 import { placeRelational } from "./layout.js";
-import { buildDatumTable, type DatumTable } from "./room-datums.js";
+import {
+  beforeRoomsReader,
+  functionBodyReader,
+  buildDatumTable,
+  type DatumTable,
+  tableReader,
+  type TableReaderOpts,
+} from "./room-datums.js";
 import { numberAxes } from "./axes.js";
 import type { Frame } from "./frame.js";
 import { composeFrame, makeFrame, tryTransformElement } from "./frame.js";
@@ -66,6 +73,7 @@ import {
   setEnvFallback,
   type StepLimitSignal,
   stepSite,
+  withDatumReader,
   withStepMeter,
 } from "./expr.js";
 import type { Theme } from "./theme.js";
@@ -938,22 +946,28 @@ function moduleFallback(comp: ComponentDef, diagnostics: Diagnostic[], ectx: Exp
       // reported at once the module has run (a crossing INSIDE it names the module's `let`).
       const site = currentStepSite();
       const scope = new Scope(modules.builtins);
-      expandScope(
-        bindings,
-        scope,
-        scope,
-        new Map(),
-        diagnostics,
-        0,
-        {
-          ...(file !== undefined ? { file } : {}),
-          snap: ectx.snap,
-          seenInstances: new Set<string>(),
-          executedWhiles: new Set<string>(),
-          budget: { count: 0, capped: false },
-          modules,
-        },
-        rootZoneFrame(),
+      // The module's `let`s are expansion, whoever looks a name up first: the first lookup
+      // may come from an element expression in some instance's wall pass, where that
+      // instance's datum table is being read, and the env is cached for every later caller.
+      // So a datum in a module `let` always refuses (ADR 0028 §2), never reads a table.
+      withDatumReader(beforeRoomsReader("expand"), () =>
+        expandScope(
+          bindings,
+          scope,
+          scope,
+          new Map(),
+          diagnostics,
+          0,
+          {
+            ...(file !== undefined ? { file } : {}),
+            snap: ectx.snap,
+            seenInstances: new Set<string>(),
+            executedWhiles: new Set<string>(),
+            budget: { count: 0, capped: false },
+            modules,
+          },
+          rootZoneFrame(),
+        ),
       );
       env = scope.flatten();
       modules.envs.set(bindings, env);
@@ -2102,8 +2116,9 @@ const datumTablesOfIr = new WeakMap<ResolvedPlan, ReadonlyMap<string, DatumTable
  * instance's is under its prefix (`west`, `west.inner`), in that instance's own frame. Empty
  * for a plan whose resolution was stopped or that was not resolved here.
  *
- * Internal: nothing in the language reads a table yet (room-edge datums are card PS3.2
- * part B); this is for the tests that pin what the table holds. Not part of the public surface.
+ * Internal: the language reads a table through the room-edge datums (`hall.top`,
+ * `src/room-datums.ts` `tableReader`, installed in `resolveGroup`); this accessor is for the
+ * tests that pin what the table holds. Not part of the public surface.
  */
 export function datumTablesOf(ir: ResolvedPlan): ReadonlyMap<string, DatumTable> {
   return datumTablesOfIr.get(ir) ?? new Map();
@@ -2148,7 +2163,15 @@ function resolveImpl(
   extras: ResolveExtras = {},
 ): { ir: ResolvedPlan; diagnostics: Diagnostic[] } {
   const diagnostics: Diagnostic[] = [];
-  const run = withStepMeter(extras.stepsBefore ?? 0, () => resolveBody(ast, registry, world, extras, diagnostics));
+  // Until a group's datum table is frozen, a room-edge datum is read before any room is
+  // placed: the expansion and the plan settings refuse it (ADR 0028 §2, `resolveGroup`).
+  const run = withStepMeter(extras.stepsBefore ?? 0, () =>
+    withDatumReader(
+      beforeRoomsReader("expand"),
+      () => resolveBody(ast, registry, world, extras, diagnostics),
+      functionBodyReader,
+    ),
+  );
   if ("value" in run) {
     stepsSpent.set(run.value.ir, { used: run.used, exhausted: false });
     return run.value;
@@ -2378,6 +2401,42 @@ function resolveBody(
    * pass) produced, so `compile().diagnostics` does not move. A resolution stopped by
    * `E_STEP_LIMIT` still flushes what was raised before the crossing.
    */
+  /**
+   * How a group's datums read beyond its table (ADR 0028 §2): compass words alias the frame
+   * words only in the root group of a plan whose `north` is `up`, and a dotted path that is
+   * also an element id inside an instance the group sees is refused. That id set is built
+   * the first time a datum is read in the group, charged one step per element first.
+   */
+  const datumOpts = (grp: ResolveGroup): TableReaderOpts => {
+    const north = ast.north;
+    const compassWhy = grp.frame
+      ? `inside the placed component "${grp.frame.component}" a datum names the component's own frame, not the compass`
+      : typeof north === "object"
+        ? `the plan's \`north\` is a bearing of ${fmt3(north.deg)} degrees`
+        : `the plan's \`north\` is \`${north}\``;
+    let ids: Set<string> | undefined;
+    return {
+      compassAliases: grp.frame === undefined && north === "up",
+      compassWhy,
+      instanceIds: () => {
+        if (ids) return ids;
+        const base = grp.frame?.prefix;
+        const seen = groups.filter(
+          (d) => d.frame !== undefined && d !== grp && (base === undefined || d.frame.prefix.startsWith(`${base}.`)),
+        );
+        let n = 0;
+        for (const d of seen) n += d.entries.length;
+        chargeSteps(n);
+        ids = new Set<string>();
+        for (const d of seen) {
+          const rel = base === undefined ? d.frame!.prefix : d.frame!.prefix.slice(base.length + 1);
+          for (const e of d.entries) ids.add(`${rel}.${e.id}`);
+        }
+        return ids;
+      },
+    };
+  };
+
   const resolveGroup = (
     grp: ResolveGroup,
     grpWalls: RWall[],
@@ -2434,15 +2493,22 @@ function resolveBody(
     const roomKind = order.findIndex((d) => d.kind === "room");
     let table: DatumTable;
     try {
-      if (roomKind >= 0) resolveKind(roomKind);
-      activeEntry = undefined;
-      placeRelational(relational.rooms(), snapPt, (d, room) => {
-        const out = relational.stamp(d);
-        placement.push(out);
-        ownRoomDiag(out, room);
+      // The room pass reads no datum: the table it would read does not exist yet.
+      withDatumReader(beforeRoomsReader("rooms"), () => {
+        if (roomKind >= 0) resolveKind(roomKind);
+        activeEntry = undefined;
+        placeRelational(relational.rooms(), snapPt, (d, room) => {
+          const out = relational.stamp(d);
+          placement.push(out);
+          ownRoomDiag(out, room);
+        });
       });
-      table = buildDatumTable(grpRooms, axes);
-      for (let i = 0; i < order.length; i++) if (i !== roomKind) resolveKind(i);
+      const frozen = buildDatumTable(grpRooms, axes);
+      table = frozen;
+      // Every later statement reads the frozen table (ADR 0028 §2).
+      withDatumReader(tableReader(frozen, datumOpts(grp)), () => {
+        for (let i = 0; i < order.length; i++) if (i !== roomKind) resolveKind(i);
+      });
     } finally {
       diagSink = sink;
       for (const list of byKind) for (const d of list) sink.push(d);

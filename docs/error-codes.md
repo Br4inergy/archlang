@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**103 errors** · **63 warnings**
+**108 errors** · **63 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -18,6 +18,10 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_ATTACH_WALL_REF`](#e_attach_wall_ref) | error | Opening attached to an unknown or ambiguous wall. |
 | [`E_CALL_DEPTH`](#e_call_depth) | error | Value-function call stack too deep. |
 | [`E_COLUMN_SIZE`](#e_column_size) | error | Column must have a positive size. |
+| [`E_DATUM_BEFORE_ROOMS`](#e_datum_before_rooms) | error | A room-edge datum is read before any room is placed. |
+| [`E_DATUM_COMPASS`](#e_datum_compass) | error | A compass word is used as a room-edge datum where it would mean two things. |
+| [`E_DATUM_NAME`](#e_datum_name) | error | A dotted name reads both as a room-edge datum and as an element inside an instance. |
+| [`E_DATUM_UNPLACED`](#e_datum_unplaced) | error | A room-edge datum names a room that has no position or no size. |
 | [`E_DIM_CURVE_REF`](#e_dim_curve_ref) | error | Invalid `dim radius`/`dim diameter` reference. |
 | [`E_DIV_ZERO`](#e_div_zero) | error | Division or modulo by zero. |
 | [`E_DOMAIN`](#e_domain) | error | Math domain error. |
@@ -89,6 +93,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_ROOF_WALL`](#e_roof_wall) | error | `roof overhang … wall <id>` names a wall that cannot carry a roof. |
 | [`E_ROOM_ALIGN`](#e_room_align) | error | Unknown relational alignment edge. |
 | [`E_ROOM_ALIGN_AXIS`](#e_room_align_axis) | error | Relational alignment edge belongs to the other axis. |
+| [`E_ROOM_NOT_RECTANGLE`](#e_room_not_rectangle) | error | A room-edge datum names a polygon or circle room. |
 | [`E_ROOM_POLY_DEGENERATE`](#e_room_poly_degenerate) | error | Polygon room has fewer than three effective vertices. |
 | [`E_ROOM_POLY_SELF_INTERSECT`](#e_room_poly_self_intersect) | error | Polygon room intersects itself. |
 | [`E_ROOM_RADIUS`](#e_room_radius) | error | Circular room needs a positive radius. |
@@ -283,6 +288,60 @@ let f(n) = f(n + 1)   # error: never terminates
 
 ```arch static
 column at (0,0) size 0x300   # error: width is 0
+```
+
+## E_DATUM_BEFORE_ROOMS
+
+*error* — A room-edge datum is read before any room is placed.
+
+**Cause.** A datum (`hall.top`, `hall.cx`, …) reads the frozen table of placed rooms, which exists only once every room of the group is placed (ADR 0028 §1). A `let` is evaluated once, when the plan expands, as are loop bounds, conditions, `set`, `place` and component arguments, and the plan settings (`height`, `axes`, the site boundary); a room's own `at`/`size` and relational placement run while the rooms are being placed. None of them can read a datum. Nor can the body of a user function (`let f() = hall.top`): it has no room of its own, so the edge is passed as an argument (`f(hall.top)`), which the caller evaluates.
+
+**Fix.** Write the datum in the statement that uses it (a wall point, an opening or furniture position, a dimension), or give the room numbers or a relational placement (`right-of|left-of|above|below`) instead of another room's edge.
+
+```arch static
+room id=hall at (0,0) size 4000x3000
+let x = hall.right   # error: read when the plan expands
+```
+
+## E_DATUM_COMPASS
+
+*error* — A compass word is used as a room-edge datum where it would mean two things.
+
+**Cause.** `north|south|east|west` alias `top|bottom|right|left` only in the root of a plan whose `north` is `up` (the default). Inside a `place`d component a datum names the component's own frame, which a turn or a mirror carries anywhere on the page, and with any other `north` (a direction or a bearing) the page's top is not north. One word must not carry both meanings, so the compiler refuses (ADR 0028 §2).
+
+**Fix.** Write the frame word the message names (`top`, `bottom`, `left` or `right`).
+
+```arch static
+north right
+room id=hall at (0,0) size 4000x3000
+wall interior thickness 100 { (0, hall.north) (4000, hall.north) }   # error: write hall.top
+```
+
+## E_DATUM_NAME
+
+*error* — A dotted name reads both as a room-edge datum and as an element inside an instance.
+
+**Cause.** The last segment of a dotted name is read as the datum word (`west.main.top` is the `top` edge of room `west.main`). When the whole path is also the id of an element inside a `place`d instance (an instance `west` holding an element `top`), the name could mean either, and the compiler refuses rather than choose (ADR 0028 §2).
+
+**Fix.** Rename the element inside the component so its id is no datum word (`top`, `bottom`, `left`, `right`, `cx`, `cy` or a compass word).
+
+```arch static
+component wing() { room id=top at (0,0) size 3000x3000 }
+place wing() as west at (0,0)
+wall interior thickness 100 { (0, west.top) (3000, west.top) }   # error: `west.top` is also an element
+```
+
+## E_DATUM_UNPLACED
+
+*error* — A room-edge datum names a room that has no position or no size.
+
+**Cause.** A datum reads the room's placed rectangle. A relationally placed room that could not be placed (its own `E_LAYOUT_*` error says why) has no position, and a room of zero or negative size has no edge to read.
+
+**Fix.** Fix the named room's placement or size first; the datum then reads it.
+
+```arch static
+room id=a right-of ghost size 3000x3000
+wall interior thickness 100 { (a.left, 0) (a.left, 3000) }   # error: a could not be placed
 ```
 
 ## E_DIM_CURVE_REF
@@ -1161,6 +1220,19 @@ room id=b right-of a align sideways size 3000x3000   # error: not an edge (did y
 room id=b right-of a align right size 3000x3000   # error: `right` is horizontal (did you mean `bottom`?)
 ```
 
+## E_ROOM_NOT_RECTANGLE
+
+*error* — A room-edge datum names a polygon or circle room.
+
+**Cause.** Datums (`top`, `bottom`, `left`, `right`, `cx`, `cy`) are the four edges and the centre of a RECTANGULAR room, the same condition relational placement refuses with `E_PLACE_POLY`. A `room polygon` or `room circle` has no such edges, and its bounding box is not its floor, so the compiler refuses instead of guessing (ADR 0028 §2).
+
+**Fix.** Write the coordinate as a number, or read the datum of a rectangular room.
+
+```arch static
+room id=L polygon (0,0) (6000,0) (6000,4000) (0,4000)
+wall interior thickness 100 { (L.left, 0) (L.left, 4000) }   # error: L is a polygon room
+```
+
 ## E_ROOM_POLY_DEGENERATE
 
 *error* — Polygon room has fewer than three effective vertices.
@@ -1378,9 +1450,9 @@ let x = frobnicate(2)   # error
 
 *error* — Unknown reference.
 
-**Cause.** An expression references a name that is not bound in scope.
+**Cause.** An expression references a name that is not bound in scope, or a room-edge datum (`hall.top`) names a room the plan (or, inside a `place`d component, the component) does not have.
 
-**Fix.** Declare it with `let`, pass it as a parameter, or fix the typo.
+**Fix.** Declare it with `let`, pass it as a parameter, or fix the typo (for a datum, the room id before the last dot).
 
 ```arch static
 let x = y + 1   # error if `y` is undefined

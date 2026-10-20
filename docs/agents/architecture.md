@@ -10,7 +10,8 @@ source (.arch)
   └─ src/import.ts       links `import`s through the World seam (the one I/O phase)
   └─ src/ir.ts           resolve(): scripting, grid snap, auto-ids, then per group: rooms +
                          relational placement (src/layout.ts), the frozen datum table
-                         (src/room-datums.ts), walls, host openings → ResolvedPlan
+                         (src/room-datums.ts; read by `hall.top`-style datums through the
+                         evaluator's reader, `withDatumReader`), walls, host openings → ResolvedPlan
   └─ src/scene-build.ts  toScene() → Scene (src/scene.ts)
        └─ src/wall-lowering.ts  every wall in one joinery pass (geometry/band, intersect, joinery)
   └─ src/view/           toIso(): the axonometric, a sibling of toScene (DEPRECATED, ADR 0021)
