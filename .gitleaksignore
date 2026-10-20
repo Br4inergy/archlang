@@ -179,3 +179,26 @@ aa6da412c4355a333198e3d6c94bebb4478b2aa7:test/height-byte-identity.test.ts:gener
 125094317842c845913d09480e16b202cdab78eb:test/import-module-lets.test.ts:generic-api-key:274
 125094317842c845913d09480e16b202cdab78eb:test/import-module-lets.test.ts:generic-api-key:324
 125094317842c845913d09480e16b202cdab78eb:test/import-module-lets.test.ts:generic-api-key:325
+
+# ---------------------------------------------------------------------------------------
+# 2026-10-20 — six findings, rule `generic-api-key`, the same false positive as the blocks
+# above (nightly runs 39222412780 and 39391005480). Each was opened and read before being listed.
+#
+#   test/import-module-lets.test.ts:519 at 8d8530da, :527 at c82d5dd8
+#   test/byte-identity-baseline.ts:1079,1127          at 4a32ce1e
+#   test/import-module-lets.test.ts:407               at 4a32ce1e
+#   test/while-byte-identity-baseline.ts:264          at 4a32ce1e
+#
+#           `["eval/goldens/accessible-bath.arch", "0f2e47f8…<56 more hex>"]`,
+#           `["accessible", "cdc14f20…<56 more hex>"]` and
+#           `["examples/accessible.arch", "37750afd…<56 more hex>"]` and their kin — MEASURED
+#           SHA-256 BYTE-IDENTITY BASELINES of public output, keyed by a plan whose name
+#           contains the rule's key-ish word "access". Recomputable from this repository
+#           (`test/byte-identity-digest.ts`); they grant access to nothing.
+# ---------------------------------------------------------------------------------------
+8d8530da5e1c6b68df25ac66fdef0d133c3cc814:test/import-module-lets.test.ts:generic-api-key:519
+c82d5dd89bdd450a64c9160064fefaa97bfe3f20:test/import-module-lets.test.ts:generic-api-key:527
+4a32ce1eb1e6c462bb1c69a97332fe55be6f227d:test/byte-identity-baseline.ts:generic-api-key:1079
+4a32ce1eb1e6c462bb1c69a97332fe55be6f227d:test/byte-identity-baseline.ts:generic-api-key:1127
+4a32ce1eb1e6c462bb1c69a97332fe55be6f227d:test/import-module-lets.test.ts:generic-api-key:407
+4a32ce1eb1e6c462bb1c69a97332fe55be6f227d:test/while-byte-identity-baseline.ts:generic-api-key:264
