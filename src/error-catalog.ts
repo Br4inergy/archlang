@@ -217,7 +217,7 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "E_DATUM_BEFORE_ROOMS",
     "A room-edge datum is read before any room is placed.",
     "A datum (`hall.top`, `hall.cx`, …) reads the frozen table of placed rooms, which exists only once every room of the group is placed (ADR 0028 §1). A `let` is evaluated once, when the plan expands, as are loop bounds, conditions, `set`, `place` and component arguments, and the plan settings (`height`, `axes`, the site boundary); a room's own `at`/`size` and relational placement run while the rooms are being placed. None of them can read a datum. Nor can the body of a user function (`let f() = hall.top`): it has no room of its own, so the edge is passed as an argument (`f(hall.top)`), which the caller evaluates.",
-    "Write the datum in the statement that uses it (a wall point, an opening or furniture position, a label, a dimension), or give the room numbers or a relational placement (`right-of|left-of|above|below`) instead of another room's edge.",
+    "Write the datum in the statement that uses it (a wall point, an opening or furniture position, a dimension), or give the room numbers or a relational placement (`right-of|left-of|above|below`) instead of another room's edge.",
     "room id=hall at (0,0) size 4000x3000\nlet x = hall.right   # error: read when the plan expands",
   ),
   E_DATUM_COMPASS: E(

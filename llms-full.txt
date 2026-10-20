@@ -787,7 +787,7 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `archlang e
 - `E_ATTACH_WALL_REF` — Opening attached to an unknown or ambiguous wall. **Fix:** Reference an existing, unique wall id (add `id=` to the wall if needed).
 - `E_CALL_DEPTH` — Value-function call stack too deep. **Fix:** Make the recursion terminate, or rewrite it iteratively with a bounded `while`.
 - `E_COLUMN_SIZE` — Column must have a positive size. **Fix:** Give the column a positive `size W x H`.
-- `E_DATUM_BEFORE_ROOMS` — A room-edge datum is read before any room is placed. **Fix:** Write the datum in the statement that uses it (a wall point, an opening or furniture position, a label, a dimension), or give the room numbers or a relational placement (`right-of|left-of|above|below`) instead of another room's edge.
+- `E_DATUM_BEFORE_ROOMS` — A room-edge datum is read before any room is placed. **Fix:** Write the datum in the statement that uses it (a wall point, an opening or furniture position, a dimension), or give the room numbers or a relational placement (`right-of|left-of|above|below`) instead of another room's edge.
 - `E_DATUM_COMPASS` — A compass word is used as a room-edge datum where it would mean two things. **Fix:** Write the frame word the message names (`top`, `bottom`, `left` or `right`).
 - `E_DATUM_NAME` — A dotted name reads both as a room-edge datum and as an element inside an instance. **Fix:** Rename the element inside the component so its id is no datum word (`top`, `bottom`, `left`, `right`, `cx`, `cy` or a compass word).
 - `E_DATUM_UNPLACED` — A room-edge datum names a room that has no position or no size. **Fix:** Fix the named room's placement or size first; the datum then reads it.
