@@ -414,11 +414,12 @@ original brief follows.
   this form (a test tries each and gets the refusal or a wall); the widening drill moves every wall
   and door with the room; byte identity for plans not using the form.
 
-**PS3.2 · Resolve order and room-edge datums.** part A `done`, part B `todo` (after PS3.1)
+**PS3.2 · Resolve order and room-edge datums.** part A `done`, part B in review (after PS3.1)
 - Resolve rooms and relational placement before walls, then freeze a datum table.
 - Ids are assigned before resolve, so the registry order can stay.
 - Proof: the byte-identity sweep including `compile().diagnostics`.
-- *As built, part A (PR #220):* `resolveGroup` (`src/ir.ts`) resolves each group (root or `place`d instance) as rooms, relational placement, a frozen datum table (`src/room-datums.ts`: each rectangular room's edges and centre, the root's axes; internal only, read through `datumTablesOf`), walls, then openings and the rest in registry order. Diagnostics are buffered per kind and flushed in registry order, then placement's, and the `axes` block's are held to their old step, so a resolution that completes reports exactly what it did. The table charges one step per room the group sees (descendants again in each ancestor) and per axis. `test/resolve-order-byte-identity.test.ts` pins a diagnosing corpus with `compile().diagnostics` and its order, measured on `main` before the reorder; the 470-row per-payload sweep moved nothing under the reorder commit; the PS0.5 commit and the `E_PLACE_REF` message moved 7 rows, listed in PR #220. A resolution stopped by `E_STEP_LIMIT` reports, deterministically, the diagnostics raised before the crossing in the new order, and that set may differ from the old walls-first pass (ADR 0028 §1). Part B, datums readable from the language (`r.top`), is still `todo`.
+- *As built, part A (PR #220):* `resolveGroup` (`src/ir.ts`) resolves each group (root or `place`d instance) as rooms, relational placement, a frozen datum table (`src/room-datums.ts`: each rectangular room's edges and centre, the root's axes; internal only, read through `datumTablesOf`), walls, then openings and the rest in registry order. Diagnostics are buffered per kind and flushed in registry order, then placement's, and the `axes` block's are held to their old step, so a resolution that completes reports exactly what it did. The table charges one step per room the group sees (descendants again in each ancestor) and per axis. `test/resolve-order-byte-identity.test.ts` pins a diagnosing corpus with `compile().diagnostics` and its order, measured on `main` before the reorder; the 470-row per-payload sweep moved nothing under the reorder commit; the PS0.5 commit and the `E_PLACE_REF` message moved 7 rows, listed in PR #220. A resolution stopped by `E_STEP_LIMIT` reports, deterministically, the diagnostics raised before the crossing in the new order, and that set may differ from the old walls-first pass (ADR 0028 §1).
+- *As built, part B (branch `feat/room-edge-datums`):* a dotted name whose last segment is `top|bottom|left|right|cx|cy` (or a compass alias) is read from the group's frozen table by every statement after the rooms (`src/room-datums.ts` `tableReader`, installed by `resolveGroup` through `withDatumReader` in `src/expr.ts`); before the table (expansion, `let`, plan settings, the room pass) it is `E_DATUM_BEFORE_ROOMS`. Refusals: `E_DATUM_COMPASS`, `E_DATUM_NAME`, `E_ROOM_NOT_RECTANGLE`, `E_DATUM_UNPLACED`, `E_UNKNOWN_REF` for an unknown room. A read costs the one step of the name; the first read in a group under `place` also builds its instance-id set, one step per element. `test/room-edge-datums.test.ts` pins the swap-back law (datum plan == literal twin, every storey, diagnostics included) and a digest table; every existing digest suite is unchanged.
 
 **PS3.3 · `wall … between A and B` and `wall … around [ids]`.** `todo`
 - Closed-form interval intersection and rectilinear union outline.
@@ -615,6 +616,10 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
    inside the plan (a common corridor as paving; PS2.14's dwelling work should give it a home),
    vertical stacking of partitions, oblique joins inflating `bbox_outer`, circulation share (taste).
    Re-run after PS2 lands, and count the furniture turn.
+9. **Should a `let` be able to hold a room-edge datum?** PS3.2 part B refuses it
+   (`E_DATUM_BEFORE_ROOMS`: a `let` is evaluated once, at expansion, before any room is placed).
+   The alternative considered and declined there was a deferred `let`, evaluated where it is read;
+   it forks `let` into two evaluation modes, so it becomes a card only if authors ask for it.
 
 **How to extend this document:**
 - **New evidence:** add a dated file under `research/` or `audits/`. Never rewrite an old report;
