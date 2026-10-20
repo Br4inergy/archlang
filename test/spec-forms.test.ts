@@ -640,6 +640,26 @@ const NEGATIVE: Negative[] = [
     ),
   },
   {
+    code: "E_DATUM_BEFORE_ROOMS",
+    channel: "compile",
+    note: "a `let` is evaluated before any room is placed, so it cannot read a datum",
+    src: plan(`  room id=h at (0,0) size 4000x3000\n  let x = h.right`),
+  },
+  {
+    code: "E_DATUM_COMPASS",
+    channel: "compile",
+    note: "a compass datum is refused unless the root's `north` is `up`",
+    src: plan(`  north right\n  room id=h at (0,0) size 4000x3000\n  wall interior thickness 100 { (0, h.north) (4000, 0) }`),
+  },
+  {
+    code: "E_ROOM_NOT_RECTANGLE",
+    channel: "compile",
+    note: "a polygon room exposes no datum",
+    src: plan(
+      `  room id=p polygon (0,0) (4000,0) (4000,4000) (0,4000)\n  wall interior thickness 100 { (p.left, 0) (0, 4000) }`,
+    ),
+  },
+  {
     code: "E_DOOR_KIND_CLAUSE",
     channel: "compile",
     note: "`hinge` is hinged-only",
