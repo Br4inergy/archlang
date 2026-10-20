@@ -286,7 +286,7 @@ budget (ADR 0022 §4). That is PS0.15.
 | PS0.2 | `compile -f json` (Plan JSON) drops arc segments; a round trip loses a bay and floats its window (`audits/archcanvas-public-examples.md` G2) | todo |
 | PS0.3 | Multi-storey `describe`: upper-storey rooms report `reachable:false` though a stair reaches them; an exterior door on an upper storey counts as an entrance (`audits/showcase-and-examples.md` §5.10) | todo |
 | PS0.4 | `diffPlans` reports a pure move as "resized +0.0 m²", ignores an opening whose `between` changed, and has no wall section (`research/associativity.md` §1.2). Extend additively | todo |
-| PS0.5 | `furniture … against wall … in <relational room>` fails with `E_FURN_AGAINST` because relational placement resolves after furniture (`src/ir.ts` ~2488). May fall out of PS3.2's reorder | todo |
+| PS0.5 | `furniture … against wall … in <relational room>` fails with `E_FURN_AGAINST` because relational placement resolves after furniture (`src/ir.ts` ~2488). May fall out of PS3.2's reorder. *As built (PR #220):* relational rooms are now placed before every reader, so the readers (furniture side inference and `in <room>`, a door's `swing into`, a garage door's floor probe, lint's fixture paste) read `_unplaced` instead of `_rel`: a placed relational room works and draws byte for byte as its absolute twin, and a room that could not be placed, including an instance's room read from the root, is refused naming its placement error | done |
 | PS0.6 | `suggest` connects an unreachable room to *any* reachable neighbour, a bedroom included (`src/suggest.ts` ~364-395), against `skills/archlang/SKILL.md`'s own advice. Rank by neighbour use (hall/circulation/living first, bedroom and bath last) | todo |
 | PS0.8 | `W_PATH_TOO_NARROW` measures pinches on the 100 mm grid and missed a 500 mm diagonal between a bench and a jamb (`repro/gallery-bench-pinch.arch`, `audits/archcanvas-public-examples.md` GW3). Re-measure the case first: the repro lints with the warning in isolation | todo |
 | PS0.9 | `describe` assigns a window between an enclosed room and a covered loggia to the loggia, so lint and describe disagree on bedroom windows (`audits/showcase-and-examples.md` villa-rotonda) | todo |
@@ -414,10 +414,11 @@ original brief follows.
   this form (a test tries each and gets the refusal or a wall); the widening drill moves every wall
   and door with the room; byte identity for plans not using the form.
 
-**PS3.2 · Resolve order and room-edge datums.** `todo` (after PS3.1)
+**PS3.2 · Resolve order and room-edge datums.** part A `done`, part B `todo` (after PS3.1)
 - Resolve rooms and relational placement before walls, then freeze a datum table.
 - Ids are assigned before resolve, so the registry order can stay.
 - Proof: the byte-identity sweep including `compile().diagnostics`.
+- *As built, part A (PR #220):* `resolveGroup` (`src/ir.ts`) resolves each group (root or `place`d instance) as rooms, relational placement, a frozen datum table (`src/room-datums.ts`: each rectangular room's edges and centre, the root's axes; internal only, read through `datumTablesOf`), walls, then openings and the rest in registry order. Diagnostics are buffered per kind and flushed in registry order, then placement's, and the `axes` block's are held to their old step, so a resolution that completes reports exactly what it did. The table charges one step per room the group sees (descendants again in each ancestor) and per axis. `test/resolve-order-byte-identity.test.ts` pins a diagnosing corpus with `compile().diagnostics` and its order, measured on `main` before the reorder; the 470-row per-payload sweep moved nothing. A resolution stopped by `E_STEP_LIMIT` reports, deterministically, the diagnostics raised before the crossing in the new order, and that set may differ from the old walls-first pass (ADR 0028 §1). Part B, datums readable from the language (`r.top`), is still `todo`.
 
 **PS3.3 · `wall … between A and B` and `wall … around [ids]`.** `todo`
 - Closed-form interval intersection and rectilinear union outline.

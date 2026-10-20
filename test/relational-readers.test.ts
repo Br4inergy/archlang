@@ -87,4 +87,38 @@ suite("PS0.5 — readers of a relational room", () => {
     const against = compile(UNPLACED, { noCache: true }).diagnostics.find((d) => d.code === "E_FURN_AGAINST")!;
     expect(against.message).toContain("could not be placed");
   });
+
+  it("an instance's room that could not be placed is refused when the ROOT reads it", () => {
+    // `_unplaced` survives the instance transform (`room.transform`) while `_rel` does not, so
+    // before this change a root reader took `u.side` for an absolute room at its (0,0)
+    // placeholder: main placed the table there silently (no E_PLACE_REF) and blamed the
+    // counter's faces. Every root reader now refuses it, naming the placement error.
+    const src = [
+      'plan "N" {',
+      "  units mm",
+      "  grid 50",
+      "  component unit() {",
+      '    room id=main at (0,0) size 3000x3000 label "Main"',
+      '    room id=side right-of nowhere size 2000x3000 label "Side"',
+      "  }",
+      "  place unit() as u at (0,0)",
+      "  wall id=w partition thickness 100 { (3000,0) (3000,3000) }",
+      "  door id=d on w at 1500 width 900 swing into u.side",
+      "  furniture id=f_table table in u.side centered size 1200x800",
+      "  furniture id=f_counter counter against wall w in u.side",
+      "}",
+      "",
+    ].join("\n");
+    const out = compile(src, { noCache: true }).diagnostics;
+    expect(out.map((d) => `${d.code}@${src.slice(d.span!.start).split(" ")[0]!.trim()}`)).toEqual([
+      "E_LAYOUT_REF@room",
+      "W_SWING_ROOM_NOT_ADJACENT@door",
+      "E_PLACE_REF@furniture",
+      "E_FURN_AGAINST@furniture",
+    ]);
+    expect(out[2]!.message).toBe(
+      'Furniture "f_table" is placed `in u.side`, but room "u.side" could not be placed (see its own error)',
+    );
+    expect(out[3]!.message).toContain('from room "u.side", which could not be placed');
+  });
 });

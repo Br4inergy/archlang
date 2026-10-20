@@ -147,10 +147,17 @@ suite("the resolve order: rooms, then the table, then walls", () => {
     expect(seen).toEqual([["a@0,0", "b@5000,0"]]);
   });
 
+  // A resolution stopped by E_STEP_LIMIT inside the element passes (ADR 0028 §1): "diagnostics
+  // do not reorder" covers a resolution that COMPLETES. A stopped one reports, deterministically,
+  // the diagnostics raised before the crossing in the NEW order (rooms, placement, walls, …),
+  // and that set may differ from the old walls-first pass: below, main gave
+  // [W_UNKNOWN_MATERIAL, E_STEP_LIMIT@<a later wall>] for the first plan and [E_STEP_LIMIT@<the
+  // wall>] alone for the second. Both sequences are pinned as the new behaviour.
   it("a resolution stopped inside the element passes keeps what was raised before the crossing", () => {
-    // The budget is crossed in room `b`'s size. Rooms now resolve before walls, so `a`'s
+    // The budget is crossed in room `b`'s size. Rooms resolve before walls, so `a`'s
     // E_ROOM_SIZE (raised in the room pass) is buffered when the crossing comes; the buffer
-    // is flushed, then the one E_STEP_LIMIT names `b`'s statement.
+    // is flushed, then the one E_STEP_LIMIT names `b`'s statement. The wall's
+    // W_UNKNOWN_MATERIAL was never raised: walls had not resolved yet.
     const src = plan(
       [
         "  let f(n) = if n < 2 { 1 } else { f(n - 1) + f(n - 2) }",
@@ -163,5 +170,22 @@ suite("the resolve order: rooms, then the table, then walls", () => {
     expect(out.diagnostics.map((d) => d.code)).toEqual(["E_ROOM_SIZE", "E_STEP_LIMIT"]);
     const limit = out.diagnostics[1]!;
     expect(src.slice(limit.span!.start, limit.span!.end)).toMatch(/^room id=b /);
+  }, 60_000);
+
+  it("crossing in a WALL, after the rooms and their placement have diagnosed", () => {
+    const src = plan(
+      [
+        "  let f(n) = if n < 2 { 1 } else { f(n - 1) + f(n - 2) }",
+        "  wall exterior thickness 200 { (0,0) (f(40),0) }",
+        '  room id=a at (0,0) size 0x3000 label "A"',
+        '  room id=b right-of nowhere size 3000x3000 label "B"',
+      ].join("\n"),
+    );
+    const out = compile(src, { noCache: true });
+    const at = (i: number) => src.slice(out.diagnostics[i]!.span!.start).split("\n")[0]!.trim();
+    expect(out.diagnostics.map((d) => d.code)).toEqual(["E_ROOM_SIZE", "E_LAYOUT_REF", "E_STEP_LIMIT"]);
+    expect(at(0)).toMatch(/^room id=a /);
+    expect(at(1)).toMatch(/^room id=b /);
+    expect(at(2)).toMatch(/^wall exterior /);
   }, 60_000);
 });

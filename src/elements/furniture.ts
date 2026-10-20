@@ -579,7 +579,9 @@ function placeInRoom(
   if (!room || room._unplaced) {
     ctx.diag({
       severity: "error",
-      message: `Furniture "${id}" is placed \`in ${roomId}\` but no room with that id has fixed \`at\` coordinates`,
+      message: room
+        ? `Furniture "${id}" is placed \`in ${roomId}\`, but room "${roomId}" could not be placed (see its own error)`
+        : `Furniture "${id}" is placed \`in ${roomId}\`, but no room has that id`,
       code: "E_PLACE_REF",
       span,
     });

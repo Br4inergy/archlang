@@ -2094,11 +2094,6 @@ function resolveCached(
   return out;
 }
 
-/**
- * What one resolution spent of the evaluation-step budget (`MAX_EVAL_STEPS`, `src/expr.ts`),
- * counted from the steps the storeys below it spent; `exhausted` when it crossed the budget
- * and stopped. Kept beside the IR rather than on it, so no serialisation can see it.
- */
 /** Each resolved storey's frozen datum tables (ADR 0028 §1), by instance prefix. */
 const datumTablesOfIr = new WeakMap<ResolvedPlan, ReadonlyMap<string, DatumTable>>();
 
@@ -2114,6 +2109,11 @@ export function datumTablesOf(ir: ResolvedPlan): ReadonlyMap<string, DatumTable>
   return datumTablesOfIr.get(ir) ?? new Map();
 }
 
+/**
+ * What one resolution spent of the evaluation-step budget (`MAX_EVAL_STEPS`, `src/expr.ts`),
+ * counted from the steps the storeys below it spent; `exhausted` when it crossed the budget
+ * and stopped. Kept beside the IR rather than on it, so no serialisation can see it.
+ */
 interface StepsSpent {
   used: number;
   exhausted: boolean;
