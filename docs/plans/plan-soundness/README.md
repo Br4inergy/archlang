@@ -161,6 +161,13 @@ pair.** (2026-10-18, amends D1; does not reverse it.)
 - *Reverse if:* the PS3.1 ADR finds that the exception list (`open between …`, thickness per edge,
   a load-bearing line) grows past three clauses, or the tiling preconditions reject more than a
   quarter of the corpus. Then the pairwise forms stay the headline and this one is dropped.
+- *Measured* (2026-10-21, measured by PR #222, `scripts/probe-rooms-tiling.ts`): the four
+  clause-free preconditions of ADR 0028 §3, decided exactly per storey and per group, refuse 12 of
+  253 corpus storeys (4.7 %) with no exclusions (a) and 12 of 253 with the reviewed except list
+  (b), which holds one room (the no-use terrace of `hillside-villa` level 1). All 12 are
+  `E_ROOM_NOT_RECTANGLE`; no storey overlaps, fails to tile or has a run under the partition. So
+  (b) is under the quarter. Outside the headline, the first-contact plans refuse 4 of 7 storeys, all
+  on a polygon room, three of them rectilinear L-shapes that otherwise tile (§8 question 4).
 
 **D6. The default profile keeps the dwelling-reading rules on; a plan opts out by reading as
 non-residential, not by choosing a profile.** (2026-10-20, amends PS2.18's card; does not touch D3.)
@@ -414,6 +421,14 @@ original brief follows.
 - Acceptance: the defect-corpus cases of class 2 (space not enclosed/assigned) are unwritable in
   this form (a test tries each and gets the refusal or a wall); the widening drill moves every wall
   and door with the room; byte identity for plans not using the form.
+- *Probe (part A):* `scripts/probe-rooms-tiling.ts` with its reviewed list
+  `scripts/probe-rooms-tiling.except.json` (PR #222) measures the four clause-free preconditions
+  per storey and per group (root and each `place`d instance), on a cell grid charged to the step
+  meter. It uses the group's most frequent `partition` thickness, or 100 mm when there is none.
+  Result: (a) 12/253, (b) 12/253, all `E_ROOM_NOT_RECTANGLE`. On the 241 passing storeys the form
+  would derive at most 59 partition runs (median 2) and 36 ring vertices (median 4), and 239 of them
+  already have an authored wall collinear with a derived segment. `test/rooms-tiling-probe.test.ts`
+  plants each refusal and pins both shares and the per-directory counts.
 
 **PS3.2 · Resolve order and room-edge datums.** part A `done`, part B in review (after PS3.1)
 - Resolve rooms and relational placement before walls, then freeze a datum table.
