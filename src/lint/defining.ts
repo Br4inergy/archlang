@@ -6,6 +6,7 @@
  */
 
 import { rectOf, roomUses } from "../analyze.js";
+import { navCellSizeMm, navExtent } from "../analyze/circulation.js";
 import type { UseKind } from "../ast.js";
 import { defaultFootprint } from "../fixtures-catalog.js";
 import { FURNISH_TABLE, type FurnishItem } from "../furnish-table.js";
@@ -161,18 +162,25 @@ export function pasteSet(
   // changes nothing outside itself.
   if (stmts.length > 0 && !(VERIFYING in ctx)) {
     const run = runOf(ctx);
-    const walk = mayPinch(ctx, room, here.furniture.slice(ctx.furniture.length), here.furniture);
-    // Charged before the work: one pass, and for a walk the rooms it walks (the plan's own
-    // walk, the first time, and this pass's).
-    const walkCost = walk ? ctx.rooms.length * (BASELINE.get(ctx)?.walked ? 1 : 2) : 0;
-    if (run.used + 1 > MAX_HINT_VERIFICATIONS || run.walked + walkCost > MAX_HINT_WALK_ROOMS) {
+    const unverified = (): {
+      item: FurnishItem;
+      footprint: { along: number; depth: number } | null;
+      failure: PasteFailure;
+    } => {
       if (!run.reported) {
         run.reported = true;
         ctx.skip("hint-budget");
       }
       const last = items[items.length - 1]!;
       return { item: last, footprint: footprintsOf(last, last.category)[0] ?? null, failure: "unverified" };
-    }
+    };
+    // Charged before the work: one pass, tested before any geometry is measured; then, for a
+    // walk, the rooms it walks (the plan's own walk, the first time, and this pass's), which
+    // only {@link mayPinch} can say.
+    if (run.used + 1 > MAX_HINT_VERIFICATIONS) return unverified();
+    const walk = mayPinch(ctx, room, here.furniture.slice(ctx.furniture.length), here.furniture);
+    const walkCost = walk ? ctx.rooms.length * (BASELINE.get(ctx)?.walked ? 1 : 2) : 0;
+    if (run.walked + walkCost > MAX_HINT_WALK_ROOMS) return unverified();
     run.used++;
     run.walked += walkCost;
     const wet = nearWetRoom(ctx, room);
@@ -272,7 +280,17 @@ function nearWetRoom(ctx: LintContext, room: RRoom): boolean {
  */
 function mayPinch(ctx: LintContext, room: RRoom, quoted: readonly RFurniture[], all: readonly RFurniture[]): boolean {
   if (room.poly || room.circle) return true;
-  const min = ctx.rules.minPathClearWidthMm;
+  // The walk reads widths on its nav grid, whose cell grows with the plan's area past 2500 m²
+  // (`navExtent`, the extent `buildGrid` tiles): a width reads in whole cells either side of the
+  // walk's centre (`centreFreedomToClearWidth`), so it can read narrower than the gap is. The
+  // gaps to a wall face and a doorway were measured on the finest cell (`navCellSizeMm(0)`) and
+  // absorb its rounding; a coarser grid pads them by two cells' worth of the difference (`min`).
+  // A gap to another piece or an obstacle in the room, which the review's sweeps found reading a
+  // cell short at exactly the minimum (a 700 mm gap read as 500 mm), takes one cell more
+  // (`tight`). A doubt runs the walk.
+  const cell = navExtent(ctx.rooms)?.cell ?? navCellSizeMm(0);
+  const min = ctx.rules.minPathClearWidthMm + 2 * Math.max(0, cell - navCellSizeMm(0));
+  const tight = min + cell;
   const half = Math.max(0, ...ctx.wallSegs.map((s) => s.thickness / 2));
   const x0 = room.at.x;
   const y0 = room.at.y;
@@ -300,7 +318,7 @@ function mayPinch(ctx: LintContext, room: RRoom, quoted: readonly RFurniture[], 
     // door or opening (its centre, plus half its width) runs the walk.
     if (nearDoor(p)) return true;
     // Near a wall stub, a stair, a lift or a void standing in the room (touching one included).
-    if (inside.some((o) => o(p) < min)) return true;
+    if (inside.some((o) => o(p) < tight)) return true;
     // A gap to a wall the piece is not against: only across the room (the piece flush to the
     // opposite wall, or to none) can it be a walk; a gap beside a piece flush to a wall that
     // runs past it is a dead-end recess along that wall, which no walk needs.
@@ -318,16 +336,29 @@ function mayPinch(ctx: LintContext, room: RRoom, quoted: readonly RFurniture[], 
       const fq = flush(q);
       const gx = Math.max(q.x - (p.x + p.w), p.x - (q.x + q.w));
       const gy = Math.max(q.y - (p.y + p.h), p.y - (q.y + q.h));
-      // Two pieces side by side against one wall leave a recess along it, not a walk.
-      if (gx > 0 && gy < 0 && ((fp.top && fq.top) || (fp.bottom && fq.bottom))) continue;
-      if (gy > 0 && gx < 0 && ((fp.left && fq.left) || (fp.right && fq.right))) continue;
+      // Overlapping pieces are one obstacle: the gap is measured from their union's others.
+      if (gx < 0 && gy < 0) continue;
+      // Two pieces side by side against one wall (or butted along it) leave a recess along it,
+      // or none, not a walk.
+      if (gx >= 0 && gy < 0 && ((fp.top && fq.top) || (fp.bottom && fq.bottom))) continue;
+      if (gy >= 0 && gx < 0 && ((fp.left && fq.left) || (fp.right && fq.right))) continue;
       // Two pieces on walls that meet at a corner, offset diagonally, close a corner pocket.
       const onRow = (s: typeof fp) => s.top || s.bottom;
       const onCol = (s: typeof fp) => s.left || s.right;
-      // (A pocket a doorway opens into is a walk: then it counts.)
-      if (gx > 0 && gy > 0 && ((onRow(fp) && onCol(fq)) || (onCol(fp) && onRow(fq))) && !nearDoor(q)) continue;
-      const gap = gx > 0 && gy < 0 ? gx : gy > 0 && gx < 0 ? gy : gx > 0 && gy > 0 ? Math.hypot(gx, gy) : 0;
-      if (gap > 0 && gap < min) return true;
+      // (A pocket a doorway opens into is a walk: then it counts. The pocket spans the two
+      // pieces and the corner their walls meet at.)
+      const pocket = (): { x: number; y: number; w: number; h: number } => {
+        const [row, col] = onRow(fp) && onCol(fq) ? [fp, fq] : [fq, fp];
+        const cx = col.left ? x0 : x1;
+        const cy = row.top ? y0 : y1;
+        const lx = Math.min(p.x, q.x, cx);
+        const ly = Math.min(p.y, q.y, cy);
+        return { x: lx, y: ly, w: Math.max(p.x + p.w, q.x + q.w, cx) - lx, h: Math.max(p.y + p.h, q.y + q.h, cy) - ly };
+      };
+      if (gx > 0 && gy > 0 && ((onRow(fp) && onCol(fq)) || (onCol(fp) && onRow(fq))) && !nearDoor(pocket())) continue;
+      // The gap as `rectGap` measures it: edges in line (a gap of 0 on one axis) or a corner
+      // touch (0 on both) is a gap like any other, and touching (0) is the narrowest of all.
+      if (Math.hypot(Math.max(0, gx), Math.max(0, gy)) < tight) return true;
     }
   }
   return false;

@@ -257,11 +257,13 @@ describe("a quoted set, pasted, raises nothing on multi-room fuzz (rooms on a co
   }, 180_000);
 });
 
-describe("an obstacle standing in the room runs the walk (review round 4)", () => {
+describe("an obstacle standing in the room runs the walk (review rounds 4 and 5)", () => {
   /** A kitchen beside a study it opens into, `obstacle` standing in the kitchen (the review's
    *  `stub-repro.arch`): before the walk read interior obstacles, the quoted counter, flush left
-   *  beside the obstacle, was quoted unwalked and, pasted, closed the way to the study. */
-  const plan = (obstacle: string): string => `plan "S" {
+   *  beside the obstacle, was quoted unwalked and, pasted, closed the way to the study. Round 5:
+   *  an authored piece whose edge lines up with the counter's (a gap of 0 on one axis, or a
+   *  corner touch) read as no gap at all, and the walk was skipped the same way. */
+  const plan = (obstacle: string, door = 2000, blockers = true): string => `plan "S" {
   units mm
   grid 50
   wall id=shell exterior thickness 200 { (-3000,0) (3000,0) (3000,5500) (-3000,5500) close }
@@ -271,23 +273,31 @@ describe("an obstacle standing in the room runs the walk (review round 4)", () =
   room id=r_b at (-3000,0) size 3000x4000 label "Study" uses office
   room id=r_c at (-3000,4000) size 6000x1500 label "Hall" uses hall
   door id=d_main at (-3000,4750) width 900 wall shell
-  door id=d_k at (2000,4000) width 800 wall w_c swing in
+  door id=d_k at (${door},4000) width 800 wall w_c swing in
   opening id=o_b at (0,3500) width 800 wall w_mid
   window at (1500,0) width 900 wall shell
   furniture kitchen_sink in r_k anchor top flush size 800x600
   furniture stove in r_k anchor top-left flush size 600x600
   furniture fridge in r_k anchor top-right flush size 600x600
   ${obstacle}
-  furniture wardrobe in r_k anchor right flush size 600x1800
-  furniture bookshelf in r_k anchor bottom-right flush size 600x400
-}
+${blockers ? "  furniture wardrobe in r_k anchor right flush size 600x1800\n  furniture bookshelf in r_k anchor bottom-right flush size 600x400\n" : ""}}
 `;
   it.each([
     ["a wall stub", "wall id=w_s partition thickness 100 { (700,2250) (700,4000) }"],
     ["a stair", "stair id=st at (500,2650) size 1200x900 dir up"],
-  ])("%s: the kitchen's hint quotes no set that blocks the walk", (_, obstacle) => {
-    const src = plan(obstacle);
+    ["a piece touching the counter's corner", "furniture bookshelf at (650,2300) size 100x1650 in r_k", 1700],
+    ["a piece exactly the minimum from the counter", "furniture bookshelf at (1350,2250) size 100x1700 in r_k", 1700],
+    [
+      "a piece closing a corner pocket the study opens into",
+      "furniture bookshelf at (1150,2350) size 100x1600 in r_k",
+      2500,
+      false,
+    ],
+  ])("%s: the kitchen's hint quotes no set that blocks the walk", (_, obstacle, door?: number, blockers?: boolean) => {
+    const src = plan(obstacle, door, blockers);
     const ds = lint(src);
+    // The walk is clear before: whatever the paste would add is the set's.
+    expect(ds.filter((d) => d.code === "W_PATH_TOO_NARROW")).toEqual([]);
     const hint = ds.find((d) => CONTENTS.has(d.code!) && d.message.includes('"Kitchen"'))!.hints![0]!;
     const stmts = [...hint.matchAll(/`(furniture [^`]+)`/g)].map((m) => m[1]!).filter((q) => !q.endsWith("…"));
     const before = new Set(ds.map(finding));
