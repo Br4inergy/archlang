@@ -944,7 +944,7 @@ reports `E_LAYOUT_UNPLACED` naming it. See the dedicated guide page for the plac
 **Room-edge datums.** A rectangular room `r` exposes its edge lines and centre as numbers:
 `r.top`, `r.bottom`, `r.left`, `r.right` (`+y` runs down the page, so `top` is the smaller
 `y`) and `r.cx`, `r.cy`. They are read wherever a coordinate or length is: wall points, door,
-window and opening positions, furniture `at`, labels, dimensions, and any arithmetic in them.
+window and opening positions, furniture `at`, dimensions, and any arithmetic in them.
 The value snaps to the plan `grid` like any other coordinate, so a `cx` on a half grid snaps
 as the same literal would; a plan written with datums draws, describes and lints byte for
 byte like its twin written with the numbers they stand for.
@@ -961,7 +961,8 @@ Datums are read from the rooms once every room is placed ([ADR 0028](adr/0028-ro
 that resolve after the rooms can read them. A `let`, a loop bound or condition, a `place`,
 a component argument, a plan setting (`height`, `axes`, the site boundary) and a room's own
 `at`/`size` or relational clause are evaluated earlier, and a datum there reports
-`E_DATUM_BEFORE_ROOMS`; write the datum in the statement that uses it.
+`E_DATUM_BEFORE_ROOMS`; write the datum in the statement that uses it. A function body has no
+room of its own, so `let f() = hall.top` refuses when called; pass the edge in: `f(hall.top)`.
 
 - **Compass words.** `north|south|east|west` alias `top|bottom|right|left` only in the root of
   a plan whose `north` is `up` (the default). Inside a `place`d component, or with any other

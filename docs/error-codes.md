@@ -294,7 +294,7 @@ column at (0,0) size 0x300   # error: width is 0
 
 *error* — A room-edge datum is read before any room is placed.
 
-**Cause.** A datum (`hall.top`, `hall.cx`, …) reads the frozen table of placed rooms, which exists only once every room of the group is placed (ADR 0028 §1). A `let` is evaluated once, when the plan expands, as are loop bounds, conditions, `set`, `place` and component arguments, and the plan settings (`height`, `axes`, the site boundary); a room's own `at`/`size` and relational placement run while the rooms are being placed. None of them can read a datum.
+**Cause.** A datum (`hall.top`, `hall.cx`, …) reads the frozen table of placed rooms, which exists only once every room of the group is placed (ADR 0028 §1). A `let` is evaluated once, when the plan expands, as are loop bounds, conditions, `set`, `place` and component arguments, and the plan settings (`height`, `axes`, the site boundary); a room's own `at`/`size` and relational placement run while the rooms are being placed. None of them can read a datum. Nor can the body of a user function (`let f() = hall.top`): it has no room of its own, so the edge is passed as an argument (`f(hall.top)`), which the caller evaluates.
 
 **Fix.** Write the datum in the statement that uses it (a wall point, an opening or furniture position, a label, a dimension), or give the room numbers or a relational placement (`right-of|left-of|above|below`) instead of another room's edge.
 
