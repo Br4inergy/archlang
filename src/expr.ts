@@ -790,15 +790,30 @@ export function withStepMeter<T>(
  */
 export type DatumReader = (name: string, span: Span | undefined, onError: (d: Diagnostic) => void) => Value | undefined;
 let datumReader: DatumReader | undefined;
+/** The reader a user function's BODY is evaluated under, by the function's name: a body has
+ *  no room of its own, so it refuses every datum (its arguments are evaluated before, at the
+ *  call site, under the caller's reader). Inherited by nested {@link withDatumReader} calls
+ *  that do not name one. */
+let bodyReader: ((fn: string) => DatumReader) | undefined;
 
-/** Run `fn` with `reader` as the datum reader, restoring the previous one after. */
-export function withDatumReader<T>(reader: DatumReader | undefined, fn: () => T): T {
+/**
+ * Run `fn` with `reader` as the datum reader (and, when given, `inBody` as the reader of a
+ * function body), restoring the previous ones after.
+ */
+export function withDatumReader<T>(
+  reader: DatumReader | undefined,
+  fn: () => T,
+  inBody?: (fn: string) => DatumReader,
+): T {
   const outer = datumReader;
+  const outerBody = bodyReader;
   datumReader = reader;
+  if (inBody !== undefined) bodyReader = inBody;
   try {
     return fn();
   } finally {
     datumReader = outer;
+    bodyReader = outerBody;
   }
 }
 
@@ -984,6 +999,17 @@ function evalCall(e: Extract<Expr, { t: "call" }>, env: Env, onError: (d: Diagno
     callee.params.forEach((p, i) => {
       callEnv.set(p, args[i] ?? NUM0);
     });
+    // The arguments above were evaluated under the caller's datum reader; the body reads no
+    // datum (it would bind room names at the call site), so it runs under the body reader.
+    if (datumReader !== undefined && bodyReader !== undefined) {
+      const outer = datumReader;
+      datumReader = bodyReader(e.callee);
+      try {
+        return evalExpr(callee.body, callEnv, onError, depth + 1);
+      } finally {
+        datumReader = outer;
+      }
+    }
     return evalExpr(callee.body, callEnv, onError, depth + 1);
   }
   if (callee && callee.t === "builtin" && builtinDispatch) {

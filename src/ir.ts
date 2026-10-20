@@ -39,6 +39,7 @@ import { moduleBindings } from "./import.js";
 import { placeRelational } from "./layout.js";
 import {
   beforeRoomsReader,
+  functionBodyReader,
   buildDatumTable,
   type DatumTable,
   tableReader,
@@ -945,22 +946,28 @@ function moduleFallback(comp: ComponentDef, diagnostics: Diagnostic[], ectx: Exp
       // reported at once the module has run (a crossing INSIDE it names the module's `let`).
       const site = currentStepSite();
       const scope = new Scope(modules.builtins);
-      expandScope(
-        bindings,
-        scope,
-        scope,
-        new Map(),
-        diagnostics,
-        0,
-        {
-          ...(file !== undefined ? { file } : {}),
-          snap: ectx.snap,
-          seenInstances: new Set<string>(),
-          executedWhiles: new Set<string>(),
-          budget: { count: 0, capped: false },
-          modules,
-        },
-        rootZoneFrame(),
+      // The module's `let`s are expansion, whoever looks a name up first: the first lookup
+      // may come from an element expression in some instance's wall pass, where that
+      // instance's datum table is being read, and the env is cached for every later caller.
+      // So a datum in a module `let` always refuses (ADR 0028 §2), never reads a table.
+      withDatumReader(beforeRoomsReader("expand"), () =>
+        expandScope(
+          bindings,
+          scope,
+          scope,
+          new Map(),
+          diagnostics,
+          0,
+          {
+            ...(file !== undefined ? { file } : {}),
+            snap: ectx.snap,
+            seenInstances: new Set<string>(),
+            executedWhiles: new Set<string>(),
+            budget: { count: 0, capped: false },
+            modules,
+          },
+          rootZoneFrame(),
+        ),
       );
       env = scope.flatten();
       modules.envs.set(bindings, env);
@@ -2159,7 +2166,11 @@ function resolveImpl(
   // Until a group's datum table is frozen, a room-edge datum is read before any room is
   // placed: the expansion and the plan settings refuse it (ADR 0028 §2, `resolveGroup`).
   const run = withStepMeter(extras.stepsBefore ?? 0, () =>
-    withDatumReader(beforeRoomsReader("expand"), () => resolveBody(ast, registry, world, extras, diagnostics)),
+    withDatumReader(
+      beforeRoomsReader("expand"),
+      () => resolveBody(ast, registry, world, extras, diagnostics),
+      functionBodyReader,
+    ),
   );
   if ("value" in run) {
     stepsSpent.set(run.value.ir, { used: run.used, exhausted: false });

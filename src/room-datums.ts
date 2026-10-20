@@ -162,6 +162,26 @@ export function beforeRoomsReader(phase: DatumPhase): DatumReader {
   };
 }
 
+/**
+ * The reader a user function's body is evaluated under (`withDatumReader`'s `inBody`): a
+ * body has no room of its own, so reading a datum there would bind the room name at each
+ * call site. It is refused with `E_DATUM_BEFORE_ROOMS`; the edge is passed as an argument
+ * instead, which the caller evaluates under its own reader.
+ */
+export function functionBodyReader(fn: string): DatumReader {
+  return (name, span, onError) => {
+    const d = splitDatum(name);
+    if (d === undefined) return undefined;
+    onError({
+      severity: "error",
+      message: `\`${name}\` is read inside the body of \`${fn}\`, which has no room of its own; pass the edge as an argument: \`${fn}(${name})\``,
+      code: "E_DATUM_BEFORE_ROOMS",
+      ...(span ? { span } : {}),
+    });
+    return NUM0;
+  };
+}
+
 /** What a group's table reader needs beside the table. */
 export interface TableReaderOpts {
   /** Compass words alias the frame words: the root group of a plan whose `north` is `up`. */
@@ -175,7 +195,7 @@ export interface TableReaderOpts {
 
 /**
  * The reader of one group's frozen table, in force for every statement that resolves after
- * the group's rooms (walls, openings, furniture, labels, dimensions, …). Refusals, each at
+ * the group's rooms (walls, openings, furniture, dimensions, …). Refusals, each at
  * the datum's span:
  *
  * - `E_DATUM_NAME` when the whole dotted path is also an element id inside an instance (an

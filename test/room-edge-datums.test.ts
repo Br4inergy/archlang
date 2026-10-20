@@ -20,7 +20,7 @@
  */
 
 import { describe as suite, expect, it } from "vitest";
-import { compile, describe as describePlan, lint } from "../src/index.js";
+import { compile, describe as describePlan, lint, makeVirtualWorld } from "../src/index.js";
 import { link } from "../src/import.js";
 import { clearResolveCache, datumTablesOf, evaluationSteps, resolve, resolveAll, type RFurniture } from "../src/ir.js";
 import { parse } from "../src/parser.js";
@@ -106,6 +106,13 @@ function steps(src: string): number {
   const { plan } = parse(src, BUILTIN_REGISTRY);
   if (!plan) throw new Error("the test plan did not parse");
   return evaluationSteps(resolveAll(link(plan, NULL_WORLD, BUILTIN_REGISTRY).plan, BUILTIN_REGISTRY, NULL_WORLD));
+}
+
+function irWith(src: string, files: Record<string, string>) {
+  const world = makeVirtualWorld(files);
+  const { plan } = parse(src, BUILTIN_REGISTRY);
+  if (!plan) throw new Error("the test plan did not parse");
+  return resolve(link(plan, world, BUILTIN_REGISTRY).plan, BUILTIN_REGISTRY, world).ir;
 }
 
 function irOf(src: string) {
@@ -195,6 +202,7 @@ suite("E_DATUM_BEFORE_ROOMS: a datum read before the table exists", () => {
     ["a room's own size", `${HALL}  room id=b at (5000, 0) size hall.right x 1000`],
     ["a relational gap", `${HALL}  room id=b right-of hall gap hall.cx size 1000x1000`],
     ["a place", `${HALL}  component c() { room at (0,0) size 1000x1000 }\n  place c() as k at (hall.right, 0)`],
+    ["a set", `${HALL}  set door(width: hall.right / 3)`],
   ])("%s", (_, body) => {
     const src = wrap(body);
     expect(refused(src, "E_DATUM_BEFORE_ROOMS")).toEqual([
@@ -303,6 +311,100 @@ suite("rooms that expose no datum", () => {
     const src = wrap(`${HALL}  wall interior thickness 100 { (hall.width, 0) (0, 3000) }`);
     const d = compile(src, { noCache: true }).diagnostics.filter((x) => x.code === "E_UNKNOWN_REF");
     expect(d.map((x) => x.message)).toEqual(['Unknown name "hall.width"']);
+  });
+});
+
+// ---- scopes a datum must not leak through ------------------------------------------------
+
+suite("an imported module's `let` is expansion, whoever looks it up first", () => {
+  // The module's `let`s are expanded lazily, on the first fallback lookup, and cached for
+  // every component of the module. Red-team probe: the first lookup came from an instance's
+  // wall pass, read THAT instance's table, and the other component reused the value, so
+  // swapping the two `place` lines moved the drawing with no diagnostic.
+  const mod = (e: string): string => `plan "m" {
+  units mm
+  let E = ${e}
+  component a() {
+    room id=main at (0,0) size 3000x2000
+    wall interior thickness 100 { (0, E) (3000, E) }
+  }
+  component b() {
+    room id=main at (0,0) size 5000x5000
+    wall interior thickness 100 { (0, E) (5000, E) }
+  }
+}
+`;
+  const DATUM = mod("main.bottom");
+  const LITERAL = mod("0");
+  const root = (first: string, second: string): string =>
+    wrap(
+      `  import "m.arch": a, b\n  place ${first}() as p${first} at (0,0)\n  place ${second}() as p${second} at (10000,0)`,
+    );
+
+  for (const [first, second] of [
+    ["a", "b"],
+    ["b", "a"],
+  ] as const) {
+    it(`refuses in m.arch, at the datum, with \`${first}\` placed first`, () => {
+      const src = root(first, second);
+      const out = compile(src, { world: makeVirtualWorld({ "m.arch": DATUM }), noCache: true });
+      const d = out.diagnostics.filter((x) => x.code === "E_DATUM_BEFORE_ROOMS");
+      expect(d.map((x) => [x.file, DATUM.slice(x.span!.start, x.span!.end)])).toEqual([["m.arch", "main.bottom"]]);
+      // An error draws nothing, so the rest is read off the resolved walls: in either order
+      // both components' walls sit where the module with the refused value's 0 puts them.
+      const walls = (m: string) =>
+        irWith(src, { "m.arch": m })
+          .walls.map((w) => [w.id, w.points])
+          .sort((x, y) => String(x[0]).localeCompare(String(y[0])));
+      expect(walls(DATUM)).toEqual(walls(LITERAL));
+      // Neither component read the other's (or its own) room: every wall is at E = 0.
+      const ys = walls(DATUM).flatMap((w) => (w[1] as { y: number }[]).map((p) => p.y));
+      expect(ys).toEqual([0, 0, 0, 0]);
+    });
+  }
+});
+
+suite("a function body has no room of its own", () => {
+  it("refuses a datum in the body of a root function called from an instance's wall", () => {
+    const src = wrap(`  let f() = main.bottom
+  component c(h) {
+    room id=main at (0,0) size 3000x h
+    wall interior thickness 100 { (0, f()) (3000, f()) }
+  }
+  place c(2000) as k at (0,0)`);
+    const d = compile(src, { noCache: true }).diagnostics.filter((x) => x.code === "E_DATUM_BEFORE_ROOMS");
+    expect(d.map((x) => src.slice(x.span!.start, x.span!.end))).toEqual(["main.bottom", "main.bottom"]);
+    expect(d[0]!.message).toMatch(/inside the body of `f`.*pass the edge as an argument: `f\(main\.bottom\)`/);
+  });
+
+  it("refuses a function written inside a component body reading that component's room", () => {
+    const src = wrap(`  component c() {
+    room id=main at (0,0) size 3000x2000
+    let g() = main.bottom
+    wall interior thickness 100 { (0, g()) (3000, g()) }
+  }
+  place c() as k at (0,0)`);
+    expect(refused(src, "E_DATUM_BEFORE_ROOMS")).toEqual(["main.bottom", "main.bottom"]);
+  });
+
+  it("an edge passed as an argument from a wall works, and draws as the literal twin", () => {
+    const fn = (arg: string): string =>
+      wrap(`  let f(y) = y - 500
+  component c() {
+    room id=main at (0,0) size 3000x2000
+    wall interior thickness 100 { (0, f(${arg})) (3000, f(${arg})) }
+  }
+  place c() as k at (0,0) rotate 90`);
+    const datum = fn("main.bottom");
+    expect(compile(datum, { noCache: true }).diagnostics).toEqual([]);
+    expect(allStoreysDiagnosticsPayload(API, datum)).toBe(allStoreysDiagnosticsPayload(API, fn("2000")));
+  });
+
+  it("the same argument from a `let` still refuses, as an expansion read", () => {
+    const src = wrap(`${HALL}  let f(y) = y - 500\n  let x = f(hall.bottom)`);
+    const d = compile(src, { noCache: true }).diagnostics.filter((x) => x.code === "E_DATUM_BEFORE_ROOMS");
+    expect(d.map((x) => src.slice(x.span!.start, x.span!.end))).toEqual(["hall.bottom"]);
+    expect(d[0]!.message).toMatch(/when the plan expands/);
   });
 });
 
