@@ -153,6 +153,17 @@ export interface LintRule {
   name: string;
   /** The family the coverage report files this rule's runs and skips under. */
   family: LintFamily;
+  /**
+   * The rule's output can move when furniture is added to a room in a way the per-piece
+   * placement checks of a quoted fixture hint do not see (plan-soundness PS2.17): a hint's set
+   * of pieces is re-linted against these rules alone before it is quoted. Set only on the rules
+   * whose output a pasted hint was measured to move (`test/lint-hint-paste.test.ts` holds the
+   * list). `"walk"` marks a rule that walks the whole storey (a nav model per pass), run only
+   * when a quoted piece stands closer than the walk's minimum clear width to something;
+   * `"wet-door"` a rule that reads furniture only to judge a doorway between a wet room and the
+   * room the pieces stand in, run only when that room is a bath or WC or opens onto one.
+   */
+  readsFurniture?: true | "walk" | "wet-door";
   check(ctx: LintContext): Diagnostic[];
 }
 

@@ -107,7 +107,7 @@ export function placementClear(
  * edge to back onto; no clear run on any; the grid snaps the footprint to nothing; or a run
  * that IS clear at exact coordinates, which the grid only lets `at` reach off the wall face.
  */
-export type PasteFailure = "no-wall" | "no-room" | "grid" | "grid-offset" | "squeeze" | "raises";
+export type PasteFailure = "no-wall" | "no-room" | "grid" | "grid-offset" | "squeeze" | "raises" | "unverified";
 
 /**
  * The statement that places one `category` fixture clear in `room`, or why there is none.

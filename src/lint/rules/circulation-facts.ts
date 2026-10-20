@@ -650,6 +650,7 @@ function namedClause(doors: readonly AccessEdge[] | null, width: number, ctx: Li
 export const pathTooNarrow: LintRule = {
   name: "path-too-narrow",
   family: "circulation",
+  readsFurniture: "walk",
   check(ctx: LintContext): Diagnostic[] {
     // This storey has started: it no longer needs a measure kept back for it.
     if (ctx.building.attributionMeasures) ctx.building.attributionMeasures.storeys--;

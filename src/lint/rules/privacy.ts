@@ -584,6 +584,7 @@ function viaPrivateHints(
 export const wetRoomDoor: LintRule = {
   name: "wet-room-door",
   family: "privacy",
+  readsFurniture: "wet-door",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const f = classifiedFactsOf(ctx);

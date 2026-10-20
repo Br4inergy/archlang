@@ -125,9 +125,11 @@ export function pasteFailureWhy(ctx: LintContext, failure: PasteFailure): string
         ? "the placement found would squeeze the walk below its minimum clear width (`W_PATH_TOO_NARROW`), so make room first"
         : failure === "raises"
           ? "the placement found would raise another finding, so place it by hand"
-          : failure === "no-wall"
-            ? "it has no straight wall running square to the page for one to back onto, so give it one or place the fixture with `at (x,y)` and `rotate`"
-            : "no wall of it has a run clear of its doors and furniture for one, so make room first";
+          : failure === "unverified"
+            ? "this lint run has checked as many quoted placements as it may (`hint-budget` in the coverage report), so none is quoted; place it by hand"
+            : failure === "no-wall"
+              ? "it has no straight wall running square to the page for one to back onto, so give it one or place the fixture with `at (x,y)` and `rotate`"
+              : "no wall of it has a run clear of its doors and furniture for one, so make room first";
 }
 
 /** What a room held to a per-use floor is called in the `W_ROOM_TOO_SMALL` message. */
