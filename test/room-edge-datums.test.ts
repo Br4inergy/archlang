@@ -26,7 +26,7 @@ import { clearResolveCache, datumTablesOf, evaluationSteps, resolve, resolveAll,
 import { parse } from "../src/parser.js";
 import { BUILTIN_REGISTRY } from "../src/registry.js";
 import { NULL_WORLD } from "../src/world.js";
-import type { CompilerApi } from "./byte-identity-digest.js";
+import { allStoreysDigestWithDiagnostics, type CompilerApi } from "./byte-identity-digest.js";
 import { allStoreysDiagnosticsPayload } from "./byte-identity-payload.js";
 
 const API: CompilerApi = { compile, describe: describePlan, lint };
@@ -304,4 +304,31 @@ suite("rooms that expose no datum", () => {
     const d = compile(src, { noCache: true }).diagnostics.filter((x) => x.code === "E_UNKNOWN_REF");
     expect(d.map((x) => x.message)).toEqual(['Unknown name "hall.width"']);
   });
+});
+
+// ---- the digest table --------------------------------------------------------------------
+
+/**
+ * `allStoreysDigestWithDiagnostics` of each datum plan, pinned once the form worked and the
+ * swap-back law above held for every row (so each digest is ALSO its literal twin's). A moved
+ * row is a finding to explain (`docs/testing.md` §3), never a re-pin.
+ */
+const DIGESTS: [string, string][] = [
+  ["plain", "875a87173789e8308f1c2af571d6cd8afe206395f0eaa057d72457d07efe3531"],
+  ["frames", "8c96285f5d4d33104b6046eeb8990fa0f5f3e9da36e61bc871abc9c0480a5334"],
+  ["compass", "ae3594f0782bb6bda8160b6c6e31ef8d37eaa11fc997f18360762496311ed2d7"],
+  ["half-grid", "245f7253919ce9891fea4d1005eda89a4caa211ba28754c53fd2d5b58f26856c"],
+];
+
+suite("datum plans: digest table", () => {
+  it("pins every twin", () => {
+    expect(DIGESTS.map((d) => d[0])).toEqual(TWINS.map((t) => t[0]));
+  });
+  for (const [name, digest] of DIGESTS) {
+    it(name, () => {
+      const twin = TWINS.find((t) => t[0] === name)!;
+      expect(allStoreysDigestWithDiagnostics(API, twin[1])).toBe(digest);
+      expect(allStoreysDigestWithDiagnostics(API, twin[2])).toBe(digest);
+    });
+  }
 });
