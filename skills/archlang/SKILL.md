@@ -105,6 +105,10 @@ physically wrong (openings off their wall, furniture through walls). Author by *
   instead, and `flush inset 50` from 50 mm off it — so write `furniture wc in r_bath anchor bottom flush
   size 400x700`, not an `inset 100` you worked out from a thickness you never named. (`flush` needs an
   anchored edge: on `centered`/`anchor center` it is `E_FURN_FLUSH`.)
+- **Read wall points off the rooms.** A rectangular room `r` exposes `r.top`, `r.bottom`, `r.left`,
+  `r.right`, `r.cx`, `r.cy`, so `wall partition thickness 100 { (hall.right, hall.top) (hall.right,
+  hall.bottom) }` follows the room when it grows. Use them in walls, openings, furniture and dims,
+  not in a `let` or a room's own `at`/`size` (`E_DATUM_BEFORE_ROOMS`).
 - **Every room still needs a way in** — put a `door` or cased `opening` on a wall of *every* room
   (an open-plan space still needs a modeled opening), and keep furniture out of the doorway approach
   (≥300 mm) and the leaf's swing.

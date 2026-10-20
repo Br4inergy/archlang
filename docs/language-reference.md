@@ -941,6 +941,40 @@ A reference cycle reports [`E_LAYOUT_CYCLE`](error-codes.md) (on the rooms of th
 reference reports `E_LAYOUT_REF`. A room that depends on a room that could not be placed, or on a cycle,
 reports `E_LAYOUT_UNPLACED` naming it. See the dedicated guide page for the placement arithmetic.
 
+**Room-edge datums.** A rectangular room `r` exposes its edge lines and centre as numbers:
+`r.top`, `r.bottom`, `r.left`, `r.right` (`+y` runs down the page, so `top` is the smaller
+`y`) and `r.cx`, `r.cy`. They are read wherever a coordinate or length is: wall points, door,
+window and opening positions, furniture `at`, labels, dimensions, and any arithmetic in them.
+The value snaps to the plan `grid` like any other coordinate, so a `cx` on a half grid snaps
+as the same literal would; a plan written with datums draws, describes and lints byte for
+byte like its twin written with the numbers they stand for.
+
+```
+room id=hall at (0,0) size 4000x3000 label "Hall"
+room id=bed right-of hall size 3000x3000 label "Bed"
+wall exterior thickness 200 { (hall.left, hall.top) (bed.right, bed.top) (bed.right, bed.bottom) (hall.left, hall.bottom) close }
+wall partition thickness 100 { (hall.right, hall.top) (hall.right, hall.bottom) }
+door at (hall.right, hall.cy) width 800
+```
+
+Datums are read from the rooms once every room is placed ([ADR 0028](adr/0028-rooms-primary-derived-walls.md)), so only statements
+that resolve after the rooms can read them. A `let`, a loop bound or condition, a `place`,
+a component argument, a plan setting (`height`, `axes`, the site boundary) and a room's own
+`at`/`size` or relational clause are evaluated earlier, and a datum there reports
+`E_DATUM_BEFORE_ROOMS`; write the datum in the statement that uses it.
+
+- **Compass words.** `north|south|east|west` alias `top|bottom|right|left` only in the root of
+  a plan whose `north` is `up` (the default). Inside a `place`d component, or with any other
+  `north` (a direction or a bearing), they report `E_DATUM_COMPASS`: write the frame word.
+- **Frames.** Inside a component a datum is a word of the component's own frame; a `place …
+  rotate 90` or `mirror x` carries it as it carries the coordinates. From the root,
+  `west.main.top` is the placed room `west.main`'s edge in page words (the last dotted segment
+  is the datum). A component sees only its own rooms. A path that is also an element id
+  inside the instance (an instance `west` holding an element `top`) reports `E_DATUM_NAME`.
+- **No datum.** A `polygon` or `circle` room reports `E_ROOM_NOT_RECTANGLE`; a room that could
+  not be placed, or has no positive size, `E_DATUM_UNPLACED`; an unknown room `E_UNKNOWN_REF`
+  with the closest room id as a hint.
+
 ### Polygonal rooms (v1.23)
 
 ```
