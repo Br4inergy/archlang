@@ -150,9 +150,10 @@ suite("the resolve order: rooms, then the table, then walls", () => {
   // A resolution stopped by E_STEP_LIMIT inside the element passes (ADR 0028 §1): "diagnostics
   // do not reorder" covers a resolution that COMPLETES. A stopped one reports, deterministically,
   // the diagnostics raised before the crossing in the NEW order (rooms, placement, walls, …),
-  // and that set may differ from the old walls-first pass: below, main gave
-  // [W_UNKNOWN_MATERIAL, E_STEP_LIMIT@<a later wall>] for the first plan and [E_STEP_LIMIT@<the
-  // wall>] alone for the second. Both sequences are pinned as the new behaviour.
+  // and that set may differ from the old walls-first pass. On main, the first plan below (one
+  // `marble` wall, room `a` 0x3000, room `b` sized f(40)) gave [W_UNKNOWN_MATERIAL, E_ROOM_SIZE
+  // (room a), E_STEP_LIMIT@room b]; the second (a wall at f(40), room `a` 0x3000, room `b`
+  // right-of nowhere) gave [E_STEP_LIMIT@the wall] alone. Both new sequences are pinned.
   it("a resolution stopped inside the element passes keeps what was raised before the crossing", () => {
     // The budget is crossed in room `b`'s size. Rooms resolve before walls, so `a`'s
     // E_ROOM_SIZE (raised in the room pass) is buffered when the crossing comes; the buffer
