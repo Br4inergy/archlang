@@ -11,7 +11,9 @@
  *   - over a fixed-seed sample of PS2.9's fuzz plans, every quoted statement, appended to its
  *     plan and compiled, lands exactly on the footprint the check placed (so a text that
  *     disagrees with its checked piece, such as a dropped `rotate`, is caught), and pasting a
- *     whole quoted set gains no finding.
+ *     whole quoted set gains no finding;
+ *   - the same over multi-room fuzz (rooms on a corridor, openings between them), where a set
+ *     can send the walk the long way round.
  */
 
 import { readFileSync } from "node:fs";
@@ -102,6 +104,71 @@ ${extra}}
   }
 }
 
+/**
+ * Multi-room fuzz (PR #216 review round 4): four rooms on a corridor, kitchens beside baths and
+ * WCs, with a door or an opening between neighbours. A quoted set can close the way THROUGH a
+ * room here, sending the walk round (`W_CIRCUITOUS_PATH`), which one room off a hall cannot.
+ */
+function* corpusMulti(seed0: number, n: number): Generator<string> {
+  let seed = seed0;
+  const rnd = (): number => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  const pick = <T>(a: readonly T[]): T => a[Math.floor(rnd() * a.length)]!;
+  const g = (v: number) => 50 * Math.round(v / 50);
+  for (let k = 0; k < n; k++) {
+    const kinds = [
+      "kitchen",
+      pick(["bath", "wc", "bath"]),
+      pick(["bedroom", "living", "kitchen dining", "living kitchen"]),
+      pick(["bath", "bedroom", "living"]),
+    ];
+    if (rnd() < 0.5) [kinds[0], kinds[1]] = [kinds[1]!, kinds[0]!];
+    const ws = kinds.map(() => g(1500 + rnd() * 2600));
+    const H = g(1600 + rnd() * 2600);
+    const C = g(900 + rnd() * 700);
+    const W = ws.reduce((a, b) => a + b, 0);
+    let s = `plan "M" {
+  units mm
+  grid 50
+`;
+    s += `  wall id=shell exterior thickness 200 { (0,0) (${W},0) (${W},${H + C}) (0,${H + C}) close }
+`;
+    s += `  wall id=w_c partition thickness 100 { (0,${H}) (${W},${H}) }
+`;
+    s += `  room id=r_c at (0,${H}) size ${W}x${C} label "Corridor" uses circulation
+`;
+    s += `  door id=d_main at (0,${H + C / 2}) width 900 wall shell
+`;
+    let x = 0;
+    kinds.forEach((u, i) => {
+      const w = ws[i]!;
+      if (i > 0)
+        s += `  wall id=w_${i} partition thickness 100 { (${x},0) (${x},${H}) }
+`;
+      s += `  room id=r_${i} at (${x},0) size ${w}x${H} label "Room ${i}" uses ${u}
+`;
+      if (rnd() < 0.85 || i === 0)
+        s += `  door id=d_${i} at (${x + g(450 + rnd() * (w - 900))},${H}) width 800 wall w_c swing ${pick(["in", "out"])}
+`;
+      if (i > 0 && rnd() < 0.45) {
+        const kind = pick(["door", "opening"]);
+        const y = g(500 + rnd() * (H - 1000));
+        const swing = rnd() < 0.5 && kind === "door" ? " swing in" : "";
+        s += `  ${kind} id=d_x${i} at (${x},${y}) width 800 wall w_${i}${swing}
+`;
+      }
+      if (rnd() < 0.8)
+        s += `  window at (${x + g(300 + rnd() * (w - 900))},0) width 600 wall shell
+`;
+      x += w;
+    });
+    yield `${s}}
+`;
+  }
+}
+
 const append = (src: string, stmts: readonly string[]): string =>
   src.replace(/\n}\s*$/, `\n${stmts.map((s) => `  ${s}`).join("\n")}\n}\n`);
 const CONTENTS = new Set(["W_ROOM_NO_FIXTURE", "W_ROOM_MISSING_DEFINING"]);
@@ -145,6 +212,91 @@ describe("a quoted set, pasted, is what was checked and raises nothing (fixed-se
     // Not vacuous: most sampled rooms have a defining set the hint quotes.
     expect(quoted).toBeGreaterThan(200);
   }, 120_000);
+});
+
+describe("a quoted set, pasted, raises nothing on multi-room fuzz (rooms on a corridor)", () => {
+  it("lands on its checked footprints and gains no finding, the walk round included", () => {
+    let quoted = 0;
+    for (const src of [...corpusMulti(99, 130), ...corpusMulti(515, 30)]) {
+      const before = new Set(lint(src).map(finding));
+      const ir = resolvePlan(src).ir!;
+      for (const room of ir.elements.filter((e): e is RRoom => e.kind === "room" && e.id !== "r_c")) {
+        // A context per room: each verification is the hint's own, never past the run's budget.
+        const ctx = buildLintContext(ir, DEFAULT_RULESET);
+        const paste = pasteSet(ctx, room, roomDefiningItems(room));
+        if (!("stmts" in paste) || paste.stmts.length === 0) continue;
+        quoted++;
+        const pasted = append(src, paste.stmts);
+        const placed = resolvePlan(pasted)
+          .ir!.elements.filter((e): e is RFurniture => e.kind === "furniture")
+          .map((f) => ({
+            x: f.at.x,
+            y: f.at.y,
+            w: f.size.w,
+            h: f.size.h,
+            rotate: f.rotate ?? 0,
+            category: f.category,
+          }));
+        const seen = placed.map(({ category, rotate, ...r }) => ({
+          ...r,
+          ...(orientationMatters(category) ? { rotate } : {}),
+        }));
+        const checked = paste.rects.map(({ rotate, ...r }, i) => ({
+          ...r,
+          ...(orientationMatters(placed[i]?.category ?? "") ? { rotate } : {}),
+        }));
+        expect(seen, pasted).toEqual(checked);
+        const gained = lint(pasted)
+          .filter((d) => !CONTENTS.has(d.code!))
+          .map(finding)
+          .filter((m) => !before.has(m));
+        expect(gained, pasted).toEqual([]);
+      }
+    }
+    expect(quoted).toBeGreaterThan(150);
+  }, 180_000);
+});
+
+describe("an obstacle standing in the room runs the walk (review round 4)", () => {
+  /** A kitchen beside a study it opens into, `obstacle` standing in the kitchen (the review's
+   *  `stub-repro.arch`): before the walk read interior obstacles, the quoted counter, flush left
+   *  beside the obstacle, was quoted unwalked and, pasted, closed the way to the study. */
+  const plan = (obstacle: string): string => `plan "S" {
+  units mm
+  grid 50
+  wall id=shell exterior thickness 200 { (-3000,0) (3000,0) (3000,5500) (-3000,5500) close }
+  wall id=w_mid partition thickness 100 { (0,0) (0,4000) }
+  wall id=w_c partition thickness 100 { (-3000,4000) (3000,4000) }
+  room id=r_k at (0,0) size 3000x4000 label "Kitchen" uses kitchen
+  room id=r_b at (-3000,0) size 3000x4000 label "Study" uses office
+  room id=r_c at (-3000,4000) size 6000x1500 label "Hall" uses hall
+  door id=d_main at (-3000,4750) width 900 wall shell
+  door id=d_k at (2000,4000) width 800 wall w_c swing in
+  opening id=o_b at (0,3500) width 800 wall w_mid
+  window at (1500,0) width 900 wall shell
+  furniture kitchen_sink in r_k anchor top flush size 800x600
+  furniture stove in r_k anchor top-left flush size 600x600
+  furniture fridge in r_k anchor top-right flush size 600x600
+  ${obstacle}
+  furniture wardrobe in r_k anchor right flush size 600x1800
+  furniture bookshelf in r_k anchor bottom-right flush size 600x400
+}
+`;
+  it.each([
+    ["a wall stub", "wall id=w_s partition thickness 100 { (700,2250) (700,4000) }"],
+    ["a stair", "stair id=st at (500,2650) size 1200x900 dir up"],
+  ])("%s: the kitchen's hint quotes no set that blocks the walk", (_, obstacle) => {
+    const src = plan(obstacle);
+    const ds = lint(src);
+    const hint = ds.find((d) => CONTENTS.has(d.code!) && d.message.includes('"Kitchen"'))!.hints![0]!;
+    const stmts = [...hint.matchAll(/`(furniture [^`]+)`/g)].map((m) => m[1]!).filter((q) => !q.endsWith("…"));
+    const before = new Set(ds.map(finding));
+    const gained = lint(append(src, stmts))
+      .filter((d) => !CONTENTS.has(d.code!))
+      .map(finding)
+      .filter((m) => !before.has(m));
+    expect(gained, hint).toEqual([]);
+  });
 });
 
 describe("the verification is counted", () => {

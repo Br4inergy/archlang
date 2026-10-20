@@ -5,15 +5,19 @@
  * `W_ROOM_NO_FIXTURE` (whose hint quotes them, so applying it leaves no defining piece missing).
  */
 
-import { roomUses } from "../analyze.js";
+import { rectOf, roomUses } from "../analyze.js";
 import type { UseKind } from "../ast.js";
 import { defaultFootprint } from "../fixtures-catalog.js";
 import { FURNISH_TABLE, type FurnishItem } from "../furnish-table.js";
+import { arcExtremes } from "../geometry/arc.js";
+import { distPointToSegment } from "../geometry/polygon.js";
 import type { BBox } from "../geometry/rect.js";
 import type { RFurniture, RRoom } from "../ir.js";
+import { verticalObstacles } from "../vertical.js";
 import { LINT_RULES } from "./rules/index.js";
 import type { LintContext, LintRule } from "./context.js";
 import { type PasteFailure, pasteFixture } from "./fixture-paste.js";
+import { distPointToRect } from "./measure.js";
 
 /**
  * Which pieces define a room of each use, as a reading of {@link FURNISH_TABLE}, so the lint
@@ -141,16 +145,18 @@ export function pasteSet(
   }
   // Each piece is checked against what the placement rules measure, one at a time. The SET can
   // still raise what no single check sees: two pieces on different walls can squeeze the walk
-  // below its minimum clear width (`W_PATH_TOO_NARROW`), and a kitchen fixture that now locates
+  // below its minimum clear width (`W_PATH_TOO_NARROW`) or close the way through a room so the
+  // walk goes the long way round (`W_CIRCUITOUS_PATH`), and a kitchen fixture that now locates
   // the kitchen beside a bathroom door lets `W_WET_ROOM_DOOR` judge it. So the set is re-linted
   // with its pieces standing against the rules flagged `readsFurniture` (the ones a pasted hint
   // was measured to move), and a set that would add any finding is not quoted: a hint that warns
   // when pasted is worse than none. The plan's own reading of those rules is taken once per
   // context; each verification is one pass on one copy of the context, charged to
-  // {@link MAX_HINT_VERIFICATIONS} before it runs. The walk (`readsFurniture: "walk"`, a nav
-  // model of the whole storey) joins the pass only when a quoted piece stands closer than the
-  // walk's minimum clear width to a wall face or another piece ({@link mayPinch}): a piece flush
-  // to its walls and clear of everything by that width cannot narrow any walk below it. The
+  // {@link MAX_HINT_VERIFICATIONS} before it runs. The walk (`readsFurniture: "walk"`, the rules
+  // reading a nav model of the whole storey) joins the pass only when a quoted piece stands
+  // closer than the walk's minimum clear width to a doorway, a wall face, another piece or an
+  // obstacle standing in the room ({@link mayPinch}): a piece flush to its walls and clear of
+  // everything by that width cannot narrow any walk below it. The
   // copies file no coverage notes and keep an attribution budget of their own, so this check
   // changes nothing outside itself.
   if (stmts.length > 0 && !(VERIFYING in ctx)) {
@@ -257,10 +263,12 @@ function nearWetRoom(ctx: LintContext, room: RRoom): boolean {
 
 /**
  * Could the quoted pieces narrow a walk below the minimum clear width? Only if one of them
- * stands closer than that width to a wall face or to another piece across open floor. A
- * rectangular room's own edges are read through its walls' faces, conservatively: the gap to a
- * centreline less the thickest wall's half (an under-estimate, so a doubt runs the walk). A
- * polygon or circular room always runs it.
+ * stands closer than that width to a wall face, to another piece across open floor, or to an
+ * obstacle inside the room. A rectangular room's own edges are read through its walls' faces,
+ * conservatively: the gap to a centreline less the thickest wall's half (an under-estimate, so a
+ * doubt runs the walk). A polygon or circular room always runs it. The obstacles inside the
+ * room are what the walk's nav grid blocks besides furniture, read from the same inputs it is
+ * built from ({@link interiorObstacles}).
  */
 function mayPinch(ctx: LintContext, room: RRoom, quoted: readonly RFurniture[], all: readonly RFurniture[]): boolean {
   if (room.poly || room.circle) return true;
@@ -284,12 +292,15 @@ function mayPinch(ctx: LintContext, room: RRoom, quoted: readonly RFurniture[], 
     top: p.y - y0 <= half + 1,
     bottom: y1 - (p.y + p.h) <= half + 1,
   });
+  const inside = interiorObstacles(ctx, room, half);
   for (const f of quoted) {
     const p = rectOfPiece(f);
     const fp = flush(p);
     // Near a doorway the walk starts or ends there: a piece within the minimum width of any
     // door or opening (its centre, plus half its width) runs the walk.
     if (nearDoor(p)) return true;
+    // Near a wall stub, a stair, a lift or a void standing in the room (touching one included).
+    if (inside.some((o) => o(p) < min)) return true;
     // A gap to a wall the piece is not against: only across the room (the piece flush to the
     // opposite wall, or to none) can it be a walk; a gap beside a piece flush to a wall that
     // runs past it is a dead-end recess along that wall, which no walk needs.
@@ -320,6 +331,89 @@ function mayPinch(ctx: LintContext, room: RRoom, quoted: readonly RFurniture[], 
     }
   }
   return false;
+}
+
+/**
+ * What the walk's nav grid blocks inside a rectangular room besides furniture (`buildGrid`,
+ * `src/analyze/circulation.ts`, built from `ctx.ir.walls`, `ctx.verticals` and `ctx.voids`), each
+ * as the distance from a piece's rectangle to it: every wall segment that reaches the room's
+ * interior farther than `half` from its edges (a stub, a nib, a partition run into the room; a
+ * wall along an edge is the edge, which {@link mayPinch} reads through its face), and every
+ * vertical run or void that meets that interior. A wall's band is measured from its centreline
+ * less half its thickness; a curved segment by the box of its sweep (an under-estimate, so a doubt
+ * runs the walk).
+ */
+function interiorObstacles(ctx: LintContext, room: RRoom, half: number): ((p: BBox) => number)[] {
+  const m = half + 1;
+  const core: BBox = { x: room.at.x + m, y: room.at.y + m, w: room.size.w - 2 * m, h: room.size.h - 2 * m };
+  if (core.w <= 0 || core.h <= 0) return [];
+  const out: ((p: BBox) => number)[] = [];
+  for (const s of ctx.wallSegs) {
+    if (s.arc) {
+      const box = boxOf(arcExtremes(s.arc));
+      if (rectGap(box, core) > s.thickness / 2) continue;
+      out.push((p) => Math.max(0, rectGap(p, box) - s.thickness / 2));
+      continue;
+    }
+    if (segRectGap(s.a, s.b, core) > 0) continue;
+    out.push((p) => Math.max(0, segRectGap(s.a, s.b, p) - s.thickness / 2));
+  }
+  const rects = [...verticalObstacles(ctx.verticals).map((o) => o.rect), ...ctx.voids.map((v) => rectOf(v))];
+  for (const r of rects) if (rectGap(r, core) === 0) out.push((p) => rectGap(p, r));
+  return out;
+}
+
+/** The bounding box of points. */
+function boxOf(pts: readonly { x: number; y: number }[]): BBox {
+  const xs = pts.map((q) => q.x);
+  const ys = pts.map((q) => q.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+}
+
+/** The gap between two closed rectangles (0 when they meet). */
+function rectGap(a: BBox, b: BBox): number {
+  const gx = Math.max(0, b.x - (a.x + a.w), a.x - (b.x + b.w));
+  const gy = Math.max(0, b.y - (a.y + a.h), a.y - (b.y + b.h));
+  return Math.hypot(gx, gy);
+}
+
+/** The gap between segment ab and a closed rectangle (0 when they meet). */
+function segRectGap(a: { x: number; y: number }, b: { x: number; y: number }, r: BBox): number {
+  // Liang–Barsky: does the segment enter the closed rectangle?
+  let t0 = 0;
+  let t1 = 1;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const clip = (pp: number, q: number): boolean => {
+    if (pp === 0) return q >= 0;
+    const t = q / pp;
+    if (pp < 0) {
+      if (t > t1) return false;
+      if (t > t0) t0 = t;
+    } else {
+      if (t < t0) return false;
+      if (t < t1) t1 = t;
+    }
+    return true;
+  };
+  if (
+    clip(-dx, a.x - r.x) &&
+    clip(dx, r.x + r.w - a.x) &&
+    clip(-dy, a.y - r.y) &&
+    clip(dy, r.y + r.h - a.y) &&
+    t0 <= t1
+  )
+    return 0;
+  // Apart, the nearest pair is an endpoint against the rectangle or a corner against the segment.
+  const corners = [
+    { x: r.x, y: r.y },
+    { x: r.x + r.w, y: r.y },
+    { x: r.x, y: r.y + r.h },
+    { x: r.x + r.w, y: r.y + r.h },
+  ];
+  return Math.min(distPointToRect(a, r), distPointToRect(b, r), ...corners.map((c) => distPointToSegment(c, a, b)));
 }
 
 /** The verifications one lint run has spent: keyed by the run's shared attribution budget
