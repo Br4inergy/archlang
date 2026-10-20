@@ -60,7 +60,10 @@ today; openings resolve last against the final wall set.
 
 Ids are assigned before resolve, so the element registry order is unchanged. Diagnostics are
 buffered and emitted in registry order, as one pass in that order produces them today, so
-`compile().diagnostics` does not reorder on a plan whose rooms and walls both diagnose. Plans that
+`compile().diagnostics` does not reorder on a plan whose rooms and walls both diagnose. That
+promise covers a resolution that completes: one stopped by `E_STEP_LIMIT` reports, deterministically,
+the diagnostics raised before the crossing in the new order (rooms before walls), and that set may
+differ from what the old walls-first pass had raised by then. Plans that
 use no new form must resolve to the same `ResolvedPlan`; the byte-identity sweep over SVG,
 `describe()`, `lint()` and `compile().diagnostics` is the gate for the resolve-order change (card
 PS3.2) and is pinned before any form lands.

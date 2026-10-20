@@ -71,12 +71,25 @@ describe("T1c — furniture in <room> anchor", () => {
     expect(diagnostics.some((d) => d.code === "E_FURN_ROOM")).toBe(false);
   });
 
-  it("raises E_PLACE_REF when the room is placed relationally (box not yet fixed)", () => {
+  it("places in a relationally placed room: rooms are placed before furniture (PS0.5)", () => {
+    const src = (b: string) => `plan "P" {
+      units mm
+      grid 1
+      room id=a at (0,0) size 2000x2000
+      room id=b ${b} size 2000x2000
+      furniture bed in b centered size 500x500
+    }`;
+    const rel = compile(src("right-of a"), { noCache: true });
+    expect(rel.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    expect(rel.svg).toBe(compile(src("at (2000,0)"), { noCache: true }).svg);
+  });
+
+  it("raises E_PLACE_REF when the relational room could not be placed", () => {
     const src = `plan "P" {
       units mm
       grid 1
       room id=a at (0,0) size 2000x2000
-      room id=b right-of a size 2000x2000
+      room id=b right-of nowhere size 2000x2000
       furniture bed in b centered size 500x500
     }`;
     expect(compile(src, { noCache: true }).diagnostics.some((d) => d.code === "E_PLACE_REF")).toBe(true);

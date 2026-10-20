@@ -480,8 +480,12 @@ function placeAgainst(
   } else {
     const room = roomId ? ctx.rooms.find((r) => r.id === roomId) : undefined;
     if (!room) return err("needs `side left|right` (or `in <room>` to infer the wall face to back onto)");
-    if (room._rel)
-      return err(`can't infer \`side\` from a relationally-placed room "${roomId}" — give \`side left|right\``);
+    // Rooms resolve, and relational ones are placed, before any furniture (ADR 0028 §1), so
+    // a relational room has its final box here; only one that could NOT be placed is refused.
+    if (room._unplaced)
+      return err(
+        `can't infer \`side\` from room "${roomId}", which could not be placed (see its own error) — give \`side left|right\``,
+      );
     // Not `wallFaceProbes`: it lands on the piece's footprint CENTRE (thickness/2 + depth/2), not past a face.
     const probe = (n: { x: number; y: number }) => add(add(seg.a, mul(d, off)), mul(n, seg.thickness / 2 + depth / 2));
     // The probe is tested against the room's FLOOR, not its bounding box. For a
@@ -572,10 +576,12 @@ function placeInRoom(
   derive: boolean,
 ): { at: Point; rotate?: number } | null {
   const room = ctx.rooms.find((r): r is RRoom => r.id === roomId);
-  if (!room || room._rel) {
+  if (!room || room._unplaced) {
     ctx.diag({
       severity: "error",
-      message: `Furniture "${id}" is placed \`in ${roomId}\` but no room with that id has fixed \`at\` coordinates`,
+      message: room
+        ? `Furniture "${id}" is placed \`in ${roomId}\`, but room "${roomId}" could not be placed (see its own error)`
+        : `Furniture "${id}" is placed \`in ${roomId}\`, but no room has that id`,
       code: "E_PLACE_REF",
       span,
     });

@@ -201,9 +201,9 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   ),
   E_PLACE_REF: E(
     "E_PLACE_REF",
-    "Furniture placed in an unknown or non-absolute room.",
-    "A `furniture … in <room> centered|anchor …` names a room that does not exist, or one positioned relationally (`right-of`/…) whose box is not yet fixed when the fixture is placed.",
-    "Reference an existing room given absolute `at (x,y)` coordinates.",
+    "Furniture placed in an unknown or unplaced room.",
+    "A `furniture … in <room> centered|anchor …` names a room that does not exist, or a relationally placed room (`right-of`/…) that could not be placed (its own `E_LAYOUT_*` error says why). A relational room that IS placed works: rooms are placed before any furniture.",
+    "Reference an existing room, and fix the placement error of the room it names.",
     "furniture bed in bedrm centered size 1500x2000   # error: no room id=bedrm",
   ),
   E_PLACE_POLY: E(

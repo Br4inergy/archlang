@@ -37,6 +37,7 @@ import type {
 import type { DoorHinge, DoorKind, DoorSlideDir, DoorSwingDir } from "./grammar/tokens.js";
 import { moduleBindings } from "./import.js";
 import { placeRelational } from "./layout.js";
+import { buildDatumTable, type DatumTable } from "./room-datums.js";
 import { numberAxes } from "./axes.js";
 import type { Frame } from "./frame.js";
 import { composeFrame, makeFrame, tryTransformElement } from "./frame.js";
@@ -2093,6 +2094,21 @@ function resolveCached(
   return out;
 }
 
+/** Each resolved storey's frozen datum tables (ADR 0028 §1), by instance prefix. */
+const datumTablesOfIr = new WeakMap<ResolvedPlan, ReadonlyMap<string, DatumTable>>();
+
+/**
+ * The datum tables one storey's resolution froze: `""` is the root plan's, and each `place`d
+ * instance's is under its prefix (`west`, `west.inner`), in that instance's own frame. Empty
+ * for a plan whose resolution was stopped or that was not resolved here.
+ *
+ * Internal: nothing in the language reads a table yet (room-edge datums are card PS3.2
+ * part B); this is for the tests that pin what the table holds. Not part of the public surface.
+ */
+export function datumTablesOf(ir: ResolvedPlan): ReadonlyMap<string, DatumTable> {
+  return datumTablesOfIr.get(ir) ?? new Map();
+}
+
 /**
  * What one resolution spent of the evaluation-step budget (`MAX_EVAL_STEPS`, `src/expr.ts`),
  * counted from the steps the storeys below it spent; `exhausted` when it crossed the budget
@@ -2242,8 +2258,10 @@ function resolveBody(
   //    perimeter`) resolve against the instance's own namespace.
   for (const grp of groups) assignIds(grp.entries, registry, diagnostics);
 
-  // 3. Resolve each group in registry order (walls first → openings can host against
-  //    them), then transform the instance groups into plan coordinates.
+  // 3. Resolve each group — rooms and their relational placement first, then the frozen
+  //    datum table, then walls, then the openings that host against them and the rest in
+  //    registry order (ADR 0028 §1, `resolveGroup`) — then transform the instance groups
+  //    into plan coordinates.
   //
   //    A `place`d instance is a CLOSED WORLD going out: it resolves entirely in its own
   //    local frame, and one rigid transform then carries the result into the plan. That is
@@ -2343,17 +2361,48 @@ function resolveBody(
     return hiVal;
   }
 
-  /** Resolve one group's entries in registry order against `grpWalls`/`grpRooms`, which
-   *  the group's own walls and rooms are appended to as they resolve. */
-  const resolveGroup = (grp: ResolveGroup, grpWalls: RWall[], grpRooms: RRoom[]): void => {
+  /**
+   * Resolve one group's entries against `grpWalls`/`grpRooms`, which the group's own walls
+   * and rooms are appended to as they resolve (ADR 0028 §1):
+   *
+   *   1. every ROOM, then relational placement over `relational.rooms()` (ADR 0004), so
+   *      every room the group can see has its final position;
+   *   2. the group's DATUM TABLE, built from those rooms (and the plan's `axes`, root only)
+   *      and frozen, before any wall resolves;
+   *   3. every other kind in registry order: walls, then the openings against the final
+   *      wall set, then the rest.
+   *
+   * Ids were assigned before this (step 2), so the registry order of ids is unchanged.
+   * Diagnostics are BUFFERED per kind and flushed in registry order, then the relational
+   * placement ones: the order one pass in registry order (walls first, placement after the
+   * pass) produced, so `compile().diagnostics` does not move. A resolution stopped by
+   * `E_STEP_LIMIT` still flushes what was raised before the crossing.
+   */
+  const resolveGroup = (
+    grp: ResolveGroup,
+    grpWalls: RWall[],
+    grpRooms: RRoom[],
+    relational: { rooms: () => RRoom[]; stamp: (d: Diagnostic) => Diagnostic },
+    axes: readonly RAxis[] | undefined,
+  ): DatumTable => {
     ctx.walls = grpWalls;
     ctx.rooms = grpRooms;
     wallGrid = null;
     hiKey = "";
     hiVal = null;
-    for (const def of registry.order) {
+    const order = registry.order;
+    const byKind: Diagnostic[][] = order.map(() => []);
+    const placement: Diagnostic[] = [];
+    /** The entry each kind's pass ended on, so the step site is left where one pass in
+     *  registry order leaves it (the statement a later crossing is reported at). */
+    const lastOf: (Entry | undefined)[] = order.map(() => undefined);
+    const sink = diagSink;
+    const resolveKind = (i: number): void => {
+      const def = order[i]!;
+      diagSink = byKind[i]!;
       for (const e of grp.entries) {
         if (e.node.kind !== def.kind) continue;
+        lastOf[i] = e;
         activeEnv = e.env;
         activeEntry = e;
         stepSite(e.node.span, e.file, e.frame);
@@ -2381,8 +2430,32 @@ function resolveBody(
           grpRooms.push(r);
         }
       }
+    };
+    const roomKind = order.findIndex((d) => d.kind === "room");
+    let table: DatumTable;
+    try {
+      if (roomKind >= 0) resolveKind(roomKind);
+      activeEntry = undefined;
+      placeRelational(relational.rooms(), snapPt, (d, room) => {
+        const out = relational.stamp(d);
+        placement.push(out);
+        ownRoomDiag(out, room);
+      });
+      table = buildDatumTable(grpRooms, axes);
+      for (let i = 0; i < order.length; i++) if (i !== roomKind) resolveKind(i);
+    } finally {
+      diagSink = sink;
+      for (const list of byKind) for (const d of list) sink.push(d);
+      for (const d of placement) sink.push(d);
+      activeEntry = undefined;
     }
-    activeEntry = undefined;
+    for (let i = order.length - 1; i >= 0; i--) {
+      const e = lastOf[i];
+      if (e === undefined) continue;
+      stepSite(e.node.span, e.file, e.frame);
+      break;
+    }
+    return table;
   };
 
   // 3(i). The instance groups, DEEPEST FIRST, so every descendant of a group has resolved
@@ -2390,6 +2463,8 @@ function resolveBody(
   //      below in the original group order, so the plan-wide wall/room arrays, `instances`
   //      and the diagnostic order are exactly what one pass in that order produces.
   const placed = new Map<ResolveGroup, PlacedGroup>();
+  /** Each group's frozen datum table, by instance prefix (`""` is the root plan). */
+  const datumTables = new Map<string, DatumTable>();
   for (const grp of deepestFirst(groups)) {
     const f = grp.frame!;
     const buffer: Diagnostic[] = [];
@@ -2401,16 +2476,19 @@ function resolveBody(
     // reads this array in this order, so it breaks a tie here exactly as it breaks it at
     // the root: the nearest-wall host is first-wins, so a coincident descendant wall wins.
     const view = descendantView(grp, groups, placed, registry);
-    resolveGroup(grp, view.walls, view.rooms);
-    // The instance's own relational placement runs HERE, in the local frame, because
-    // `right-of` means the COMPONENT's right — resolving it after the transform would
-    // read the page's right instead (ADR 0004 arithmetic, one frame at a time). A
-    // descendant's room is a reference only: it carries no `_rel` once transformed.
-    placeRelational(view.rooms, snapPt, (d, room) => {
-      const out = stampProvenance(d, grp.frame, undefined);
-      diagSink.push(out);
-      ownRoomDiag(out, room);
-    });
+    // The instance's own relational placement runs inside `resolveGroup`, after its rooms
+    // and before its walls, in the LOCAL frame, because `right-of` means the COMPONENT's
+    // right — resolving it after the transform would read the page's right instead (ADR
+    // 0004 arithmetic, one frame at a time). A descendant's room is a reference only: it
+    // carries no `_rel` once transformed. An instance has no `axes` of its own.
+    const table = resolveGroup(
+      grp,
+      view.walls,
+      view.rooms,
+      { rooms: () => view.rooms, stamp: (d) => stampProvenance(d, grp.frame, undefined) },
+      undefined,
+    );
+    datumTables.set(f.prefix, table);
     const locals = grp.entries.map((e) => e.resolved!);
     const carried: ResolvedElement[] = [];
     // Kinds already refused in THIS instance: a component with ten plugin elements of one
@@ -2479,24 +2557,65 @@ function resolveBody(
       else if (t.kind === "room") rooms2.push(t);
     }
   }
-  for (const grp of groups) if (!grp.frame) resolveGroup(grp, walls, rooms2);
+  // The plan's positioning axes (定位轴线): plan-level datums, not elements, so they enter
+  // the ROOT group's datum table and are evaluated now, before it resolves (ADR 0028 §1).
+  // Their positions are expressions, evaluated against the plan's GLOBAL bindings — the
+  // block is a plan setting, not a body statement, so it sees every plan-level `let`
+  // regardless of where it sits in the file. Snapped like every other coordinate (an
+  // off-grid datum would not line up with the rooms it dimensions), then sorted, deduped
+  // and labelled by the GB/T rules. An empty block resolves to no axes at all, so
+  // `ir.axes` stays absent and the drawing is byte-identical. What the block raises is
+  // held in `axesDiags` and reported at step 5, where it always was.
+  let axes: RAxis[] | undefined;
+  const axesDiags: Diagnostic[] = [];
+  if (ast.axes) {
+    stepSite(ast.axes.span);
+    diagSink = axesDiags;
+    try {
+      activeEnv = globalScope.flatten();
+      // A datum beyond the modelling range is reported (at its expression, else the block)
+      // and left out.
+      const inRange = (list: Expr[], axis: "x" | "y"): number[] =>
+        list.flatMap((e) => {
+          const v = snap(evalNum(e));
+          if (Math.abs(v) <= MODEL_RANGE_MM) return [v];
+          axesDiags.push(outOfRange(`The \`axes\` ${axis} position`, v, exprSpan(e) ?? ast.axes?.span));
+          return [];
+        });
+      const xs = inRange(ast.axes.x, "x");
+      const ys = inRange(ast.axes.y, "y");
+      const labelled = numberAxes(xs, ys);
+      if (labelled.length > 0) axes = labelled;
+    } catch (e) {
+      // A stopped resolution keeps what was raised before the crossing.
+      for (const d of axesDiags) diagnostics.push(d);
+      throw e;
+    } finally {
+      diagSink = diagnostics;
+    }
+  }
+  for (const grp of groups) {
+    if (grp.frame) continue;
+    // The root's relational placement reads every room in SOURCE order (instances' carried
+    // rooms included, as references), exactly the list it always read.
+    const table = resolveGroup(
+      grp,
+      walls,
+      rooms2,
+      {
+        rooms: () =>
+          entries.filter((e) => !dropped.has(e) && e.resolved?.kind === "room").map((e) => e.resolved as RRoom),
+        stamp: (d) => d,
+      },
+      axes,
+    );
+    datumTables.set("", table);
+  }
 
   // 3. IR element list in source order (for rendering), less any element a `place` could
-  //    not carry (`E_INSTANCE_NO_TRANSFORM` above).
+  //    not carry (`E_INSTANCE_NO_TRANSFORM` above). Relational placement has already run,
+  //    inside each group's resolution (3a, ADR 0004), so every room here is final.
   const resolvedElements = entries.filter((e) => !dropped.has(e)).map((e) => e.resolved!);
-
-  // 3a. Relational placement: rooms positioned with `right-of`/`below`/… get
-  //     absolute coordinates here, by pure arithmetic in dependency order
-  //     (topological). Rooms with an absolute `at` carry no constraint, so this
-  //     is a no-op for them and the manual path stays byte-identical.
-  placeRelational(
-    resolvedElements.filter((e): e is RRoom => e.kind === "room"),
-    snapPt,
-    (d: Diagnostic, room?: RRoom) => {
-      diagnostics.push(d);
-      ownRoomDiag(d, room);
-    },
-  );
 
   // 3b. The number domain, once every coordinate is final (frames carried, relational rooms
   //     placed): an element whose geometry is non-finite or beyond the modelling range is
@@ -2537,30 +2656,13 @@ function resolveBody(
   checkRoomOverlaps(elements, diagnostics);
   checkFurnitureRooms(resolvedElements, diagnostics);
 
-  // 5. Positioning axes (定位轴线): plan-level datums, not elements. Their positions are
-  //    expressions, evaluated here against the plan's GLOBAL bindings — the block is a
-  //    plan setting, not a body statement, so it sees every plan-level `let` regardless
-  //    of where it sits in the file. Snapped like every other coordinate (an off-grid
-  //    datum would not line up with the rooms it dimensions), then sorted, deduped and
-  //    labelled by the GB/T rules. An empty block resolves to no axes at all, so
-  //    `ir.axes` stays absent and the drawing is byte-identical.
-  let axes: RAxis[] | undefined;
+  // 5. Positioning axes (定位轴线): evaluated before the root group resolved (step 3(ii)),
+  //    because they are part of its datum table; what they raised is reported HERE, after
+  //    every element's diagnostic, where it always was, and the step site is put back on
+  //    the block as this step always left it.
   if (ast.axes) {
     stepSite(ast.axes.span);
-    activeEnv = globalScope.flatten();
-    // A datum beyond the modelling range is reported (at its expression, else the block)
-    // and left out.
-    const inRange = (list: Expr[], axis: "x" | "y"): number[] =>
-      list.flatMap((e) => {
-        const v = snap(evalNum(e));
-        if (Math.abs(v) <= MODEL_RANGE_MM) return [v];
-        diagnostics.push(outOfRange(`The \`axes\` ${axis} position`, v, exprSpan(e) ?? ast.axes?.span));
-        return [];
-      });
-    const xs = inRange(ast.axes.x, "x");
-    const ys = inRange(ast.axes.y, "y");
-    const labelled = numberAxes(xs, ys);
-    if (labelled.length > 0) axes = labelled;
+    for (const d of axesDiags) diagnostics.push(d);
   }
 
   // 5b. The lot line. Same shape as the axes above and for the same reasons: a
@@ -2671,6 +2773,7 @@ function resolveBody(
     walls,
     ...(instances.length > 0 ? { instances } : {}),
   };
+  datumTablesOfIr.set(ir, datumTables);
   return { ir, diagnostics };
 }
 

@@ -1428,7 +1428,7 @@ that room's box; `in <room> anchor <a> [inset <mm>]` snaps it to a corner or edg
 The anchor `<a>` is one of `top-left`, `top`, `top-right`, `left`, `center`,
 `right`, `bottom-left`, `bottom`, `bottom-right`; `inset` (default `0`) pulls it in
 from the referenced edge(s). The `in <room>` here both positions **and** owns the
-fixture. An unknown or relationally-placed room is
+fixture. An unknown room, or a relational room that could not be placed, is
 [`E_PLACE_REF`](error-codes.md).
 
 **`flush` — measure from the wall face, not the centerline.** A room's rectangle is
