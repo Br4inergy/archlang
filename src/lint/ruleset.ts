@@ -230,6 +230,15 @@ export interface LintRuleset {
    * table.
    */
   roomAreaFloorMode: "by-use" | "at-least-generic";
+  /**
+   * Judge every plan as a dwelling (plan-soundness PS2.18). `false` (the default): the rules
+   * that describe a defect of a home (`W_HABITABLE_NO_WINDOW`'s kitchen arm, every arm of
+   * `W_WET_ROOM_DOOR` but its kitchen one, `W_ENTRANCE_INTO_PRIVATE`) run only when the plan
+   * reads as a dwelling (`dwellingReading`, `src/analyze/dwelling.ts`), and on a plan that reads
+   * as non-residential they file a `non-dwelling` coverage skip instead. `true`: they run on
+   * every plan, as `residential-basic` asserts by its name.
+   */
+  assumeDwelling: boolean;
 }
 
 export const DEFAULT_RULESET: LintRuleset = {
@@ -264,6 +273,7 @@ export const DEFAULT_RULESET: LintRuleset = {
     entry: null,
   }),
   roomAreaFloorMode: "by-use",
+  assumeDwelling: false,
 };
 
 /**
@@ -274,8 +284,12 @@ export const DEFAULT_RULESET: LintRuleset = {
  * clearances, hardware). Every override is a documented, traceable threshold.
  */
 export const LINT_PROFILES: Readonly<Record<string, Partial<LintRuleset>>> = Object.freeze({
-  /** The shipped residential baseline (identical to {@link DEFAULT_RULESET}). */
-  "residential-basic": {},
+  /**
+   * The shipped residential baseline: {@link DEFAULT_RULESET}'s thresholds, with every plan
+   * judged as a dwelling ({@link LintRuleset.assumeDwelling}), so a dwelling rule never declines
+   * a plan whose labels read as a café or an office.
+   */
+  "residential-basic": { assumeDwelling: true },
   /**
    * Stricter passage + clearances inspired by accessibility guidance (e.g. the ADA's
    * ~815 mm clear door opening and generous turning/approach space). Advisory only.

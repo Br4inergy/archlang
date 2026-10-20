@@ -1055,6 +1055,7 @@ label, as in every lint message. The reasons:
 | `unsupported-host-geometry` | door checks | a door on an angled or curved wall, which the doorway-landing and pocket-run checks do not measure |
 | `no-kitchen-fixtures` | privacy checks | a bath or WC door onto a room that is a kitchen and also the living room, which holds no sink, hob, oven, fridge, worktop, island or dishwasher, so `W_WET_ROOM_DOOR` cannot tell whether the door opens onto the kitchen |
 | `no-main-entrance` | circulation walk, privacy checks | a storey with more than one way in whose `access.mainEntrance` names no door (`tie`, `no-candidate`, `upper-storey`), so `W_PATH_TOO_NARROW`, `W_ROOM_VIA_PRIVATE` and `W_WET_ROOM_DOOR` judge a route from every exterior door |
+| `non-dwelling` | daylight, privacy checks | the plan reads as non-residential: a room label with "Cafe", "Restaurant", "Retail", "Clinic", "Consulting", "Servery", "Staff room" or "Classroom"; or, on a plan with no bedroom and no living room, a room whose use is `office` or a label with "Lobby", "Reception", "Waiting", "Shop" or "Meeting" (a house's "Reception room" or "Entrance Lobby" stays a dwelling). `W_HABITABLE_NO_WINDOW` does not ask a kitchen for daylight there, and `W_WET_ROOM_DOOR` (all but a door onto a kitchen) and `W_ENTRANCE_INTO_PRIVATE` do not judge: they describe a home. `residential-basic` judges every plan as a dwelling and files none |
 
 Three more reasons are reserved for families that do not exist yet: `no-brief`,
 `no-dwelling` and `no-operable-window-data`. In human mode `lint` prints one line on stderr
@@ -1071,11 +1072,13 @@ A **profile** is a named bundle of thresholds, applied with `--profile` (CLI) or
 
 | Profile | Thresholds |
 |---------|-----------|
-| `residential-basic` *(default)* | doors ≥ 700 mm, rooms ≥ 4 m², walk clear ≥ 700 mm, detour ≤ 3.0×, no swing-clearance buffer |
+| *(default, no profile)* | doors ≥ 700 mm, rooms ≥ 4 m², walk clear ≥ 700 mm, detour ≤ 3.0×, no swing-clearance buffer; the home-only checks skip a plan that reads as non-residential (`non-dwelling`) |
+| `residential-basic` | the default's thresholds, with every plan judged as a dwelling |
 | `accessibility-advisory` | doors ≥ 850 mm, rooms ≥ 5 m², walk clear ≥ 900 mm, detour ≤ 3.0×, 150 mm swing clearance |
 
 ```
-archlang lint plan.arch                                  # residential-basic
+archlang lint plan.arch                                  # the default ruleset
+archlang lint plan.arch --profile residential-basic     # the same, judged as a dwelling
 archlang lint plan.arch --profile accessibility-advisory
 ```
 

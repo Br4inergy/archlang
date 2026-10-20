@@ -195,7 +195,11 @@ export const USE_VOCABULARY = Object.freeze({
  * "Laundry" and "Plant" say `utility`.
  *
  *   - `bedroom` "nursery" is an alias, and the phrase "day nursery" (a childcare room, not a
- *     bedroom) keeps it from classifying at all.
+ *     bedroom) keeps it from classifying at all. "Guest room", "kids room", "children's room"
+ *     and "master suite" are canonical (PS2.18: a US/UK house's "Master" is its main bedroom);
+ *     "master" alone is an alias, and it gives way to any other fallback row, since it
+ *     qualifies a room as often as it names one ("Master Closet" is storage, "Master Study" an
+ *     office).
  *   - `wc` "water closet" is an alias, and its match keeps "closet" from reading as storage.
  *   - `storage` covers a wardrobe, closet or dressing room: the room PS2.5 lets sit behind
  *     a bedroom. "Dressing", "Linen" and "Cellar" are aliases (a cellar may be lived in).
@@ -204,6 +208,10 @@ export const USE_VOCABULARY = Object.freeze({
  *     `office`: `finish` furnishes an office with a desk, which a meeting room or a staff
  *     room (often a break room) is not defined by.
  *   - `utility` "plant" and "boiler" are aliases: a plant room is not a laundry.
+ *   - `living` (PS2.18), read last and only when no other fallback row matched: "great room",
+ *     "reception room" and "drawing room" are canonical; "snug" and "den" are aliases (a den
+ *     is a study as often as a sitting room). "Family room", "lounge" and "sitting room"
+ *     already classify through {@link USE_VOCABULARY}.
  *
  * Deliberately absent: "balcony" and "terrace". ArchLang draws a balcony as an `outdoor`
  * surface, not a room, and no {@link UseKind} names an outdoor floor; a room labelled one
@@ -212,7 +220,10 @@ export const USE_VOCABULARY = Object.freeze({
  * workroom or a dance floor, and a gallery a corridor or an exhibition room.
  */
 export const FALLBACK_USE_VOCABULARY = Object.freeze({
-  bedroom: { canonical: [], aliases: ["nursery"] },
+  bedroom: {
+    canonical: ["guest room", "kids room", "children's room", "master suite"],
+    aliases: ["nursery", "master"],
+  },
   wc: { canonical: [], aliases: ["water closet"] },
   storage: {
     canonical: ["storage", "store", "stores", "storeroom", "closet", "wardrobe", "pantry", "larder"],
@@ -220,6 +231,7 @@ export const FALLBACK_USE_VOCABULARY = Object.freeze({
   },
   office: { canonical: ["office", "study"], aliases: ["consulting"] },
   utility: { canonical: ["utility", "laundry"], aliases: ["plant", "boiler"] },
+  living: { canonical: ["great room", "reception room", "drawing room"], aliases: ["snug", "den"] },
 }) satisfies Partial<Record<UseKind, VocabEntry>>;
 
 /** {@link USE_VOCABULARY} with its words' tokens prepared once, when this module loads: a
@@ -329,17 +341,22 @@ export function classifyLabelUses(text: string): LabelClassification {
   // table above gives a use to is classified exactly as before; only an empty answer can gain
   // one. In order: bedroom, wc, storage (not after a water closet), office, utility.
   if (uses.length === 0) {
-    // A "Day Nursery" is a childcare room, not a bedroom: that phrase gives no use at all.
-    const nursery = matchPrepared(toks, PREPARED_FALLBACK.bedroom);
-    if (nursery && !matchPrepared(toks, PREPARED_DAY_NURSERY)) add("bedroom", nursery);
     const closetWc = matchPrepared(toks, PREPARED_FALLBACK.wc);
-    if (closetWc) add("wc", closetWc);
     const storage = closetWc ? null : matchPrepared(toks, PREPARED_FALLBACK.storage);
-    if (storage) add("storage", storage);
     const office = matchPrepared(toks, PREPARED_FALLBACK.office);
-    if (office) add("office", office);
     const utility = matchPrepared(toks, PREPARED_FALLBACK.utility);
+    const other = closetWc !== null || storage !== null || office !== null || utility !== null;
+    // A "Day Nursery" is a childcare room, not a bedroom: that phrase gives no use at all. A
+    // bare "Master" qualifies another fallback room ("Master Closet") rather than naming one.
+    const bed = matchPrepared(toks, PREPARED_FALLBACK.bedroom);
+    if (bed && !matchPrepared(toks, PREPARED_DAY_NURSERY) && !(bed.word === "master" && other)) add("bedroom", bed);
+    if (closetWc) add("wc", closetWc);
+    if (storage) add("storage", storage);
+    if (office) add("office", office);
     if (utility) add("utility", utility);
+    // PS2.18: last, and only for a label no other row read.
+    const living = uses.length === 0 && !other ? matchPrepared(toks, PREPARED_FALLBACK.living) : null;
+    if (living) add("living", living);
   }
 
   return { uses, aliases };
@@ -352,4 +369,48 @@ export function classifyLabelUses(text: string): LabelClassification {
 export function matchesLivingDining(text: string): boolean {
   const { uses } = classifyLabelUses(text);
   return uses.includes("living") || uses.includes("dining");
+}
+
+/**
+ * Words that read a room's label as part of a building people do not live in (plan-soundness
+ * PS2.18). Read by `dwellingReading` (`src/analyze/dwelling.ts`) alone, never by
+ * {@link classifyLabelUses}: they give no {@link UseKind}, so no room's `uses` and nothing
+ * `describe()` reports changes.
+ *
+ *  - `canonical` words read non-residential on any plan: a café, restaurant, shop floor
+ *    (`retail`), clinic, school or staff room is not a home's room.
+ *  - `aliases` are ambiguous and read non-residential only on a plan with no bedroom and no
+ *    living room (and never on a room that itself reads as one: "Reception room" is a living room
+ *    through the fallback vocabulary), since an "Entrance Lobby" is a flat's
+ *    hall, a "Waiting area" a landing, a "Shop" a workshop and a "Meeting nook" a corner of a
+ *    living room.
+ *
+ * Measured against every room label in the corpus (examples/, test/, eval/, docs/ and the doc
+ * fences) before it shipped: no plan with a bedroom or living room is read by an ambiguous word
+ * alone. A café or shop with a flat above still reads as non-residential throughout (a known
+ * limit until PS2.14 declares dwellings); `residential-basic` judges such a plan as a dwelling.
+ */
+export const NON_RESIDENTIAL_VOCABULARY: VocabEntry = Object.freeze({
+  canonical: Object.freeze([
+    "cafe",
+    "café",
+    "restaurant",
+    "retail",
+    "clinic",
+    "consulting",
+    "servery",
+    "staff room",
+    "classroom",
+  ]),
+  aliases: Object.freeze(["lobby", "reception", "waiting", "shop", "meeting"]),
+});
+
+/** {@link NON_RESIDENTIAL_VOCABULARY}, prepared once when this module loads. */
+const PREPARED_NON_RESIDENTIAL = prepareEntry(NON_RESIDENTIAL_VOCABULARY);
+
+/** The first {@link NON_RESIDENTIAL_VOCABULARY} word a label's text reads, token-bounded as
+ *  every vocabulary word is, with whether it is one of the ambiguous ones; or `null`. */
+export function nonResidentialWord(text: string): { word: string; ambiguous: boolean } | null {
+  const m = matchPrepared(tokensOf(text), PREPARED_NON_RESIDENTIAL);
+  return m ? { word: m.word, ambiguous: !m.canonical } : null;
 }

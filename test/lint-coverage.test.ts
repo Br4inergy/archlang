@@ -84,19 +84,19 @@ describe("lint coverage: the skips rules declare", () => {
 
   it("a room with no classified use: named by its label, its id only in the machine field", () => {
     const src = PLAN(`${SHELL}
-  room id=r_snug at (0,0) size 4000x4000 label "Snug"
+  room id=r_snug at (0,0) size 4000x4000 label "Atelier"
   room id=r_bed at (4000,0) size 2000x4000 label "Bedroom" uses bedroom`);
     const c = lintCoverage(src)!;
-    expect(c.unclassifiedRooms).toEqual([{ name: "Snug", id: "r_snug" }]);
+    expect(c.unclassifiedRooms).toEqual([{ name: "Atelier", id: "r_snug" }]);
     for (const f of ["rooms", "privacy", "daylight", "contents"]) {
       expect(family(c, f), f).toEqual({
         family: f,
         status: "partial",
-        skipped: [{ reason: "no-uses", why: SKIP_WHY["no-uses"], rooms: ["Snug"], roomIds: ["r_snug"] }],
+        skipped: [{ reason: "no-uses", why: SKIP_WHY["no-uses"], rooms: ["Atelier"], roomIds: ["r_snug"] }],
       });
     }
     const line = coverageLine(c)!;
-    expect(line).toContain('"Snug"');
+    expect(line).toContain('"Atelier"');
     expect(line).not.toContain("r_snug");
   });
 

@@ -287,6 +287,7 @@ ${blockers ? "  furniture wardrobe in r_k anchor right flush size 600x1800\n  fu
     ["a stair", "stair id=st at (500,2650) size 1200x900 dir up"],
     ["a piece touching the counter's corner", "furniture bookshelf at (650,2300) size 100x1650 in r_k", 1700],
     ["a piece exactly the minimum from the counter", "furniture bookshelf at (1350,2250) size 100x1700 in r_k", 1700],
+    ["a piece in line with the counter's edge", "furniture bookshelf at (1150,2300) size 100x1650 in r_k", 2500, false],
     [
       "a piece closing a corner pocket the study opens into",
       "furniture bookshelf at (1150,2350) size 100x1600 in r_k",

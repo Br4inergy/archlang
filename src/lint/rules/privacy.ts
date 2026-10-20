@@ -9,7 +9,9 @@
  *
  * A room's use is {@link roomUses}: its authored `uses` first, then the label vocabulary.
  * A room with no classified use is skipped by all three rules and declared to the lint coverage
- * report (`ctx.skip`, PS2.13).
+ * report (`ctx.skip`, PS2.13). `W_WET_ROOM_DOOR` (all but its kitchen arm) and
+ * `W_ENTRANCE_INTO_PRIVATE` describe a home, so on a plan that reads as non-residential they
+ * decline and say so (`non-dwelling`, PS2.18); `W_ROOM_VIA_PRIVATE` judges every plan.
  *
  * "Private" is a bedroom, bath or WC use with no public use beside it. A room that is
  * also a living space, dining room, kitchen, hall, circulation or entry (a bedsit authored
@@ -50,7 +52,7 @@ import type { WallSegment } from "../../geometry.js";
 import { collinearOverlapLength, distPointToSegment, polygonEdges } from "../../geometry/polygon.js";
 import type { RDoor, RRoom } from "../../ir.js";
 import { fmt0, fmt2 } from "../../num-format.js";
-import type { LintContext, LintRule } from "../context.js";
+import { judgesAsDwelling, type LintContext, type LintRule } from "../context.js";
 
 /** Uses that make a room one people pass through by design. */
 const PUBLIC_USES: ReadonlySet<UseKind> = new Set<UseKind>([
@@ -438,7 +440,8 @@ function shorten(items: readonly string[], rest: (n: number) => string): string[
  * The ways in are the doors to the ground and the shaft arrivals; a door onto an `outdoor
  * balcony` is not one, so it cannot hide a route through a bedroom. When the front door itself
  * opens into the private room, `W_ENTRANCE_INTO_PRIVATE` reports that one fault and the rooms
- * behind it are not reported again.
+ * behind it are not reported again. On a plan that reads as non-residential that rule declines
+ * (PS2.18), so the rooms behind such a door are reported here instead.
  *
  * Not reported, because the room legitimately belongs behind P: a bath or WC (an en-suite, or
  * a WC compartment behind a bathroom) and a storage room (a wardrobe or dressing room).
@@ -474,8 +477,9 @@ export const roomViaPrivate: LintRule = {
       },
     });
     const viaBedroom = wetRoomsOnlyViaBedroom(ctx.rooms, reachAll, reachNoBed);
-    // One fault, one warning: behind a front door into a private room, W_ENTRANCE_INTO_PRIVATE.
-    const entered = new Set(privateEntrances(ctx, f).map((w) => w.room.id));
+    // One fault, one warning: behind a front door into a private room, W_ENTRANCE_INTO_PRIVATE,
+    // but only where that rule judges (PS2.18); on a non-residential plan these rooms report here.
+    const entered = new Set(judgesAsDwelling(ctx) ? privateEntrances(ctx, f).map((w) => w.room.id) : []);
     const order = new Map(ctx.rooms.map((r, i) => [r.id, i]));
     for (const d of ctx.rooms) {
       const ps = doms.get(d.id)?.filter((p) => !entered.has(p));
@@ -580,6 +584,11 @@ function viaPrivateHints(
  *     this sub-case stays silent.
  *
  * Rooms with no classified use are skipped and declared to the coverage report (PS2.13).
+ *
+ * On a plan that reads as non-residential ({@link judgesAsDwelling}, PS2.18) only sub-case 2's
+ * kitchen arm judges: a WC opening onto a room where food is handled is a fault in a café as in
+ * a home, while a WC off a café's seating, a wash area with no leaf and a WC between two rooms
+ * are what a dwelling forbids. The others decline, declared once as `non-dwelling`.
  */
 export const wetRoomDoor: LintRule = {
   name: "wet-room-door",
@@ -594,6 +603,9 @@ export const wetRoomDoor: LintRule = {
     });
     if (wets.length === 0) return out;
     if (f.wayIn && ctx.mainEntrance()?.door === null) ctx.skip("no-main-entrance");
+    // PS2.18: on a plan that reads as non-residential only the kitchen arm judges.
+    const home = judgesAsDwelling(ctx);
+    if (!home) ctx.skip("non-dwelling");
     const edges = f.edges;
     const doms = privateDominators(ctx, f);
     const tol = ctx.rules.tolMm;
@@ -609,7 +621,7 @@ export const wetRoomDoor: LintRule = {
       // 1. The only connector is a leaf-less opening onto a habitable room.
       const only = mine.length === 1 ? mine[0]! : undefined;
       const onlyTo = only ? room(far(only)) : undefined;
-      if (only && only.kind === "opening" && onlyTo && hasAny(f.uses.get(onlyTo.id)!, HABITABLE_USES)) {
+      if (home && only && only.kind === "opening" && onlyTo && hasAny(f.uses.get(onlyTo.id)!, HABITABLE_USES)) {
         reported.add(only.doorId);
         const hints = [
           `Hang a leaf in it: write \`door\` in place of \`opening\` for ${only.doorId}, at the same position, at least 700 mm wide.`,
@@ -640,6 +652,8 @@ export const wetRoomDoor: LintRule = {
         const u = f.uses.get(to.id)!;
         if (!(u.has("kitchen") || u.has("dining"))) continue;
         if (u.has("living") && !u.has("kitchen")) continue;
+        // A dining room alone is a dwelling's arm; a kitchen is food handling in any building.
+        if (!home && !u.has("kitchen")) continue;
         if (f.priv.has(to.id)) continue;
         let near: { mm: number; category: string } | null = null;
         if (u.has("kitchen") && u.has("living")) {
@@ -686,7 +700,7 @@ export const wetRoomDoor: LintRule = {
       }
 
       // 3. A passage: two or more connectors joining two different rooms outside a private suite.
-      if (mine.length < 2) continue;
+      if (!home || mine.length < 2) continue;
       const farRooms: RRoom[] = [];
       const doorTo = new Map<string, string>();
       for (const e of mine) {
@@ -853,12 +867,20 @@ function privateEntrances(ctx: LintContext, f: Facts): Array<{ door: RDoor; room
  * dwelling whose "outside" is the rest of the flat) is not reported either. The rooms behind
  * such an entrance are not also reported by `W_ROOM_VIA_PRIVATE`: one fault, one warning.
  * Rooms with no classified use are skipped and declared to the coverage report (PS2.13).
+ * A plan that reads as non-residential ({@link judgesAsDwelling}, PS2.18) is not judged and is
+ * declared as `non-dwelling`; the rooms behind such a door are then reported by
+ * `W_ROOM_VIA_PRIVATE`, so the fault still has its one warning.
  */
 export const entranceIntoPrivate: LintRule = {
   name: "entrance-into-private",
   family: "privacy",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
+    // PS2.18: a front door into a WC is a home's fault; a café or clinic is declared, not judged.
+    if (!judgesAsDwelling(ctx)) {
+      ctx.skip("non-dwelling");
+      return out;
+    }
     const f = classifiedFactsOf(ctx);
     const ways = privateEntrances(ctx, f);
     const tol = ctx.rules.tolMm;

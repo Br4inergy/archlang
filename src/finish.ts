@@ -254,8 +254,19 @@ type Codes = FurnishCodes;
 /** One `finish` call measures each source once: the result it checks is the input it settles on. */
 type CodesMemo = Map<string, Codes>;
 
-/** The named lint profiles that change a threshold: the never-worse law holds under each. */
-const STRICTER_PROFILES = Object.keys(LINT_PROFILES).filter((p) => Object.keys(LINT_PROFILES[p]!).length > 0);
+/**
+ * The names of the profiles that change at least one THRESHOLD: the never-worse law holds under
+ * each. `assumeDwelling` is not a threshold, so a profile whose only key it is
+ * (`residential-basic`) is left out: furniture can create none of the codes it gates (they read
+ * doors, windows and the entrance, and `W_WET_ROOM_DOOR`'s kitchen-fixture arm runs under every
+ * reading), so a third lint per candidate would measure nothing the default does not.
+ */
+export function stricterProfileNames(profiles: Readonly<Record<string, object>>): string[] {
+  return Object.keys(profiles).filter((p) => Object.keys(profiles[p]!).some((k) => k !== "assumeDwelling"));
+}
+
+/** {@link stricterProfileNames} over the built-in {@link LINT_PROFILES}. */
+export const STRICTER_PROFILES: readonly string[] = stricterProfileNames(LINT_PROFILES);
 
 /**
  * The diagnostic codes of a source as multisets: compile's with lint's under the default

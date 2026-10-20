@@ -13,7 +13,7 @@ written only under `<scratch>/` (`probe-*.arch`).
 
 | Command | Result |
 |---|---|
-| `lint --json` (default = `residential-basic`) | 12 x `W_FIXTURE_BACK_TO_ROOM`, nothing else |
+| `lint --json` (default ruleset; `residential-basic` adds only `assumeDwelling`, PS2.18) | 12 x `W_FIXTURE_BACK_TO_ROOM`, nothing else |
 | `lint --profile accessibility-advisory` | + `W_ROOM_TOO_SMALL` (Bath 2), 6 x `W_DOOR_CLEARANCE`, 8 x `W_PATH_TOO_NARROW`. Still no topology finding |
 | `validate --strict` | fails only on the 12 fixture warnings |
 | `fix` (one run) then `validate --strict` | 11 of 12 auto-fixed, 1 wardrobe left. **One more hand edit and the plan passes the ship gate with every defect still in it** |
@@ -44,7 +44,7 @@ written only under `<scratch>/` (`probe-*.arch`).
 ### A.1 Lint rule list (order is contract): `src/lint/rules/index.ts:28-87`
 
 Thresholds: `DEFAULT_RULESET` `src/lint/ruleset.ts:94-107`. Profiles: `LINT_PROFILES`
-`src/lint/ruleset.ts:116-128`. `residential-basic` = defaults. `accessibility-advisory` raises
+`src/lint/ruleset.ts:116-128`. `residential-basic` = defaults plus `assumeDwelling: true` (PS2.18: every plan judged as a dwelling). `accessibility-advisory` raises
 door width to 850, room area to 5, swing clearance to 150, landing to 450 and path width to 900.
 Every rule is advisory (`W_*`, never blocks render). `--strict` turns warnings into exit 2.
 

@@ -78,7 +78,7 @@ describe("W_ROOM_VIA_PRIVATE", () => {
   });
 
   it("skips a room with no classified use (until PS2.13 reports coverage)", () => {
-    expect(of(backAs("Den", ""), "W_ROOM_VIA_PRIVATE")).toEqual([]);
+    expect(of(backAs("Atelier", ""), "W_ROOM_VIA_PRIVATE")).toEqual([]);
   });
 
   it("leaves the storey's only bath behind a bedroom to W_BATH_VIA_BEDROOM", () => {
@@ -235,7 +235,7 @@ describe("W_ENTRANCE_INTO_PRIVATE", () => {
   it("does not report a fragment of private rooms alone, nor a bedroom beside an unclassified room", () => {
     const fragment = readFileSync("test/defect-corpus/annotation-collisions/label-over-bed.arch", "utf8");
     expect(of(fragment, "W_ENTRANCE_INTO_PRIVATE")).toEqual([]);
-    const den = replaceOnce(corpusCase("entry-into-bedroom"), 'label "Living Room" uses living', 'label "Den"');
+    const den = replaceOnce(corpusCase("entry-into-bedroom"), 'label "Living Room" uses living', 'label "Atelier"');
     expect(of(den, "W_ENTRANCE_INTO_PRIVATE")).toEqual([]);
   });
 });
