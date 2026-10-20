@@ -1,7 +1,8 @@
 # Resolve-order corpus (ADR 0028 §1, backlog PS0.5): elements that READ a room which is
 # placed relationally. Before the reorder these resolved while the relational room still
-# sat at its (0,0) placeholder, and every reader refuses a room carrying `_rel` rather
-# than read the placeholder. This file pins exactly what each reader says.
+# sat at its (0,0) placeholder, and every reader refused a room carrying `_rel`. Rooms are
+# now placed before every reader, which refuses only a room that could not be placed, so
+# this plan compiles: the door swings into the kitchen and both pieces land in it.
 plan "Relational readers" {
   units mm
   grid 50

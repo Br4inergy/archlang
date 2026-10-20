@@ -92,7 +92,7 @@ function swingInto(
     return undefined;
   };
   const room = rooms.find((r) => r.id === roomId);
-  if (!room || !host || room._rel) return notAdjacent();
+  if (!room || !host || room._unplaced) return notAdjacent();
   // The room borders the wall if the door position sits on the room's perimeter.
   const tol = host.thickness / 2 + Math.max(host.thickness, 1);
   // —— Ring path: a `polygon` or `circle` room (a circle carries the 48-gon in `poly`). ——
@@ -150,7 +150,7 @@ function roomSideOf(at: Point, host: WallSegment | null, rooms: readonly RRoom[]
   const { plus, minus } = wallFaceProbes(host, at, Math.max(host.thickness, 1));
   const onFloor = ({ x: px, y: py }: Point): boolean =>
     rooms.some((r) => {
-      if (r._rel) return false;
+      if (r._unplaced) return false;
       if (r.poly) return pointInPolygon(px, py, r.poly);
       return px >= r.at.x && px <= r.at.x + r.size.w && py >= r.at.y && py <= r.at.y + r.size.h;
     });

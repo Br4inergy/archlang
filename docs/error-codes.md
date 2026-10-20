@@ -74,7 +74,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_OUT_OF_RANGE`](#e_out_of_range) | error | A coordinate, length or drawing setting is outside the modelling range. |
 | [`E_PARSE`](#e_parse) | error | The source could not be read: its SHAPE is wrong. |
 | [`E_PLACE_POLY`](#e_place_poly) | error | A rectangle-only placement clause aimed at a polygon room. |
-| [`E_PLACE_REF`](#e_place_ref) | error | Furniture placed in an unknown or non-absolute room. |
+| [`E_PLACE_REF`](#e_place_ref) | error | Furniture placed in an unknown or unplaced room. |
 | [`E_PNG_DEPENDENCY`](#e_png_dependency) | error | PNG/PDF export needs an optional dependency that is not installed. |
 | [`E_RANGE_LIMIT`](#e_range_limit) | error | Range too large. |
 | [`E_RATE_LIMITED`](#e_rate_limited) | error | This address sent more requests than the host answers per minute. |
@@ -976,11 +976,11 @@ furniture wc in L anchor bottom-left   # error: L is a polygon room
 
 ## E_PLACE_REF
 
-*error* — Furniture placed in an unknown or non-absolute room.
+*error* — Furniture placed in an unknown or unplaced room.
 
-**Cause.** A `furniture … in <room> centered|anchor …` names a room that does not exist, or one positioned relationally (`right-of`/…) whose box is not yet fixed when the fixture is placed.
+**Cause.** A `furniture … in <room> centered|anchor …` names a room that does not exist, or a relationally placed room (`right-of`/…) that could not be placed (its own `E_LAYOUT_*` error says why). A relational room that IS placed works: rooms are placed before any furniture.
 
-**Fix.** Reference an existing room given absolute `at (x,y)` coordinates.
+**Fix.** Reference an existing room, and fix the placement error of the room it names.
 
 ```arch static
 furniture bed in bedrm centered size 1500x2000   # error: no room id=bedrm

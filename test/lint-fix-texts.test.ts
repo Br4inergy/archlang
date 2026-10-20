@@ -145,7 +145,7 @@ describe("W_ROOM_NO_FIXTURE — the hint's statement compiles, clears it, and ra
     ["bathroom with its door on the top wall", DOOR_ON_TOP],
     ["polygon bathroom (`at (x,y)` form)", POLY],
     ["L-shaped bathroom", L_SHAPE],
-    ["relational bathroom (`at (x,y)` form)", RELATIONAL],
+    ["relational bathroom (`in <room> anchor` form: placed before its furniture, PS0.5)", RELATIONAL],
     ["half-walled bathroom (the back must be on a wall)", HALF_WALLED],
     ["polygon bathroom on grid 600 (snapping must not float it)", GRID_600],
   ] as const;
@@ -171,7 +171,10 @@ describe("W_ROOM_NO_FIXTURE — the hint's statement compiles, clears it, and ra
           } else expect(hint).toContain("make room first");
           return;
         }
-        if (src === POLY || src === L_SHAPE || src === RELATIONAL)
+        // A relational room is placed before any furniture resolves (ADR 0028 §1), so the
+        // closed-form anchor works on it as on an absolute room (backlog PS0.5).
+        if (src === RELATIONAL) expect(stmt).toMatch(/^furniture (bathtub|shower) in r_bath anchor /);
+        if (src === POLY || src === L_SHAPE)
           expect(stmt).toMatch(/^furniture (bathtub|shower) at \(\d+,\d+\) size \d+x\d+( rotate \d+)? in r_bath$/);
         const fixed = stmts.reduce((s, q) => insert(s, q), src);
         expect(errorsOf(fixed)).toEqual([]);

@@ -143,7 +143,7 @@ export function pasteFixture(
   let walled = false;
   let offGrid = false;
 
-  if (!room.poly && room._rel === undefined) {
+  if (!room.poly && room._unplaced !== true) {
     const rect = { x: room.at.x, y: room.at.y, w: room.size.w, h: room.size.h };
     for (const edge of ["top", "bottom", "left", "right"] as const) {
       if (face(rect, edge) === null) continue;

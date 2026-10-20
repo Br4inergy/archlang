@@ -19,6 +19,19 @@
  * `git archive` of that commit's `src/` and digest modules, through this test's own digest
  * body — and committed BEFORE the reorder, so the reorder is proven against them. A row that
  * moves is a finding to explain (`docs/testing.md` §3), never a re-pin.
+ *
+ * ## The one row re-measured, and why: `relational-readers.arch` (backlog PS0.5)
+ *
+ * The reorder itself (`5c7748d`) moved no row: this file passed unchanged against it. The
+ * NEXT commit is a deliberate behaviour change — the readers of a relational room (furniture
+ * side inference and `in <room>` placement, a door's `swing into`, a garage door's floor
+ * probe, lint's fixture paste) now refuse only a room that could NOT be placed, since every
+ * room is placed before they run. That plan's three diagnostics (`W_SWING_ROOM_NOT_ADJACENT`,
+ * `E_FURN_AGAINST`, `E_PLACE_REF`) are exactly the defect, and they are gone; the door,
+ * counter and table now draw, and its header comment was rewritten to say so. Every other row
+ * is untouched. `test/relational-readers.test.ts` proves the plan now draws byte for byte
+ * what its absolute twin (`kitchen at (5000,0)`) draws, and that an unplaced room is still
+ * refused by every reader.
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -72,8 +85,10 @@ const BASELINE: [string, string, string[]][] = [
   ],
   [
     "relational-readers.arch",
-    "8bb99685728c5a585f8187950d0c2047b94b0abf124ddff6ef834d77cf9d642f",
-    ["W_SWING_ROOM_NOT_ADJACENT@678", "E_FURN_AGAINST@734", "E_PLACE_REF@795"],
+    // Re-measured for PS0.5 (see the header): was 8bb99685…642f with
+    // ["W_SWING_ROOM_NOT_ADJACENT@678", "E_FURN_AGAINST@734", "E_PLACE_REF@795"].
+    "78342f89cff072308f6d61f2d2300378ba0f3011089ccee5e2e54991f064cf7a",
+    [],
   ],
   [
     "rooms-and-walls-diagnose.arch",
