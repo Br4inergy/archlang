@@ -484,13 +484,17 @@ suite("the statement", () => {
     expect(ir.elements.map((e) => e.kind)).toEqual(["room"]);
   });
 
-  it("the statement keeps its clauses closed: `open between` and `between … thickness` refuse by name", () => {
+  it("the body's clause list is closed at `except`, `open between` and `between … thickness`", () => {
     const parseError = (body: string) =>
       compile(
         plan(`  room id=a at (0,0) size 4000x3000\n  walls from rooms exterior 200 partition 100 { ${body} }`),
       ).diagnostics.find((d) => d.code === "E_PARSE")?.message;
-    expect(parseError("open between a and b")).toMatch(/not available yet/);
-    expect(parseError("between a and b thickness 200")).toMatch(/not available yet/);
+    expect(parseError("open between a and b")).toBeUndefined();
+    expect(parseError("open id=o between a and b width 900")).toBeUndefined();
+    expect(parseError("between a and b thickness 200")).toBeUndefined();
+    expect(parseError("between a and b")).toMatch(/Expected "thickness"/);
+    expect(parseError("open between a b")).toMatch(/Expected "and"/);
+    expect(parseError("party between a and b")).toMatch(/Expected "except", "open" or "between"/);
     expect(parseError("except")).toMatch(/at least one room/);
   });
 
