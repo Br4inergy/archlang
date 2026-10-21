@@ -589,10 +589,10 @@ export function renderLlmSpec(examples: Record<string, string>): string {
   // `style <kind>` takes every element kind but two (`opening`, and `walls`, whose derived walls
   // take `style wall`). Printing the RULE rather than the
   // ten-item list is both shorter (this page has a hard budget) and more useful — and it
-  // is still derived: the exception is computed, and asserted to be exactly two words, so
+  // is still derived: the exception is computed, and asserted to be exactly the set {opening, walls}, so
   // giving `opening` a palette (or taking another element's away) throws here.
   const styleless = KEYWORDS.element.filter((k) => !STYLE_KINDS.includes(k));
-  if (styleless.length !== 2) {
+  if (styleless.length !== 2 || !styleless.includes("opening") || !styleless.includes("walls")) {
     throw new Error(
       `The Scripting section says \`style\` takes any element kind but two (\`opening\`, \`walls\`), and ${styleless.length} ` +
         `element(s) now have no STYLE_KEYS entry (${styleless.join(", ") || "none"}). Rewrite the ` +

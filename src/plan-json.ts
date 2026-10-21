@@ -751,14 +751,12 @@ export function planToJson(
   // flattened into authored rows the payload could not round-trip. Neither may be silent:
   // the projection is refused, naming the instance (ADR 0028 §3).
   const storeys = levels.length > 0 ? levels.map((l) => l.ir) : [ir];
-  const deriving = [
-    ...new Set(
-      storeys.flatMap((x) =>
-        x.elements.flatMap((e) => (e.kind === "walls" && e._instance !== undefined ? [e._instance] : [])),
-      ),
-    ),
-  ];
+  const statements = storeys.flatMap((x) => x.elements.filter((e) => e.kind === "walls" && e._instance !== undefined));
+  const deriving = [...new Set(statements.map((e) => e._instance!))];
   if (deriving.length > 0) {
+    // Spanned on the first offending statement itself (inside the component body, and in
+    // the file that body was written in), the line the author would have to change.
+    const first = statements[0]!;
     const named = deriving.map((i) => `"${i}"`).join(", ");
     return {
       diagnostics: [
@@ -767,6 +765,8 @@ export function planToJson(
           severity: "error",
           message: `Plan JSON cannot carry the walls \`walls from rooms\` derives inside the placed instance${deriving.length > 1 ? "s" : ""} ${named}: the payload has no per-component record, so the projection is refused rather than drop them`,
           code: "E_JSON_DERIVED_IN_INSTANCE",
+          ...(first.span ? { span: first.span } : {}),
+          ...(first._file !== undefined ? { file: first._file } : {}),
         },
       ],
     };

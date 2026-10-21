@@ -625,6 +625,8 @@ suite("Plan JSON never drops a placed component's derived walls (red team round 
     expect(r.json).toBeUndefined();
     const d = r.diagnostics.find((x) => x.code === "E_JSON_DERIVED_IN_INSTANCE")!;
     expect(d.message).toContain('"west"');
+    // spanned on the statement inside the component body
+    expect(src.slice(d.span!.start, d.span!.end)).toBe("walls from rooms exterior 200 partition 100");
     expect(
       planToJson(plan("  room id=a at (0,0) size 4000x3000\n  walls from rooms exterior 200 partition 100")).json,
     ).toBeDefined();
