@@ -108,6 +108,7 @@ suite("DESCRIBE_KEYS — no drift vs the real describe() result", () => {
         door id=front on shell at 4000 width 900
         stair id=s at (500,500) size 900x2600 dir up
         void id=well at (5000,1000) size 1200x1200
+        walls from rooms exterior 200 partition 100
       }
     }`,
       { facts: DESCRIBE_FACTS },
@@ -143,6 +144,9 @@ suite("DESCRIBE_KEYS — no drift vs the real describe() result", () => {
       "verticals",
       "voids",
       "heights",
+      // `walls from rooms` above: its ring lies under `shell`, which takes it over, and the
+      // drop is reported, so `derived_walls` is emitted (ADR 0028 §6).
+      "derived_walls",
       "symmetry",
       "syntax",
     ]) {

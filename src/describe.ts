@@ -457,7 +457,7 @@ export function instanceTransform(i: Pick<InstanceSummary, "rotate" | "mirror">)
   return fromSpelling(i.rotate, i.mirror);
 }
 
-export type { RoomPlacement, OpeningPlacement, FurniturePlacement } from "./ir.js";
+export type { RoomPlacement, OpeningPlacement, FurniturePlacement, DerivedWallRow } from "./ir.js";
 
 /** How a single placed element's position was authored vs derived. */
 export interface FreedomElement {

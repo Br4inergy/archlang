@@ -189,7 +189,8 @@ suite("v1.21 CLI — describe --level is a display filter", () => {
   it("a per-storey key absent from the selected storey is DROPPED, not inherited", () => {
     const dir = mkdtempSync(join(tmpdir(), "archlang-levels-"));
     const plan = join(dir, "perstorey.arch");
-    // Level 1 has both optional per-storey keys; level 2 has neither.
+    // Level 1 has every optional per-storey key (`derived_walls` from `walls from rooms`);
+    // level 2 has none.
     writeFileSync(
       plan,
       `plan "P" {
@@ -200,6 +201,7 @@ suite("v1.21 CLI — describe --level is a display filter", () => {
     door id=front on shell at 4000 width 900
     stair id=s at (500,500) size 900x2600 dir up
     void id=well at (5000,1000) size 1200x1200
+    walls from rooms exterior 200 partition 100
   }
   level 2 {
     wall id=shell exterior thickness 200 { (0,0) (8000,0) (8000,6000) (0,6000) close }
