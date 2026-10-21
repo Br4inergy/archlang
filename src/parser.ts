@@ -719,7 +719,11 @@ class Parser {
     const a = this.eatIdent().value;
     if (a !== "auto") this.fail(`Expected "auto" after "dims" but found "${a}"`, t);
     let mode: AutoDimsMode = "all";
-    if (this.isType("ident") && (AUTO_DIMS_MODES as readonly string[]).includes(this.peek().value)) {
+    // `walls` is both a mode and a statement keyword (`walls from rooms`): a mode word that
+    // starts a statement on the next line (`dims auto` then `walls from rooms …`) is left
+    // to that statement.
+    const startsStatement = this.statementStarts.has(this.peek().value) && this.isKeyword("from", 1);
+    if (this.isType("ident") && (AUTO_DIMS_MODES as readonly string[]).includes(this.peek().value) && !startsStatement) {
       mode = this.eatIdent().value as AutoDimsMode;
     }
     plan.autoDims = mode;
