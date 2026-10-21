@@ -81,7 +81,12 @@ export interface TileWallSeg {
   wallId: string;
 }
 
-export type TilingCode = "E_ROOM_NOT_RECTANGLE" | "E_ROOMS_OVERLAP" | "E_ROOMS_NOT_TILING" | "E_PARTITION_TOO_SHORT";
+export type TilingCode =
+  | "E_ROOM_NOT_RECTANGLE"
+  | "E_ROOMS_OVERLAP"
+  | "E_ROOMS_NOT_TILING"
+  | "E_PARTITION_TOO_SHORT"
+  | "E_ELEMENT_LIMIT";
 
 /** A refusal: its code, the rooms it names (source order) and the reason, in words. */
 export interface TilingRefusal {
@@ -148,6 +153,9 @@ export function deriveWallsFromRooms(
   covers: readonly TileCover[],
   walls: readonly TileWallSeg[],
   tInt: number,
+  /** Count the walls about to be derived toward the element budget (`MAX_ELEMENTS`); false
+   *  past it, and nothing is derived (`E_ELEMENT_LIMIT`). Absent: no budget. */
+  budget?: (walls: number) => boolean,
 ): TilingResult {
   const n = rooms.length;
   chargeSteps(n + 1);
@@ -349,6 +357,23 @@ export function deriveWallsFromRooms(
     });
   }
   const index = authoredIndex(walls);
+  // Coexistence splits a derived run once per authored wall lying on it, so the number of
+  // walls derived is bounded by the cuts, not by the rooms: counted (and charged to the
+  // element budget) before any piece is allocated.
+  let derivedCount = 0;
+  for (const s of specs) derivedCount += pieceBound(s.path, s.closed, index);
+  if (budget && !budget(derivedCount)) {
+    return {
+      ok: false,
+      refusals: [
+        {
+          code: "E_ELEMENT_LIMIT",
+          rooms: [],
+          why: `it would derive up to ${derivedCount} walls (every authored wall lying on a derived line splits it)`,
+        },
+      ],
+    };
+  }
   const result: DerivedWallSpec[] = specs.map((s) => {
     const { path, closed, ...rest } = s;
     return { ...rest, ...coexist(s.name, path, closed, index) };
@@ -492,7 +517,9 @@ function holeCover(ring: readonly Point[], covers: readonly TileCover[]): "outdo
   const hx = ring.map((p) => p.x);
   const hy = ring.map((p) => p.y);
   const hb = { x0: Math.min(...hx), x1: Math.max(...hx), y0: Math.min(...hy), y1: Math.max(...hy) };
-  chargeSteps(covers.length + 1);
+  // `rectilinear()`, `boxOf()` and the grid below read every vertex of a polygon cover up to
+  // four times, for every hole: charged first.
+  chargeSteps(covers.reduce((t, c) => t + 1 + 4 * (c.poly?.length ?? 0), 1));
   const near = covers.filter((c) => {
     if (c.poly && !rectilinear(c.poly)) return false;
     const b = boxOf(c);
@@ -555,6 +582,28 @@ function holeCover(ring: readonly Point[], covers: readonly TileCover[]): "outdo
   }
   if (kinds === 3) return "covered by both outdoor and void";
   return kinds === 1 ? "outdoor" : "void";
+}
+
+/** An upper bound on the runs coexistence leaves of one derived path: one, plus one per
+ *  authored segment that overlaps one of its sides. Charged per authored segment read. */
+function pieceBound(
+  path: readonly Point[],
+  closed: boolean,
+  index: ReadonlyMap<string, Array<{ s: number; e: number; by: string }>>,
+): number {
+  let n = 1;
+  const sides = closed ? path.length : path.length - 1;
+  for (let k = 0; k < sides; k++) {
+    const a = path[k]!;
+    const b = path[(k + 1) % path.length]!;
+    const vertical = a.x === b.x;
+    const list = index.get(vertical ? `v:${a.x}` : `h:${a.y}`) ?? [];
+    chargeSteps(list.length + 1);
+    const lo = vertical ? Math.min(a.y, b.y) : Math.min(a.x, b.x);
+    const hi = vertical ? Math.max(a.y, b.y) : Math.max(a.x, b.x);
+    for (const w of list) if (Math.min(hi, w.e) > Math.max(lo, w.s)) n++;
+  }
+  return n;
 }
 
 /** The group's authored straight axis-aligned segments, by line (`v:<x>` / `h:<y>`). */

@@ -104,6 +104,7 @@ import {
   rectRing,
 } from "./geometry/polygon.js";
 import { BUILTIN_NAMES } from "./builtins.js";
+import { idSpanOf } from "./parser.js";
 
 export interface RBase {
   kind: ElementKind;
@@ -2322,7 +2323,8 @@ function resolveBody(
   //    every entry — including every legacy bare component call — so everything below is
   //    the historical single pass, byte for byte.
   const groups = groupEntries(entries);
-  chargeDerivedElements(entries, groups, registry, budget, diagnostics);
+  /** What each wall-deriving statement was charged at expansion (`ctx.elementBudget`). */
+  const precharged = chargeDerivedElements(entries, groups, registry, budget, diagnostics);
 
   // 2. Assign ids PER GROUP, so an instance's auto-id counters restart at 1 and two
   //    instances of one component get order-independent ids (`west.wall_1` / `east.wall_1`
@@ -2421,6 +2423,15 @@ function resolveBody(
     walls,
     rooms: rooms2,
     hostSegment: (at, ref) => hostInfo(at, ref).host,
+    // A deriving statement's real walls, beyond its expansion pre-charge (B1, ADR 0028 §3).
+    elementBudget: (n) => {
+      const e = activeEntry;
+      const pre = e ? (precharged.get(e) ?? 0) : 0;
+      if (n <= pre) return true;
+      if (e) precharged.set(e, n);
+      budget.count += n - pre;
+      return budget.count <= MAX_ELEMENTS;
+    },
     isOnWall: (at, ref) => hostInfo(at, ref).onWall,
     ...(world.now ? { now: () => world.now!() } : {}),
     diag: pushDiag,
@@ -2583,6 +2594,24 @@ function resolveBody(
         ? []
         : [...early, ...(wallKind >= 0 && !early.includes(wallKind) ? [wallKind] : []), ...derivers];
     const passes = [...first, ...order.map((_, i) => i).filter((i) => i !== roomKind && !first.includes(i))];
+    /** After the authored walls, in a deriving group: an authored wall may not take an id the
+     *  derived walls are given there (`ElementDef.reservedIds`, `E_WALL_ID_RESERVED`), so a wall
+     *  id keeps naming one wall (the host a hint names, `hostWallId`). Reported with the walls. */
+    const refuseReservedIds = (): void => {
+      const reserved = new Set(derivers.flatMap((i) => order[i]!.reservedIds ?? []));
+      if (reserved.size === 0) return;
+      for (const e of grp.entries) {
+        if (e.node.kind !== "wall" || e.idAuthored !== true || !reserved.has(e.id)) continue;
+        activeEntry = e;
+        pushDiag({
+          severity: "error",
+          message: `\`${e.id}\` is the name of the ring \`walls from rooms\` derives here, so an authored wall cannot take it; rename the wall`,
+          code: "E_WALL_ID_RESERVED",
+          span: idSpanOf(e.node) ?? e.node.span,
+        });
+      }
+      activeEntry = undefined;
+    };
     /** After the derivers: let each early kind refresh what it read off the walls. */
     const rewall = (): void => {
       for (const j of early) {
@@ -2609,6 +2638,7 @@ function resolveBody(
       withDatumReader(tableReader(frozen, datumOpts(grp)), () => {
         for (const i of passes) {
           resolveKind(i);
+          if (i === wallKind && derivers.length > 0) refuseReservedIds();
           if (i === derivers[derivers.length - 1]) rewall();
         }
       });
@@ -3257,9 +3287,12 @@ function groupEntries(entries: Entry[]): ResolveGroup[] {
 }
 
 /**
- * What one `walls from rooms` statement may derive, per room of its group, counted toward
- * {@link MAX_ELEMENTS}: at most `6n` partition pieces (a run an authored wall splits in two)
- * and `4n` ring vertices for `n` rooms (ADR 0028 §3, "Bounds, charged before allocating").
+ * What one `walls from rooms` statement is charged per room of its group at expansion, toward
+ * {@link MAX_ELEMENTS}, before anything resolves (ADR 0028 §3, "Bounds, charged before
+ * allocating"): `6n` partition pieces and `4n` ring vertices for `n` rooms. It is NOT an upper
+ * bound on what the statement derives: every authored wall lying on a derived line splits it
+ * once more, so the derivation counts its real walls again before allocating them and charges
+ * any excess over this pre-charge (`ResolveCtx.elementBudget`, `E_ELEMENT_LIMIT`).
  */
 export const DERIVED_ELEMENTS_PER_ROOM = 10;
 
@@ -3277,7 +3310,8 @@ function chargeDerivedElements(
   registry: Registry,
   budget: ElementBudget,
   diagnostics: Diagnostic[],
-): void {
+): Map<Entry, number> {
+  const charged = new Map<Entry, number>();
   const refused = new Set<Entry>();
   for (const grp of groups) {
     let rooms = -1;
@@ -3289,6 +3323,7 @@ function chargeDerivedElements(
       }
       if (rooms < 0) rooms = grp.entries.filter((x) => x.node.kind === "room").length;
       budget.count += DERIVED_ELEMENTS_PER_ROOM * rooms;
+      charged.set(e, DERIVED_ELEMENTS_PER_ROOM * rooms);
       if (budget.count <= MAX_ELEMENTS) continue;
       budget.capped = true;
       refused.add(e);
@@ -3306,12 +3341,13 @@ function chargeDerivedElements(
       );
     }
   }
-  if (refused.size === 0) return;
+  if (refused.size === 0) return charged;
   const keep = (e: Entry): boolean => !refused.has(e);
   const kept = entries.filter(keep);
   entries.length = 0;
   entries.push(...kept);
   for (const grp of groups) grp.entries = grp.entries.filter(keep);
+  return charged;
 }
 
 /** Assign ids in registry order: explicit ids are checked for duplicates; missing

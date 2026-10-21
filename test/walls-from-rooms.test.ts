@@ -20,7 +20,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe as suite, expect, it } from "vitest";
-import { compile, describe, lint } from "../src/index.js";
+import { compile, describe, lint, planToJson } from "../src/index.js";
+import { wallRef } from "../src/wall-ref.js";
+import { planJsonArtifact } from "../src/cli/serialize.js";
+import { NULL_WORLD } from "../src/world.js";
 import { resolvePlan } from "../src/analyze.js";
 import { resolve } from "../src/ir.js";
 import { parse } from "../src/parser.js";
@@ -420,6 +423,42 @@ suite("the statement", () => {
     ]);
   });
 
+  it("authored walls splitting a derived run are counted before the pieces exist (red team round 1, B1)", () => {
+    const plant = (n: number) =>
+      plan(
+        `  room id=a at (0,0) size 4000x20000\n  room id=b at (4000,0) size 3000x20000\n  walls from rooms exterior 200 partition 100\n` +
+          `  for i in 0..${n} {\n    wall partition thickness 1 { (4000, 4*i+1) (4000, 4*i+3) }\n  }`,
+      );
+    // 100 cuts: 101 partition pieces + the ring, well inside the budget
+    expect(derived(irOf(plant(100))).length).toBe(102);
+    // 4,900 cuts: 4,900 authored walls + 4,902 derived would be twice MAX_ELEMENTS
+    const r = compile(plant(4900));
+    const limit = r.diagnostics.filter((d) => d.code === "E_ELEMENT_LIMIT");
+    expect(limit.length).toBe(1);
+    const src = plant(4900);
+    expect(src.slice(limit[0]!.span!.start).startsWith("walls from rooms")).toBe(true);
+    expect(limit[0]!.message).toMatch(/derives none/);
+  });
+
+  it("a statement with no room to derive from refuses: E_WALLS_FROM_NO_ROOMS", () => {
+    expect(codesOf(plan("  walls from rooms exterior 200 partition 100"))).toEqual(["E_WALLS_FROM_NO_ROOMS"]);
+    expect(
+      codesOf(plan("  room id=a at (0,0) size 4000x3000\n  walls from rooms exterior 200 partition 100 { except a }")),
+    ).toEqual(["E_WALLS_FROM_NO_ROOMS"]);
+  });
+
+  it("thickness is judged as an authored wall's is (snapped, else as written; positive)", () => {
+    const authored = (t: string) =>
+      codesOf(
+        plan(
+          `  room id=a at (0,0) size 4000x3000\n  wall exterior thickness ${t} { (0,0) (4000,0) (4000,3000) (0,3000) close }`,
+        ),
+      );
+    const derivedOk = (t: string) =>
+      codesOf(plan(`  room id=a at (0,0) size 4000x3000\n  walls from rooms exterior ${t} partition 100`));
+    for (const t of ["0", "-5", "0.4", "200"]) expect(derivedOk(t)).toEqual(authored(t));
+  });
+
   it("counts toward the element budget at expansion: 10 per room of its group", () => {
     const many = (n: number) =>
       plan(
@@ -505,7 +544,15 @@ suite("addressing: lint and compile never quote or edit a derived wall", () => {
   );
   const stmt = { start: BAD.indexOf("walls from rooms"), end: BAD.indexOf("partition 100") + "partition 100".length };
   const quotesDerived = (text: string) =>
-    /a\|b|exterior#|wall "exterior"|on exterior#|"a\|b"/.test(text) || /\bon a\|b\b/.test(text);
+    /a\|b|exterior#|"exterior"|on exterior#/.test(text) || /\bon a\|b\b/.test(text);
+  /** Every text a diagnostic carries, raw (not JSON, which escapes the quotes the patterns read). */
+  const textsOf = (d: ReturnType<typeof lint>[number]): string =>
+    [
+      d.message,
+      ...(d.hints ?? []),
+      ...(d.fixes ?? []).flatMap((f) => [f.title, ...f.edits.map((e) => e.newText)]),
+      ...(d.relatedSpans ?? []).map((r) => r.message ?? ""),
+    ].join("\n");
 
   it("the rules that name a host reach derived walls (non-vacuous)", () => {
     const codes = new Set(lint(BAD).map((d) => d.code));
@@ -520,7 +567,7 @@ suite("addressing: lint and compile never quote or edit a derived wall", () => {
   it("no message, hint or fix of lint() or compile() quotes a derived wall's internal name or edits the statement", () => {
     const all = [...lint(BAD), ...compile(BAD).diagnostics];
     for (const d of all) {
-      const text = JSON.stringify({ m: d.message, h: d.hints, f: d.fixes, r: d.relatedSpans });
+      const text = textsOf(d);
       expect(quotesDerived(text), `${d.code}: ${text}`).toBe(false);
       for (const f of d.fixes ?? []) {
         for (const e of f.edits)
@@ -529,10 +576,63 @@ suite("addressing: lint and compile never quote or edit a derived wall", () => {
     }
   });
 
+  it("the patterns bite: a planted internal name is caught (non-vacuous)", () => {
+    expect(quotesDerived('both are on wall "exterior".')).toBe(true);
+    expect(quotesDerived("door on a|b at 50%")).toBe(true);
+    expect(quotesDerived('nearest wall "exterior" is here')).toBe(true);
+  });
+
+  it("a collision with a derived wall offers no `against wall <id>`", () => {
+    const hint = lint(BAD)
+      .find((d) => d.code === "W_FURNITURE_WALL_COLLISION")!
+      .hints!.join("\n");
+    expect(hint).not.toContain("against wall");
+    expect(hint).toContain("anchor <edge> flush");
+  });
+
+  it("an authored wall cannot take the derived ring's name: E_WALL_ID_RESERVED on the id", () => {
+    const src = plan(
+      `  room id=a at (0,0) size 4000x3000\n  room id=b at (4000,0) size 3000x3000\n  wall id=exterior partition thickness 100 { (2000,0) (2000,3000) }\n  walls from rooms exterior 200 partition 100`,
+    );
+    const d = compile(src).diagnostics.filter((x) => x.code === "E_WALL_ID_RESERVED");
+    expect(d.length).toBe(1);
+    expect(src.slice(d[0]!.span!.start, d[0]!.span!.end)).toBe("exterior");
+    // without the statement the id is an ordinary id
+    expect(codesOf(src.replace("  walls from rooms exterior 200 partition 100\n", ""))).toEqual([]);
+    // two walls sharing an id are told apart by their segment
+    const ir = resolve(parse(src).plan!).ir;
+    const derivedRing = ir.walls.find((w) => w._derived !== undefined && w.id === "exterior")!;
+    expect(wallRef(ir.walls, { wallId: "exterior", a: derivedRing.points[0], b: derivedRing.points[1] })).toBe(
+      "the exterior wall derived from the rooms",
+    );
+    expect(wallRef(ir.walls, { wallId: "exterior", a: { x: 2000, y: 0 }, b: { x: 2000, y: 3000 } })).toBe(
+      'wall "exterior"',
+    );
+  });
+
   it("an off-wall opening is never attached to a derived wall by a fix", () => {
     const off = compile(BAD).diagnostics.filter((d) => /OFF_WALL|NOT_ON_WALL/.test(d.code ?? ""));
     expect(off.length).toBeGreaterThan(0);
     for (const d of off) expect(d.fixes ?? []).toEqual([]);
+  });
+});
+
+suite("Plan JSON never drops a placed component's derived walls (red team round 1, S2)", () => {
+  it("refuses the projection, naming the instance; a root statement projects", () => {
+    const src = `plan "p" {\n  units mm\n  component unit() {\n    room id=a at (0,0) size 4000x3000\n    walls from rooms exterior 200 partition 100\n  }\n  place unit() as west at (0,0)\n}\n`;
+    expect(compile(src).diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    const r = planToJson(src);
+    expect(r.json).toBeUndefined();
+    const d = r.diagnostics.find((x) => x.code === "E_JSON_DERIVED_IN_INSTANCE")!;
+    expect(d.message).toContain('"west"');
+    expect(
+      planToJson(plan("  room id=a at (0,0) size 4000x3000\n  walls from rooms exterior 200 partition 100")).json,
+    ).toBeDefined();
+    // `compile -f json` reports it as a user-source error (exit 2), not an internal failure
+    const art = planJsonArtifact(src, NULL_WORLD, "all", [], []);
+    expect(art.error).toBeUndefined();
+    expect(art.bytes).toBeUndefined();
+    expect(art.diagnostics.map((x) => x.code)).toEqual(["E_JSON_DERIVED_IN_INSTANCE"]);
   });
 });
 

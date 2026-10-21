@@ -642,6 +642,13 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "Use one of the supported kinds: opening `kind` must be `door` | `window` | `opening`.",
     '{ "openings": [ { "kind": "portal", "width": 900 } ] }   # error at /openings/0/kind: unknown kind "portal"',
   ),
+  E_JSON_DERIVED_IN_INSTANCE: E(
+    "E_JSON_DERIVED_IN_INSTANCE",
+    "Plan JSON cannot project a plan whose `place`d component derives its walls.",
+    "Plan JSON carries `walls from rooms` as the statement, never the walls it derives, and it has no per-component record to put a component's statement in. The walls a placed instance derives would therefore vanish from the payload, so `planToJson` (`compile -f json`) refuses the projection and names the instance instead (ADR 0028 §3).",
+    "Keep the plan in `.arch` source, or write that component's walls by hand to export it as Plan JSON.",
+    'component unit() { room id=a at (0,0) size 4000x3000\n  walls from rooms exterior 200 partition 100 }\nplace unit() as west at (0,0)   # compile -f json: error, instance "west"',
+  ),
   E_JSON_MIRROR: E(
     "E_JSON_MIRROR",
     "Plan JSON furniture, door or dimension is `mirror: true`, which `.arch` source cannot state.",
@@ -809,6 +816,20 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "`walls from rooms` derives from the rooms of the plan or component it is written in (ADR 0016: a component sees only its own rooms), so its `except` clause can leave out only one of those rooms. A name that is not one of them (a typo, a room of another component, a placed instance's room) excludes nothing (ADR 0028 §3).",
     "Name a room written beside the statement, or drop the name.",
     "room id=a at (0,0) size 4000x3000\nwalls from rooms exterior 200 partition 100 { except terrace }   # error: no room `terrace`",
+  ),
+  E_WALL_ID_RESERVED: E(
+    "E_WALL_ID_RESERVED",
+    "An authored wall takes the id the derived exterior ring has in this plan or component.",
+    "Beside a `walls from rooms` statement, the exterior ring it derives is named `exterior` internally (the courtyard rings and partitions have names no identifier can spell). An authored wall with that id would make one id name two walls, so a host, a hint and `describe().access` could not tell them apart (ADR 0028 §3). The span points at the id.",
+    "Rename the authored wall (`wall id=shell …`), or drop it and let the statement derive it.",
+    "room id=a at (0,0) size 4000x3000\nwall id=exterior partition thickness 100 { (2000,0) (2000,3000) }   # error: the derived ring's name\nwalls from rooms exterior 200 partition 100",
+  ),
+  E_WALLS_FROM_NO_ROOMS: E(
+    "E_WALLS_FROM_NO_ROOMS",
+    "A `walls from rooms` statement has no room to derive walls from.",
+    "The statement derives walls from the rooms written beside it, in the same plan or component; there is none, or its `except` clause leaves out every one. Deriving nothing silently would leave a plan with no walls where the author asked for them (ADR 0028 §3).",
+    "Write the rooms beside the statement, or drop the statement (or the `except` that empties it).",
+    "room id=a at (0,0) size 4000x3000\nwalls from rooms exterior 200 partition 100 { except a }   # error: every room is excepted",
   ),
   E_WALLS_FROM_ROOMS_DUP: E(
     "E_WALLS_FROM_ROOMS_DUP",

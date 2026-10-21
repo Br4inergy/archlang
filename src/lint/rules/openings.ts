@@ -480,7 +480,7 @@ function wallPosition(ctx: LintContext, seg: WallSegment, s: number): number {
 /** The source clause that puts `el` at `at` — in the form it was written in. */
 function placeClause(ctx: LintContext, o: OnRun, at: Point, s: number): string {
   // A derived host has no id to write (ADR 0028 §3): the clause is then the point.
-  return o.el._placement === "attached" && !isDerivedWall(ctx.ir.walls, o.seg.wallId)
+  return o.el._placement === "attached" && !isDerivedWall(ctx.ir.walls, o.seg)
     ? `on ${o.seg.wallId} at ${mm(wallPosition(ctx, o.seg, s))}`
     : `at (${mm(at.x)}, ${mm(at.y)})`;
 }
@@ -601,7 +601,7 @@ function moveHints(
 
 /** The id an agent edits by, for the hints. */
 const idHint = (ctx: LintContext, el: Hosted): string =>
-  `The ${KIND_WORD[el.kind]} is "${el.id}" on ${wallRef(ctx.ir.walls, el.host?.wallId ?? "")}.`;
+  `The ${KIND_WORD[el.kind]} is "${el.id}" on ${wallRef(ctx.ir.walls, el.host ?? { wallId: "" })}.`;
 
 // ─── PS2.1 ─────────────────────────────────────────────────────────────────────────────
 
@@ -779,7 +779,7 @@ export const openingOverlap: LintRule = {
             : [
                 "Accept it if the two are one framed unit (a door with a sidelight, or windows meeting on a mullion thinner than 100 mm).",
               ]),
-          `This ${kL} is "${later.el.id}"; the ${kE} is "${earlier.el.id}"; both are on ${wallRef(ctx.ir.walls, later.seg.wallId)}.`,
+          `This ${kL} is "${later.el.id}"; the ${kE} is "${earlier.el.id}"; both are on ${wallRef(ctx.ir.walls, later.seg)}.`,
         ];
         out.push({
           severity: "warning",
@@ -940,7 +940,7 @@ export const connectorAmbiguous: LintRule = {
               `Accept it if ${list(straddled)} are one open space with no wall between them, so the ${word} serves both.`,
             ]
           : []),
-        `The ${word} is "${c.id}" on ${wallRef(ctx.ir.walls, c.host.wallId)}${straddled.length ? `; its span covers rooms ${straddled.map((x) => `"${x}"`).join(", ")}` : ""}.`,
+        `The ${word} is "${c.id}" on ${wallRef(ctx.ir.walls, c.host)}${straddled.length ? `; its span covers rooms ${straddled.map((x) => `"${x}"`).join(", ")}` : ""}.`,
       ];
       out.push({
         severity: "warning",

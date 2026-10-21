@@ -100,6 +100,13 @@ export interface ResolveCtx {
    * the resolver behind `compile()` always provides it.
    */
   group?(): readonly ResolvedElement[];
+  /**
+   * Count `n` elements the statement being resolved is about to DERIVE toward the plan's
+   * element budget (`MAX_ELEMENTS`), beyond what was charged for it at expansion. Returns false
+   * once the budget is crossed: the statement must then derive nothing and report
+   * `E_ELEMENT_LIMIT`. Optional (append-only); absent means no budget.
+   */
+  elementBudget?(n: number): boolean;
 }
 
 /**
@@ -285,6 +292,12 @@ export interface ElementDef {
    * derived rail). It may update `resolved` in place: it was made in this resolution.
    */
   rewall?(resolved: ResolvedElement, walls: readonly RWall[]): void;
+  /**
+   * Wall ids a {@link ElementDef.yieldsWalls} kind gives its derived walls that an identifier
+   * CAN spell (`exterior`). In a group that holds the kind, an authored wall with one of these
+   * ids is refused (`E_WALL_ID_RESERVED`), so a wall id names one wall there.
+   */
+  reservedIds?: readonly string[];
 }
 
 /**

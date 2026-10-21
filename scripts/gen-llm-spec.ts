@@ -105,7 +105,7 @@ export const ELEMENT_GRAMMAR: Record<string, string> = {
   void: `void [id=<name>] at (x,y) size <W>x<H>   # a hole in THIS storey's floor (stair well, atrium, double-height room): dashed rectangle + both diagonals, \`at\` = TOP-LEFT. It OBSTRUCTS circulation (no walking across it, though you may stand at its edge) and does NOT reduce the containing room's area; \`describe --json\`'s \`voids[]\` gives the extent to subtract. Rectangle-only (E_VOID_SIZE)`,
   outdoor: `outdoor [id=<name>] ${OUTDOOR_KINDS.join("|")} (at (x,y) size <W>x<H> | polygon (x,y) (x,y) (x,y) …) [label "…"] [rail ${RAIL_EDGES.join("|")} …]   # GROUND outside the building: a scale-aware material hatch over a tint (a \`balcony\`: tint + railing, no hatch). NOT a room — absent from \`rooms[]\`, \`totals.floor_area_m2\`, \`schedule rooms\`, the access graph and Plan JSON — and it obstructs NOTHING (water included). Its facts are \`describe --json\`'s \`outdoor[]\` + \`totals.outdoor_area_m2\`, area by exact shoelace on the ring form. \`label\` draws the name AND the m²; unlabelled ground draws neither. \`rail\` is \`balcony\`-only (E_OUTDOOR_RAIL) and rectangle-only (E_OUTDOOR_POLY_DEGENERATE); omitted, it is DERIVED — every edge with no wall one thickness behind it. W_OUTDOOR_OVERLAPS_ROOM covers a surface over a room's floor, W_BALCONY_NO_DOOR a balcony with no opening within a wall thickness. It grows the page, so a site plan wants \`paper\` (E_OUTDOOR_SIZE, E_OUTDOOR_POLY_SELF_INTERSECT)`,
   fence: `fence [id=<name>] [${FENCE_STYLES.join("|")}] { (x,y) (x,y) … [close] }   # a posted boundary line — dense ticks / a double line / sparse ticks; the style word LEADS and defaults to the first. NOT a thin wall: no thickness, no poché, hosts NO opening, absent from \`describe().walls\` and the access graph (a gate is deferred by name). It draws, it measures (\`fences[]\`: \`length_mm\` + \`closed\`) and it grows the page. An \`arc\` edge is E_FENCE_CURVED — write short straight runs`,
-  walls: `walls from rooms exterior <mm> partition <mm> [{ except <room> … }]   # derives every wall: a ring round the rooms, a partition per shared edge; the rooms must be rectangles tiling one floor`,
+  walls: `walls from rooms exterior <mm> partition <mm> [{ except <room> … }]   # a ring round the rooms + a partition per shared edge; rooms: rectangles tiling one floor. Host openings by \`at (x,y) … wall exterior|partition\`; \`on <wall>\` never names a derived partition`,
 };
 
 /**
@@ -586,14 +586,15 @@ export function renderLlmSpec(examples: Record<string, string>): string {
   });
   const settingLines = settingParts.map((p) => `  ${p.form}   # ${p.note}`).join("\n");
 
-  // `style <kind>` takes every element kind but one. Printing the RULE rather than the
+  // `style <kind>` takes every element kind but two (`opening`, and `walls`, whose derived walls
+  // take `style wall`). Printing the RULE rather than the
   // ten-item list is both shorter (this page has a hard budget) and more useful — and it
-  // is still derived: the exception is computed, and asserted to be exactly one word, so
+  // is still derived: the exception is computed, and asserted to be exactly two words, so
   // giving `opening` a palette (or taking another element's away) throws here.
   const styleless = KEYWORDS.element.filter((k) => !STYLE_KINDS.includes(k));
-  if (styleless.length === 0 || styleless.length > 2) {
+  if (styleless.length !== 2) {
     throw new Error(
-      `The Scripting section says \`style\` takes any element kind but one or two, and ${styleless.length} ` +
+      `The Scripting section says \`style\` takes any element kind but two (\`opening\`, \`walls\`), and ${styleless.length} ` +
         `element(s) now have no STYLE_KEYS entry (${styleless.join(", ") || "none"}). Rewrite the ` +
         `bullet to state the real rule — do not let the page keep asserting a shape the table lost.`,
     );

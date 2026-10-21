@@ -116,9 +116,16 @@ export function planJsonArtifact(
   levels: number[],
   diagnostics: Diagnostic[],
 ): Rendered {
-  const { json, pages } = planToJson(source, { world });
-  // Unreachable after a clean compile (it is the same resolve), but never an exception.
-  if (!json) return { diagnostics, levels, error: "Plan JSON projection failed" };
+  const { json, pages, diagnostics: projected } = planToJson(source, { world });
+  // After a clean compile only a refused projection gets here (`E_JSON_DERIVED_IN_INSTANCE`):
+  // reported with its diagnostic, never an exception.
+  if (!json) {
+    const refused = projected.filter((d) => d.code === "E_JSON_DERIVED_IN_INSTANCE");
+    // A refusal is a user-source fact (exit 2, the diagnostic printed like a compile error);
+    // anything else would be an internal failure.
+    if (refused.length > 0) return { diagnostics: [...diagnostics, ...refused], levels };
+    return { diagnostics, levels, error: "Plan JSON projection failed" };
+  }
   if (pages && pages.length > 0) {
     if (page === "all") {
       const out: RenderedPage[] = pages.map((p) => ({

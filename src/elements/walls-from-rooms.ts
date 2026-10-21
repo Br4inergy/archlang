@@ -150,6 +150,18 @@ export const wallsFromRooms: ElementDef = {
             ? { id: r.id, shape: "polygon" }
             : { id: r.id, rect: { x0: r.at.x, y0: r.at.y, x1: r.at.x + r.size.w, y1: r.at.y + r.size.h } },
       );
+    if (set.length === 0) {
+      ctx.diag({
+        severity: "error",
+        message:
+          rooms.length === 0
+            ? "`walls from rooms` has no room to derive walls from: no room is written beside it in this plan or component"
+            : "`walls from rooms` has no room to derive walls from: `except` leaves out every room written beside it",
+        code: "E_WALLS_FROM_NO_ROOMS",
+        span: n.span,
+      });
+      return out;
+    }
     const covers: TileCover[] = own.flatMap((e): TileCover[] => {
       if (e.kind === "void") return [coverOfVoid(e)];
       if (e.kind === "outdoor") return [coverOfOutdoor(e)];
@@ -158,7 +170,7 @@ export const wallsFromRooms: ElementDef = {
     const authored: TileWallSeg[] = own.flatMap((e) =>
       e.kind === "wall" ? segmentsOfWall(e).flatMap((s) => (s.arc ? [] : [{ a: s.a, b: s.b, wallId: e.id }])) : [],
     );
-    const res = deriveWallsFromRooms(set, covers, authored, tInt);
+    const res = deriveWallsFromRooms(set, covers, authored, tInt, ctx.elementBudget);
     if (!res.ok) {
       for (const r of res.refusals) ctx.diag({ severity: "error", ...refusalText(r), code: r.code, span: n.span });
       return out;
@@ -198,6 +210,8 @@ export const wallsFromRooms: ElementDef = {
 
   yieldsWalls: (resolved) => (resolved as RWallsFromRooms)._derivedWalls,
   dependsOn: ["void", "outdoor"],
+  // `A|B`, `exterior#2` and the `~n` runs cannot be spelled by an identifier; `exterior` can.
+  reservedIds: ["exterior"],
 
   /** Every derived wall's drawn band: the page must contain what the walls draw. */
   bounds(resolved): Point[] {
@@ -278,6 +292,13 @@ function refusalText(r: { code: string; rooms: string[]; why: string }): { messa
         message: `\`walls from rooms\` needs the rooms to tile one connected floor: ${r.why}`,
         hints: [
           "Write the leftover floor (a corridor, a lobby) as a room of its own, so every part of the floor belongs to a room and the rooms meet edge to edge.",
+        ],
+      };
+    case "E_ELEMENT_LIMIT":
+      return {
+        message: `Plan expands past its element budget: \`walls from rooms\` derives none, because ${r.why}`,
+        hints: [
+          "Remove the short authored walls lying on the derived lines, or write those walls by hand without the statement.",
         ],
       };
     default:

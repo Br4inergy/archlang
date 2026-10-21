@@ -482,8 +482,8 @@ function nextFix(fr: BBox, ctx: FixCtx): NextFix {
     return {
       dx: wall.dx,
       dy: wall.dy,
-      reason: `pushed clear of ${wallRef(ctx.walls, wall.wallId)}`,
-      problem: `penetrates ${wallRef(ctx.walls, wall.wallId)}`,
+      reason: `pushed clear of ${wallRef(ctx.walls, wall)}`,
+      problem: `penetrates ${wallRef(ctx.walls, wall)}`,
     };
 
   if (ctx.room) {

@@ -279,7 +279,7 @@ export const pocketRun: LintRule = {
         severity: "warning",
         code: "W_POCKET_RUN",
         ...at(d),
-        message: `Pocket door has nowhere to slide — it needs ${mm(need)} mm of clear wall past the ${side} jamb but only ${mm(have)} mm is available on ${wallRef(ir.walls, seg.wallId)} (${mm(shortfall(need, have))} mm short).`,
+        message: `Pocket door has nowhere to slide — it needs ${mm(need)} mm of clear wall past the ${side} jamb but only ${mm(have)} mm is available on ${wallRef(ir.walls, seg)} (${mm(shortfall(need, have))} mm short).`,
         hints: [
           `Slide it the other way — \`slide ${reversed}\`${reverseFits ? " (that run is long enough)" : " — though that run is no longer"}.`,
           "Or move the door along its wall (`on <wall> at <pos>`) so the pocket lands on solid wall.",
@@ -433,14 +433,14 @@ export const doorNearCorner: LintRule = {
         ...at(d),
         message:
           `Door leaves too little wall at a corner — the nib between its jamb and the corner of ` +
-          `${wallRef(ir.walls, seg.wallId)} at (${mm(worst.corner.x)}, ${mm(worst.corner.y)}) should be at least ` +
+          `${wallRef(ir.walls, seg)} at (${mm(worst.corner.x)}, ${mm(worst.corner.y)}) should be at least ` +
           `${mm(need)} mm, the wall's own thickness, but measures ${mm(worst.have)} mm ` +
           `(${mm(short)} mm short).`,
         hints: [
-          isDerivedWall(ir.walls, seg.wallId)
+          isDerivedWall(ir.walls, seg)
             ? `Move the door ${mm(short)} mm further from that corner along the wall: its \`at (x,y)\` is the one position to change.`
             : `Move the door ${mm(short)} mm further from that corner — \`on ${seg.wallId} at <pos>\` measures along the run, so the position is the one number to change.`,
-          isDerivedWall(ir.walls, seg.wallId)
+          isDerivedWall(ir.walls, seg)
             ? "Or move the rooms so the corner moves away from the jamb: the wall is derived from them."
             : `Or lengthen wall "${seg.wallId}" past the door, so the corner moves away from the jamb instead.`,
           "Narrowing the leaf would also close the gap and is deliberately NOT offered as a fix: rewriting the width you asked for to satisfy a checker is constraint laundering, and it heads toward `W_DOOR_CLEARANCE`.",

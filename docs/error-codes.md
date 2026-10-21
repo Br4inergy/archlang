@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**113 errors** · **63 warnings**
+**116 errors** · **63 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -59,6 +59,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_INTENT_ROOM_MISSING`](#e_intent_room_missing) | error | A room the brief names is absent from the plan. |
 | [`E_INTENT_TOTAL_AREA`](#e_intent_total_area) | error | The plan's total floor area is outside the brief's band. |
 | [`E_INTENT_UNREACHABLE`](#e_intent_unreachable) | error | A room cannot be reached from the entrance through modeled doors. |
+| [`E_JSON_DERIVED_IN_INSTANCE`](#e_json_derived_in_instance) | error | Plan JSON cannot project a plan whose `place`d component derives its walls. |
 | [`E_JSON_KIND`](#e_json_kind) | error | Unknown element kind in plan JSON. |
 | [`E_JSON_MIRROR`](#e_json_mirror) | error | Plan JSON furniture, door or dimension is `mirror: true`, which `.arch` source cannot state. |
 | [`E_JSON_SCHEMA`](#e_json_schema) | error | Plan JSON does not match the schema. |
@@ -117,8 +118,10 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_UNKNOWN_REF`](#e_unknown_ref) | error | Unknown reference. |
 | [`E_VERT_SIZE`](#e_vert_size) | error | Vertical circulation must have a positive size. |
 | [`E_VOID_SIZE`](#e_void_size) | error | A floor void must have a positive size. |
+| [`E_WALLS_FROM_NO_ROOMS`](#e_walls_from_no_rooms) | error | A `walls from rooms` statement has no room to derive walls from. |
 | [`E_WALLS_FROM_ROOMS_DUP`](#e_walls_from_rooms_dup) | error | More than one `walls from rooms` statement in one plan or component. |
 | [`E_WALL_BETWEEN_ROOM`](#e_wall_between_room) | error | A `walls from rooms` clause names a room that is not in its group. |
+| [`E_WALL_ID_RESERVED`](#e_wall_id_reserved) | error | An authored wall takes the id the derived exterior ring has in this plan or component. |
 | [`E_WALL_THICKNESS`](#e_wall_thickness) | error | Wall must have a positive thickness. |
 | [`E_WHILE_LIMIT`](#e_while_limit) | error | `while` exceeded its iteration cap. |
 | [`E_WINDOW_WIDTH`](#e_window_width) | error | Window must have a positive width. |
@@ -799,6 +802,20 @@ room at (0,0) size 2000x2000 label "Bathroom" uses bath   # supply the missing r
 
 ```arch static
 door on wall_hall_store width 800   # connect the isolated room
+```
+
+## E_JSON_DERIVED_IN_INSTANCE
+
+*error* — Plan JSON cannot project a plan whose `place`d component derives its walls.
+
+**Cause.** Plan JSON carries `walls from rooms` as the statement, never the walls it derives, and it has no per-component record to put a component's statement in. The walls a placed instance derives would therefore vanish from the payload, so `planToJson` (`compile -f json`) refuses the projection and names the instance instead (ADR 0028 §3).
+
+**Fix.** Keep the plan in `.arch` source, or write that component's walls by hand to export it as Plan JSON.
+
+```arch static
+component unit() { room id=a at (0,0) size 4000x3000
+  walls from rooms exterior 200 partition 100 }
+place unit() as west at (0,0)   # compile -f json: error, instance "west"
 ```
 
 ## E_JSON_KIND
@@ -1529,6 +1546,19 @@ stair id=s at (0,0) size 900x0 dir up   # error: zero depth
 void id=well at (2000,1000) size 0x3000   # error: zero width
 ```
 
+## E_WALLS_FROM_NO_ROOMS
+
+*error* — A `walls from rooms` statement has no room to derive walls from.
+
+**Cause.** The statement derives walls from the rooms written beside it, in the same plan or component; there is none, or its `except` clause leaves out every one. Deriving nothing silently would leave a plan with no walls where the author asked for them (ADR 0028 §3).
+
+**Fix.** Write the rooms beside the statement, or drop the statement (or the `except` that empties it).
+
+```arch static
+room id=a at (0,0) size 4000x3000
+walls from rooms exterior 200 partition 100 { except a }   # error: every room is excepted
+```
+
 ## E_WALLS_FROM_ROOMS_DUP
 
 *error* — More than one `walls from rooms` statement in one plan or component.
@@ -1554,6 +1584,20 @@ walls from rooms exterior 250 partition 100   # error: a second statement
 ```arch static
 room id=a at (0,0) size 4000x3000
 walls from rooms exterior 200 partition 100 { except terrace }   # error: no room `terrace`
+```
+
+## E_WALL_ID_RESERVED
+
+*error* — An authored wall takes the id the derived exterior ring has in this plan or component.
+
+**Cause.** Beside a `walls from rooms` statement, the exterior ring it derives is named `exterior` internally (the courtyard rings and partitions have names no identifier can spell). An authored wall with that id would make one id name two walls, so a host, a hint and `describe().access` could not tell them apart (ADR 0028 §3). The span points at the id.
+
+**Fix.** Rename the authored wall (`wall id=shell …`), or drop it and let the statement derive it.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+wall id=exterior partition thickness 100 { (2000,0) (2000,3000) }   # error: the derived ring's name
+walls from rooms exterior 200 partition 100
 ```
 
 ## E_WALL_THICKNESS

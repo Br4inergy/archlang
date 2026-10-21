@@ -86,7 +86,7 @@ roof (overhang <mm> [wall <id>] | polygon (x,y) (x,y) (x,y) …)   # the eaves l
 void [id=<name>] at (x,y) size <W>x<H>   # a hole in THIS storey's floor (stair well, atrium, double-height room): dashed rectangle + both diagonals, `at` = TOP-LEFT. It OBSTRUCTS circulation (no walking across it, though you may stand at its edge) and does NOT reduce the containing room's area; `describe --json`'s `voids[]` gives the extent to subtract. Rectangle-only (E_VOID_SIZE)
 outdoor [id=<name>] lawn|planting|paving|deck|gravel|water|driveway|patio|balcony (at (x,y) size <W>x<H> | polygon (x,y) (x,y) (x,y) …) [label "…"] [rail top|bottom|left|right|all|none …]   # GROUND outside the building: a scale-aware material hatch over a tint (a `balcony`: tint + railing, no hatch). NOT a room — absent from `rooms[]`, `totals.floor_area_m2`, `schedule rooms`, the access graph and Plan JSON — and it obstructs NOTHING (water included). Its facts are `describe --json`'s `outdoor[]` + `totals.outdoor_area_m2`, area by exact shoelace on the ring form. `label` draws the name AND the m²; unlabelled ground draws neither. `rail` is `balcony`-only (E_OUTDOOR_RAIL) and rectangle-only (E_OUTDOOR_POLY_DEGENERATE); omitted, it is DERIVED — every edge with no wall one thickness behind it. W_OUTDOOR_OVERLAPS_ROOM covers a surface over a room's floor, W_BALCONY_NO_DOOR a balcony with no opening within a wall thickness. It grows the page, so a site plan wants `paper` (E_OUTDOOR_SIZE, E_OUTDOOR_POLY_SELF_INTERSECT)
 fence [id=<name>] [picket|panel|post] { (x,y) (x,y) … [close] }   # a posted boundary line — dense ticks / a double line / sparse ticks; the style word LEADS and defaults to the first. NOT a thin wall: no thickness, no poché, hosts NO opening, absent from `describe().walls` and the access graph (a gate is deferred by name). It draws, it measures (`fences[]`: `length_mm` + `closed`) and it grows the page. An `arc` edge is E_FENCE_CURVED — write short straight runs
-walls from rooms exterior <mm> partition <mm> [{ except <room> … }]   # derives every wall: a ring round the rooms, a partition per shared edge; the rooms must be rectangles tiling one floor
+walls from rooms exterior <mm> partition <mm> [{ except <room> … }]   # a ring round the rooms + a partition per shared edge; rooms: rectangles tiling one floor. Host openings by `at (x,y) … wall exterior|partition`; `on <wall>` never names a derived partition
 strip <right|left|down|up> at (x,y) gap <mm> [height|width <mm>] { room [id=<id>] size <main>[x<cross>] [label "…"] [uses …] … }   # a row/column of rooms laid end to end: each room's offset is the running sum of the previous extents + gap, and the shared cross dimension is the strip's height (right/left) or width (down/up). Pure sugar — expands to absolute rooms. Plan-level block only
 level <int> ["Name"] [height <mm>] { … }   # ONE STOREY = one whole drawing. `height` is this storey's floor-to-floor and sits in the HEADER (a setting in the body is E_LEVEL_MIX); `heights.elevation` ACCUMULATES the storeys below, so it is NOT level × height. A plan is single-storey or ALL levels (a drawable statement beside them = E_LEVEL_MIX); settings/`component`/`import`/plan-global `let`/`set` stay OUTSIDE, applying to every level. Integers, unique, 0/negative legal, ASCENDING — lowest = page 1. Ids unique WITHIN a level (see `stair`). `arch compile` writes plan.L1.svg, plan.L2.svg … (`--level <n>` = one); `describe --json` adds `levels[]`. Plan-level only
 zone <id> ["Label"] { … }   # a WING/DEPARTMENT grouping: pure metadata, ZERO geometry — every statement inside resolves as if the wrapper were deleted (same coordinates, same ids; a zone is NOT a scope), so the SVG is byte-identical. Membership is DECLARED, never inferred from position. Nests (`zone west { zone galleries { … } }` → path `west.galleries`, innermost wins) and is legal wherever a statement is, incl. inside `level`. `describe --json` adds `zones[]` (path/rooms/floor_area_m2; nested rooms roll UP, so summing zones double-counts) + `describe --zone <path>` to read one wing
@@ -759,7 +759,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 
 **`archlang context`** — print the full bundled agent context (spec + workflow + CLI + errors)
   - input: none → output: the full agent context (llms-full.txt), or one --section of it
-  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 123 KB of it (spec = the language, 30 KB; workflow = the agent loop, 25 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 44 KB) · `--json` structured result on stdout, messages on stderr
+  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 124 KB of it (spec = the language, 30 KB; workflow = the agent loop, 25 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 45 KB) · `--json` structured result on stdout, messages on stderr
   - example: `archlang context` — the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 
 **`archlang new`** (aliases: `init`) — scaffold a starter .arch
@@ -777,7 +777,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 ## 4. Diagnostic catalog
 
 Every diagnostic carries a stable code and a `fix`. Look one up with `archlang explain <CODE>`.
-**113 errors** (abort rendering) · **63 warnings** (advisory; `validate --strict` fails on them too).
+**116 errors** (abort rendering) · **63 warnings** (advisory; `validate --strict` fails on them too).
 
 ### Errors
 
@@ -831,6 +831,7 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `archlang e
 - `E_INTENT_ROOM_MISSING` — A room the brief names is absent from the plan. **Fix:** Add a `room` whose label, `uses`, or type matches the concept. Gating tier: this failure fails `validateIntent`'s `ok`.
 - `E_INTENT_TOTAL_AREA` — The plan's total floor area is outside the brief's band. **Fix:** Grow or shrink rooms so the total lands in the band. Gating tier: this failure fails `validateIntent`'s `ok`. Assert a band only where the brief states a number.
 - `E_INTENT_UNREACHABLE` — A room cannot be reached from the entrance through modeled doors. **Fix:** Add interior doors so every room connects back to the entrance. Advisory tier: reported and scored by `validateIntent` but does NOT fail `ok` (gate: false).
+- `E_JSON_DERIVED_IN_INSTANCE` — Plan JSON cannot project a plan whose `place`d component derives its walls. **Fix:** Keep the plan in `.arch` source, or write that component's walls by hand to export it as Plan JSON.
 - `E_JSON_KIND` — Unknown element kind in plan JSON. **Fix:** Use one of the supported kinds: opening `kind` must be `door` | `window` | `opening`.
 - `E_JSON_MIRROR` — Plan JSON furniture, door or dimension is `mirror: true`, which `.arch` source cannot state. **Fix:** Keep the instance in `.arch` source (the `place … mirror x|y` that produced it), or drop `mirror` from the element if the unreflected drawing is what you want.
 - `E_JSON_SCHEMA` — Plan JSON does not match the schema. **Fix:** Fix the value at the reported JSON path (the message names it, e.g. `/rooms/0/width`); express geometry as concrete numbers, and author scripting/imports in `.arch` source instead.
@@ -889,8 +890,10 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `archlang e
 - `E_UNKNOWN_REF` — Unknown reference. **Fix:** Declare it with `let`, pass it as a parameter, or fix the typo (for a datum, the room id before the last dot).
 - `E_VERT_SIZE` — Vertical circulation must have a positive size. **Fix:** Give it a positive `size W x H` — the footprint the run occupies on this storey.
 - `E_VOID_SIZE` — A floor void must have a positive size. **Fix:** Give it a positive `size W x H` — the hole's extent in plan.
+- `E_WALLS_FROM_NO_ROOMS` — A `walls from rooms` statement has no room to derive walls from. **Fix:** Write the rooms beside the statement, or drop the statement (or the `except` that empties it).
 - `E_WALLS_FROM_ROOMS_DUP` — More than one `walls from rooms` statement in one plan or component. **Fix:** Keep one statement per plan, storey or component; put every exclusion in its `except` clause.
 - `E_WALL_BETWEEN_ROOM` — A `walls from rooms` clause names a room that is not in its group. **Fix:** Name a room written beside the statement, or drop the name.
+- `E_WALL_ID_RESERVED` — An authored wall takes the id the derived exterior ring has in this plan or component. **Fix:** Rename the authored wall (`wall id=shell …`), or drop it and let the statement derive it.
 - `E_WALL_THICKNESS` — Wall must have a positive thickness. **Fix:** Give the wall a positive `thickness`.
 - `E_WHILE_LIMIT` — `while` exceeded its iteration cap. **Fix:** Ensure the loop body updates a binding so the condition eventually fails.
 - `E_WINDOW_WIDTH` — Window must have a positive width. **Fix:** Give the window a positive `width`.

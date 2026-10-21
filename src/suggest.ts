@@ -26,7 +26,7 @@
  * layer as `describe`/`lint`.
  */
 
-import { wallRef } from "./wall-ref.js";
+import { wallPhraseOf } from "./wall-ref.js";
 import {
   accessDigraph,
   buildDoorAccessGraph,
@@ -269,7 +269,7 @@ function composeOpening(
 
 /** A rationale's name for a wall: its id, or the relation of a derived one (ADR 0028 §3). */
 const named = (w: RWall, exterior: boolean): string =>
-  w._derived ? wallRef([w], w.id) : `${exterior ? "exterior " : ""}wall "${w.id}"`;
+  w._derived ? wallPhraseOf(w) : `${exterior ? "exterior " : ""}wall "${w.id}"`;
 
 export type SuggestOptions = AnalyzeOptions;
 

@@ -877,6 +877,9 @@ coordinates with no tolerance, and each failure refuses, naming the rooms:
 | A shared edge shorter than the partition is thick | `E_PARTITION_TOO_SHORT` |
 | A second statement in the same plan or component | `E_WALLS_FROM_ROOMS_DUP` |
 | `except` names no room written beside it | `E_WALL_BETWEEN_ROOM` |
+| No room to derive from (none written, or every one excepted) | `E_WALLS_FROM_NO_ROOMS` |
+| An authored wall beside it takes the id `exterior` (the derived ring's name) | `E_WALL_ID_RESERVED` |
+| What it would derive (authored walls on its lines split the runs) passes the element budget | `E_ELEMENT_LIMIT` |
 
 A hole is legal when `outdoor` surfaces cover it exactly (a courtyard, which gets a second,
 inner exterior ring) or a `void` covers it exactly (no wall is derived round it). A 1 mm jog
@@ -902,8 +905,10 @@ wall that took it (`dropped[].by`).
 **Facts.** `describe --json` gains `derived_walls[]` (one row per derived wall: its internal
 name, the rooms of a partition, the spans an authored wall took) and a `freedom.walls`
 count, both only on a storey that derived a wall. Plan JSON carries the statement as
-`walls_from_rooms`, never the walls it derives. A `place`d component derives its own walls in
-its own frame; a root statement sees only the root's rooms.
+`walls_from_rooms`, never the walls it derives; a plan whose `place`d component holds the
+statement is refused by Plan JSON (`E_JSON_DERIVED_IN_INSTANCE`) rather than lose those walls.
+A `place`d component derives its own walls in its own frame; a root statement sees only the
+root's rooms.
 
 The `open between <A> and <B>` and `between <A> and <B> thickness <t>` clauses of the ADR are not
 available yet and fail to parse by name.
