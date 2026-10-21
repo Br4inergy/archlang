@@ -313,7 +313,7 @@ budget (ADR 0022 §4). That is PS0.15.
 | PS0.14 | `describe()`'s net-area integral is super-linear on a room polygon with hundreds of vertices whose edges cross hundreds of free-standing walls: 52–97 s on `main@90ae6bf` for a 125-partition × 300-tooth comb room (the inside test walks every ring vertex per boundary piece, pieces ≈ 4·S·T). No shipped plan is near it (corpus max 56 vertices), but `compile()` is bounded by law and `describe()` runs in the playground thread. Charge pieces × ring vertices to a count before the integral, or bin the ring for the inside test; PS2.4's `FaceBudget` already refuses the lint side (PR #204 round 3). *As built (PR #214):* `MAX_NET_PROBE_WORK` (20,000,000) is charged after the split and before the walk as 2 × pieces × (nearby band boxes and edges + the fullest y-band of the ring); the inside test bins the ring by y. A room past it omits `net_area_m2` (ADR 0027, third case, `too-much-work`); no shipped room is charged more than 175,000. Per room only; the per-plan total is PS0.15 | done |
 | PS0.15 | `describe()`'s net-area work has a cap per room but no total per plan. Measured by PR #214's red team on `aac48b2`: 200 distinct 45-wall × 60-tooth comb rooms, each under `MAX_NET_PROBE_WORK`, cost `describe()` 172.6 s (50 rooms 19.7 s; main 60.3 s for the same 50). `compile()` meets the drawing budget only when a schedule is drawn; `describe()` draws nothing (ADR 0022 §4), so the step budget is its only bound and the playground thread is still exposed. Add a per-call total (a count, charged before each room's walk; rooms past it omit the figure for the same reason) or make the per-room charge count against one plan-level meter. No shipped plan is near it | todo |
 | PS0.16 | `set` value parsing: `parseSetValue` reads a bare identifier before `,`/`)` as a word (like `swing: out`), so `set door(width: W)` and `set door(width: hall.cx)` silently become the string "W"/"hall.cx" and have no effect, with no diagnostic (predates PR #221, found in its review; a door's explicit `width` overrides `set`, so the effect was never visible). Decide: a bound name or a dotted datum name as a `set` value is an expression; a bare word stays a word only for word-valued keys | todo |
-| PS0.17 | `describe` keys: `outdoor` and `fences` are missing from `PER_STOREY_OPTIONAL_KEYS` (`src/describe.ts`), so `describe --level N` can leave another storey's surfaces standing, and from `DESCRIBE_KEYS` (`src/cli/commands-analyze.ts`), so `--select outdoor` is refused (found in the PS3.0 part B PR, which added `derived_walls` to both; not fixed there) | todo |
+| PS0.17 | `describe` keys: `outdoor` and `fences` are missing from `PER_STOREY_OPTIONAL_KEYS` (`src/describe.ts`), so `describe --level N` can leave another storey's surfaces standing, and from `DESCRIBE_KEYS` (`src/cli/commands-analyze.ts`), so `--select outdoor` is refused (found in PR #223, which added `derived_walls` to both; not fixed there) | todo |
 
 ### PS1 · The defect corpus (do this before PS2; it is the yardstick)
 
@@ -444,6 +444,17 @@ original brief follows.
   authored wall collinear with a derived segment. The agent gallery is left out, because
   `test/agent-gallery.test.ts` keeps its plans outside every pinned corpus. `test/rooms-tiling-probe.test.ts` plants each
   refusal and pins the shares, the literal reading and the per-directory counts.
+- *As built, part B (PR #223):* `walls from rooms exterior <t> partition <t> [{ except … }]` is one
+  element (`src/elements/walls-from-rooms.ts`) over the pure derivation `src/room-tiling.ts`; a
+  group holding it resolves rooms, the hole covers, the authored walls, then the statement, then
+  the openings (`ElementDef.yieldsWalls`/`dependsOn`/`rewall`). Derived walls are `ir.walls`,
+  never elements, carry `_derived`, and are named only by relation in every hint and fix
+  (`src/wall-ref.ts`). `test/walls-from-rooms.test.ts` pins probe agreement (the 15 refusals,
+  codes and rooms), the twins of `studio.arch`/`two-bed.arch` (SVG and lint byte-identical;
+  the `describe()` differences listed in the PR), the widening drill and the class-2 corpus (5
+  gain their walls, the round snug refuses); `test/walls-from-rooms-digests.test.ts` the digest
+  table. Not yet: `open between` and `between … thickness` (they fail to parse by name), and the
+  relational openings of PS3.4.
 
 **PS3.2 · Resolve order and room-edge datums.** part A `done`, part B in review (after PS3.1)
 - Resolve rooms and relational placement before walls, then freeze a datum table.
