@@ -26,7 +26,10 @@ const DIGESTS: [string, string][] = [
   ["coexist", "ad84cacd155fe30a10560c26299bbfac28b638abcb4bfc508853370289f35e6e"],
   ["refused", "2be9eba41c04c8a8dbcd0c5d0534949a49916bb205ed091b71f748897968af21"],
   // Part C, the pair clauses: pinned after the twins held (`test/walls-from-rooms-clauses.test.ts`).
-  ["open-plan", "0147d7dafb3a1041ba6396bae9b62f130a878a115e20e8808ac413a2e163d125"],
+  // Re-pinned in red team round 1 (S1): the first pin carried a false W_OPENING_AT_JUNCTION (a
+  // 25 mm "nib" beside the thinner wall at the a|c (150) / b|c (100) end); with the HEAD rule
+  // restored the old digest reproduces exactly, so the rule fix is the only change.
+  ["open-plan", "2181822b798d5774d2ba30a928d5fe9f8e814dcbaa797e14cab1e28cfa696762"],
   ["open-width", "b2413725d9053a145f68237e9bcd9dc872eb42a14615ff9869f98bac696539e0"],
   ["open-instances", "facae4205369cb92054da512779db81c3421f95743da3c819fd9997be3f94cd2"],
   ["clauses-refused", "2ee033192ebca84b6e8d593937ed348915530b2805b38f8d339ad7a5a6d6fe02"],
