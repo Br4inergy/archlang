@@ -266,7 +266,6 @@ describe("the corpus (ADR 0028 Acceptance): both figures, pinned", () => {
 /** `[storeys, refused (a), refused (b), overlap/not-tiling/short/not-rect under (b)]`. */
 const PINNED_ROWS: Record<string, [number, number, number, string]> = {
   examples: [39, 7, 7, "0/0/0/7"],
-  "docs/gallery": [12, 0, 0, "0/0/0/0"],
   "test/defect-corpus": [140, 5, 5, "0/0/0/5"],
   "test/recovery-corpus": [9, 0, 0, "0/0/0/0"],
   "test/fixtures": [13, 0, 0, "0/0/0/0"],
@@ -278,10 +277,10 @@ const PINNED_ROWS: Record<string, [number, number, number, string]> = {
   "test/callout-fixtures": [1, 0, 0, "0/0/0/0"],
   "test/finish-fixtures": [1, 0, 0, "0/0/0/0"],
   "test/resolve-order": [1, 0, 0, "0/0/0/0"],
-  total: [291, 15, 15, "0/0/0/15"],
+  total: [279, 15, 15, "0/0/0/15"],
 };
-/** Measured 2026-10-21 on `main@9fb7949`: 15 of 291 storeys refused, both figures (5.2 %). */
-const PINNED_SHARE_A: [number, number] = [15, 291];
-const PINNED_SHARE_B: [number, number] = [15, 291];
-/** The literal reading of "no use kind means outdoor": 16 of 291 (5.5 %). */
-const PINNED_SHARE_LITERAL: [number, number] = [16, 291];
+/** Measured 2026-10-21 on `main@9fb7949`: 15 of 279 storeys refused, both figures (5.4 %). */
+const PINNED_SHARE_A: [number, number] = [15, 279];
+const PINNED_SHARE_B: [number, number] = [15, 279];
+/** The literal reading of "no use kind means outdoor": 16 of 279 (5.7 %). */
+const PINNED_SHARE_LITERAL: [number, number] = [16, 279];

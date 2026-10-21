@@ -44,11 +44,12 @@ export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
  * The corpus directories, in report order. Each is walked recursively. Every directory of
  * tracked `.arch` plans is here except the informational one below; `arch` fences in Markdown are
  * left out because they are the byte-identity baseline's corpus (fragments and `arch static` error
- * demos), not plans.
+ * demos), not plans. The agent gallery's plans are left out too: they are deliberately outside the
+ * language's pinned corpus, and `test/agent-gallery.test.ts` forbids any script or test reading
+ * them (a compiler change may redraw them freely).
  */
 export const CORPUS_DIRS = [
   "examples", // the shipped examples (minus `examples/lib`, see CORPUS_SKIPS)
-  "docs/gallery", // the published gallery plans
   "test/defect-corpus", // audit defects and their clean twins, each a whole plan
   "test/recovery-corpus", // whole plans the recovery tests start from
   "test/fixtures", // whole-plan fixtures
