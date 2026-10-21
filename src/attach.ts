@@ -19,6 +19,7 @@ import type { ParseCtx, ResolveCtx } from "./registry.js";
 import type { WallLike, WallSegment } from "./geometry.js";
 import { segmentLength, segmentPointAlong, segmentsOfWall } from "./geometry.js";
 import type { OpeningRelation } from "./ir.js";
+import { EDGE_WORDS } from "./room-datums.js";
 import { fmt3 as numStr } from "./num-format.js";
 import { hostedDatumDistance, placeBetween, placeOnEdge, type RelationCtx } from "./opening-relation.js";
 
@@ -92,11 +93,8 @@ function parseAttachPos(ctx: ParseCtx): { pos: AttachPos; end: number } {
   return { pos: { kind: "mm", value }, end: ctx.peek(-1).end };
 }
 
-/** The edge words an `on <room>.<edge>` target may end in (frame words and their compass
- *  aliases): only such a target may leave its position out. */
-const EDGE_WORDS: readonly string[] = ["top", "bottom", "left", "right", "north", "south", "east", "west"];
-
-/** Is `name` written as a room edge (`r.top`, `west.main.left`)? */
+/** Is `name` written as a room edge (`r.top`, `west.main.left`)? Only such an `on` target may
+ *  leave its position out. */
 export function isEdgeName(name: string): boolean {
   const dot = name.lastIndexOf(".");
   return dot > 0 && EDGE_WORDS.includes(name.slice(dot + 1));

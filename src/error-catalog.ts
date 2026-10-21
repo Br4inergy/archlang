@@ -819,7 +819,7 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   ),
   E_WALL_BETWEEN_NOT_ADJACENT: E(
     "E_WALL_BETWEEN_NOT_ADJACENT",
-    "A `walls from rooms` clause, or a `door|opening … between`, names two rooms that share no edge.",
+    "A `walls from rooms` clause, or a door or opening placed `between` two rooms, names two rooms that share no edge.",
     "`open between A and B` and `between A and B thickness t` act on the partition the statement derives on the edge run two rooms share, and `door|opening … between A and B` stands in the wall on that run (ADR 0028 §3, §5). Two rooms that do not meet along an edge (apart, or touching only at a corner), or a room named twice, have no such run, so the clause would act on nothing. The span points at the clause.",
     "Name two rooms that meet along an edge, or remove the clause (place the door `on <wall> at …` or `at (x,y)` instead).",
     "room id=a at (0,0) size 4000x3000\nroom id=b at (4000,0) size 3000x3000\nroom id=c at (0,3000) size 7000x2000\nroom id=d at (7000,0) size 2000x5000\nwalls from rooms exterior 200 partition 100 { open between a and d }   # error: a and d do not meet",

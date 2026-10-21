@@ -473,6 +473,30 @@
               }
             }
           },
+          "relation": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Relational placement as written (ADR 0028 §5), alternative to x/y on input: `between` two rooms (the wall on their shared edge) or `edge` (`<room>.top|bottom|left|right`, the exterior wall on it), at `at` (`center`, `<mm> from start|end|<room>.<edge>`, `axis <label>`; a window on an edge may leave it out).",
+            "properties": {
+              "between": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "The two room ids whose shared edge run hosts the opening."
+              },
+              "edge": {
+                "type": "string",
+                "description": "A room edge, `<room>.top|bottom|left|right`."
+              },
+              "at": {
+                "type": "string",
+                "description": "The position along the run or the edge, as written."
+              }
+            }
+          },
           "width": {
             "type": "number",
             "description": "Opening width in millimetres."
