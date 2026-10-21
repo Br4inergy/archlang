@@ -979,9 +979,9 @@ An opening may be placed by the rooms instead of by a wall
 - `on <room>.<edge>` stands in the **one exterior wall body on that edge** of the room.
 - `<pos>` is measured **along the run** (or the edge), never along the host wall, and every
   offset is to the opening's **centre**. The run starts at its end with the smaller `x`
-  (horizontal) or `y` (vertical), whichever way the host wall is drawn. `<mm> from
-  <room>.<edge>` needs an edge perpendicular to the run through one of its ends; the offset runs
-  from that end into the run. `axis <label>` puts the centre where that positioning axis crosses
+  (horizontal) or `y` (vertical), whichever way the host wall is drawn.
+  `<mm> from <room>.<edge>` needs an edge perpendicular to the run through one of its ends; the
+  offset runs from that end into the run. `axis <label>` puts the centre where that positioning axis crosses
   the run. The position snaps to `grid`, as every coordinate does.
 - A **door** and a **cased opening** must write a position (a door is held to an end or a
   room edge, never centred by default); a **window** on an edge stands at its centre when it
@@ -1029,9 +1029,9 @@ as written (`relation: { between | edge, at }`) beside its resolved `x`/`y`. (Th
 `open between` clause derives keeps `placement: "absolute"`, so its hand-placed twin stays
 byte-identical.)
 
-**The same datums on a wall.** `on <wall> at <mm> from start|end`, `on <wall> at <mm> from
-<room>.<edge>` and `on <wall> at axis <label>` read the run of an authored wall you name: `from
-end` measures back from its last point; a datum line must cross the wall's straight run at
+**The same datums on a wall.** `on <wall> at <mm> from start|end`,
+`on <wall> at <mm> from <room>.<edge>` and `on <wall> at axis <label>` read the run of an
+authored wall you name: `from end` measures back from its last point; a datum line must cross the wall's straight run at
 exactly one point (a closed ring crossed twice, a wall lying along the line or a curved wall is
 `E_OPENING_DATUM`), and the offset runs from that crossing along the wall's own direction. These
 are ordinary attached openings (`placement: "attached"`): out of range is
