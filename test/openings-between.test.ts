@@ -50,7 +50,7 @@ const plain = (src: string): unknown => {
 };
 const twinPlain = (src: string, ids: string[]): unknown => {
   const d = JSON.parse(JSON.stringify(describe(src))) as {
-    freedom: { openings: Record<string, number>; elements: Array<{ id: string; placement: string }> };
+    freedom: { openings: Record<string, number>; elements: Array<{ id: string; kind: string; placement: string }> };
   };
   for (const e of d.freedom.elements) if (ids.includes(e.id)) e.placement = "TWIN";
   d.freedom.openings.absolute! -= ids.filter((id) =>
@@ -358,15 +358,26 @@ suite("refusals, each spanned on its clause", () => {
 suite("instances and the widening drill", () => {
   const comp = (door: string) =>
     `plan "p" {\n  units mm\n  grid 50\n  component unit() {\n    room id=a at (0,0) size 4000x5000 uses living\n    room id=b at (4000,0) size 4000x5000 uses bedroom\n    walls from rooms exterior 200 partition 100\n    ${door}\n  }\n` +
-    `  place unit() as west at (0,0)\n  place unit() as east at (20000,0) rotate 90\n  place unit() as south at (0,20000) mirror x\n  place unit() as turned at (20000,20000) rotate 90 mirror x\n}\n`;
-  it("a relational door inside a placed component, under rotate 90 / mirror x, equals the hand-placed twin", () => {
-    const a = comp("door id=d between a and b at 800 from end width 800 hinge left swing into b");
-    const b = comp("door id=d at (4000,4200) width 800 wall partition hinge left swing into b");
+    [0, 90, 180, 270]
+      .flatMap((r, i) => [
+        `  place unit() as r${r} at (${i * 20000},0) rotate ${r}\n`,
+        `  place unit() as m${r} at (${i * 20000},20000) rotate ${r} mirror x\n`,
+      ])
+      .join("") +
+    "}\n";
+  it("a relational door and window inside a placed component, under all eight frames, equal the hand-placed twins", () => {
+    const a = comp(
+      "door id=d between a and b at 800 from end width 800 hinge left swing into b\n    window id=w on b.top at 1000 from b.left width 1200",
+    );
+    const b = comp(
+      "door id=d at (4000,4200) width 800 wall partition hinge left swing into b\n    window id=w at (5000,0) width 1200 wall exterior",
+    );
     expect(errors(a)).toEqual([]);
     expect(compile(a).svg).toBe(compile(b).svg);
     expect(strip(a)).toEqual(strip(b));
     const rows = describe(a).doors.map((d) => [d.id, d.relation]);
-    expect(rows).toContainEqual(["east.d", "between a and b at 800 from end"]);
+    expect(rows).toContainEqual(["r90.d", "between a and b at 800 from end"]);
+    expect(rows).toHaveLength(8);
   });
 
   const widen = (aw: number, door: string) =>
@@ -418,14 +429,20 @@ suite("bounded: the run scan is charged to the step meter before it runs", () =>
         closed: false,
       }));
       const run = withStepMeter(0, () =>
-        placeBetween(between, "door", 800, {
-          grid: 50,
-          walls: [...ir.walls, ...stubs],
-          snapPt: (p) => p,
-          diag: () => {},
-          eval: () => 0,
-          datums: { table, read: () => 0 },
-        }),
+        placeBetween(
+          between,
+          "door",
+          800,
+          {
+            grid: 50,
+            walls: [...ir.walls, ...stubs],
+            snapPt: (p) => p,
+            diag: () => {},
+            eval: () => 0,
+            datums: { table, read: () => 0 },
+          },
+          'Door "d"',
+        ),
       );
       if ("signal" in run) throw new Error("step budget");
       expect(run.value).not.toBeNull();

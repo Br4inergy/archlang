@@ -42,7 +42,7 @@ interface LegacyEmitOpts {
 
 function legacyAttachPosText(pos: OpeningAttach["pos"]): string {
   if (pos.kind === "center") return "center";
-  const v = pos.value ? exprToSource(pos.value) : numStr(0);
+  const v = "value" in pos && pos.value ? exprToSource(pos.value) : numStr(0);
   return pos.kind === "percent" ? `${v}%` : v;
 }
 
