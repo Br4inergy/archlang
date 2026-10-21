@@ -167,7 +167,11 @@ function selectRing(n: RoofNode, id: string, ctx: ResolveCtx): RWall | null {
     }
     return named;
   }
-  const candidates = ctx.walls.filter((w) => w.closed && w.category === "exterior");
+  // A courtyard ring `walls from rooms` derived is not a candidate: only the outer ring is
+  // the building's eaves line (ADR 0028 §3).
+  const candidates = ctx.walls.filter(
+    (w) => w.closed && w.category === "exterior" && w._derived?.ring !== "inner",
+  );
   if (candidates.length === 1) return candidates[0]!;
   ctx.diag({
     severity: "error",

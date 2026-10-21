@@ -25,6 +25,9 @@ import type {
   RVoid,
   ROutdoor,
   RFence,
+  RWallsFromRooms,
+  DerivedWallRow,
+  RWall as RWallFact,
   RoomPlacement,
   OpeningPlacement,
   FurniturePlacement,
@@ -487,6 +490,9 @@ export interface FreedomReport {
   openings: { total: number; attached: number; absolute: number };
   furniture: { total: number; anchored: number; againstWall: number; absolute: number };
   elements: FreedomElement[];
+  /** The walls: how many were derived by `walls from rooms` (ADR 0028 §6) and how many
+   *  were typed as points. Present only on a storey that derived a wall. */
+  walls?: { total: number; derived: number; absolute: number };
 }
 
 /** One positioning axis as a fact: where the datum is and what it is called. */
@@ -705,6 +711,12 @@ export interface SceneSummary {
    *  wall: it hosts nothing and joins no graph. */
   fences?: FenceSummary[];
   /**
+   * The walls `walls from rooms` derived (ADR 0028 §6): one row per derived wall, with its
+   * internal name (`exterior`, `exterior#2`, `A|B`; never an id an author can type) and
+   * every span an authored wall took over. Absent unless the storey derived a wall.
+   */
+  derived_walls?: DerivedWallRow[];
+  /**
    * The storey's vertical datum — storey height, elevation, and every wall's
    * height. **Absent unless the plan authored a height, sill or head somewhere**, which
    * is what keeps every summary written before this layer byte-identical. See
@@ -914,6 +926,12 @@ function emptyFreedom(): FreedomReport {
  * literal-`at` path). Pure tallying — one `elements` row per placed element in
  * describe's own order (rooms, doors, windows, openings, furniture).
  */
+/** The walls family of `freedom` (ADR 0028 §6): derived walls against walls typed as points. */
+function wallFreedom(walls: readonly RWallFact[]): { total: number; derived: number; absolute: number } {
+  const derived = walls.filter((w) => w._derived !== undefined).length;
+  return { total: walls.length, derived, absolute: walls.length - derived };
+}
+
 function buildFreedom(
   rooms: RRoom[],
   doors: RDoor[],
@@ -1130,6 +1148,10 @@ function summarize(
   const openingEls = ir.elements.filter((e): e is ROpening => e.kind === "opening");
   const furnEls = ir.elements.filter((e): e is RFurniture => e.kind === "furniture");
   const verticalEls: RVertical[] = verticalsOf(ir);
+  // The walls `walls from rooms` derived, as facts (ADR 0028 §6), copied so the IR is never shared.
+  const derivedRows: DerivedWallRow[] = ir.elements
+    .filter((e): e is RWallsFromRooms => e.kind === "walls")
+    .flatMap((e) => e._derivedRows.map((r) => structuredClone(r)));
   const voidEls = ir.elements.filter((e): e is RVoid => e.kind === "void");
   const outdoorEls = ir.elements.filter((e): e is ROutdoor => e.kind === "outdoor");
   const fenceEls = ir.elements.filter((e): e is RFence => e.kind === "fence");
@@ -1439,6 +1461,8 @@ function summarize(
     ...(voids.length > 0 ? { voids } : {}),
     ...(outdoor.length > 0 ? { outdoor } : {}),
     ...(fences.length > 0 ? { fences } : {}),
+    // Append-only: present only on a storey that `walls from rooms` derived walls for.
+    ...(derivedRows.length > 0 ? { derived_walls: derivedRows } : {}),
     // The vertical datum, under the one gate. `walls` is present even when empty,
     // unlike the lists above: an empty `voids` means "this storey has no holes in it", but
     // an empty `walls` here would be indistinguishable from "heights are not reported",
@@ -1456,7 +1480,10 @@ function summarize(
     circulation,
     totals,
     input_graph: buildInputGraph(roomEls, doorEls, openingEls, tol, access),
-    freedom: buildFreedom(roomEls, doorEls, windowEls, openingEls, furnEls),
+    freedom: {
+      ...buildFreedom(roomEls, doorEls, windowEls, openingEls, furnEls),
+      ...(derivedRows.length > 0 ? { walls: wallFreedom(ir.walls) } : {}),
+    },
     // The drawn schedule, from the same pure derivation the renderer uses — so the table
     // in the SVG and this JSON can never disagree. Opt-in only. `ir.zones` is passed for
     // exactly the same reason: the rows here must be the rows drawn, grouping included.
@@ -1626,7 +1653,7 @@ function summarizeResolved(
  * `heights` is deliberately NOT here: its gate is whole-PLAN (`_heightsAuthored`), so
  * when the block exists at all it exists on every storey.
  */
-export const PER_STOREY_OPTIONAL_KEYS = ["verticals", "voids"] as const satisfies readonly (keyof SceneSummary)[];
+export const PER_STOREY_OPTIONAL_KEYS = ["verticals", "voids", "derived_walls"] as const satisfies readonly (keyof SceneSummary)[];
 
 /**
  * Narrow a whole-plan summary to ONE storey: that level's facts become the top-level

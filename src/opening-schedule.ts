@@ -53,7 +53,7 @@
  */
 
 import type { Point } from "./ast.js";
-import type { RDoor, ResolvedElement, ROpening, RRoom, RVoid, RWall, RWindow } from "./ir.js";
+import type { RDoor, ResolvedElement, ROpening, RRoom, RVoid, RWall, RWallsFromRooms, RWindow } from "./ir.js";
 import type { RenderSizes, SceneNode } from "./scene.js";
 import type { Theme } from "./theme.js";
 import type { WallSegment } from "./geometry.js";
@@ -474,10 +474,14 @@ export function openingTagNodes(
   const grid = new ObstacleGrid(fs * 6);
   const tags = new ObstacleGrid(fs * 6);
   for (const e of elements) {
-    if (e.kind === "wall") {
-      for (const s of segmentsOfWall(e as RWall)) {
-        const w = wallObstacle(s);
-        if (w) grid.add(w);
+    // A `walls from rooms` statement's derived walls are walls here too (never elements).
+    const walls = e.kind === "wall" ? [e as RWall] : e.kind === "walls" ? (e as RWallsFromRooms)._derivedWalls : [];
+    if (walls.length > 0) {
+      for (const w of walls) {
+        for (const s of segmentsOfWall(w)) {
+          const o = wallObstacle(s);
+          if (o) grid.add(o);
+        }
       }
       continue;
     }
