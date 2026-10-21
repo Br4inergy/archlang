@@ -20,6 +20,8 @@ import {
   isRefused,
   loadExcepts,
   probeCorpus,
+  hasRooms,
+  noUseExcepts,
   probeSource,
   storeyCodes,
   summarise,
@@ -122,6 +124,16 @@ describe("planted cases: each precondition can refuse, each near-miss passes", (
     expect(l1!.groups[0]!.derived!.ringVertices).toBe(4);
   });
 
+  it("a non-rectilinear outdoor polygon is dropped from the covers and reported, never silently", () => {
+    const g = storeys(
+      plan(
+        `  room id=n at (0,0) size 9000x3000\n  room id=s at (0,6000) size 9000x3000\n  room id=w at (0,3000) size 3000x3000\n  room id=e at (6000,3000) size 3000x3000\n  outdoor patio polygon (3000,3000) (6000,3000) (6000,6000) (3500,6000) (3000,5500)`,
+      ),
+    )[0]!.groups[0]!;
+    expect(g.droppedCovers).toBe(1);
+    expect(g.refusals.map((r) => r.code)).toEqual(["E_ROOMS_NOT_TILING"]);
+  });
+
   it("a courtyard derives an inner ring", () => {
     const src = plan(
       `  room id=n at (0,0) size 9000x3000\n  room id=s at (0,6000) size 9000x3000\n  room id=w at (0,3000) size 3000x3000\n  room id=e at (6000,3000) size 3000x3000\n  outdoor patio at (3000,3000) size 3000x3000`,
@@ -173,8 +185,24 @@ describe("the corpus (ADR 0028 Acceptance): both figures, pinned", () => {
   const b = probeCorpus(loadExcepts());
   const sum = summarise(a, b);
 
-  it("resolves every corpus file", () => {
-    expect(a.failures).toEqual([]);
+  it("skips only the resolve-order plans that diagnose on purpose, and lists them", () => {
+    expect(a.failures.map((f) => `${f.file}: ${f.reason}`)).toEqual([
+      "test/resolve-order/axes-and-elements.arch: does not resolve (E_OUT_OF_RANGE)",
+      "test/resolve-order/instance-relational.arch: does not resolve (E_WALL_THICKNESS)",
+      "test/resolve-order/relational-errors.arch: does not resolve (E_WALL_THICKNESS)",
+      "test/resolve-order/rooms-and-walls-diagnose.arch: does not resolve (E_WALL_THICKNESS)",
+    ]);
+  });
+
+  it("pins the literal reading (every no-use room excepted) and the undecided count", () => {
+    const lit = probeCorpus(noUseExcepts());
+    const refused = lit.storeys.filter(isRefused);
+    const tiling = refused.filter((s) => storeyCodes(s).has("E_ROOMS_NOT_TILING")).map((s) => s.file);
+    expect([refused.length, lit.storeys.filter(hasRooms).length]).toEqual(PINNED_SHARE_LITERAL);
+    expect(tiling).toEqual(["test/fixtures/zones-wings.arch"]);
+    // Of the (b) refusals, how many could not decide tiling (a non-rectilinear room in the set).
+    const undecided = b.storeys.filter((s) => isRefused(s) && s.groups.some((g) => g.note && !g.budget)).length;
+    expect(undecided).toBe(13);
   });
 
   it("pins the per-directory counts", () => {
@@ -201,9 +229,10 @@ describe("the corpus (ADR 0028 Acceptance): both figures, pinned", () => {
     for (const { file } of corpusFiles()) {
       const abs = join(ROOT, file);
       const res = resolvePlan(readFileSync(abs, "utf8"), { world: makeNodeWorld(dirname(abs)) });
+      if (!res.ir) continue; // the listed resolve-order failures
       const levels = res.levels.length
         ? res.levels.map((l) => ({ level: l.level as number | null, ir: l.ir }))
-        : [{ level: null, ir: res.ir! }];
+        : [{ level: null, ir: res.ir }];
       for (const { level, ir } of levels) {
         const byGroup = new Map<string, Array<{ x0: number; y0: number; x1: number; y1: number }>>();
         for (const e of ir.elements) {
@@ -244,8 +273,15 @@ const PINNED_ROWS: Record<string, [number, number, number, string]> = {
   "docs/plans/plan-soundness/repro": [6, 0, 0, "0/0/0/0"],
   "eval/goldens": [25, 0, 0, "0/0/0/0"],
   "eval/fidelity-plans": [9, 0, 0, "0/0/0/0"],
-  total: [253, 12, 12, "0/0/0/12"],
+  "eval/faults": [6, 0, 0, "0/0/0/0"],
+  "test/main-entrance-fixtures": [29, 3, 3, "0/0/0/3"],
+  "test/callout-fixtures": [1, 0, 0, "0/0/0/0"],
+  "test/finish-fixtures": [1, 0, 0, "0/0/0/0"],
+  "test/resolve-order": [1, 0, 0, "0/0/0/0"],
+  total: [291, 15, 15, "0/0/0/15"],
 };
-/** Measured 2026-10-21 on `main@9fb7949`: 12 of 253 storeys refused, both figures (4.7 %). */
-const PINNED_SHARE_A: [number, number] = [12, 253];
-const PINNED_SHARE_B: [number, number] = [12, 253];
+/** Measured 2026-10-21 on `main@9fb7949`: 15 of 291 storeys refused, both figures (5.2 %). */
+const PINNED_SHARE_A: [number, number] = [15, 291];
+const PINNED_SHARE_B: [number, number] = [15, 291];
+/** The literal reading of "no use kind means outdoor": 16 of 291 (5.5 %). */
+const PINNED_SHARE_LITERAL: [number, number] = [16, 291];

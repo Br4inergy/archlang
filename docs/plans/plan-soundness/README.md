@@ -162,12 +162,24 @@ pair.** (2026-10-18, amends D1; does not reverse it.)
   a load-bearing line) grows past three clauses, or the tiling preconditions reject more than a
   quarter of the corpus. Then the pairwise forms stay the headline and this one is dropped.
 - *Measured* (2026-10-21, measured by PR #222, `scripts/probe-rooms-tiling.ts`): the four
-  clause-free preconditions of ADR 0028 §3, decided exactly per storey and per group, refuse 12 of
-  253 corpus storeys (4.7 %) with no exclusions (a) and 12 of 253 with the reviewed except list
-  (b), which holds one room (the no-use terrace of `hillside-villa` level 1). All 12 are
-  `E_ROOM_NOT_RECTANGLE`; no storey overlaps, fails to tile or has a run under the partition. So
-  (b) is under the quarter. Outside the headline, the first-contact plans refuse 4 of 7 storeys, all
-  on a polygon room, three of them rectilinear L-shapes that otherwise tile (§8 question 4).
+  clause-free preconditions of ADR 0028 §3 were decided exactly, per storey and per group, over
+  every directory of `.arch` plans; the 4 `test/resolve-order` plans that diagnose on purpose are
+  skipped and listed.
+  - (a) with no exclusions: 15 of 291 storeys refused (5.2 %).
+  - (b) with the reviewed except list: also 15 of 291. So (b) is under the quarter.
+  - All 15 refusals are `E_ROOM_NOT_RECTANGLE`. No decidable storey overlaps, fails to tile or has
+    a run under the partition.
+  - 13 of the 15 are undecided on tiling, because a non-rectilinear polygon or a circle room covers
+    no cell of the grid exactly. The other 2 (`courtyard-house`, `hillside-villa` level 2) are
+    rectilinear polygons that otherwise tile.
+  - Except list: 70 of the corpus's 71 no-use rooms are enclosed floor, so "no use kind means
+    outdoor" was applied per plan, not automatically. The list holds one room, the
+    `hillside-villa` level 1 terrace. It changes no share, because that storey is refused for
+    `r_office` anyway.
+  - Literal reading (all 71 no-use rooms excepted): 16 of 291 refused (5.5 %): 15
+    `E_ROOM_NOT_RECTANGLE` and 1 `E_ROOMS_NOT_TILING`. D5 holds under either reading.
+  - Outside the headline, the first-contact plans refuse 4 of 7 storeys, all on a polygon room.
+    Three of the four are rectilinear L-shapes that otherwise tile (§8 question 4).
 
 **D6. The default profile keeps the dwelling-reading rules on; a plan opts out by reading as
 non-residential, not by choosing a profile.** (2026-10-20, amends PS2.18's card; does not touch D3.)
@@ -425,10 +437,11 @@ original brief follows.
   `scripts/probe-rooms-tiling.except.json` (PR #222) measures the four clause-free preconditions
   per storey and per group (root and each `place`d instance), on a cell grid charged to the step
   meter. It uses the group's most frequent `partition` thickness, or 100 mm when there is none.
-  Result: (a) 12/253, (b) 12/253, all `E_ROOM_NOT_RECTANGLE`. On the 241 passing storeys the form
-  would derive at most 59 partition runs (median 2) and 36 ring vertices (median 4), and 239 of them
-  already have an authored wall collinear with a derived segment. `test/rooms-tiling-probe.test.ts`
-  plants each refusal and pins both shares and the per-directory counts.
+  Result: (a) 15/291, (b) 15/291, all `E_ROOM_NOT_RECTANGLE` (13 of them undecided on tiling); the
+  literal no-use reading gives 16/291. On the 276 passing storeys the form would derive at most 59
+  partition runs (median 2) and 36 ring vertices (median 4), and 274 of them already have an
+  authored wall collinear with a derived segment. `test/rooms-tiling-probe.test.ts` plants each
+  refusal and pins the shares, the literal reading and the per-directory counts.
 
 **PS3.2 · Resolve order and room-edge datums.** part A `done`, part B in review (after PS3.1)
 - Resolve rooms and relational placement before walls, then freeze a datum table.

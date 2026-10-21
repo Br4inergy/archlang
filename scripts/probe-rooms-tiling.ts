@@ -40,16 +40,26 @@ import type { World } from "../src/world.js";
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** The corpus directories, in report order. Each is walked recursively. */
+/**
+ * The corpus directories, in report order. Each is walked recursively. Every directory of
+ * tracked `.arch` plans is here except the informational one below; `arch` fences in Markdown are
+ * left out because they are the byte-identity baseline's corpus (fragments and `arch static` error
+ * demos), not plans.
+ */
 export const CORPUS_DIRS = [
-  "examples",
-  "docs/gallery",
-  "test/defect-corpus",
-  "test/recovery-corpus",
-  "test/fixtures",
-  "docs/plans/plan-soundness/repro",
-  "eval/goldens",
-  "eval/fidelity-plans",
+  "examples", // the shipped examples (minus `examples/lib`, see CORPUS_SKIPS)
+  "docs/gallery", // the published gallery plans
+  "test/defect-corpus", // audit defects and their clean twins, each a whole plan
+  "test/recovery-corpus", // whole plans the recovery tests start from
+  "test/fixtures", // whole-plan fixtures
+  "docs/plans/plan-soundness/repro", // the plan-soundness reproductions (incl. the widening drill)
+  "eval/goldens", // the eval golden plans
+  "eval/fidelity-plans", // the eval fidelity plans
+  "eval/faults", // seeded lint faults: still whole plans, so their rooms count
+  "test/main-entrance-fixtures", // single-feature fixtures, but whole plans
+  "test/callout-fixtures", // as above
+  "test/finish-fixtures", // as above
+  "test/resolve-order", // resolve-order law plans; those that do not resolve are skipped and listed
 ] as const;
 
 /**
@@ -108,6 +118,10 @@ export interface GroupResult {
   budget?: true;
   /** A note that changes how to read the result (e.g. tiling undecided). */
   note?: string;
+  /** Rooms that resolved `_unplaced`, dropped from the set (reported, never silent). */
+  unplaced?: string[];
+  /** Non-rectilinear `outdoor` polygons dropped from the covers (they cover no cell exactly). */
+  droppedCovers?: number;
 }
 
 export interface StoreyResult {
@@ -630,20 +644,29 @@ function probeStorey(
   excepts: ExceptEntry[] | null,
   stale: Set<ExceptEntry>,
 ): GroupResult[] {
-  const groups = new Map<string, { rooms: RRoom[]; covers: Array<RVoid | ROutdoor>; walls: RWall[] }>();
+  const groups = new Map<
+    string,
+    { rooms: RRoom[]; covers: Array<RVoid | ROutdoor>; walls: RWall[]; unplaced: string[]; dropped: number }
+  >();
   const get = (g: string) => {
     let v = groups.get(g);
     if (!v) {
-      v = { rooms: [], covers: [], walls: [] };
+      v = { rooms: [], covers: [], walls: [], unplaced: [], dropped: 0 };
       groups.set(g, v);
     }
     return v;
   };
   for (const e of ir.elements) {
     const g = e._instance ?? "";
-    if (e.kind === "room" && !e._unplaced) get(g).rooms.push(e);
-    else if (e.kind === "void" || e.kind === "outdoor") get(g).covers.push(e);
-    else if (e.kind === "wall") get(g).walls.push(e);
+    if (e.kind === "room") {
+      // A room that ended unplaced has no position to tile with: dropped from the set, reported.
+      if (e._unplaced) get(g).unplaced.push(e.id);
+      else get(g).rooms.push(e);
+    } else if (e.kind === "void" || e.kind === "outdoor") {
+      // A non-rectilinear `outdoor` polygon covers no cell exactly: dropped from the covers, reported.
+      if (e.kind === "outdoor" && e.poly && !rectilinear(e.poly)) get(g).dropped++;
+      else get(g).covers.push(e);
+    } else if (e.kind === "wall") get(g).walls.push(e);
   }
   const out: GroupResult[] = [];
   for (const [group, g] of [...groups].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))) {
@@ -666,7 +689,15 @@ function probeStorey(
       } else set.push(roomIn(r));
     }
     const tInt = partitionThickness(g.walls);
-    const base: GroupResult = { group, rooms: g.rooms.length, excluded, partitionMm: tInt, refusals: [] };
+    const base: GroupResult = {
+      group,
+      rooms: g.rooms.length,
+      excluded,
+      partitionMm: tInt,
+      refusals: [],
+      ...(g.unplaced.length ? { unplaced: g.unplaced } : {}),
+      ...(g.dropped ? { droppedCovers: g.dropped } : {}),
+    };
     if (set.length === 0) {
       out.push({ ...base, note: "every room excluded" });
       continue;
@@ -732,6 +763,48 @@ export function probeCorpus(
     throw new Error(`except list: ${[...stale].map((x) => `${x.file} ${x.room}`).join(", ")} matched no room`);
   }
   return { storeys, failures };
+}
+
+/** The per-group notes for rooms and covers the probe dropped (never silent). */
+function droppedNotes(g: GroupResult): string[] {
+  const at = g.group ? `[${g.group}] ` : "";
+  return [
+    ...(g.unplaced ? [`  - ${at}note: unplaced rooms dropped from the set: ${g.unplaced.join(", ")}`] : []),
+    ...(g.droppedCovers
+      ? [`  - ${at}note: ${g.droppedCovers} non-rectilinear outdoor polygon(s) dropped from the covers`]
+      : []),
+  ];
+}
+
+/**
+ * The LITERAL reading of ADR 0028's "no use kind means outdoor": an except entry for every room
+ * of the corpus that declares no use kind (informational figure only — the reviewed list applies
+ * the rule per plan, because 70 of these rooms are enclosed floor).
+ */
+export function noUseExcepts(root = ROOT, dirs: readonly string[] = CORPUS_DIRS): ExceptEntry[] {
+  const out: ExceptEntry[] = [];
+  for (const { file } of corpusFiles(root, dirs)) {
+    const abs = join(root, file);
+    const res = resolvePlan(readFileSync(abs, "utf8"), { world: makeNodeWorld(dirname(abs)) });
+    if (!res.ir) continue;
+    const levels = res.levels.length
+      ? res.levels.map((l) => ({ level: l.level as number | null, ir: l.ir }))
+      : [{ level: null, ir: res.ir }];
+    for (const { level, ir } of levels) {
+      for (const e of ir.elements) {
+        if (e.kind !== "room" || e._unplaced || (e.uses && e.uses.length > 0)) continue;
+        out.push({
+          file,
+          ...(level === null ? {} : { level }),
+          ...(e._instance ? { group: e._instance } : {}),
+          room: e.id,
+          rule: "no-use-outdoor",
+          reason: "informational only: the literal reading",
+        });
+      }
+    }
+  }
+  return out;
 }
 
 /** An except entry for every polygon/circle room a report refused (informational figure only). */
@@ -884,6 +957,19 @@ export function renderReport(a: ProbeReport, b: ProbeReport, excepts: ExceptEntr
   L.push(
     `- Of the (b) refusals, refused only for rectilinear polygon rooms that otherwise tile: ${rectilinearOnly.length}${rectilinearOnly.length ? ` (${rectilinearOnly.map((s) => s.file + (s.level === null ? "" : ` @${s.level}`)).join(", ")})` : ""}`,
   );
+  const undecided = b.storeys.filter((s) => isRefused(s) && s.groups.some((g) => g.note && !g.budget));
+  L.push(
+    `- Of the (b) refusals, tiling undecided (a non-rectilinear polygon or circle room covers no cell exactly): ${undecided.length}`,
+  );
+  const groupsAll = a.storeys.flatMap((s) => s.groups);
+  const withUnplaced = a.storeys.filter((s) => s.groups.some((g) => g.unplaced));
+  const withDropped = a.storeys.filter((s) => s.groups.some((g) => g.droppedCovers));
+  L.push(
+    `- Unplaced rooms dropped from the set: ${groupsAll.reduce((k, g) => k + (g.unplaced?.length ?? 0), 0)} in ${withUnplaced.length} storeys${withUnplaced.length ? ` (${withUnplaced.map((s) => s.file + (s.level === null ? "" : ` @${s.level}`)).join(", ")})` : ""}`,
+  );
+  L.push(
+    `- Non-rectilinear \`outdoor\` polygons dropped from the covers: ${groupsAll.reduce((k, g) => k + (g.droppedCovers ?? 0), 0)} in ${withDropped.length} storeys${withDropped.length ? ` (${withDropped.map((s) => s.file + (s.level === null ? "" : ` @${s.level}`)).join(", ")})` : ""}`,
+  );
   const noRooms = a.storeys.filter((s) => !hasRooms(s));
   L.push(
     `- Storeys with no room in any group (not counted): ${noRooms.length}${noRooms.length ? ` (${noRooms.map((s) => s.file + (s.level === null ? "" : `@${s.level}`)).join(", ")})` : ""}`,
@@ -951,6 +1037,7 @@ export function renderReport(a: ProbeReport, b: ProbeReport, excepts: ExceptEntr
       ...g.refusals.map((r) => `  - ${g.group ? `[${g.group}] ` : ""}${r.code} (${r.rooms.join(", ")}): ${r.why}`),
       ...(g.budget ? [`  - ${g.group ? `[${g.group}] ` : ""}budget: step budget crossed`] : []),
       ...(g.note && !g.budget ? [`  - ${g.group ? `[${g.group}] ` : ""}note: ${g.note}`] : []),
+      ...droppedNotes(g),
     ]);
   for (const s of b.storeys.filter(isRefused)) L.push(`- ${name(s)}`, ...lines(s));
   const bKeys = new Set(b.storeys.filter(isRefused).map((s) => `${s.file}@${s.level}`));
@@ -981,6 +1068,18 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     );
     for (const s of refusedC) {
       process.stdout.write(`- ${s.file}${s.level === null ? "" : ` @${s.level}`}: ${[...storeyCodes(s)].join(", ")}\n`);
+      for (const g of s.groups)
+        for (const r of g.refusals) process.stdout.write(`  - ${r.code} (${r.rooms.join(", ")}): ${r.why}\n`);
+    }
+    const lit = probeCorpus(noUseExcepts());
+    const refusedLit = lit.storeys.filter(isRefused);
+    const litCodes = new Map<Code, number>();
+    for (const s of refusedLit) for (const k of storeyCodes(s)) litCodes.set(k, (litCodes.get(k) ?? 0) + 1);
+    process.stdout.write(
+      `\nInformational, the literal reading (every no-use room excepted): ${refusedLit.length}/${lit.storeys.filter(hasRooms).length} refused (${[...litCodes].map(([k, n]) => `${k} ${n}`).join(", ")})\n`,
+    );
+    for (const s of refusedLit.filter((s) => !storeyCodes(s).has("E_ROOM_NOT_RECTANGLE"))) {
+      process.stdout.write(`- ${s.file}${s.level === null ? "" : ` @${s.level}`}\n`);
       for (const g of s.groups)
         for (const r of g.refusals) process.stdout.write(`  - ${r.code} (${r.rooms.join(", ")}): ${r.why}\n`);
     }

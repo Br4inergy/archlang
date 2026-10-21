@@ -114,7 +114,10 @@ per group (`E_WALLS_FROM_ROOMS_DUP`). It derives:
   drawn as a second, inner `exterior` ring; or covered exactly by a `void` (an atrium, a stair
   well), when no wall is derived round it and the author adds a balustrade or wall by hand. Any
   other hole, any second edge-connected component, and a union that touches its own hole at a
-  single vertex (a pinch) are `E_ROOMS_NOT_TILING`.
+  single vertex (a pinch) are `E_ROOMS_NOT_TILING`. A hole is covered only by `outdoor` surfaces or
+  a `void` declared in the same group as the rooms, so a root `outdoor` does not cover an
+  instance's courtyard. A hole is covered by one kind only, so a hole half `outdoor` and half
+  `void` is `E_ROOMS_NOT_TILING`.
 - every **shared edge run** of two rooms (a positive-length overlap of two facing edges on one
   line) as one `partition` segment of thickness `t_int` on that line, unless an `open between A and
   B` clause names the pair. `open` without `width` derives a leaf-less `opening` across the **clear
