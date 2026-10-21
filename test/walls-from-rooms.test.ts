@@ -17,7 +17,7 @@
  *  - a derived wall is never an element, never authored, and carries `_derived`.
  */
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe as suite, expect, it } from "vitest";
 import { compile, describe, lint } from "../src/index.js";
@@ -459,6 +459,94 @@ suite("addressing: lint and compile never quote or edit a derived wall", () => {
     const off = compile(BAD).diagnostics.filter((d) => /OFF_WALL|NOT_ON_WALL/.test(d.code ?? ""));
     expect(off.length).toBeGreaterThan(0);
     for (const d of off) expect(d.fixes ?? []).toEqual([]);
+  });
+});
+
+// ------------------------------------------------------------------------------------------
+// The widening drill and the class-2 defect corpus (ADR 0028 Acceptance)
+
+suite("the widening drill", () => {
+  const form = readFileSync(join(ROOT, "test/walls-from-rooms/widen.arch"), "utf8");
+  const widened = form.replace("let AW = 4000", "let AW = 4500");
+  it("widening a room by 500 mm moves the shell, the partition, its door and the window with it", () => {
+    expect(widened).not.toBe(form);
+    // byte for byte the drawing a careful author gets by moving every literal by hand
+    const byHand = readFileSync(join(ROOT, "test/walls-from-rooms/widen-after-authored.arch"), "utf8");
+    expect(compile(widened).svg).toBe(compile(byHand).svg);
+    expect(compile(widened).svg).not.toBe(compile(form).svg);
+    const ir = irOf(widened);
+    expect(derived(ir).map((w) => [w.id, w.points])).toEqual([
+      ["exterior", [{ x: 0, y: 0 }, { x: 8500, y: 0 }, { x: 8500, y: 5000 }, { x: 0, y: 5000 }]],
+      ["a|b", [{ x: 4500, y: 0 }, { x: 4500, y: 5000 }]],
+    ]);
+  });
+  it("the wall-first repro's defects cannot arise: no room leaves the shell, no partition is left inside a room", () => {
+    for (const src of [form, widened]) {
+      const codes = lint(src).map((d) => d.code);
+      for (const c of ["W_ROOM_OUTSIDE_SHELL", "W_ROOM_DISCONNECTED", "W_BOUNDARY_NO_WALL", "W_FLOOR_UNASSIGNED"])
+        expect(codes).not.toContain(c);
+    }
+  });
+});
+
+suite("class-2 defect corpus (space not enclosed) written with `walls from rooms`", () => {
+  const DIR = "test/defect-corpus/space-not-enclosed";
+  const CLASS2 = ["W_ROOM_NOT_ENCLOSED", "W_FLOOR_UNASSIGNED", "W_BOUNDARY_NO_WALL", "W_ROOM_OUTSIDE_SHELL"];
+  const REFUSALS = ["E_ROOMS_OVERLAP", "E_ROOMS_NOT_TILING", "E_PARTITION_TOO_SHORT", "E_ROOM_NOT_RECTANGLE"];
+  /** Every authored wall removed, every reference to one re-pointed at its category (an
+   *  opening placed `on <wall> at …` is written at the point it resolved to: a derived wall
+   *  has no id to attach to, and relational `between` hosting is plan card PS3.4), and the
+   *  statement written with the plan's own thicknesses. */
+  function rewrite(original: string): string {
+    let src = original;
+    const hosted = irOf(original).elements.filter(
+      (e): e is Extract<typeof e, { kind: "door" | "window" | "opening" }> =>
+        (e.kind === "door" || e.kind === "window" || e.kind === "opening") && e.span !== undefined,
+    );
+    for (const e of [...hosted].sort((p, q) => q.span!.start - p.span!.start)) {
+      const stmt = src.slice(e.span!.start, e.span!.end);
+      const moved = stmt.replace(/\bon \S+ at \S+/, `at (${e.at.x}, ${e.at.y})`);
+      src = src.slice(0, e.span!.start) + moved + src.slice(e.span!.end);
+    }
+    const cats = new Map<string, string>();
+    let ext = 200;
+    let part = 100;
+    const lines = src.split("\n").filter((l) => {
+      const m = /^\s*wall\s+(?:id=(\S+)\s+)?(\S+)\s+thickness\s+(\d+)/.exec(l);
+      if (!m) return true;
+      if (m[1]) cats.set(m[1], m[2]!);
+      if (m[2] === "exterior") ext = Number(m[3]);
+      else part = Number(m[3]);
+      return false;
+    });
+    let out = lines.join("\n");
+    for (const [id, cat] of cats) out = out.replace(new RegExp(`\\b(wall|on) ${id}\\b`, "g"), `$1 ${cat}`);
+    return out.replace(/\n}\s*$/, `\n  walls from rooms exterior ${ext} partition ${part}\n}\n`);
+  }
+  const cases = readdirSync(join(ROOT, DIR)).filter((f) => f.endsWith(".arch") && !f.endsWith(".clean.arch"));
+  const outcome = new Map<string, string>();
+  it.each(cases)("%s: refused, or gains the wall", (f) => {
+    const before = readFileSync(join(ROOT, DIR, f), "utf8");
+    const expectCode = /# expect: (\S+)/.exec(before)![1]!;
+    expect(lint(before).map((d) => d.code)).toContain(expectCode);
+    const src = rewrite(before);
+    expect(src).toContain("walls from rooms");
+    expect(src).not.toMatch(/^\s*wall\s/m);
+    const errors = compile(src).diagnostics.filter((d) => d.severity === "error").map((d) => d.code!);
+    if (errors.length > 0) {
+      expect(errors.every((c) => REFUSALS.includes(c)), errors.join(", ")).toBe(true);
+      outcome.set(f, `refused ${errors.join(",")}`);
+    } else {
+      const codes = lint(src).map((d) => d.code);
+      for (const c of CLASS2) expect(codes, `${f} still reports ${c}`).not.toContain(c);
+      expect(derived(irOf(src)).length).toBeGreaterThan(0);
+      outcome.set(f, "gains the walls");
+    }
+  });
+  it("both outcomes occur (the corpus is not vacuous either way)", () => {
+    expect(outcome.size).toBe(cases.length);
+    expect([...outcome.values()].some((v) => v.startsWith("refused"))).toBe(true);
+    expect([...outcome.values()].some((v) => v === "gains the walls")).toBe(true);
   });
 });
 
