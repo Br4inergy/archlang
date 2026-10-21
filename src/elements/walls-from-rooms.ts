@@ -227,6 +227,10 @@ export const wallsFromRooms: ElementDef = {
       id: t.id,
       _derivedWalls: s._derivedWalls.map((w) => {
         const moved = wall.transform!(w, { ...t, id: t.nsId(w.id) }) as RWall;
+        // The rooms it stands between are named as the plan names them (`west.a`).
+        if (w._derived?.between) {
+          moved._derived = { ...w._derived, between: [t.nsId(w._derived.between[0]), t.nsId(w._derived.between[1])] };
+        }
         if (f.prefix !== undefined) moved._instance = f.prefix;
         if (f.component !== undefined) moved._component = f.component;
         return moved;

@@ -420,6 +420,49 @@ suite("the statement", () => {
 });
 
 // ------------------------------------------------------------------------------------------
+// Addressing: no hint, fix or suggestion quotes or edits a derived wall (ADR 0028 §3)
+
+suite("addressing: lint and compile never quote or edit a derived wall", () => {
+  const BAD = plan(
+    `  dims auto all\n  room id=a at (0,0) size 4000x3000 uses living\n  room id=b at (4000,0) size 3000x3000 uses bedroom\n` +
+      `  walls from rooms exterior 200 partition 100\n` +
+      `  door id=d1 at (4000,150) width 800 wall partition hinge left swing in\n` +
+      `  door id=d2 pocket at (4000,2300) width 800 wall partition\n` +
+      `  window id=w1 at (1000,0) width 1200 wall exterior\n  window id=w2 at (1900,0) width 1200 wall exterior\n` +
+      `  door id=d3 at (2000,3400) width 800\n  furniture bed at (3500,500) size 1000x2000`,
+  );
+  const stmt = { start: BAD.indexOf("walls from rooms"), end: BAD.indexOf("partition 100") + "partition 100".length };
+  const quotesDerived = (text: string) =>
+    /a\|b|exterior#|wall "exterior"|on exterior#|"a\|b"/.test(text) || /\bon a\|b\b/.test(text);
+
+  it("the rules that name a host reach derived walls (non-vacuous)", () => {
+    const codes = new Set(lint(BAD).map((d) => d.code));
+    for (const c of ["W_FURNITURE_WALL_COLLISION", "W_OPENING_AT_JUNCTION", "W_OPENING_OVERLAP"]) expect(codes).toContain(c);
+    // and they name the walls by relation
+    const texts = lint(BAD).flatMap((d) => [d.message, ...(d.hints ?? [])]);
+    expect(texts.some((t) => t.includes('the partition between "a" and "b"'))).toBe(true);
+    expect(texts.some((t) => t.includes("the exterior wall derived from the rooms"))).toBe(true);
+  });
+
+  it("no message, hint or fix of lint() or compile() quotes a derived wall's internal name or edits the statement", () => {
+    const all = [...lint(BAD), ...compile(BAD).diagnostics];
+    for (const d of all) {
+      const text = JSON.stringify({ m: d.message, h: d.hints, f: d.fixes });
+      expect(quotesDerived(text), `${d.code}: ${text}`).toBe(false);
+      for (const f of d.fixes ?? []) {
+        for (const e of f.edits) expect(e.span.end <= stmt.start || e.span.start >= stmt.end, `${d.code} edits the statement`).toBe(true);
+      }
+    }
+  });
+
+  it("an off-wall opening is never attached to a derived wall by a fix", () => {
+    const off = compile(BAD).diagnostics.filter((d) => /OFF_WALL|NOT_ON_WALL/.test(d.code ?? ""));
+    expect(off.length).toBeGreaterThan(0);
+    for (const d of off) expect(d.fixes ?? []).toEqual([]);
+  });
+});
+
+// ------------------------------------------------------------------------------------------
 // The twins
 
 suite("twins of the examples (the swap-back law)", () => {

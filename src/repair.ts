@@ -53,6 +53,7 @@
  * parsed AST → re-emit via the formatter. No I/O, deterministic.
  */
 
+import { wallRef } from "./wall-ref.js";
 import { CLI_NAME } from "./command-name.js";
 import { parse } from "./parser.js";
 import { formatPlan } from "./format.js";
@@ -481,8 +482,8 @@ function nextFix(fr: BBox, ctx: FixCtx): NextFix {
     return {
       dx: wall.dx,
       dy: wall.dy,
-      reason: `pushed clear of wall "${wall.wallId}"`,
-      problem: `penetrates wall "${wall.wallId}"`,
+      reason: `pushed clear of ${wallRef(ctx.walls, wall.wallId)}`,
+      problem: `penetrates ${wallRef(ctx.walls, wall.wallId)}`,
     };
 
   if (ctx.room) {

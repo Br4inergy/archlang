@@ -5,6 +5,7 @@
  * `rules/index.ts`.
  */
 
+import { wallRef } from "../../wall-ref.js";
 import {
   backCandidateEdges,
   backedEdgeList,
@@ -365,7 +366,7 @@ function axisLine(s: WallSegment): string {
  */
 function collisionHint(f: RFurniture, fr: BBox, hit: WallSegment, ctx: LintContext): string {
   const { wallSegs, roomRects } = ctx;
-  const generic = `Move or resize it so it clears wall "${hit.wallId}" — against its face, not through it — or place it with \`against wall <id>\` (whose \`offset\` is the distance along the wall to the piece's CENTRE) or \`in <room> anchor <edge> flush\`.`;
+  const generic = `Move or resize it so it clears ${wallRef(ctx.ir.walls, hit.wallId)} — against its face, not through it — or place it with \`against wall <id>\` (whose \`offset\` is the distance along the wall to the piece's CENTRE) or \`in <room> anchor <edge> flush\`.`;
   const ag = f._authored;
   if (ag?.mode !== "against") return generic;
   const hosts = wallSegs.filter((s) => s.wallId === ag.wall || s.category === ag.wall);
@@ -389,7 +390,7 @@ function collisionHint(f: RFurniture, fr: BBox, hit: WallSegment, ctx: LintConte
   const half = (hi - lo) / 2;
   const written = ag.offset ?? len / 2;
   if (Math.abs(written - centre) > 1) return generic;
-  const run = `\`offset\` is the distance along "${host.wallId}" to the piece's CENTRE, not its edge: at ${mm(centre)} this ${mm(hi - lo)} mm piece spans ${mm(lo)}–${mm(hi)} along it, through wall "${hit.wallId}"`;
+  const run = `\`offset\` is the distance along "${host.wallId}" to the piece's CENTRE, not its edge: at ${mm(centre)} this ${mm(hi - lo)} mm piece spans ${mm(lo)}–${mm(hi)} along it, through ${wallRef(ctx.ir.walls, hit.wallId)}`;
   const hd = hit.arc ? null : unitOf(hit);
   // A wall that runs ALONG the host is a depth problem: no `offset` can clear it.
   if (hd !== null && Math.abs(hd.x * d.x + hd.y * d.y) > 1 - 1e-9)

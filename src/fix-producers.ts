@@ -25,7 +25,9 @@ import { printDoc } from "./doc.js";
 import { statementText } from "./statement-print.js";
 
 /** A wall we can reference by id and re-project a point onto (a resolved wall). */
-export type AttachableWall = WallLike & { span?: Span };
+/** `_derived` marks a wall `walls from rooms` derived: it has no id to write, so no fix
+ *  attaches to it (ADR 0028 §3). */
+export type AttachableWall = WallLike & { span?: Span; _derived?: unknown };
 
 /** Spread a producer's result onto a `Diagnostic` — `{ fixes }` when non-empty,
  *  else `{}` (so a `null`/empty producer adds nothing). */
@@ -218,7 +220,7 @@ export function offWallFix(
 ): FixSuggestion[] | null {
   if (!node.span || walls.length === 0 || node.attach) return null;
   const near = nearestWall(walls, at);
-  if (!near?.wall.id) return null;
+  if (!near?.wall.id || near.wall._derived !== undefined) return null;
   const { pct } = projectPointOntoWall(near.wall, at);
   const replacement = emitOpening(kind, node, { lead: { wall: near.wall.id, pct } });
   return [
