@@ -163,6 +163,10 @@ const STATEMENT_EXPRS: { [K in Statement["kind"]]: (s: Extract<Statement, { kind
   fence: (s, out) => {
     for (const p of s.points) pt(out, p);
   },
+  walls: (s, out) => {
+    out.push(s.exterior);
+    out.push(s.partition);
+  },
   strip: (s, out) => {
     pt(out, s.at);
     out.push(s.gap);

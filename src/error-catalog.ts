@@ -199,6 +199,13 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "Use a percentage in 0–100%, a millimetre distance within the wall's run, or `center`. The non-finite case carries no fix: there is no nearest legal value to clamp to, so check the expression that produced it.",
     "door on w1 at 150% width 900   # error: 150% is past the wall end",
   ),
+  E_PARTITION_TOO_SHORT: E(
+    "E_PARTITION_TOO_SHORT",
+    "`walls from rooms` meets a shared edge shorter than the partition thickness.",
+    "Two rooms share a run of edge shorter than the derived partition is thick, so the partition would be wider than it is long: almost always two edges that were meant to line up and miss by a few millimetres. The compiler refuses and names the pair and the run rather than draw a sliver of wall (ADR 0028 §3).",
+    "Line the two rooms' edges up so they meet at a corner, or make the shared edge at least as long as the partition is thick.",
+    "room id=a at (0,0) size 4000x3000\nroom id=b at (4000,2950) size 3000x3000\nwalls from rooms exterior 200 partition 100   # error: a and b share 50 mm",
+  ),
   E_PLACE_REF: E(
     "E_PLACE_REF",
     "Furniture placed in an unknown or unplaced room.",
@@ -264,10 +271,24 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   ),
   E_ROOM_NOT_RECTANGLE: E(
     "E_ROOM_NOT_RECTANGLE",
-    "A room-edge datum names a polygon or circle room.",
-    "Datums (`top`, `bottom`, `left`, `right`, `cx`, `cy`) are the four edges and the centre of a RECTANGULAR room, the same condition relational placement refuses with `E_PLACE_POLY`. A `room polygon` or `room circle` has no such edges, and its bounding box is not its floor, so the compiler refuses instead of guessing (ADR 0028 §2).",
-    "Write the coordinate as a number, or read the datum of a rectangular room.",
+    "A room-edge datum, or `walls from rooms`, meets a polygon or circle room.",
+    "Datums (`top`, `bottom`, `left`, `right`, `cx`, `cy`) are the four edges and the centre of a RECTANGULAR room, the same condition relational placement refuses with `E_PLACE_POLY`, and `walls from rooms` derives its walls from those same edges. A `room polygon` or `room circle` has no such edges, and its bounding box is not its floor, so the compiler refuses instead of guessing (ADR 0028 §2, §3).",
+    "Write the coordinate as a number, or read the datum of a rectangular room. For `walls from rooms`, leave the room out with `{ except <room> }` and draw its walls by hand, or split it into rectangles.",
     "room id=L polygon (0,0) (6000,0) (6000,4000) (0,4000)\nwall interior thickness 100 { (L.left, 0) (L.left, 4000) }   # error: L is a polygon room",
+  ),
+  E_ROOMS_NOT_TILING: E(
+    "E_ROOMS_NOT_TILING",
+    "`walls from rooms` meets rooms that do not tile one connected floor.",
+    "`walls from rooms` draws the exterior ring on the outline of the rooms' union and a partition on every shared edge, so the rooms must form one edge-connected floor: two rooms touching only at a corner, a union pinched at a single point, or a gap between rooms (a hole, or a corridor left as 'the leftover') has no single outline to wall. A hole is legal only when `outdoor` surfaces (a courtyard, which gets an inner ring) or a `void` (no wall) of the same plan or component cover it exactly. The compiler refuses and names the rooms rather than guess where the missing floor is (ADR 0028 §3, ADR 0005).",
+    "Write the leftover floor as a room of its own (a corridor, a lobby), move the rooms so they meet edge to edge, or cover a courtyard exactly with an `outdoor` surface.",
+    "room id=a at (0,0) size 4000x3000\nroom id=b at (5000,0) size 3000x3000\nwalls from rooms exterior 200 partition 100   # error: a and b do not touch",
+  ),
+  E_ROOMS_OVERLAP: E(
+    "E_ROOMS_OVERLAP",
+    "`walls from rooms` meets two rooms that overlap.",
+    "Two rooms of the set share floor with positive area, so the edge between them is not one line and no partition can be derived on it. The compiler refuses and names every overlapping pair rather than choose which room owns the shared floor (ADR 0028 §3).",
+    "Move or resize the rooms so they meet edge to edge; the shared edge becomes the partition.",
+    "room id=a at (0,0) size 4000x3000\nroom id=b at (3000,0) size 3000x3000\nwalls from rooms exterior 200 partition 100   # error: a and b overlap by 1000 mm",
   ),
   E_ROOM_POLY_DEGENERATE: E(
     "E_ROOM_POLY_DEGENERATE",
@@ -781,6 +802,20 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "A wall's `thickness` evaluated to zero or a negative number.",
     "Give the wall a positive `thickness`.",
     "wall exterior thickness 0 { (0,0) (1,0) }   # error",
+  ),
+  E_WALL_BETWEEN_ROOM: E(
+    "E_WALL_BETWEEN_ROOM",
+    "A `walls from rooms` clause names a room that is not in its group.",
+    "`walls from rooms` derives from the rooms of the plan or component it is written in (ADR 0016: a component sees only its own rooms), so its `except` clause can leave out only one of those rooms. A name that is not one of them (a typo, a room of another component, a placed instance's room) excludes nothing (ADR 0028 §3).",
+    "Name a room written beside the statement, or drop the name.",
+    "room id=a at (0,0) size 4000x3000\nwalls from rooms exterior 200 partition 100 { except terrace }   # error: no room `terrace`",
+  ),
+  E_WALLS_FROM_ROOMS_DUP: E(
+    "E_WALLS_FROM_ROOMS_DUP",
+    "More than one `walls from rooms` statement in one plan or component.",
+    "One `walls from rooms` statement already derives every wall of its group's rooms, so a second one would derive the same walls again, possibly with other thicknesses; the compiler refuses the second rather than choose between them (ADR 0028 §3).",
+    "Keep one statement per plan, storey or component; put every exclusion in its `except` clause.",
+    "room id=a at (0,0) size 4000x3000\nwalls from rooms exterior 200 partition 100\nwalls from rooms exterior 250 partition 100   # error: a second statement",
   ),
   E_WHILE_LIMIT: E(
     "E_WHILE_LIMIT",

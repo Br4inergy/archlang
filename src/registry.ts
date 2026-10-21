@@ -93,6 +93,13 @@ export interface ResolveCtx {
    *  deterministic in tests. */
   now?(): Date;
   diag(d: Diagnostic): void;
+  /**
+   * The elements of the group being resolved (the root plan, or one `place`d instance) that
+   * have resolved so far, in source order, in the group's own frame: its own statements
+   * only, never a descendant's (ADR 0016). Optional because this interface is append-only;
+   * the resolver behind `compile()` always provides it.
+   */
+  group?(): readonly ResolvedElement[];
 }
 
 /**
@@ -257,6 +264,27 @@ export interface ElementDef {
    * provide its own `transform`.
    */
   transform?(el: ResolvedElement, t: TransformCtx): ResolvedElement;
+  /**
+   * The walls this element DERIVES (`walls from rooms`, ADR 0028 §3), or none. A kind that
+   * declares it changes its group's resolve order, and only in a group that holds one: the
+   * rooms (and their relational placement), then the {@link ElementDef.dependsOn} kinds,
+   * then the authored walls, then this kind — whose derived walls join the group's wall
+   * list at once, so every opening hosts against the final set — then every other kind in
+   * registry order. A group without one resolves exactly as before. Derived walls enter
+   * `ResolvedPlan.walls`, never `elements`.
+   */
+  yieldsWalls?(resolved: ResolvedElement): readonly RWall[];
+  /** The kinds a {@link ElementDef.yieldsWalls} kind reads, resolved before the walls in a
+   *  group that holds it (`void` and `outdoor`, the hole covers). */
+  dependsOn?: readonly string[];
+  /**
+   * Refresh what this element derived from the group's walls, once a
+   * {@link ElementDef.yieldsWalls} kind has added its walls. Called only for a kind that
+   * resolved EARLY (a {@link ElementDef.dependsOn} kind) in a group that derives walls, so
+   * it sees the final wall set as it would have resolving in registry order (a balcony's
+   * derived rail). It may update `resolved` in place: it was made in this resolution.
+   */
+  rewall?(resolved: ResolvedElement, walls: readonly RWall[]): void;
 }
 
 /**

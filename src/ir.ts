@@ -271,6 +271,22 @@ export interface RWall extends RBase {
    *  STABLE ref that can't re-bind. Internal: set during resolve, never serialized
    *  into the Scene/SVG/exports (the `_` prefix keeps it out). */
   _idAuthored?: boolean;
+  /**
+   * Present only on a wall DERIVED by a `walls from rooms` statement (ADR 0028 §3), never on
+   * an authored one. Such a wall has no author-facing id: its {@link RBase.id} is an internal
+   * name no identifier can spell (`exterior`, `exterior#2`, `A|B`, with `~2`… for a run an
+   * authored wall split off), and its {@link RBase.span} is the statement's. So a lint fix or
+   * hint never quotes it and never edits its span, `arch fix`/`suggest` never emit it, and
+   * `roof overhang` counts only the outer ring. Internal (the `_` prefix keeps it out of the
+   * Scene/SVG/exports).
+   */
+  _derived?: {
+    from: "rooms";
+    /** Rings only: the outer ring, or a courtyard ring. */
+    ring?: "outer" | "inner";
+    /** Partitions only: the two rooms it stands between, in source order. */
+    between?: [string, string];
+  };
 }
 /** A resolved relational-placement constraint carried on an unplaced room until
  *  `placeRelational` computes its absolute `at` in dependency order. */
@@ -670,7 +686,39 @@ export type ResolvedElement =
   | RRoof
   | RVoid
   | ROutdoor
-  | RFence;
+  | RFence
+  | RWallsFromRooms;
+
+/** One `describe().derived_walls[]` row: a derived wall before coexistence (ADR 0028 §6). */
+export interface DerivedWallRow {
+  from: "rooms";
+  /** The internal name (`exterior`, `exterior#2`, `A|B`), namespaced inside a `place`. */
+  name: string;
+  between?: [string, string];
+  /** The spans an authored wall took over (its id in `by`), in the wall's direction. */
+  dropped?: Array<{ x1: number; y1: number; x2: number; y2: number; by: string }>;
+}
+
+/**
+ * A resolved `walls from rooms` statement. It draws nothing of its own: its derived walls
+ * ({@link RWallsFromRooms._derivedWalls}) enter `ResolvedPlan.walls`, where every wall is
+ * drawn, hosted on and measured, but never `elements` (so nothing reads a derived wall as
+ * an authored statement). Empty when the statement was refused.
+ */
+export interface RWallsFromRooms extends RBase {
+  kind: "walls";
+  /** The exterior ring's thickness (mm). */
+  exterior: number;
+  /** The partitions' thickness (mm). */
+  partition: number;
+  /** The rooms left out of the derivation. */
+  except: string[];
+  /** The derived walls, in derivation order: the outer ring, the courtyard rings, the
+   *  partitions (by their rooms' source order). Internal. */
+  _derivedWalls: RWall[];
+  /** The facts row of each derived wall (ADR 0028 §6). Internal. */
+  _derivedRows: DerivedWallRow[];
+}
 
 /**
  * One resolved **positioning axis** (定位轴线): an author-declared datum line at `pos`
@@ -2251,6 +2299,7 @@ function resolveBody(
   // implicitly one — in first-declaration order.
   const zoneFrame = rootZoneFrame();
   const executedWhiles = new Set<string>();
+  const budget: ElementBudget = { count: 0, capped: false };
   const entries = expandScope(
     ast.body,
     globalScope,
@@ -2262,7 +2311,7 @@ function resolveBody(
       snap,
       seenInstances: new Set<string>(),
       executedWhiles,
-      budget: { count: 0, capped: false },
+      budget,
       modules: { builtins: builtinScope, envs: new Map() },
     },
     zoneFrame,
@@ -2273,6 +2322,7 @@ function resolveBody(
   //    every entry — including every legacy bare component call — so everything below is
   //    the historical single pass, byte for byte.
   const groups = groupEntries(entries);
+  chargeDerivedElements(entries, groups, registry, budget, diagnostics);
 
   // 2. Assign ids PER GROUP, so an instance's auto-id counters restart at 1 and two
   //    instances of one component get order-independent ids (`west.wall_1` / `east.wall_1`
@@ -2446,6 +2496,13 @@ function resolveBody(
   ): DatumTable => {
     ctx.walls = grpWalls;
     ctx.rooms = grpRooms;
+    // The group's OWN elements resolved so far, in source order (never a descendant's).
+    ctx.group = () => {
+      chargeSteps(grp.entries.length + 1);
+      const own: ResolvedElement[] = [];
+      for (const e of grp.entries) if (e.resolved !== undefined) own.push(e.resolved);
+      return own;
+    };
     wallGrid = null;
     hiKey = "";
     hiVal = null;
@@ -2487,10 +2544,53 @@ function resolveBody(
         } else if (r.kind === "room") {
           r._idAuthored = e.idAuthored === true;
           grpRooms.push(r);
+        } else if (def.yieldsWalls) {
+          // Derived walls join the group's wall list at once, before any opening resolves
+          // (ADR 0028 §3); they carry the statement's zone and file, never an authored id.
+          const kids = def.yieldsWalls(r);
+          for (const w of kids) {
+            if (e.zone !== undefined) w._zone = e.zone;
+            if (e.file !== undefined) w._file = e.file;
+            grpWalls.push(w);
+          }
+          if (kids.length > 0) {
+            wallGrid = null;
+            hiKey = "";
+            hiVal = null;
+          }
         }
       }
     };
     const roomKind = order.findIndex((d) => d.kind === "room");
+    // The registry order of every pass after the rooms. A group that holds a wall-deriving
+    // statement (`ElementDef.yieldsWalls`, `walls from rooms`) resolves the kinds it reads
+    // first (`dependsOn`), then the authored walls, then the statement, then the rest; a
+    // group without one keeps the plain registry order.
+    const derivers = order.flatMap((d, i) =>
+      d.yieldsWalls && grp.entries.some((e) => e.node.kind === d.kind) ? [i] : [],
+    );
+    const early: number[] = [];
+    for (const i of derivers) {
+      for (const k of order[i]!.dependsOn ?? []) {
+        const j = order.findIndex((d) => d.kind === k);
+        if (j >= 0 && j !== roomKind && !early.includes(j) && !derivers.includes(j)) early.push(j);
+      }
+    }
+    early.sort((a, b) => a - b);
+    const wallKind = order.findIndex((d) => d.kind === "wall");
+    const first =
+      derivers.length === 0
+        ? []
+        : [...early, ...(wallKind >= 0 && !early.includes(wallKind) ? [wallKind] : []), ...derivers];
+    const passes = [...first, ...order.map((_, i) => i).filter((i) => i !== roomKind && !first.includes(i))];
+    /** After the derivers: let each early kind refresh what it read off the walls. */
+    const rewall = (): void => {
+      for (const j of early) {
+        const def = order[j]!;
+        if (!def.rewall) continue;
+        for (const e of grp.entries) if (e.node.kind === def.kind && e.resolved) def.rewall(e.resolved, grpWalls);
+      }
+    };
     let table: DatumTable;
     try {
       // The room pass reads no datum: the table it would read does not exist yet.
@@ -2507,7 +2607,10 @@ function resolveBody(
       table = frozen;
       // Every later statement reads the frozen table (ADR 0028 §2).
       withDatumReader(tableReader(frozen, datumOpts(grp)), () => {
-        for (let i = 0; i < order.length; i++) if (i !== roomKind) resolveKind(i);
+        for (const i of passes) {
+          resolveKind(i);
+          if (i === derivers[derivers.length - 1]) rewall();
+        }
       });
     } finally {
       diagSink = sink;
@@ -2618,10 +2721,15 @@ function resolveBody(
       rotate: grp.frame!.rotate,
       ...(grp.frame!.mirror ? { mirror: grp.frame!.mirror } : {}),
     });
+    const derived: RWall[] = [];
     for (const t of done.carried) {
       if (t.kind === "wall") walls.push(t);
       else if (t.kind === "room") rooms2.push(t);
+      else derived.push(...(registry.byKind.get(t.kind)?.yieldsWalls?.(t) ?? []));
     }
+    // A group's derived walls follow its authored ones (ADR 0028 §3), as they do in its
+    // own resolution, so a first-wins search over the walls prefers the authored wall.
+    for (const w of derived) walls.push(w);
   }
   // The plan's positioning axes (定位轴线): plan-level datums, not elements, so they enter
   // the ROOT group's datum table and are evaluated now, before it resolves (ADR 0028 §1).
@@ -2692,6 +2800,11 @@ function resolveBody(
   //     so an element out of range is reported exactly once.
   const outside = checkNumberDomain(resolvedElements, registry, diagnostics);
   if (outside.size > 0) {
+    // A dropped wall-deriving statement takes its derived walls with it (its bounds and
+    // measures are theirs), and so the openings hosted on them below.
+    for (const el of [...outside]) {
+      for (const w of registry.byKind.get(el.kind)?.yieldsWalls?.(el) ?? []) outside.add(w);
+    }
     for (const el of resolvedElements) {
       if ((el.kind === "door" || el.kind === "window" || el.kind === "opening") && el.host) {
         const host = hostWallOf(el.host, walls);
@@ -3093,15 +3206,19 @@ function descendantView(
     if (!d.frame || !done) continue;
     const rel = relativeFrame(grp.frame!, d.frame);
     if (!rel) continue;
+    const derived: RWall[] = [];
     for (const local of done.local) {
-      if (local.kind !== "wall" && local.kind !== "room") continue;
-      const v = tryTransformElement(rel, local, registry.byKind.get(local.kind));
+      const def = registry.byKind.get(local.kind);
+      if (local.kind !== "wall" && local.kind !== "room" && !def?.yieldsWalls) continue;
+      const v = tryTransformElement(rel, local, def);
       // A refusal is neither a wall nor a room: the descendant's own pass already dropped
       // and reported it.
       if (typeof v === "string") continue;
       if (v.kind === "wall") walls.push(v);
       else if (v.kind === "room") rooms.push(v);
+      else derived.push(...(def?.yieldsWalls?.(v) ?? []));
     }
+    for (const w of derived) walls.push(w);
   }
   return { walls, rooms };
 }
@@ -3137,6 +3254,64 @@ function groupEntries(entries: Entry[]): ResolveGroup[] {
   for (const [frame, grouped] of byFrame) out.push({ frame, entries: grouped });
   out.push({ entries: root });
   return out;
+}
+
+/**
+ * What one `walls from rooms` statement may derive, per room of its group, counted toward
+ * {@link MAX_ELEMENTS}: at most `6n` partition pieces (a run an authored wall splits in two)
+ * and `4n` ring vertices for `n` rooms (ADR 0028 §3, "Bounds, charged before allocating").
+ */
+export const DERIVED_ELEMENTS_PER_ROOM = 10;
+
+/**
+ * Count each wall-deriving statement (`ElementDef.yieldsWalls`) toward the element budget
+ * with the upper bound of what it can derive, once expansion is done and the groups are
+ * known: `DERIVED_ELEMENTS_PER_ROOM` per room its group declares. A statement that would
+ * cross the cap is `E_ELEMENT_LIMIT` at the statement, reported once, and it and every later
+ * deriving statement are removed, so nothing past the cap is derived. A plan with no such
+ * statement is untouched.
+ */
+function chargeDerivedElements(
+  entries: Entry[],
+  groups: ResolveGroup[],
+  registry: Registry,
+  budget: ElementBudget,
+  diagnostics: Diagnostic[],
+): void {
+  const refused = new Set<Entry>();
+  for (const grp of groups) {
+    let rooms = -1;
+    for (const e of grp.entries) {
+      if (!registry.byKind.get(e.node.kind)?.yieldsWalls) continue;
+      if (budget.capped) {
+        refused.add(e);
+        continue;
+      }
+      if (rooms < 0) rooms = grp.entries.filter((x) => x.node.kind === "room").length;
+      budget.count += DERIVED_ELEMENTS_PER_ROOM * rooms;
+      if (budget.count <= MAX_ELEMENTS) continue;
+      budget.capped = true;
+      refused.add(e);
+      diagnostics.push(
+        stampProvenance(
+          {
+            severity: "error",
+            message: `Plan expands to more than ${MAX_ELEMENTS} elements: \`walls from rooms\` over ${rooms} rooms may derive up to ${DERIVED_ELEMENTS_PER_ROOM * rooms} walls, so it derives none`,
+            code: "E_ELEMENT_LIMIT",
+            ...(e.node.span ? { span: e.node.span } : {}),
+          },
+          e.frame,
+          e.file,
+        ),
+      );
+    }
+  }
+  if (refused.size === 0) return;
+  const keep = (e: Entry): boolean => !refused.has(e);
+  const kept = entries.filter(keep);
+  entries.length = 0;
+  entries.push(...kept);
+  for (const grp of groups) grp.entries = grp.entries.filter(keep);
 }
 
 /** Assign ids in registry order: explicit ids are checked for duplicates; missing

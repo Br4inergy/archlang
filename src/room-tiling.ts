@@ -1,0 +1,658 @@
+/**
+ * The derivation behind `walls from rooms` (ADR 0028 §3, plan decision D5): one group's
+ * rectangular rooms in, its exterior ring(s) and its partitions out, or a refusal naming
+ * the rooms at fault. Pure: no diagnostics, no ids beyond the internal names, no `RWall`
+ * (the element module `src/elements/walls-from-rooms.ts` builds those).
+ *
+ * Every decision is exact on the resolved coordinates; there is no tolerance anywhere
+ * (`===`/`<` only). The work is charged to the evaluator's step meter (`MAX_EVAL_STEPS`)
+ * BEFORE it is done or allocated, so any input returns within the budget.
+ *
+ * ## The algorithm
+ *
+ * 1. A `polygon` or `circle` room in the set refuses (`E_ROOM_NOT_RECTANGLE`); nothing
+ *    else is decided around it (a non-rectangle has no edge lines).
+ * 2. Overlap: a sweep over the rooms sorted by left edge, comparing each room with the rooms
+ *    still open at its left edge (`E_ROOMS_OVERLAP`, every pair named). The rest of the
+ *    algorithm relies on the rooms being interior-disjoint, so an overlap stops here.
+ * 3. Every room edge lies on one line (`x = c` or `y = c`) with the room on one side of it.
+ *    One sort of the edges per axis groups them by line; on each line a merge of the two
+ *    sides' intervals (each side's intervals are disjoint, because the rooms are) yields:
+ *    the runs where both sides hold a room (a shared run: one PARTITION between that pair),
+ *    and the runs where one side only does (a BOUNDARY piece, oriented so the floor is on
+ *    its right on the page: top edges run `+x`, right edges `+y`, bottom edges `-x`, left
+ *    edges `-y`).
+ * 4. The boundary pieces link end to start into rings. A vertex with two outgoing pieces is
+ *    a pinch (the union touches itself, or its hole, at a single point): `E_ROOMS_NOT_TILING`.
+ *    At a ring's vertex with the smallest `y`, then `x`, the outgoing piece runs `+x` on an
+ *    outer ring (clockwise on the page) and `+y` on a hole ring (counter-clockwise), so the
+ *    orientation is read exactly, with no area sum. More than one outer ring is more than
+ *    one edge-connected component: `E_ROOMS_NOT_TILING`.
+ * 5. A hole is legal only when the group's `outdoor` surfaces, or its `void`s, cover it
+ *    exactly (one kind; every cover wholly inside the hole or wholly outside it), decided on
+ *    a compressed grid of the hole's and the covers' edge coordinates. An `outdoor` hole is a
+ *    courtyard and keeps its ring (an inner exterior wall); a `void` hole derives no wall.
+ * 6. A shared run shorter than the partition thickness refuses (`E_PARTITION_TOO_SHORT`).
+ * 7. Coexistence: where an authored straight wall segment lies exactly on the line of a
+ *    derived segment and overlaps it with positive length, the derived wall is dropped over
+ *    that span (the author's wall wins) and every dropped span is reported. What remains of
+ *    a ring is one or more open runs, in ring order.
+ *
+ * ## Direction and names (ADR 0028 §3)
+ *
+ * The outer ring starts at its vertex with the smallest `y`, then `x`, and runs clockwise
+ * (first along `+x`); a courtyard ring starts the same way and runs counter-clockwise (first
+ * along `+y`); a partition runs from its end with the smaller `y`, then `x`. Names no
+ * identifier can spell: `exterior` (the outer ring), `exterior#2`, `exterior#3`, … (courtyard
+ * rings, by start vertex), `A|B` (a partition, the two room ids in source order). A derived
+ * wall that an authored wall splits keeps its name on the first remaining run, and the later
+ * runs are `<name>~2`, `<name>~3`, ….
+ */
+
+import type { Point } from "./ast.js";
+import { chargeSteps } from "./expr.js";
+
+/** An axis-aligned rectangle `[x0, x1] × [y0, y1]`. */
+export interface TileRect {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** One room of the set, in source order. A room with no `rect` is a polygon or a circle. */
+export interface TileRoom {
+  id: string;
+  rect?: TileRect;
+  shape?: "polygon" | "circle";
+}
+
+/** An `outdoor` surface or a `void` of the group: a rectangle or a ring. */
+export interface TileCover {
+  kind: "outdoor" | "void";
+  rect?: TileRect;
+  poly?: Point[];
+}
+
+/** One straight segment of an authored wall of the group. */
+export interface TileWallSeg {
+  a: Point;
+  b: Point;
+  wallId: string;
+}
+
+export type TilingCode = "E_ROOM_NOT_RECTANGLE" | "E_ROOMS_OVERLAP" | "E_ROOMS_NOT_TILING" | "E_PARTITION_TOO_SHORT";
+
+/** A refusal: its code, the rooms it names (source order) and the reason, in words. */
+export interface TilingRefusal {
+  code: TilingCode;
+  rooms: string[];
+  why: string;
+}
+
+/** One derived wall before coexistence, with what is left of it. */
+export interface DerivedWallSpec {
+  /** Internal name: `exterior`, `exterior#<k>` or `A|B`. */
+  name: string;
+  role: "exterior" | "partition";
+  /** Rings only: the outer ring, or a courtyard ring. */
+  ring?: "outer" | "inner";
+  /** Partitions only: the two rooms, in source order. */
+  between?: [string, string];
+  /** The runs that remain after coexistence, in the wall's direction. The first keeps the
+   *  name; the later ones are `<name>~2`, …. A ring with nothing dropped is one closed run. */
+  pieces: Array<{ name: string; points: Point[]; closed: boolean }>;
+  /** The spans an authored wall took over, in the wall's direction. */
+  dropped: Array<{ x1: number; y1: number; x2: number; y2: number; by: string }>;
+}
+
+export type TilingResult =
+  | { ok: false; refusals: TilingRefusal[] }
+  | { ok: true; walls: DerivedWallSpec[]; counts: { partitions: number; ringVertices: number } };
+
+/** The step cost of sorting `m` items: `m log2 m`, rounded up (at least `m`). */
+export function sortSteps(m: number): number {
+  return m <= 1 ? 1 : Math.ceil(m * Math.log2(m));
+}
+
+interface Interval {
+  s: number;
+  e: number;
+  room: number;
+}
+
+/** A directed boundary piece on one line. */
+interface Piece {
+  a: Point;
+  b: Point;
+  owners: number[];
+}
+
+/** A shared run on one line between two rooms. */
+interface Run {
+  a: Point;
+  b: Point;
+  lo: number;
+  hi: number;
+}
+
+const key = (p: Point): string => `${p.x},${p.y}`;
+
+/**
+ * Derive one group's walls. `rooms` in source order (that order names the partitions and
+ * the rooms a refusal lists); `covers` the group's `outdoor`/`void` shapes; `walls` the
+ * group's authored straight segments (coexistence); `tInt` the partition thickness.
+ */
+export function deriveWallsFromRooms(
+  rooms: readonly TileRoom[],
+  covers: readonly TileCover[],
+  walls: readonly TileWallSeg[],
+  tInt: number,
+): TilingResult {
+  const n = rooms.length;
+  chargeSteps(n + 1);
+  // 1. Non-rectangles.
+  const nonRect = rooms.filter((r) => !r.rect);
+  if (nonRect.length > 0) {
+    return {
+      ok: false,
+      refusals: [
+        {
+          code: "E_ROOM_NOT_RECTANGLE",
+          rooms: nonRect.map((r) => r.id),
+          why: nonRect.map((r) => `"${r.id}" is a ${r.shape ?? "polygon"} room`).join("; "),
+        },
+      ],
+    };
+  }
+  const R = rooms.map((r) => r.rect!);
+  const ids = rooms.map((r) => r.id);
+  const named = (set: Iterable<number>): string[] => [...new Set(set)].sort((a, b) => a - b).map((i) => ids[i]!);
+
+  // 2. Overlap: sweep by left edge.
+  chargeSteps(sortSteps(n) + n);
+  const byX = R.map((_, i) => i).sort((a, b) => R[a]!.x0 - R[b]!.x0 || a - b);
+  const pairs: Array<[number, number]> = [];
+  let active: number[] = [];
+  for (const i of byX) {
+    const r = R[i]!;
+    chargeSteps(2 * active.length + 1);
+    active = active.filter((j) => R[j]!.x1 > r.x0);
+    for (const j of active) {
+      const q = R[j]!;
+      if (Math.min(r.x1, q.x1) > Math.max(r.x0, q.x0) && Math.min(r.y1, q.y1) > Math.max(r.y0, q.y0)) {
+        pairs.push(i < j ? [i, j] : [j, i]);
+      }
+    }
+    active.push(i);
+  }
+  if (pairs.length > 0) {
+    pairs.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+    return {
+      ok: false,
+      refusals: [
+        {
+          code: "E_ROOMS_OVERLAP",
+          rooms: named(pairs.flat()),
+          why: pairs.map(([a, b]) => `"${ids[a]}" overlaps "${ids[b]}"`).join("; "),
+        },
+      ],
+    };
+  }
+
+  // 3. Edges by line: one sort per axis, then a merge on each line. Charged before
+  //    allocating: the sort of 4n edges plus three passes over them.
+  const m = 4 * n;
+  chargeSteps(sortSteps(m) + 3 * m);
+  // Vertical lines x = c: `lo` = the room is on the -x side (its right edge), `hi` = +x side.
+  const vEdges: Array<{ c: number; side: 0 | 1; iv: Interval }> = [];
+  const hEdges: Array<{ c: number; side: 0 | 1; iv: Interval }> = [];
+  R.forEach((r, i) => {
+    if (!(r.x1 > r.x0 && r.y1 > r.y0)) return; // no area: no edge to derive from
+    vEdges.push({ c: r.x1, side: 0, iv: { s: r.y0, e: r.y1, room: i } });
+    vEdges.push({ c: r.x0, side: 1, iv: { s: r.y0, e: r.y1, room: i } });
+    hEdges.push({ c: r.y1, side: 0, iv: { s: r.x0, e: r.x1, room: i } });
+    hEdges.push({ c: r.y0, side: 1, iv: { s: r.x0, e: r.x1, room: i } });
+  });
+  const order = (p: { c: number; iv: Interval }, q: { c: number; iv: Interval }): number =>
+    p.c - q.c || p.iv.s - q.iv.s || p.iv.room - q.iv.room;
+  vEdges.sort(order);
+  hEdges.sort(order);
+
+  const pieces: Piece[] = [];
+  const runs: Run[] = [];
+  const sweepAxis = (edges: typeof vEdges, vertical: boolean): void => {
+    let k = 0;
+    while (k < edges.length) {
+      const c = edges[k]!.c;
+      const lo: Interval[] = [];
+      const hi: Interval[] = [];
+      while (k < edges.length && edges[k]!.c === c) {
+        const ed = edges[k]!;
+        (ed.side === 0 ? lo : hi).push(ed.iv);
+        k++;
+      }
+      sweepLine(c, lo, hi, vertical, pieces, runs);
+    }
+  };
+  sweepAxis(vEdges, true);
+  sweepAxis(hEdges, false);
+
+  const notTiling: string[] = [];
+  const tilingRooms: number[] = [];
+
+  // 4. Link the boundary pieces into rings; a vertex with two outgoing pieces is a pinch.
+  chargeSteps(2 * pieces.length + 1);
+  const out = new Map<string, number[]>();
+  pieces.forEach((p, i) => {
+    const k = key(p.a);
+    const list = out.get(k);
+    if (list) list.push(i);
+    else out.set(k, [i]);
+  });
+  const pinches: string[] = [];
+  for (const [k, list] of out) {
+    if (list.length < 2) continue;
+    chargeSteps(pieces.length + 1);
+    pinches.push(`(${k.replace(",", ", ")})`);
+    for (const i of list) tilingRooms.push(...pieces[i]!.owners);
+    for (const p of pieces) if (key(p.b) === k) tilingRooms.push(...p.owners);
+  }
+  if (pinches.length > 0) {
+    notTiling.push(
+      `the rooms touch at a single point ${pinches.slice(0, 4).join(" ")}${pinches.length > 4 ? " …" : ""} (a pinch)`,
+    );
+    return { ok: false, refusals: refusalsOf(notTiling, tilingRooms, shortRuns(runs, tInt, ids), named) };
+  }
+  const seen = new Uint8Array(pieces.length);
+  const rings: Array<{ pts: Point[]; owners: number[]; outer: boolean }> = [];
+  for (let i0 = 0; i0 < pieces.length; i0++) {
+    if (seen[i0]) continue;
+    const pts: Point[] = [];
+    const owners: number[] = [];
+    let i = i0;
+    // Every vertex has exactly one outgoing piece here (no pinch), and every piece ends
+    // where another starts (a boundary of a union of rectangles is closed), so this walk
+    // returns to its start.
+    while (!seen[i]) {
+      seen[i] = 1;
+      const p = pieces[i]!;
+      pts.push(p.a);
+      owners.push(...p.owners);
+      const next = out.get(key(p.b));
+      if (!next) break;
+      i = next[0]!;
+    }
+    // Canonical start: smallest y, then x.
+    let s = 0;
+    for (let j = 1; j < pts.length; j++) {
+      const p = pts[j]!;
+      const q = pts[s]!;
+      if (p.y < q.y || (p.y === q.y && p.x < q.x)) s = j;
+    }
+    const ring = [...pts.slice(s), ...pts.slice(0, s)];
+    rings.push({ pts: ring, owners, outer: ring[1]!.y === ring[0]!.y });
+  }
+  const outers = rings.filter((r) => r.outer);
+  if (outers.length > 1) {
+    const one = outers.map((r) => Math.min(...r.owners));
+    tilingRooms.push(...one);
+    notTiling.push(
+      `the rooms form ${outers.length} separate parts (one room from each: ${one.map((i) => `"${ids[i]}"`).join(", ")}); rooms touching only at a corner are not connected`,
+    );
+  }
+
+  // 5. Holes: each must be covered exactly by one kind of cover.
+  const holes = rings
+    .filter((r) => !r.outer)
+    .sort((p, q) => p.pts[0]!.y - q.pts[0]!.y || p.pts[0]!.x - q.pts[0]!.x);
+  const courtyards: Point[][] = [];
+  for (const h of holes) {
+    const verdict = holeCover(h.pts, covers);
+    if (verdict === "outdoor") courtyards.push(h.pts);
+    else if (verdict !== "void") {
+      tilingRooms.push(...h.owners);
+      const xs = h.pts.map((p) => p.x);
+      const ys = h.pts.map((p) => p.y);
+      notTiling.push(
+        `the rooms enclose a hole x ${Math.min(...xs)}–${Math.max(...xs)}, y ${Math.min(...ys)}–${Math.max(...ys)} that is ${verdict} (bounded by ${named(h.owners)
+          .map((x) => `"${x}"`)
+          .join(", ")}); a hole must be covered exactly by \`outdoor\` surfaces (a courtyard) or by a \`void\``,
+      );
+    }
+  }
+
+  // 6. Short runs.
+  const short = shortRuns(runs, tInt, ids);
+  if (notTiling.length > 0 || short) return { ok: false, refusals: refusalsOf(notTiling, tilingRooms, short, named) };
+
+  // 7. The walls, then coexistence.
+  const outer = outers[0];
+  const specs: Array<Omit<DerivedWallSpec, "pieces" | "dropped"> & { path: Point[]; closed: boolean }> = [];
+  if (outer) specs.push({ name: "exterior", role: "exterior", ring: "outer", path: outer.pts, closed: true });
+  courtyards.forEach((pts, k) =>
+    specs.push({ name: `exterior#${k + 2}`, role: "exterior", ring: "inner", path: pts, closed: true }),
+  );
+  const partitionSpecs = runs
+    .map((r) => {
+      const [a, b] = r.lo < r.hi ? [r.lo, r.hi] : [r.hi, r.lo];
+      return { a, b, path: [r.a, r.b] };
+    })
+    .sort((p, q) => p.a - q.a || p.b - q.b || p.path[0]!.y - q.path[0]!.y || p.path[0]!.x - q.path[0]!.x);
+  for (const p of partitionSpecs) {
+    specs.push({
+      name: `${ids[p.a]}|${ids[p.b]}`,
+      role: "partition",
+      between: [ids[p.a]!, ids[p.b]!],
+      path: p.path,
+      closed: false,
+    });
+  }
+  const index = authoredIndex(walls);
+  const result: DerivedWallSpec[] = specs.map((s) => {
+    const { path, closed, ...rest } = s;
+    return { ...rest, ...coexist(s.name, path, closed, index) };
+  });
+  const ringVertices = (outer?.pts.length ?? 0) + courtyards.reduce((t, r) => t + r.length, 0);
+  return { ok: true, walls: result, counts: { partitions: partitionSpecs.length, ringVertices } };
+}
+
+function refusalsOf(
+  notTiling: string[],
+  tilingRooms: number[],
+  short: TilingRefusal | undefined,
+  named: (s: Iterable<number>) => string[],
+): TilingRefusal[] {
+  const out: TilingRefusal[] = [];
+  if (notTiling.length > 0) out.push({ code: "E_ROOMS_NOT_TILING", rooms: named(tilingRooms), why: notTiling.join("; ") });
+  if (short) out.push(short);
+  return out;
+}
+
+function shortRuns(runs: readonly Run[], tInt: number, ids: readonly string[]): TilingRefusal | undefined {
+  const short = runs
+    .filter((r) => Math.abs(r.b.x - r.a.x) + Math.abs(r.b.y - r.a.y) < tInt)
+    .map((r) => (r.lo < r.hi ? { ...r, p: r.lo, q: r.hi } : { ...r, p: r.hi, q: r.lo }))
+    .sort((u, v) => u.p - v.p || u.q - v.q);
+  if (short.length === 0) return undefined;
+  const rooms = [...new Set(short.flatMap((r) => [r.p, r.q]))].sort((a, b) => a - b).map((i) => ids[i]!);
+  return {
+    code: "E_PARTITION_TOO_SHORT",
+    rooms,
+    why: short
+      .map(
+        (r) =>
+          `"${ids[r.p]}" and "${ids[r.q]}" share a run of ${Math.abs(r.b.x - r.a.x) + Math.abs(r.b.y - r.a.y)} mm, from (${r.a.x}, ${r.a.y}) to (${r.b.x}, ${r.b.y}), shorter than the ${tInt} mm partition`,
+      )
+      .join("; "),
+  };
+}
+
+/**
+ * One line's merge: `lo` holds the intervals of rooms on the line's lower side (left of a
+ * vertical line, above a horizontal one), `hi` those on its upper side, each sorted and
+ * disjoint. Emits shared runs and oriented boundary pieces.
+ */
+function sweepLine(c: number, lo: Interval[], hi: Interval[], vertical: boolean, pieces: Piece[], runs: Run[]): void {
+  const at = (t: number): Point => (vertical ? { x: c, y: t } : { x: t, y: c });
+  // The sorted, distinct endpoints of both sides (each side's sequence is already sorted).
+  const ends: number[] = [];
+  let i = 0;
+  let j = 0;
+  const seq = (list: Interval[], k: number): number => (k % 2 === 0 ? list[k >> 1]!.s : list[k >> 1]!.e);
+  while (i < 2 * lo.length || j < 2 * hi.length) {
+    const v =
+      j >= 2 * hi.length || (i < 2 * lo.length && seq(lo, i) <= seq(hi, j)) ? seq(lo, i++) : seq(hi, j++);
+    if (ends.length === 0 || ends[ends.length - 1] !== v) ends.push(v);
+  }
+  let pl = 0;
+  let ph = 0;
+  // The open piece/run being extended: its kind and its start.
+  let cur: { kind: "lo" | "hi" | "run"; s: number; e: number; owners: number[]; lo?: number; hi?: number } | null = null;
+  const flush = (): void => {
+    if (!cur) return;
+    if (cur.kind === "run") {
+      runs.push({ a: at(cur.s), b: at(cur.e), lo: cur.lo!, hi: cur.hi! });
+    } else {
+      // Floor on the right of travel: a `lo` piece (floor at -x or -y) runs +y on a vertical
+      // line and -x on a horizontal one; a `hi` piece the opposite way.
+      const forward = vertical ? cur.kind === "lo" : cur.kind === "hi";
+      pieces.push({
+        a: at(forward ? cur.s : cur.e),
+        b: at(forward ? cur.e : cur.s),
+        owners: cur.owners,
+      });
+    }
+    cur = null;
+  };
+  for (let k = 0; k + 1 < ends.length; k++) {
+    const s = ends[k]!;
+    const e = ends[k + 1]!;
+    while (pl < lo.length && lo[pl]!.e <= s) pl++;
+    while (ph < hi.length && hi[ph]!.e <= s) ph++;
+    const L = pl < lo.length && lo[pl]!.s <= s ? lo[pl]!.room : -1;
+    const H = ph < hi.length && hi[ph]!.s <= s ? hi[ph]!.room : -1;
+    const kind = L >= 0 && H >= 0 ? "run" : L >= 0 ? "lo" : H >= 0 ? "hi" : null;
+    const same =
+      cur !== null &&
+      kind === cur.kind &&
+      cur.e === s &&
+      (kind !== "run" || (cur.lo === L && cur.hi === H));
+    if (!same) flush();
+    if (kind === null) continue;
+    if (cur === null) {
+      cur = { kind, s, e, owners: [], ...(kind === "run" ? { lo: L, hi: H } : {}) };
+    } else cur.e = e;
+    const owner = kind === "lo" ? L : kind === "hi" ? H : -1;
+    if (owner >= 0 && cur.owners[cur.owners.length - 1] !== owner) cur.owners.push(owner);
+  }
+  flush();
+}
+
+/** Even-odd test of a point that lies on no edge of the rectilinear `ring` (vertical edges only). */
+function inRing(px: number, py: number, ring: readonly Point[]): boolean {
+  let inside = false;
+  for (let k = 0, l = ring.length - 1; k < ring.length; l = k++) {
+    const a = ring[k]!;
+    const b = ring[l]!;
+    if (a.x !== b.x) continue;
+    if (a.y > py !== b.y > py && px < a.x) inside = !inside;
+  }
+  return inside;
+}
+
+const rectilinear = (ring: readonly Point[]): boolean =>
+  ring.every((p, i) => {
+    const q = ring[(i + 1) % ring.length]!;
+    return p.x === q.x || p.y === q.y;
+  });
+
+function boxOf(c: TileCover): TileRect {
+  if (c.rect) return c.rect;
+  const xs = c.poly!.map((p) => p.x);
+  const ys = c.poly!.map((p) => p.y);
+  return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+}
+
+function lowerIndex(xs: readonly number[], v: number): number {
+  let lo = 0;
+  let hi = xs.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (xs[mid]! < v) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+/**
+ * Is the hole bounded by `ring` covered exactly by one kind of cover? Decided on a
+ * compressed grid of the hole's and the touching covers' edge coordinates: every cell of the
+ * hole must be covered, by one kind only, and every cover must lie wholly inside the hole or
+ * wholly outside it. A non-rectilinear cover covers no cell exactly and is left out.
+ */
+function holeCover(ring: readonly Point[], covers: readonly TileCover[]): "outdoor" | "void" | string {
+  const hx = ring.map((p) => p.x);
+  const hy = ring.map((p) => p.y);
+  const hb = { x0: Math.min(...hx), x1: Math.max(...hx), y0: Math.min(...hy), y1: Math.max(...hy) };
+  chargeSteps(covers.length + 1);
+  const near = covers.filter((c) => {
+    if (c.poly && !rectilinear(c.poly)) return false;
+    const b = boxOf(c);
+    return Math.min(b.x1, hb.x1) > Math.max(b.x0, hb.x0) && Math.min(b.y1, hb.y1) > Math.max(b.y0, hb.y0);
+  });
+  if (near.length === 0) return "uncovered";
+  const xsSet = new Set(hx);
+  const ysSet = new Set(hy);
+  for (const c of near) {
+    if (c.rect) {
+      xsSet.add(c.rect.x0).add(c.rect.x1);
+      ysSet.add(c.rect.y0).add(c.rect.y1);
+    } else for (const p of c.poly!) xsSet.add(p.x), ysSet.add(p.y);
+  }
+  chargeSteps(sortSteps(xsSet.size) + sortSteps(ysSet.size));
+  const xs = [...xsSet].sort((a, b) => a - b);
+  const ys = [...ysSet].sort((a, b) => a - b);
+  const nx = xs.length - 1;
+  const ny = ys.length - 1;
+  const N = nx * ny;
+  // The hole's cells: one in-ring test per cell, one step per ring edge it reads.
+  chargeSteps(N * (ring.length + 2) + 1);
+  const inHole = new Uint8Array(N);
+  const mask = new Uint8Array(N);
+  for (let jy = 0; jy < ny; jy++) {
+    for (let ix = 0; ix < nx; ix++) {
+      if (inRing((xs[ix]! + xs[ix + 1]!) / 2, (ys[jy]! + ys[jy + 1]!) / 2, ring)) inHole[jy * nx + ix] = 1;
+    }
+  }
+  for (const c of near) {
+    const b = boxOf(c);
+    const i0 = lowerIndex(xs, b.x0);
+    const i1 = lowerIndex(xs, b.x1);
+    const j0 = lowerIndex(ys, b.y0);
+    const j1 = lowerIndex(ys, b.y1);
+    chargeSteps((i1 - i0) * (j1 - j0) * (c.poly ? c.poly.length + 1 : 1) + 1);
+    let inside = 0;
+    let total = 0;
+    for (let jy = j0; jy < j1; jy++) {
+      for (let ix = i0; ix < i1; ix++) {
+        if (c.poly && !inRing((xs[ix]! + xs[ix + 1]!) / 2, (ys[jy]! + ys[jy + 1]!) / 2, c.poly)) continue;
+        const cell = jy * nx + ix;
+        total++;
+        if (inHole[cell]) inside++;
+        mask[cell]! |= c.kind === "outdoor" ? 1 : 2;
+      }
+    }
+    if (inside > 0 && inside < total) return "covered, but a cover spills past it";
+  }
+  let kinds = 0;
+  for (let cell = 0; cell < N; cell++) {
+    if (!inHole[cell]) continue;
+    if (mask[cell] === 0) return kinds === 0 ? "uncovered" : "partly covered";
+    kinds |= mask[cell]!;
+  }
+  if (kinds === 3) return "covered by both outdoor and void";
+  return kinds === 1 ? "outdoor" : "void";
+}
+
+/** The group's authored straight axis-aligned segments, by line (`v:<x>` / `h:<y>`). */
+function authoredIndex(walls: readonly TileWallSeg[]): Map<string, Array<{ s: number; e: number; by: string }>> {
+  chargeSteps(walls.length + 1);
+  const idx = new Map<string, Array<{ s: number; e: number; by: string }>>();
+  for (const w of walls) {
+    let k: string;
+    let s: number;
+    let e: number;
+    if (w.a.x === w.b.x && w.a.y !== w.b.y) {
+      k = `v:${w.a.x}`;
+      s = Math.min(w.a.y, w.b.y);
+      e = Math.max(w.a.y, w.b.y);
+    } else if (w.a.y === w.b.y && w.a.x !== w.b.x) {
+      k = `h:${w.a.y}`;
+      s = Math.min(w.a.x, w.b.x);
+      e = Math.max(w.a.x, w.b.x);
+    } else continue;
+    const list = idx.get(k);
+    if (list) list.push({ s, e, by: w.wallId });
+    else idx.set(k, [{ s, e, by: w.wallId }]);
+  }
+  return idx;
+}
+
+/**
+ * Coexistence (ADR 0028 §3): drop every span of the derived path that an authored wall
+ * lies on exactly, and return what remains as runs in the path's direction.
+ */
+function coexist(
+  name: string,
+  path: readonly Point[],
+  closed: boolean,
+  index: ReadonlyMap<string, Array<{ s: number; e: number; by: string }>>,
+): Pick<DerivedWallSpec, "pieces" | "dropped"> {
+  const sides = closed ? path.length : path.length - 1;
+  const dropped: DerivedWallSpec["dropped"] = [];
+  /** Kept sub-runs of each side, in travel order. */
+  const kept: Array<Array<[Point, Point]>> = [];
+  let anyDrop = false;
+  for (let k = 0; k < sides; k++) {
+    const a = path[k]!;
+    const b = path[(k + 1) % path.length]!;
+    const vertical = a.x === b.x;
+    const list = index.get(vertical ? `v:${a.x}` : `h:${a.y}`) ?? [];
+    chargeSteps(list.length + 1);
+    const t0 = vertical ? a.y : a.x;
+    const t1 = vertical ? b.y : b.x;
+    const lo = Math.min(t0, t1);
+    const hi = Math.max(t0, t1);
+    const at = (t: number): Point => (vertical ? { x: a.x, y: t } : { x: t, y: a.y });
+    const cuts: Array<[number, number]> = [];
+    for (const w of list) {
+      const s = Math.max(lo, w.s);
+      const e = Math.min(hi, w.e);
+      if (e <= s) continue;
+      cuts.push([s, e]);
+      const [p, q] = t0 < t1 ? [at(s), at(e)] : [at(e), at(s)];
+      dropped.push({ x1: p.x, y1: p.y, x2: q.x, y2: q.y, by: w.by });
+    }
+    if (cuts.length === 0) {
+      kept.push([[a, b]]);
+      continue;
+    }
+    anyDrop = true;
+    cuts.sort((u, v) => u[0] - v[0]);
+    const free: Array<[number, number]> = [];
+    let t = lo;
+    for (const [s, e] of cuts) {
+      if (s > t) free.push([t, s]);
+      t = Math.max(t, e);
+    }
+    if (hi > t) free.push([t, hi]);
+    const runs = free.map(([s, e]) => [at(s), at(e)] as [Point, Point]);
+    kept.push(t0 < t1 ? runs : runs.reverse().map(([p, q]) => [q, p] as [Point, Point]));
+  }
+  if (!anyDrop) return { pieces: [{ name, points: path.map((p) => ({ ...p })), closed }], dropped };
+  // Chain the kept sub-runs: consecutive ones that meet continue one run.
+  const chains: Point[][] = [];
+  for (const side of kept) {
+    for (const [p, q] of side) {
+      const last = chains[chains.length - 1];
+      const end = last?.[last.length - 1];
+      if (last && end && end.x === p.x && end.y === p.y) last.push(q);
+      else chains.push([p, q]);
+    }
+  }
+  // A closed path whose first and last runs meet at the start vertex is one run across it.
+  if (closed && chains.length > 1) {
+    const first = chains[0]!;
+    const last = chains[chains.length - 1]!;
+    const end = last[last.length - 1]!;
+    if (end.x === first[0]!.x && end.y === first[0]!.y) {
+      chains.pop();
+      chains[0] = [...last, ...first.slice(1)];
+    }
+  }
+  return {
+    pieces: chains.map((points, k) => ({ name: k === 0 ? name : `${name}~${k + 1}`, points, closed: false })),
+    dropped,
+  };
+}

@@ -25,6 +25,7 @@ import { roof } from "./roof.js";
 import { voidEl } from "./void.js";
 import { outdoor } from "./outdoor.js";
 import { fence } from "./fence.js";
+import { wallsFromRooms } from "./walls-from-rooms.js";
 
 /** Built-in element defs, in canonical (registration) order. */
 export const BUILTIN_DEFS: readonly ElementDef[] = [
@@ -50,4 +51,7 @@ export const BUILTIN_DEFS: readonly ElementDef[] = [
   // where a new element goes.
   outdoor,
   fence,
+  // `walls from rooms` (ADR 0028 §3). At the END like every new element; its place in a
+  // group's resolve order is declared, not positional (`yieldsWalls`/`dependsOn`).
+  wallsFromRooms,
 ];
