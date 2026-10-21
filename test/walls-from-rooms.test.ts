@@ -447,7 +447,7 @@ suite("addressing: lint and compile never quote or edit a derived wall", () => {
   it("no message, hint or fix of lint() or compile() quotes a derived wall's internal name or edits the statement", () => {
     const all = [...lint(BAD), ...compile(BAD).diagnostics];
     for (const d of all) {
-      const text = JSON.stringify({ m: d.message, h: d.hints, f: d.fixes });
+      const text = JSON.stringify({ m: d.message, h: d.hints, f: d.fixes, r: d.relatedSpans });
       expect(quotesDerived(text), `${d.code}: ${text}`).toBe(false);
       for (const f of d.fixes ?? []) {
         for (const e of f.edits) expect(e.span.end <= stmt.start || e.span.start >= stmt.end, `${d.code} edits the statement`).toBe(true);

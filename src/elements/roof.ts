@@ -40,6 +40,7 @@
  * anyway. Both follow the `room polygon` precedent.
  */
 
+import { wallPhraseOf } from "../wall-ref.js";
 import type { ExprPoint, Point, RoofNode } from "../ast.js";
 import type { ElementDef, ParseCtx, RenderCtx, ResolveCtx, TransformCtx } from "../registry.js";
 import type { SceneNode } from "../scene.js";
@@ -180,7 +181,7 @@ function selectRing(n: RoofNode, id: string, ctx: ResolveCtx): RWall | null {
         ? `Roof "${id}" has no ring to follow — the plan declares no closed \`exterior\` wall. ` +
           `Name the wall to offset (\`roof overhang <mm> wall <id>\`), or state the outline with \`roof polygon …\`.`
         : `Roof "${id}" is ambiguous — ${candidates.length} closed \`exterior\` walls could be the one it follows ` +
-          `(${candidates.map((w) => `"${w.id}"`).join(", ")}). ` +
+          `(${candidates.map((w) => (w._derived ? wallPhraseOf(w) : `"${w.id}"`)).join(", ")}). ` +
           `Name one (\`roof overhang <mm> wall <id>\`), or state the outline with \`roof polygon …\`.`,
     code: "E_ROOF_AMBIGUOUS",
     span: n.span,
@@ -302,7 +303,7 @@ export const roof: ElementDef = {
         severity: "error",
         message:
           `Roof "${id}" self-intersects at ${overhang} mm of overhang — the projection is wide enough to swallow ` +
-          `a notch in wall "${wall.id}". Reduce the overhang, or state the outline with \`roof polygon …\`.`,
+          `a notch in ${wallPhraseOf(wall)}. Reduce the overhang, or state the outline with \`roof polygon …\`.`,
         code: "E_ROOF_SELF_INTERSECT",
         span: n.span,
       });

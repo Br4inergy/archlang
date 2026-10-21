@@ -1,5 +1,5 @@
 /**
- * How a hint, a fix or a suggestion names a wall (ADR 0028 §3, "Addressing").
+ * How a diagnostic, a hint, a fix or a suggestion names a wall (ADR 0028 §3, "Addressing").
  *
  * An authored wall is named by its id, as every such text always has: `wall "<id>"`. A wall
  * that `walls from rooms` DERIVED has no id an author can type (`exterior`, `A|B`, … are
@@ -22,12 +22,17 @@ export function isDerivedWall(walls: readonly RWall[], id: string): boolean {
 }
 
 /**
- * The phrase that names a wall in prose: `wall "<id>"` for an authored wall (byte for byte the
- * text every rule wrote before derived walls existed), its relation for a derived one.
+ * The phrase that names one wall in prose: `wall "<id>"` for an authored wall (byte for byte
+ * the text every rule wrote before derived walls existed), its relation for a derived one.
  */
-export function wallRef(walls: readonly RWall[], id: string): string {
-  const d = derivedOf(walls, id);
-  if (d === undefined) return `wall "${id}"`;
+export function wallPhraseOf(w: { id: string; _derived?: RWall["_derived"] }): string {
+  const d = w._derived;
+  if (d === undefined) return `wall "${w.id}"`;
   if (d.between) return `the partition between "${d.between[0]}" and "${d.between[1]}"`;
   return d.ring === "inner" ? "the courtyard wall derived from the rooms" : "the exterior wall derived from the rooms";
+}
+
+/** {@link wallPhraseOf} by id, over the walls the plan resolved. */
+export function wallRef(walls: readonly RWall[], id: string): string {
+  return wallPhraseOf({ id, _derived: derivedOf(walls, id) });
 }
