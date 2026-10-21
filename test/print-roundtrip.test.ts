@@ -82,6 +82,21 @@ describe("print-roundtrip — parse(format(s)) ≡ parse(s), modulo spans and tr
     );
   });
 
+  it("relational openings and datum positions round-trip (ADR 0028 §5)", () => {
+    const src = `plan "p" {\n  units mm\n  room id=a at (0,0) size 4000x5000\n  room id=b at (4000,0) size 4000x5000\n  walls from rooms exterior 200 partition 100\n  wall id=w1 partition thickness 100 { (9000,0) (9000,5000) }\n  door id=d hinged between a and b at 800 + 0 from end width 800 hinge left\n  opening between a and b at axis A width 900\n  window on b.top width 1500\n  window on b.right at 1200 from b.top width 1200\n  door on w1 at 300 from start width 800\n  door on w1 at 1200 from a.top width 800\n}\n`;
+    checkRoundtrip(src);
+    const out = format(src);
+    for (const line of [
+      "door id=d hinged between a and b at 800 + 0 from end width 800 hinge left",
+      "opening between a and b at axis A width 900",
+      "window on b.top width 1500",
+      "window on b.right at 1200 from b.top width 1200",
+      "door on w1 at 300 from start width 800",
+      "door on w1 at 1200 from a.top width 800",
+    ])
+      expect(out).toContain(line);
+  });
+
   it("also holds over fc.sample(archPlan)", () => {
     for (const src of fc.sample(archPlan, { numRuns: 200, seed: 20260927 })) checkRoundtrip(src);
   });

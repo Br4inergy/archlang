@@ -277,6 +277,13 @@ export interface OpeningOnJson {
   at: string;
 }
 
+/** {@link OpeningJson.relation}: exactly one of `between` and `edge`. */
+export interface OpeningRelationJson {
+  between?: [string, string];
+  edge?: string;
+  at?: string;
+}
+
 export interface OpeningJson {
   kind: "door" | "window" | "opening";
   id?: string;
@@ -284,6 +291,14 @@ export interface OpeningJson {
   y?: number;
   /** Wall-attached placement (alternative to `x`/`y`). */
   on?: OpeningOnJson;
+  /**
+   * A relational placement as written (ADR 0028 §5): `between` two rooms or `edge`, a room
+   * edge (`r.top`), with the `at` position text when one is written. Emitted, beside the
+   * resolved `x`/`y`, only for a relational opening of the plan itself (one inside a `place`d
+   * instance is exported by its coordinates, as every instance element is); on input it is
+   * the placement `planJsonToArch` writes back, and `x`/`y` are then not needed.
+   */
+  relation?: OpeningRelationJson;
   width: number;
   /** Host wall by id or category. */
   wall?: string;
@@ -589,7 +604,8 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
     )
     .map((e) => {
       const base: OpeningJson = { kind: e.kind, id: e.id, x: e.at.x, y: e.at.y, width: e.width };
-      if (e.host?.category !== undefined) base.wall = e.host.category;
+      if (e._relation && e._instance === undefined) base.relation = { ...e._relation };
+      else if (e.host?.category !== undefined) base.wall = e.host.category;
       if (e.kind === "door") {
         // A door's clauses are emitted only when its KIND accepts them, because
         // `emitOpening` below turns this payload back into source: writing `hinge` on
@@ -1047,6 +1063,44 @@ function refuseMirror(mirror: unknown, path: string, what: string, own: string, 
     });
 }
 
+/** An opening's `relation` (ADR 0028 §5): `between` two room ids, or `edge` (`<room>.<edge>`),
+ *  never both, with an optional `at` position string. True when it is well formed. */
+function validateRelation(r: unknown, path: string, kind: unknown, val: Validator): boolean {
+  if (!isObj(r)) {
+    val.err(path, "expected an object");
+    return false;
+  }
+  const between = r.between;
+  const okBetween = Array.isArray(between) && between.length === 2 && between.every((x) => isStr(x));
+  const okEdge = isStr(r.edge) && /^[^.\s]+(\.[^.\s]+)*\.(top|bottom|left|right|north|south|east|west)$/.test(r.edge);
+  let ok = true;
+  if ((between !== undefined) === (r.edge !== undefined)) {
+    val.err(path, "needs exactly one of `between` (two room ids) and `edge` (`<room>.<edge>`)");
+    ok = false;
+  } else if (between !== undefined && !okBetween) {
+    val.err(`${path}/between`, "expected two room ids");
+    ok = false;
+  } else if (r.edge !== undefined && !okEdge) {
+    val.err(`${path}/edge`, "expected `<room>.top|bottom|left|right`");
+    ok = false;
+  }
+  if (between !== undefined && kind === "window") {
+    val.err(`${path}/between`, "a window stands on one room's edge (`edge`), not `between` two rooms");
+    ok = false;
+  }
+  if (r.at !== undefined && !isStr(r.at)) {
+    val.err(`${path}/at`, "expected a position string");
+    ok = false;
+  }
+  for (const k of Object.keys(r)) {
+    if (k !== "between" && k !== "edge" && k !== "at") {
+      val.err(`${path}/${k}`, "unknown key");
+      ok = false;
+    }
+  }
+  return ok;
+}
+
 function validateOpening(o: unknown, path: string, val: Validator): void {
   if (!isObj(o)) {
     val.err(path, "expected an object");
@@ -1062,7 +1116,9 @@ function validateOpening(o: unknown, path: string, val: Validator): void {
   const hasXY = isNum(o.x) && isNum(o.y);
   const hasOn =
     isObj(o.on) && isStr((o.on as Record<string, unknown>).wall) && isStr((o.on as Record<string, unknown>).at);
-  if (!hasXY && !hasOn) val.err(path, "needs either numeric x and y, or an `on` { wall, at } attachment");
+  const hasRel = o.relation !== undefined && validateRelation(o.relation, `${path}/relation`, o.kind, val);
+  if (!hasXY && !hasOn && !hasRel)
+    val.err(path, "needs either numeric x and y, an `on` { wall, at } attachment, or a `relation`");
   // Both door value sets come from `DOOR_ENUMS` — the same table the parser, the
   // schema below and both `gen:*` generators read — so a JSON payload can never be
   // accepted (or refused) on a different list from the one `.arch` source is held to.
@@ -1281,10 +1337,14 @@ function emitOpening(o: OpeningJson): string {
   let line = `  ${kw} ${idAttr(o.id)}`;
   // The KIND word leads, after any `id=` — `door pocket on w1 at 40% width 900`.
   if (o.kind === "door" && o.door_kind) line += `${o.door_kind} `;
-  if (o.on) line += `on ${o.on.wall} at ${o.on.at}`;
+  const rel = o.relation;
+  if (rel) {
+    line += rel.between ? `between ${rel.between[0]} and ${rel.between[1]}` : `on ${rel.edge}`;
+    if (rel.at !== undefined) line += ` at ${rel.at}`;
+  } else if (o.on) line += `on ${o.on.wall} at ${o.on.at}`;
   else line += `at (${num(o.x ?? 0)},${num(o.y ?? 0)})`;
   line += ` width ${num(o.width)}`;
-  if (!o.on && o.wall) line += ` wall ${o.wall}`;
+  if (!o.on && !rel && o.wall) line += ` wall ${o.wall}`;
   if (o.kind === "door") {
     if (o.hinge) line += ` hinge ${o.hinge}`;
     if (o.swing) line += ` swing ${o.swing}`;
@@ -1779,6 +1839,23 @@ export const PLAN_JSON_SCHEMA = {
                 type: "string",
                 description: 'Position along the wall: a percentage ("40%"), millimetres ("1200"), or "center".',
               },
+            },
+          },
+          relation: {
+            type: "object",
+            additionalProperties: false,
+            description:
+              "Relational placement as written (ADR 0028 §5), alternative to x/y on input: `between` two rooms (the wall on their shared edge) or `edge` (`<room>.top|bottom|left|right`, the exterior wall on it), at `at` (`center`, `<mm> from start|end|<room>.<edge>`, `axis <label>`; a window on an edge may leave it out).",
+            properties: {
+              between: {
+                type: "array",
+                items: { type: "string" },
+                minItems: 2,
+                maxItems: 2,
+                description: "The two room ids whose shared edge run hosts the opening.",
+              },
+              edge: { type: "string", description: "A room edge, `<room>.top|bottom|left|right`." },
+              at: { type: "string", description: "The position along the run or the edge, as written." },
             },
           },
           width: { type: "number", description: "Opening width in millimetres." },

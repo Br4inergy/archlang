@@ -99,6 +99,39 @@ describe("plan-json — round-trip byte-identity (SVG)", () => {
     expect(bad.diagnostics.map((d) => d.code)).toContain("E_JSON_SCHEMA");
   });
 
+  it("exports a relational opening as written (`relation`) and round-trips it (ADR 0028 §5)", () => {
+    const src = `plan "p" {\n  units mm\n  grid 50\n  room id=a at (0,0) size 4000x5000 uses living\n  room id=b at (4000,0) size 4000x5000 uses bedroom\n  walls from rooms exterior 200 partition 100\n  door id=d between a and b at 800 from end width 800 hinge left swing in\n  window id=w on b.top width 1500\n  window id=w2 on b.right at 1200 from b.top width 1200\n  door id=f at (1000,5000) width 900 wall exterior\n}\n`;
+    const { json } = planToJson(src);
+    const rows = json!.openings.map((o) => [o.id, o.relation, o.wall]);
+    expect(rows).toEqual([
+      ["d", { between: ["a", "b"], at: "800 from end" }, undefined],
+      ["w", { edge: "b.top" }, undefined],
+      ["w2", { edge: "b.right", at: "1200 from b.top" }, undefined],
+      ["f", undefined, "exterior"],
+    ]);
+    expect(json!.openings[0]).toMatchObject({ x: 4000, y: 4200 });
+    roundTrips(src);
+    expect(planJsonToArch(json).source).toContain("door id=d between a and b at 800 from end width 800");
+    for (const bad of [
+      { between: ["a"] },
+      { between: ["a", "b"], edge: "a.top" },
+      { edge: "a.middle" },
+      { between: ["a", "b"], at: 3 },
+      { between: ["a", "b"], extra: 1 },
+    ]) {
+      const out = planFromJson({ ...(json as PlanJson), openings: [{ kind: "door", width: 800, relation: bad }] });
+      expect(
+        out.diagnostics.map((d) => d.code),
+        JSON.stringify(bad),
+      ).toContain("E_JSON_SCHEMA");
+    }
+    const winBetween = planFromJson({
+      ...(json as PlanJson),
+      openings: [{ kind: "window", width: 800, relation: { between: ["a", "b"] } }],
+    });
+    expect(winBetween.diagnostics.map((d) => d.code)).toContain("E_JSON_SCHEMA");
+  });
+
   it("exports the pair clauses of `walls from rooms`, never the opening `open between` derives, and round-trips them", () => {
     const src = `plan "p" {\n  units mm\n  grid 50\n  room id=a at (0,0) size 4000x3000 uses living\n  room id=b at (4000,0) size 3000x3000 uses kitchen\n  room id=c at (0,3000) size 7000x2000 uses hall\n  walls from rooms exterior 200 partition 100 { open between a and b  open id=ac between a and c width 900  between b and c thickness 150 }\n  door at (5500,5000) width 900 wall exterior hinge left swing in\n}\n`;
     const { json } = planToJson(src);

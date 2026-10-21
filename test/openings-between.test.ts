@@ -436,3 +436,34 @@ suite("bounded: the run scan is charged to the step meter before it runs", () =>
     expect(used(100) - used(0)).toBeGreaterThanOrEqual(100 * 4);
   });
 });
+
+// ------------------------------------------------------------------------------------------
+
+suite("addressing: a hint about a relational opening quotes the relation, never an internal id", () => {
+  const texts = (src: string): string =>
+    [...lint(src), ...compile(src).diagnostics]
+      .flatMap((d) => [
+        d.message,
+        ...(d.hints ?? []),
+        ...(d.fixes ?? []).flatMap((f) => [f.title, ...f.edits.map((e) => e.newText)]),
+      ])
+      .join("\n");
+
+  it("W_OPENING_OVERLAP's move hints quote `between a and b at … from start` (non-vacuous)", () => {
+    const src = P(
+      "  door id=d between a and b at 1000 from start width 800 hinge left swing in\n  door id=e between a and b at 1500 from start width 800 hinge right swing out\n",
+    );
+    const codes = lint(src).map((d) => d.code);
+    expect(codes).toContain("W_OPENING_OVERLAP");
+    const t = texts(src);
+    expect(t).toMatch(/`between a and b at \d+ from start`/);
+    expect(t).not.toMatch(/a\|b|on a\|b|exterior#/);
+  });
+
+  it("a relational door's hinge-flip fix re-emits the relational statement", () => {
+    const src = P("  door id=d between a and b at 1000 from start width 800 hinge left swing in\n");
+    const ir = irOf(src);
+    const d = ir.elements.find((e) => e.id === "d") as RDoor;
+    expect(d._flipHingeText).toBe("door id=d between a and b at 1000 from start width 800 hinge right swing in");
+  });
+});

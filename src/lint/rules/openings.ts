@@ -56,6 +56,7 @@ import type { LintContext, LintRule } from "../context.js";
 import { mm } from "../measure.js";
 import { isCorner, tightestCorner } from "./doors.js";
 import { FLUSH_MM, junctionSpans, MEET_TOL_MM, PARALLEL_SIN, sameSeg } from "../../opening-junctions.js";
+import { relationalClause } from "../../opening-relation.js";
 
 type Hosted = RDoor | RWindow | ROpening;
 
@@ -388,6 +389,10 @@ function wallPosition(ctx: LintContext, seg: WallSegment, s: number): number {
 
 /** The source clause that puts `el` at `at` — in the form it was written in. */
 function placeClause(ctx: LintContext, o: OnRun, at: Point, s: number): string {
+  // A relational opening is quoted in its own form, measured from the start of its run
+  // (ADR 0028 §5): never the internal name of its host.
+  const rel = o.el._relation ? relationalClause(o.el._relation, ctx.rooms, at) : undefined;
+  if (rel !== undefined) return rel;
   // A derived host has no id to write (ADR 0028 §3): the clause is then the point.
   return o.el._placement === "attached" && !isDerivedWall(ctx.ir.walls, o.seg)
     ? `on ${o.seg.wallId} at ${mm(wallPosition(ctx, o.seg, s))}`

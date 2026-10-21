@@ -101,6 +101,44 @@ export function relationText(r: OpeningRelation): string {
 }
 
 /**
+ * The relational clause that puts an opening's centre at `centre` (a plan point on its run):
+ * `between a and b at 600 from start`, `on r.top at 1200 from start`. What a lint hint quotes
+ * for a relational opening, so it never names the internal id of a derived host (ADR 0028
+ * §3). Read from the rooms the relation names (rectangles in plan coordinates, as lint holds
+ * them); `undefined` when they no longer give a run.
+ */
+export function relationalClause(
+  r: OpeningRelation,
+  rooms: ReadonlyArray<{ id: string; at: Point; size: { w: number; h: number }; poly?: unknown }>,
+  centre: Point,
+): string | undefined {
+  const lines = (id: string): RoomDatums | undefined => {
+    const room = rooms.find((x) => x.id === id);
+    if (!room || room.poly) return undefined;
+    const { x, y } = room.at;
+    const { w, h } = room.size;
+    return { top: y, bottom: y + h, left: x, right: x + w, cx: x + w / 2, cy: y + h / 2 };
+  };
+  let run: Run | undefined;
+  if (r.between) {
+    const a = lines(r.between[0]);
+    const b = lines(r.between[1]);
+    run = a && b ? sharedRun(a, b) : undefined;
+  } else if (r.edge) {
+    const d = splitDatum(r.edge);
+    const word = d ? (COMPASS_DATUM_ALIASES[d.word] ?? d.word) : undefined;
+    const l = d ? lines(d.room) : undefined;
+    if (l && word && word in EDGE_OF) {
+      const e = EDGE_OF[word as EdgeWord](l);
+      run = { vertical: e.vertical, c: e.c, r0: e.lo, r1: e.hi };
+    }
+  }
+  if (!run) return undefined;
+  const t = run.vertical ? centre.y : centre.x;
+  return `${relationText({ ...r, at: undefined })} at ${numStr(t - run.r0)} from start`;
+}
+
+/**
  * Read a dotted `<room>.<edge>` name as an edge line: `undefined` after a diagnostic (a
  * refused datum, a centre line, or no datum at all). Charged one step, as a datum read is.
  */
