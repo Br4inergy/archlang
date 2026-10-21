@@ -18,6 +18,7 @@ import type { RenderPass, RenderSizes, Paint, ScenePrim, SceneNode, Scene } from
 import type { Frame } from "./frame.js";
 import type { Arc } from "./geometry/arc.js";
 import type { Side } from "./algebra/d4.js";
+import type { DatumAccess } from "./opening-relation.js";
 import { BUILTIN_DEFS } from "./elements/defs.js";
 
 // The layer ordering + Scene types now live in `scene.ts` (the backend-neutral
@@ -107,6 +108,13 @@ export interface ResolveCtx {
    * `E_ELEMENT_LIMIT`. Optional (append-only); absent means no budget.
    */
   elementBudget?(n: number): boolean;
+  /**
+   * The group's frozen datum table and a read of a datum name through the group's own reader
+   * (ADR 0028 §2), for the relational openings of §5 (`between <A> and <B>`, `on
+   * <room>.<edge>`, `from <room>.<edge>`, `axis <label>`). Present for every statement that
+   * resolves after the group's rooms. Optional (append-only).
+   */
+  datums?: DatumAccess;
 }
 
 /**

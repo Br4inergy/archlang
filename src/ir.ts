@@ -287,6 +287,9 @@ export interface RWall extends RBase {
     ring?: "outer" | "inner";
     /** Partitions only: the two rooms it stands between, in source order. */
     between?: [string, string];
+    /** Partitions only: the run is voided by an `open between` clause (its span), so a
+     *  relational `door|opening between` the pair is refused (`E_WALL_BETWEEN_OPEN`). */
+    open?: { span?: Span };
   };
 }
 /** A resolved relational-placement constraint carried on an unplaced room until
@@ -307,7 +310,16 @@ export interface RelConstraint {
  * Internal: set during resolve, never serialized into the Scene/SVG/exports.
  */
 export type RoomPlacement = "absolute" | "relational" | "strip";
-export type OpeningPlacement = "attached" | "absolute";
+/** `relational`: `between <A> and <B>` or `on <room>.<edge>` (ADR 0028 §5, §6). */
+export type OpeningPlacement = "attached" | "absolute" | "relational";
+
+/** A relational opening's placement as written (ADR 0028 §5): `between <a> and <b>` or `on
+ *  <room>.<edge>`, and its `at` position text (absent when none is written). */
+export interface OpeningRelation {
+  between?: [string, string];
+  edge?: string;
+  at?: string;
+}
 export type FurniturePlacement = "anchored" | "against-wall" | "absolute";
 
 /**
@@ -412,9 +424,14 @@ export interface RDoor extends RBase {
   /** Byte span of the authored `slide` clause, or the zero-width insertion point —
    *  see {@link import("./ast.js").DoorNode.slideSpan}. Internal: never in the Scene. */
   _slideSpan?: Span;
-  /** `attached` (`on <wall> at <pos>`) vs `absolute` (`at (x,y)`). Internal
-   *  marker for `describe().freedom`; never rendered. */
+  /** `attached` (`on <wall> at <pos>`) vs `absolute` (`at (x,y)`) vs `relational`
+   *  (`between A and B …`, `on <room>.<edge> …`). Internal marker for `describe().freedom`;
+   *  never rendered. */
   _placement?: OpeningPlacement;
+  /** A relational opening's placement as written (`between a and b at 800 from end`, `on
+   *  r.top at center`), in the frame it is written in: `describe()`, hints and Plan JSON quote
+   *  it, never the internal name of its derived host. Internal. */
+  _relation?: OpeningRelation;
   /**
    * The whole `door` statement re-emitted with the hinge on the OTHER jamb — the
    * machine-applicable fix text for `W_SWING_OBSTRUCTED`. Computed in `door.resolve`
@@ -436,6 +453,8 @@ export interface RWindow extends RBase {
   host: WallSegment | null;
   /** `attached` vs `absolute` — see {@link RDoor._placement}. */
   _placement?: OpeningPlacement;
+  /** See {@link RDoor._relation}. */
+  _relation?: OpeningRelation;
   /** Bottom of the glazing above this storey's floor, in mm — always resolved,
    *  the authored `sill` or {@link import("./datum.js").WINDOW_SILL}. */
   sill: number;
@@ -450,6 +469,8 @@ export interface ROpening extends RBase {
   host: WallSegment | null;
   /** `attached` vs `absolute` — see {@link RDoor._placement}. */
   _placement?: OpeningPlacement;
+  /** See {@link RDoor._relation}. */
+  _relation?: OpeningRelation;
   /**
    * Present only on an opening an `open between` clause of `walls from rooms` DERIVED (ADR
    * 0028 §3): the two rooms it joins, in source order, and whether the clause gave it an
@@ -2530,6 +2551,7 @@ function resolveBody(
   ): DatumTable => {
     ctx.walls = grpWalls;
     ctx.rooms = grpRooms;
+    delete ctx.datums;
     // The group's OWN elements resolved so far, in source order (never a descendant's).
     ctx.group = () => {
       chargeSteps(grp.entries.length + 1);
@@ -2674,8 +2696,21 @@ function resolveBody(
       });
       const frozen = buildDatumTable(grpRooms, axes);
       table = frozen;
+      const reader = tableReader(frozen, datumOpts(grp));
+      // A relational opening reads the same table through the same reader (ADR 0028 §5).
+      ctx.datums = {
+        table: frozen,
+        read: (name, span) => {
+          let refused = false;
+          const v = reader(name, span, (d) => {
+            refused = true;
+            pushDiag(d);
+          });
+          return v === undefined ? undefined : refused ? null : v.t === "num" ? v.v : null;
+        },
+      };
       // Every later statement reads the frozen table (ADR 0028 §2).
-      withDatumReader(tableReader(frozen, datumOpts(grp)), () => {
+      withDatumReader(reader, () => {
         for (const i of passes) {
           resolveKind(i);
           if (i === wallKind && derivers.length > 0) refuseReservedIds();
@@ -3445,6 +3480,8 @@ function markPlacement(r: ResolvedElement, node: AstElement, fromStrip: boolean)
     case "door":
     case "window":
     case "opening":
+      // A relational opening (ADR 0028 §5) marked itself when it resolved.
+      if (r._placement === "relational") return;
       r._placement = (node as DoorNode | WindowNode | OpeningNode).attach !== undefined ? "attached" : "absolute";
       return;
     case "furniture": {

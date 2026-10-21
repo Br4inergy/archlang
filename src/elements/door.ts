@@ -16,7 +16,7 @@ import { add, doorSwing, mul, nearestWallNote, normal, segmentDirAt, sub, unit, 
 import { pointInPolygon, pointOnPolygonEdge } from "../geometry/polygon.js";
 import type { DoorClauseName, DoorKind } from "../grammar/tokens.js";
 import { DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KIND_CLAUSES, DOOR_KINDS, enumList } from "../grammar/tokens.js";
-import { parseAttachTarget, resolveAttachment } from "../attach.js";
+import { parseAttachTarget, resolveOpeningLead } from "../attach.js";
 import {
   doorKindClauseFix,
   doorOpenRangeFix,
@@ -251,7 +251,7 @@ export const door: ElementDef = {
     // is a kind, so a lookahead against the closed table decides it with no backtrack.
     const doorKind = DOOR_KINDS.find((k) => ctx.isKeyword(k));
     if (doorKind) ctx.next();
-    const { at, attach } = parseAttachTarget(ctx);
+    const { at, attach, between } = parseAttachTarget(ctx, true);
     ctx.eatKeyword("width");
     const width = ctx.parseExpr();
     const node: DoorNode = {
@@ -262,8 +262,9 @@ export const door: ElementDef = {
       line: kw.line,
       ...(at ? { at } : {}),
       ...(attach ? { attach } : {}),
+      ...(between ? { between } : {}),
     };
-    if (!attach && ctx.isKeyword("wall")) {
+    if (at && ctx.isKeyword("wall")) {
       ctx.next();
       node.wall = ctx.eatIdent().value;
     }
@@ -335,10 +336,10 @@ export const door: ElementDef = {
     // wall (with the off-wall check kept for the point form only).
     let at: Point;
     let host: WallSegment | null;
-    if (n.attach) {
-      const a = resolveAttachment(n.attach, ctx.walls, ctx.snapPt, ctx.diag, `Door "${id}"`, (e) => ctx.eval(e));
-      at = a ? a.at : { x: 0, y: 0 };
-      host = a ? a.host : null;
+    const lead = resolveOpeningLead(n, "door", width, ctx, `Door "${id}"`);
+    if (lead) {
+      at = lead.at;
+      host = lead.host;
     } else {
       at = ctx.snapPt(ctx.evalPt(n.at!));
       host = ctx.hostSegment(at, n.wall);
@@ -451,6 +452,7 @@ export const door: ElementDef = {
       head,
       span: n.span,
       ...(flipText ? { _flipHingeText: flipText } : {}),
+      ...(lead?.relation ? { _placement: "relational" as const, _relation: lead.relation } : {}),
       // Everything below is present ONLY on a non-hinged door, so a plan that names
       // no kind produces exactly the IR (and therefore exactly the bytes, exactly the
       // `describe()` payload and exactly the Plan JSON) as if door kinds did not exist.

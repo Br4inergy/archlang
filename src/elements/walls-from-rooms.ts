@@ -227,6 +227,7 @@ export const wallsFromRooms: ElementDef = {
             from: "rooms",
             ...(spec.ring ? { ring: spec.ring } : {}),
             ...(spec.between ? { between: spec.between } : {}),
+            ...(spec.open ? { open: { span: clauses[spec.open.clause]!.span } } : {}),
           },
         };
         out._derivedWalls.push(w);

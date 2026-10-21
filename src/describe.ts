@@ -14,6 +14,7 @@
  * byte-stable across runs.
  */
 
+import { relationText } from "./opening-relation.js";
 import type {
   ResolvedLevel,
   ResolvedPlan,
@@ -204,6 +205,12 @@ export interface DoorSummary {
   straddles?: string[];
   width: number;
   /**
+   * How a relational opening was placed, as written (ADR 0028 §5): `between a and b at 800
+   * from end`, `on r.top`. Never the internal name of a derived host. Present only on a
+   * relational opening, so every other payload is byte-identical.
+   */
+  relation?: string;
+  /**
    * The door's kind — emitted **only when it is not the default `hinged`**,
    * so every payload written before kinds existed is byte-identical.
    *
@@ -229,6 +236,12 @@ export interface WindowSummary {
   /** The room this window serves, or `null` if it sits on no room edge. */
   room: string | null;
   width: number;
+  /**
+   * How a relational opening was placed, as written (ADR 0028 §5): `between a and b at 800
+   * from end`, `on r.top`. Never the internal name of a derived host. Present only on a
+   * relational opening, so every other payload is byte-identical.
+   */
+  relation?: string;
   /**
    * **True compass** direction the window's wall faces (the outward normal of its host
    * wall segment), read against the plan's declared `north`.
@@ -274,6 +287,12 @@ export interface OpeningSummary {
   /** As {@link DoorSummary.straddles}: rooms one face of the opening spans, when more than one. */
   straddles?: string[];
   width: number;
+  /**
+   * How a relational opening was placed, as written (ADR 0028 §5): `between a and b at 800
+   * from end`, `on r.top`. Never the internal name of a derived host. Present only on a
+   * relational opening, so every other payload is byte-identical.
+   */
+  relation?: string;
   /** Top of the cased opening above this storey's floor, in mm — by default the
    *  host wall's own height. Present only when the plan authored a height somewhere. */
   head?: number;
@@ -487,7 +506,9 @@ export interface FreedomElement {
  */
 export interface FreedomReport {
   rooms: { total: number; absolute: number; relational: number; strip: number };
-  openings: { total: number; attached: number; absolute: number };
+  /** `relational` (`between A and B`, `on <room>.<edge>`, ADR 0028 §6) is present only when
+   *  the storey has such an opening, so every other report is byte-identical. */
+  openings: { total: number; attached: number; absolute: number; relational?: number };
   furniture: { total: number; anchored: number; againstWall: number; absolute: number };
   elements: FreedomElement[];
   /** The walls: how many were derived by `walls from rooms` (ADR 0028 §6) and how many
@@ -956,7 +977,8 @@ function buildFreedom(
     instance: string | undefined,
   ): void => {
     f.openings.total++;
-    f.openings[placement]++;
+    if (placement === "relational") f.openings.relational = (f.openings.relational ?? 0) + 1;
+    else f.openings[placement]++;
     elements.push({ id, kind, placement, ...inst(instance) });
   };
   for (const d of doors) opening(d.id, "door", d._placement ?? "absolute", d._instance);
@@ -1213,6 +1235,7 @@ function summarize(
       between,
       ...(straddles ? { straddles } : {}),
       width: d.width,
+      ...(d._relation ? { relation: relationText(d._relation) } : {}),
       ...(d.doorKind !== undefined ? { kind: d.doorKind } : {}),
       ...(heights ? { head: d.head } : {}),
     };
@@ -1255,6 +1278,7 @@ function summarize(
       id: w.id,
       room,
       width: w.width,
+      ...(w._relation ? { relation: relationText(w._relation) } : {}),
       facing: toCompass(facingPage, northTurns),
       ...(northTurns !== 0 ? { facingPage } : {}),
       ...(heights ? { sill: w.sill, head: w.head } : {}),
@@ -1268,6 +1292,7 @@ function summarize(
       between,
       ...(straddles ? { straddles } : {}),
       width: o.width,
+      ...(o._relation ? { relation: relationText(o._relation) } : {}),
       ...(heights ? { head: o.head } : {}),
     };
   });

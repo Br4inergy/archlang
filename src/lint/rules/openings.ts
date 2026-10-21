@@ -51,22 +51,16 @@ import type { Point } from "../../ast.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import { doorSwing, isDoubleDoorPair, segmentLength, segmentPointAlong, type WallSegment } from "../../geometry.js";
 import { arcOpeningVoid } from "../../geometry/arc-band.js";
-import { arcTangentAt } from "../../geometry/arc.js";
 import type { RDoor, ROpening, RWindow } from "../../ir.js";
 import type { LintContext, LintRule } from "../context.js";
 import { mm } from "../measure.js";
 import { isCorner, tightestCorner } from "./doors.js";
+import { FLUSH_MM, junctionSpans, MEET_TOL_MM, PARALLEL_SIN, sameSeg } from "../../opening-junctions.js";
 
 type Hosted = RDoor | RWindow | ROpening;
 
-/** Below this turn two runs are parallel (the same 5 degrees `W_DOOR_NEAR_CORNER` uses). */
-const PARALLEL_SIN = Math.sin((5 * Math.PI) / 180);
 /** Float dust on whole-millimetre geometry. */
 const EPS = 1e-6;
-/** A jamb this close to a meeting wall's face is flush with it (whole-millimetre geometry). */
-const FLUSH_MM = 0.5;
-/** How far past a face a meeting wall's centreline may stop and still count as meeting it. */
-const MEET_TOL_MM = 1;
 
 /** One opening placed on its host run: its along-run span on `seg`, from the shape. */
 interface OnRun {
@@ -127,27 +121,6 @@ function openingsOnRuns(ctx: LintContext): OnRun[] {
   return out;
 }
 
-const sameSeg = (p: WallSegment, q: WallSegment): boolean => p.wallId === q.wallId && p.index === q.index;
-
-/** A straight stand-in for a wall segment near one point: the segment itself, or for an arc
- *  the tangent ray from whichever end lies within the host's body. */
-function straightOf(s: WallSegment, host: WallSegment, n: Point): Array<{ a: Point; d: Point; len: number }> {
-  if (!s.arc) {
-    const d = unitOf(sub(s.b, s.a));
-    return d ? [{ a: s.a, d, len: Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y) }] : [];
-  }
-  const out: Array<{ a: Point; d: Point; len: number }> = [];
-  for (const end of ["a", "b"] as const) {
-    const e = s[end];
-    const f = dot(sub(e, host.a), n);
-    if (Math.abs(f) > host.thickness / 2 + MEET_TOL_MM) continue;
-    const t = arcTangentAt(s.arc, e);
-    const d = end === "a" ? t : { x: -t.x, y: -t.y };
-    out.push({ a: e, d, len: 2 * Math.max(host.thickness, s.thickness) });
-  }
-  return out;
-}
-
 /** The host end a meeting wall touches, when that end is a corner of the host's run. */
 function cornerEnd(host: WallSegment, s: WallSegment, all: readonly WallSegment[]): "a" | "b" | null {
   const tol = Math.max(1, host.thickness / 2);
@@ -160,76 +133,12 @@ function cornerEnd(host: WallSegment, s: WallSegment, all: readonly WallSegment[
 }
 
 /**
- * Every other wall segment's footprint on `host`'s run: where its body meets the host's face
- * lines, as an along-run interval.
- *
- * Straight host: a wall meets a face when its centreline reaches that face line (a stem
- * ending on the host's centreline reaches the near face only; a crossing wall reaches both;
- * the host's own next run at a corner reaches the inner face). Its footprint on that face runs
- * between the crossings of its two face lines, so an angled wall's footprint is exact at the
- * face. Per wall, the hull over the faces it meets.
- *
- * Curved host: only the two ENDS are measured — a wall meeting the curve's end leaves its
- * centreline at the run's end and its face `t / (2 sin θ)` short of it, at the centreline
- * radius (the datum `W_DOOR_NEAR_CORNER` uses on a curve). A wall meeting a curve part-way
- * along is not measured.
+ * Every other wall segment's footprint on `host`'s run ({@link junctionSpans}, the measure
+ * the resolver's relational openings share), with the host end each one meets when that end
+ * is a corner.
  */
 function junctionsOn(host: WallSegment, all: readonly WallSegment[]): Junction[] {
-  const out: Junction[] = [];
-  const len = segmentLength(host);
-  if (host.arc) {
-    const tol = Math.max(1, host.thickness / 2);
-    for (const end of ["a", "b"] as const) {
-      const p = host[end];
-      const t = arcTangentAt(host.arc, p);
-      for (const s of all) {
-        if (sameSeg(s, host)) continue;
-        for (const oe of ["a", "b"] as const) {
-          if (Math.hypot(s[oe].x - p.x, s[oe].y - p.y) > tol) continue;
-          const dir = s.arc ? arcTangentAt(s.arc, s[oe]) : unitOf(oe === "a" ? sub(s.b, s.a) : sub(s.a, s.b));
-          if (!dir) continue;
-          const sin = Math.abs(cross(t, dir));
-          if (sin < PARALLEL_SIN) continue; // the wall carries on along the curve
-          const half = s.thickness / (2 * sin);
-          const at = end === "a" ? 0 : len;
-          out.push({ lo: at - half, hi: at + half, wall: s, corner: cornerEnd(host, s, all) });
-        }
-      }
-    }
-    return out;
-  }
-  const u = unitOf(sub(host.b, host.a));
-  if (!u) return out;
-  const n = { x: -u.y, y: u.x };
-  const th = host.thickness;
-  const f = (p: Point): number => dot(sub(p, host.a), n);
-  const along = (p: Point): number => dot(sub(p, host.a), u);
-  for (const s of all) {
-    if (sameSeg(s, host)) continue;
-    let lo = Infinity;
-    let hi = -Infinity;
-    for (const line of straightOf(s, host, n)) {
-      const sin = cross(u, line.d); // = n · d
-      if (Math.abs(sin) < PARALLEL_SIN) continue;
-      const m = { x: -line.d.y, y: line.d.x };
-      for (const c of [-th / 2, th / 2]) {
-        const t = (c - f(line.a)) / sin;
-        if (t < -MEET_TOL_MM || t > line.len + MEET_TOL_MM) continue; // does not reach this face
-        for (const side of [-1, 1]) {
-          const q = { x: line.a.x + (m.x * side * s.thickness) / 2, y: line.a.y + (m.y * side * s.thickness) / 2 };
-          const tq = (c - f(q)) / sin;
-          const x = along({ x: q.x + line.d.x * tq, y: q.y + line.d.y * tq });
-          lo = Math.min(lo, x);
-          hi = Math.max(hi, x);
-        }
-      }
-    }
-    if (!(hi >= lo)) continue;
-    // It must touch the host's own body, ends included.
-    if (lo > len + th / 2 + MEET_TOL_MM || hi < -th / 2 - MEET_TOL_MM) continue;
-    out.push({ lo, hi, wall: s, corner: cornerEnd(host, s, all) });
-  }
-  return out;
+  return junctionSpans(host, all).map((j) => ({ ...j, corner: cornerEnd(host, j.wall, all) }));
 }
 
 /** {@link junctionsOn} memoised per host segment for one rule run. */

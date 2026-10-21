@@ -18,6 +18,7 @@ import type {
   FurnitureNode,
   FurniturePlace,
   OpeningAttach,
+  OpeningBetween,
   RoomRel,
   Statement,
   StripRoomChild,
@@ -61,15 +62,30 @@ function againstStr(ag: NonNullable<FurnitureNode["against"]>): string {
 /** An attached opening's position: `40%` | `1200` (mm) | `bay * i + 600` | `center`.
  *  The value is an expression, so it round-trips through `exprToSource` like every
  *  other numeric slot — a literal renders exactly the digits it always did. */
-function attachPosStr(pos: OpeningAttach["pos"]): string {
-  if (pos.kind === "center") return "center";
-  const v = pos.value ? exprStr(pos.value) : numStr(0);
-  return pos.kind === "percent" ? `${v}%` : v;
+export function attachPosStr(pos: OpeningAttach["pos"]): string {
+  switch (pos.kind) {
+    case "center":
+    case "default":
+      return "center";
+    case "axis":
+      return `axis ${pos.label}`;
+    case "from":
+      return `${exprStr(pos.value)} from ${"word" in pos.from ? pos.from.word : pos.from.datum}`;
+    default: {
+      const v = pos.value ? exprStr(pos.value) : numStr(0);
+      return pos.kind === "percent" ? `${v}%` : v;
+    }
+  }
 }
 
-/** An opening's leading position: `on <wall> at <pos>` (attached) or `at (x,y)`. */
-function openingLead(s: { at?: ExprPoint; attach?: OpeningAttach }): string {
-  return s.attach ? `on ${s.attach.wall} at ${attachPosStr(s.attach.pos)}` : `at ${ptStr(s.at!)}`;
+/** ` at <pos>`, or nothing for a position left out (`on <room>.<edge>`, `between …`). */
+const atStr = (pos: OpeningAttach["pos"]): string => (pos.kind === "default" ? "" : ` at ${attachPosStr(pos)}`);
+
+/** An opening's leading position: `on <wall> at <pos>` (attached), `between <A> and <B>
+ *  [at <pos>]` (relational, ADR 0028 §5) or `at (x,y)`. */
+function openingLead(s: { at?: ExprPoint; attach?: OpeningAttach; between?: OpeningBetween }): string {
+  if (s.between) return `between ${s.between.a.id} and ${s.between.b.id}${atStr(s.between.pos)}`;
+  return s.attach ? `on ${s.attach.wall}${atStr(s.attach.pos)}` : `at ${ptStr(s.at!)}`;
 }
 
 /** A fixture's room-relative placement clause: `in <room> centered|anchor …`.

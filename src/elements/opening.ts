@@ -6,7 +6,7 @@ import type { ElementDef, ParseCtx, ResolveCtx, TransformCtx } from "../registry
 import type { SceneNode } from "../scene.js";
 import type { ROpening } from "../ir.js";
 import { add, mul, nearestWallNote, normal, segmentDirAt } from "../geometry.js";
-import { parseAttachTarget, resolveAttachment } from "../attach.js";
+import { parseAttachTarget, resolveOpeningLead } from "../attach.js";
 import { fixesFrom, offWallFix, openingWidthFix } from "../fix-producers.js";
 import { hostWallHeight, parseOpeningHeights, resolveOpeningHeights } from "../datum.js";
 
@@ -23,7 +23,7 @@ export const opening: ElementDef = {
   parse(ctx: ParseCtx): OpeningNode {
     const kw = ctx.eatKeyword("opening");
     const id = ctx.parseIdOpt();
-    const { at, attach } = parseAttachTarget(ctx);
+    const { at, attach, between } = parseAttachTarget(ctx, true);
     ctx.eatKeyword("width");
     const width = ctx.parseExpr();
     const node: OpeningNode = {
@@ -33,8 +33,9 @@ export const opening: ElementDef = {
       line: kw.line,
       ...(at ? { at } : {}),
       ...(attach ? { attach } : {}),
+      ...(between ? { between } : {}),
     };
-    if (!attach && ctx.isKeyword("wall")) {
+    if (at && ctx.isKeyword("wall")) {
       ctx.next();
       node.wall = ctx.eatIdent().value;
     }
@@ -67,12 +68,21 @@ export const opening: ElementDef = {
       const full = hostWallHeight(host, ctx.walls, ctx.storeyHeight);
       return { head: resolveOpeningHeights(ctx, `Opening "${id}"`, n, { sill: 0, head: full }, host, n.span).head };
     };
-    // Attached: the point + host come from walking the named wall (no off-wall check).
-    if (n.attach) {
-      const a = resolveAttachment(n.attach, ctx.walls, ctx.snapPt, ctx.diag, `Opening "${id}"`, (e) => ctx.eval(e));
-      const at = a ? a.at : { x: 0, y: 0 };
-      const host = a ? a.host : null;
-      return { kind: "opening", id, at, width, host, ...heights(host), span: n.span };
+    // Attached or relational: the point + host come from the named wall, or from the rooms
+    // (ADR 0028 §5); no off-wall check.
+    const lead = resolveOpeningLead(n, "opening", width, ctx, `Opening "${id}"`);
+    if (lead) {
+      const { at, host, relation } = lead;
+      return {
+        kind: "opening",
+        id,
+        at,
+        width,
+        host,
+        ...heights(host),
+        span: n.span,
+        ...(relation ? { _placement: "relational" as const, _relation: relation } : {}),
+      };
     }
     const at = ctx.snapPt(ctx.evalPt(n.at!));
     if (ctx.walls.length > 0 && !ctx.isOnWall(at, n.wall)) {
