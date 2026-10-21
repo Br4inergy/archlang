@@ -73,19 +73,23 @@ interface MaybeDerivedOpening {
   kind: string;
   id: string;
   _derived?: unknown;
+  _component?: string;
 }
 
 /**
  * The clause that derived an opening, when an `open between` clause of `walls from rooms`
- * derived it without an `id=`: `` the `open between A and B` clause ``. Such an opening's id
+ * derived it without an `id=`: `` the `open between A and B` clause `` (as written, and "in
+ * component `m`" for a placed one). Such an opening's id
  * (`A|B:open`) cannot be written in source, so a hint names the clause the author edits
  * instead; undefined for every other door, window or opening (name it by its id).
  */
 export function openingClauseOf(el: MaybeDerivedOpening | undefined): string | undefined {
   if (el?.kind !== "opening" || el._derived === undefined) return undefined;
-  const d = el._derived as { between: [string, string]; idAuthored: boolean };
+  const d = el._derived as { written: [string, string]; idAuthored: boolean };
   if (d.idAuthored) return undefined;
-  return `the \`open between ${d.between[0]} and ${d.between[1]}\` clause`;
+  // Quoted as written, in the frame it is written in: inside a component, its own room ids.
+  const where = el._component !== undefined ? ` in component \`${el._component}\`` : "";
+  return `the \`open between ${d.written[0]} and ${d.written[1]}\` clause${where}`;
 }
 
 /** {@link openingClauseOf} for the connector with this id among the plan's elements. */

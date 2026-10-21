@@ -394,6 +394,7 @@ Landed 2026-10-20 (wave 3): PS2.19 and PS2.17 in PR #216 (ef7dc46 … acc619f; s
 | PS2.21 | Enclosure budget follow-ups | From PR #204's final red-team: (1) the point-test charge assumes every curve crosses every other (`piecesBound ≈ 2c²` × ring vertices), so a plain round room drawn with ≥ 300 vertices is refused on `point-tests` although it crosses nothing; count only curve pairs whose boxes meet so finely drawn curved rooms stay measured (corpus max today is 56 vertices, aquarium's concourse). (2) The slowest admitted shape, a 50-partition × 30-tooth comb room, lints in ~1.6 s vs 0.44 s on main: bounded, not a hang, but twice the figure the PR body quotes. (3) `W_BOUNDARY_NO_WALL` sits outside the `FaceBudget` (ring × ring per room pair plus runs × wall segments), the same class as the ring-pair analyses `describe()` already pays; two interlocking 2000-tooth combs go 23 s → 35 s. Give it a count bound beside the existing ring-pair cost | todo |
 | PS2.22 | `W_ALIAS_MATCH` quotes a room id | For a room with no label the alias rule classifies the id and then writes it into the message ('Room "r_carport" reads as a garage only from the indirect term "carport"'), the one lint message that names an id; PS2.19's fallback words widen it (`r_plant`, `r_boiler`, `r_cellar`, `r_linen`, `r_nursery`; found by PR #216's red team). Word the unlabelled case without the id (the room's storey and position, or "an unlabelled room") and pin that no lint message over the corpus contains a room id | todo |
 | PS2.23 | Authored wall beside a derived line | An authored wall 1 mm (any non-zero distance) off a `walls from rooms` derived line is kept beside the derived wall, not merged (ADR 0028 §3 coexistence): two parallel bands nearly on top of each other. Lint it: an authored straight wall parallel to a derived segment, overlapping it along its length, whose centreline is closer than half the thicker wall's thickness, almost always meant to lie on the line (found by PR #223's red team) | todo |
+| PS2.24 | Wall meeting an open run mid-span | An authored wall perpendicular to a `walls from rooms` `open between` run, ending on it mid-span, is neither refused (it is not collinear, so not `E_WALL_BETWEEN_OPEN`) nor excused: today it only warns through `W_OPENING_AT_JUNCTION` (a wall standing inside the opening). Decide the rule: refuse it as `E_WALL_BETWEEN_OPEN`, or a lint finding with its own hint (give the opening a `width` that clears the wall, or move the wall). No code yet (found by PR #224's red team) | todo |
 
 ### PS3 · Relation-first authoring (D1 + D5; needs an ADR)
 
@@ -470,8 +471,12 @@ original brief follows.
   - `E_WALL_BETWEEN_WIDTH`;
   - `E_WALL_BETWEEN_DUP`.
   Plan JSON carries `walls_from_rooms.open[]`/`between[]`. The twins (a hand-placed opening, an
-  authored partition taking over) are pinned in `test/walls-from-rooms.test.ts`, and the clause
-  plans are pinned in the digest table. ADR 0028 is Accepted.
+  authored partition taking over) are pinned in `test/walls-from-rooms-clauses.test.ts`, and the
+  clause plans are pinned in the digest table. ADR 0028 is Accepted. Red-team round 1:
+  - `W_OPENING_AT_JUNCTION` excuses a derived opening's jamb on the thickest meeting wall's face;
+    the thinner wall's pier beside it is not a nib.
+  - `E_WALL_BETWEEN_OPEN` for a position-hosted opening fires only on overlap with the voided
+    span.
 
 **PS3.2 · Resolve order and room-edge datums.** part A `done`, part B in review (after PS3.1)
 - Resolve rooms and relational placement before walls, then freeze a datum table.

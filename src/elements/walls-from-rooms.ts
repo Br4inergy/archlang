@@ -242,7 +242,12 @@ export const wallsFromRooms: ElementDef = {
             host: segmentsOfWall(w)[0]!,
             head: w.height,
             span: clause.span,
-            _derived: { from: "rooms", between: spec.between!, idAuthored: clause.id !== undefined },
+            _derived: {
+              from: "rooms",
+              between: spec.between!,
+              idAuthored: clause.id !== undefined,
+              written: [clause.a.id, clause.b.id],
+            },
           });
         }
       }
@@ -256,8 +261,9 @@ export const wallsFromRooms: ElementDef = {
   authoredChildIds: (node) =>
     ((node as WallsFromRoomsNode).pairs ?? []).flatMap((c) => (c.kind === "open" && c.id ? [c.id] : [])),
 
-  /** An authored door, window or opening hosted on a run an `open between` clause voids
-   *  would close what the clause opened: refused, on the clause (`E_WALL_BETWEEN_OPEN`). */
+  /** An authored door, window or opening hosted by position on the span an `open between`
+   *  clause voids would close what the clause opened: refused, on the clause
+   *  (`E_WALL_BETWEEN_OPEN`). One beside it, on the partition a `width` leaves, is fine. */
   auditGroup(resolved, own, diag): void {
     const s = resolved as RWallsFromRooms;
     if (s._derivedOpenings.length === 0) return;
@@ -266,6 +272,13 @@ export const wallsFromRooms: ElementDef = {
       if (e.kind !== "door" && e.kind !== "window" && e.kind !== "opening") continue;
       const o = e.host ? byWall.get(e.host.wallId) : undefined;
       if (!o) continue;
+      // Only over the voided span: the partition a `width` leaves beside it is ordinary wall,
+      // and a jamb touching the opening's is allowed (positive overlap, exactly).
+      const vertical = o.host!.a.x === o.host!.b.x;
+      const along = (p: Point): number => (vertical ? p.y : p.x);
+      const lo = Math.max(along(o.at) - o.width / 2, along(e.at) - e.width / 2);
+      const hi = Math.min(along(o.at) + o.width / 2, along(e.at) + e.width / 2);
+      if (!(hi > lo)) continue;
       const [a, b] = o._derived!.between;
       diag({
         severity: "error",

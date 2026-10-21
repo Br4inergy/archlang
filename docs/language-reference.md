@@ -884,7 +884,7 @@ coordinates with no tolerance, and each failure refuses, naming the rooms:
 | A pair clause names a room not written beside it, a `polygon`/`circle` room, or an excepted room (on the name) | `E_WALL_BETWEEN_ROOM` |
 | A pair clause names two rooms that share no edge | `E_WALL_BETWEEN_NOT_ADJACENT` |
 | One pair named by two clauses (in either order of the rooms) | `E_WALL_BETWEEN_DUP` |
-| An authored wall, door, window or opening on an edge declared `open` | `E_WALL_BETWEEN_OPEN` |
+| An authored wall on an edge declared `open`, or a door, window or opening hosted by position on the voided span | `E_WALL_BETWEEN_OPEN` |
 | An `open` width larger than the clear span, or no clear span at all | `E_WALL_BETWEEN_WIDTH` |
 | A clause thickness or width that is not positive | `E_WALL_THICKNESS` / `E_OPENING_WIDTH` |
 | No room to derive from (none written, or every one excepted) | `E_WALLS_FROM_NO_ROOMS` |
@@ -929,17 +929,21 @@ takes one clause, and every refusal of a clause points at it.
   The partition is still derived and listed in `derived_walls[]`; a leaf-less **opening**
   voids it across its **clear span**: the edge less, at each end, half the thickness of the
   thickest wall meeting it there, so each jamb lies on a meeting wall's face (no nib, no
-  `W_OPENING_AT_JUNCTION`). With `width <mm>`, the opening is that wide and centred on the clear
-  span, and the partition stays either side of it. The derived position is exact and is not
-  snapped to `grid`.
+  `W_OPENING_AT_JUNCTION`). Where walls of different thickness meet one end, the jamb sits on the
+  face of the thickest wall meeting that end; the thinner wall's pier beside it is not a nib. With
+  `width <mm>`, the opening is that wide and centred on the clear span, and the partition stays
+  either side of it. The derived position is exact and is not snapped to `grid`: its centre may
+  fall on a half millimetre, so a hand-placed opening on a coarse grid cannot always reproduce it.
 - The opening is an ordinary opening: it joins the two rooms in the access graph, appears in
   `describe --json`'s `openings[]` and in `schedule openings`, and counts toward the drawing and
   element budgets. Its id is `<A>|<B>:open` (the rooms in source order), which no identifier can
   spell and no lint hint or fix quotes, unless the clause gives one with `id=`. Plan JSON
   carries the clauses in `walls_from_rooms.open[]`/`between[]`, never the opening as an
   `openings[]` row.
-- Nothing else may stand on an open edge: an authored wall lying on it, or a door, window or
-  opening hosted on it, is `E_WALL_BETWEEN_OPEN`.
+- Nothing else may stand in the opening: an authored wall lying on the open edge, or a door,
+  window or opening hosted by position across the span the derived opening voids (overlapping
+  it; touching its jamb is allowed), is `E_WALL_BETWEEN_OPEN`. The partition a `width` leaves
+  beside the opening is ordinary wall and hosts doors as usual.
 
 ```arch
 plan "Open plan" {

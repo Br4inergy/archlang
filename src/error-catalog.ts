@@ -827,7 +827,7 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   E_WALL_BETWEEN_OPEN: E(
     "E_WALL_BETWEEN_OPEN",
     "A wall, door, window or opening is written on an edge a `walls from rooms` clause declares open.",
-    "`open between A and B` voids the pair's edge run with a derived opening: the two rooms are one open-plan space there. An authored wall lying on that run (exactly on its line, overlapping it), or an authored door, window or opening hosted on it, would close or narrow what the clause opened, so the compiler refuses rather than choose between them (ADR 0028 §3). The span points at the clause.",
+    "`open between A and B` voids the pair's edge run with a derived opening: the two rooms are one open-plan space there. An authored wall lying on that run (exactly on its line, overlapping it), or an authored door, window or opening hosted by position across the span the derived opening voids, would close or narrow what the clause opened, so the compiler refuses rather than choose between them (ADR 0028 §3). The span points at the clause.",
     "Remove the authored wall or opening on that edge, or remove the `open between` clause and keep the wall (with a door in it).",
     "room id=a at (0,0) size 4000x3000\nroom id=b at (4000,0) size 3000x3000\nwalls from rooms exterior 200 partition 100 { open between a and b }\ndoor at (4000,1500) width 800 wall partition   # error: the edge is open",
   ),

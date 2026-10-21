@@ -273,7 +273,7 @@ suite("the statement", () => {
     expect(ir.elements.map((e) => e.id)).toEqual(["a", "b", "c", "walls_1", "a|b:open", "d1", "d2"]);
     const o = ir.elements.find((e) => e.id === "a|b:open") as ROpening;
     expect(o).toMatchObject({ kind: "opening", at: { x: 4000, y: 1525 }, width: 2850, head: 3000 });
-    expect(o._derived).toEqual({ from: "rooms", between: ["a", "b"], idAuthored: false });
+    expect(o._derived).toEqual({ from: "rooms", between: ["a", "b"], idAuthored: false, written: ["a", "b"] });
     expect(o.host!.wallId).toBe("a|b");
     expect(src.slice(o.span!.start, o.span!.end)).toBe("open between a and b");
     // the partition is still derived, and the opening voids it
@@ -417,5 +417,60 @@ suite("addressing: no lint text quotes a derived opening's id or edits its claus
           expect(e.span.end <= clause.start || e.span.start >= clause.end, `${d.code} edits the statement`).toBe(true);
     }
     expect(quotes("write `door` in place of `opening` for a|c:open")).toBe(true);
+  });
+});
+
+// ------------------------------------------------------------------------------------------
+// Red team round 1 (PR #224)
+
+suite("red team round 1", () => {
+  const KWH =
+    "  room id=k at (0,0) size 4000x3000 uses living\n  room id=w at (4000,0) size 3000x3000 uses kitchen\n  room id=h at (0,3000) size 7000x1200 uses hall\n  door at (5500,4200) width 900 wall exterior hinge left swing in\n";
+  const junction = (src: string) => lint(src).filter((d) => d.code === "W_OPENING_AT_JUNCTION");
+
+  it("S1: a derived jamb on the thickest meeting wall's face is that wall's pier, not a nib", () => {
+    for (const cl of [
+      "open between k and w  between w and h thickness 150",
+      "open between k and w",
+      "open between k and w  between k and h thickness 150",
+    ]) {
+      const src = plan(`${KWH}${stmt(cl)}`);
+      expect(errors(src), cl).toEqual([]);
+      expect(junction(src), cl).toEqual([]);
+    }
+    // non-vacuous: the same span placed by hand still leaves a 25 mm sliver beside the thinner
+    // wall, and a hand-placed opening is held to the nib as before
+    const src = plan(`${KWH}${stmt("open between k and w  between w and h thickness 150")}`);
+    const o = irOf(src).elements.find((e) => e.id === "k|w:open") as ROpening;
+    expect([o.at, o.width]).toEqual([{ x: 4000, y: 1512.5 }, 2825]);
+    const hand = plan(
+      `${KWH}${stmt("between w and h thickness 150")}  opening at (4000,1512.5) width 2825 wall partition`,
+    );
+    expect(junction(hand).length).toBe(1);
+    expect(junction(hand)[0]!.message).toMatch(/25 mm from the face/);
+  });
+
+  it("S2: a hosted door is refused only where it overlaps the voided span; touching it is allowed", () => {
+    const base = `${ROOMS}${stmt("open between a and b width 900")}`;
+    // the opening spans y 1075..1975 on x = 4000
+    const open = (extra: string) => errors(plan(`${base}${extra}`)).filter((d) => d.code === "E_WALL_BETWEEN_OPEN");
+    expect(open("  door at (4000,600) width 800 wall partition")).toEqual([]);
+    expect(open("  door at (4000,675) width 800 wall partition")).toEqual([]); // jamb touches at 1075
+    expect(open("  door at (4000,676) width 800 wall partition").length).toBe(1);
+    expect(open("  door at (4000,1100) width 800 wall partition").length).toBe(1);
+    // a hand opening 1 mm off the run, hosted onto it by position
+    expect(open("  opening at (4001,600) width 400").length).toBe(0);
+    expect(open("  opening at (4001,1525) width 400").length).toBe(1);
+  });
+
+  it("N1: inside a component the hint quotes the clause as written, and names the component", () => {
+    const src =
+      `plan "p" {\n  units mm\n  grid 50\n  component m() {\n    room id=a at (0,0) size 4000x3000 uses living\n    room id=c at (0,3000) size 4000x2000 uses bath\n` +
+      `    walls from rooms exterior 200 partition 100 { open between a and c }\n    door at (2000,0) width 900 wall exterior hinge left swing in\n  }\n` +
+      `  place m() as m at (0,0)\n}\n`;
+    const d = lint(src).find((x) => x.code === "W_WET_ROOM_DOOR")!;
+    const text = (d.hints ?? []).join("\n");
+    expect(text).toContain("the `open between a and c` clause in component `m`");
+    expect(text).not.toContain("m.a and m.c");
   });
 });

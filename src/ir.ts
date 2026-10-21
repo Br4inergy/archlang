@@ -456,7 +456,13 @@ export interface ROpening extends RBase {
    * `id=`. Its span is the clause's, so no lint fix edits it, and a hint quotes its id only
    * when the author wrote one (the derived default, `A|B:open`, cannot be spelled). Internal.
    */
-  _derived?: { from: "rooms"; between: [string, string]; idAuthored: boolean };
+  _derived?: {
+    from: "rooms";
+    between: [string, string];
+    idAuthored: boolean;
+    /** The two rooms as the clause writes them, in its own (component) frame: never namespaced. */
+    written: [string, string];
+  };
   /**
    * Top of the cased opening above this storey's floor, in mm — always resolved.
    * Its default is the HOST WALL's own height (a leaf-less opening is drawn full height),
