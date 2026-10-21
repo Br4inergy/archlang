@@ -745,17 +745,17 @@ ${exampleBlocks}
   // The control keywords the same way: a bullet re-listing all twenty-one was ~200 characters
   // for words the grammar lines and the Scripting section already show in code.
   const untaughtControl = KEYWORDS.control.filter((k) => !inCode(code, k));
-  const doc = draft.replace(
-    CONTROL_MARK,
-    untaughtControl.length > 0
-      ? `- **Settings / control not shown above:** ${bullet(untaughtControl)}\n`
-      : "",
-  ).replace(
-    ENUMS_MARK,
-    untaughtEnums.length > 0
-      ? `- **Enums / values not shown above:** ${bullet(untaughtEnums)}`
-      : "- **Enums / values:** all shown above, in the grammar lines.",
-  );
+  const doc = draft
+    .replace(
+      CONTROL_MARK,
+      untaughtControl.length > 0 ? `- **Settings / control not shown above:** ${bullet(untaughtControl)}\n` : "",
+    )
+    .replace(
+      ENUMS_MARK,
+      untaughtEnums.length > 0
+        ? `- **Enums / values not shown above:** ${bullet(untaughtEnums)}`
+        : "- **Enums / values:** all shown above, in the grammar lines.",
+    );
 
   // The sets the PROSE sections teach rather than a grammar line — same guard, scoped to
   // the whole document because no single line owns them. (`paper`/`orientation`/`north`

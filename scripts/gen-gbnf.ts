@@ -557,7 +557,10 @@ function rules(): [string, string][] {
     ["fence-style", litAlt(FENCE_STYLES)],
     // `walls from rooms` (ADR 0028 §3). The body holds `except` clauses only: `open between`
     // and `between … thickness` fail to parse (not available yet), so they are not derivable.
-    ["walls-stmt", `"walls" rws "from" rws "rooms" rws "exterior" rws expr rws "partition" rws expr ( ws "{" ws ( "except" rws ident ( rws ident )* ws )* "}" )?`],
+    [
+      "walls-stmt",
+      `"walls" rws "from" rws "rooms" rws "exterior" rws expr rws "partition" rws expr ( ws "{" ws ( "except" rws ident ( rws ident )* ws )* "}" )?`,
+    ],
 
     // ---- shared clause pieces -------------------------------------------
     ["id-opt", `( "id" ws "=" ws ident rws )?`],
