@@ -67,6 +67,13 @@ describe("print-roundtrip — parse(format(s)) ≡ parse(s), modulo spans and tr
     });
   }
 
+  it("`walls from rooms` round-trips, its `except` clauses folded into one", () => {
+    for (const f of ["studio", "two-bed"]) checkRoundtrip(readFileSync(`test/walls-from-rooms/${f}.arch`, "utf8"));
+    const two = `plan "p" {\n  units mm\n  room id=a at (0,0) size 4000x3000\n  room id=b at (4000,0) size 3000x3000\n  walls from rooms exterior 200 partition 100 {\n    except a\n    except b\n  }\n}\n`;
+    checkRoundtrip(two);
+    expect(format(two)).toContain("walls from rooms exterior 200 partition 100 { except a b }");
+  });
+
   it("also holds over fc.sample(archPlan)", () => {
     for (const src of fc.sample(archPlan, { numRuns: 200, seed: 20260927 })) checkRoundtrip(src);
   });

@@ -79,6 +79,23 @@ describe("plan-json — round-trip byte-identity (SVG)", () => {
     roundTrips(FIXTURE_B);
   });
 
+  it("exports `walls from rooms` as the statement, never its derived walls, and round-trips it", () => {
+    // ADR 0028 §3: the statement is an additive kind; the walls it derives have no
+    // author-facing id, so they are not `walls[]` rows (the authored ones still are).
+    const src = readFileSync("test/walls-from-rooms/two-bed.arch", "utf8");
+    const { json } = planToJson(src);
+    expect(json!.walls_from_rooms).toEqual({ exterior: 300, partition: 100 });
+    expect(json!.walls.map((w) => w.id)).toEqual(["w_shell", "w_kb2", "w_bath_w"]);
+    // two-bed carries a `roof`, which Plan JSON leaves out (plan-json-gaps.ts); the studio twin round-trips
+    roundTrips(readFileSync("test/walls-from-rooms/studio.arch", "utf8"));
+    expect(planToJson(readFileSync("test/walls-from-rooms/studio.arch", "utf8")).json!.walls).toEqual([]);
+    const withExcept = src.replace("partition 100\n", "partition 100 { except r_hall }\n");
+    expect(planToJson(withExcept).json!.walls_from_rooms!.except).toEqual(["r_hall"]);
+    expect(planToJson(readFileSync("examples/two-bed.arch", "utf8")).json!.walls_from_rooms).toBeUndefined();
+    const bad = planFromJson({ ...(json as PlanJson), walls_from_rooms: { exterior: 0, partition: 100, except: ["a b"] } });
+    expect(bad.diagnostics.map((d) => d.code)).toContain("E_JSON_SCHEMA");
+  });
+
   /**
    * EVERY shipped example, partitioned — never sampled.
    *
