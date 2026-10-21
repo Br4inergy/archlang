@@ -237,6 +237,11 @@ export interface WallsFromRoomsJson {
   exterior: number;
   partition: number;
   except?: string[];
+  /** `open [id=] between A and B [width]` clauses: the openings they derive are not
+   *  listed in `openings`. */
+  open?: Array<{ between: [string, string]; id?: string; width?: number }>;
+  /** `between A and B thickness t` clauses. */
+  between?: Array<{ between: [string, string]; thickness: number }>;
 }
 
 export interface WallJson {
@@ -570,13 +575,18 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
         exterior: stmt.exterior,
         partition: stmt.partition,
         ...(stmt.except.length > 0 ? { except: [...stmt.except] } : {}),
+        ...pairsJson(stmt),
       }
     : undefined;
 
   // Doors, windows and cased openings in a single array **in source order** — they
   // share render layers, so preserving their interleaving keeps draw order stable.
+  // An opening an `open between` clause derived is exported as the clause, never as a row.
   const openings: OpeningJson[] = ir.elements
-    .filter((e): e is RDoor | RWindow | ROpening => e.kind === "door" || e.kind === "window" || e.kind === "opening")
+    .filter(
+      (e): e is RDoor | RWindow | ROpening =>
+        e.kind === "door" || e.kind === "window" || (e.kind === "opening" && e._derived === undefined),
+    )
     .map((e) => {
       const base: OpeningJson = { kind: e.kind, id: e.id, x: e.at.x, y: e.at.y, width: e.width };
       if (e.host?.category !== undefined) base.wall = e.host.category;
@@ -960,6 +970,22 @@ function validateWall(w: unknown, path: string, val: Validator): void {
     val.err(`${path}/height`, `expected a number greater than 0 and no more than ${MAX_HEIGHT}`);
 }
 
+/** The pair clauses of a `walls from rooms` statement, as Plan JSON (absent when none). */
+function pairsJson(stmt: RWallsFromRooms): Pick<WallsFromRoomsJson, "open" | "between"> {
+  const open: NonNullable<WallsFromRoomsJson["open"]> = [];
+  const between: NonNullable<WallsFromRoomsJson["between"]> = [];
+  for (const c of stmt.pairs ?? []) {
+    if (c.kind === "open")
+      open.push({
+        between: [c.between[0], c.between[1]],
+        ...(c.id !== undefined ? { id: c.id } : {}),
+        ...(c.width !== undefined ? { width: c.width } : {}),
+      });
+    else between.push({ between: [c.between[0], c.between[1]], thickness: c.thickness });
+  }
+  return { ...(open.length > 0 ? { open } : {}), ...(between.length > 0 ? { between } : {}) };
+}
+
 /** `walls_from_rooms`: two positive thicknesses and an optional list of room ids (identifiers,
  *  since they are written back into source). */
 function validateWallsFromRooms(w: unknown, path: string, val: Validator): void {
@@ -976,6 +1002,33 @@ function validateWallsFromRooms(w: unknown, path: string, val: Validator): void 
       w.except.forEach((x, i) => {
         if (!(isStr(x) && /^[A-Za-z_][\w-]*$/.test(x))) val.err(`${path}/except/${i}`, "expected a room id");
       });
+  }
+  const ident = (x: unknown): boolean => isStr(x) && /^[A-Za-z_][\w-]*$/.test(x);
+  const pair = (c: Record<string, unknown>, at: string): void => {
+    if (!(Array.isArray(c.between) && c.between.length === 2 && c.between.every(ident)))
+      val.err(`${at}/between`, "expected two room ids");
+  };
+  for (const key of ["open", "between"] as const) {
+    const list = w[key];
+    if (list === undefined) continue;
+    if (!Array.isArray(list)) {
+      val.err(`${path}/${key}`, "expected an array of clauses");
+      continue;
+    }
+    list.forEach((c, i) => {
+      const at = `${path}/${key}/${i}`;
+      if (!isObj(c)) {
+        val.err(at, "expected an object");
+        return;
+      }
+      pair(c, at);
+      if (key === "open") {
+        if (c.id !== undefined && !ident(c.id)) val.err(`${at}/id`, "expected an id");
+        if (c.width !== undefined && !(isNum(c.width) && (c.width as number) > 0))
+          val.err(`${at}/width`, "expected a number greater than 0");
+      } else if (!(isNum(c.thickness) && (c.thickness as number) > 0))
+        val.err(`${at}/thickness`, "expected a number greater than 0");
+    });
   }
 }
 
@@ -1160,7 +1213,17 @@ function emitArch(p: PlanJson): string {
   // The round-trip half of `walls_from_rooms`: the statement, never the walls it derives.
   if (p.walls_from_rooms) {
     const s = p.walls_from_rooms;
-    const ex = s.except && s.except.length > 0 ? ` { except ${s.except.join(" ")} }` : "";
+    const body = [
+      ...(s.except && s.except.length > 0 ? [`except ${s.except.join(" ")}`] : []),
+      ...(s.open ?? []).map(
+        (c) =>
+          `open ${c.id !== undefined ? `id=${c.id} ` : ""}between ${c.between[0]} and ${c.between[1]}${
+            c.width !== undefined ? ` width ${num(c.width)}` : ""
+          }`,
+      ),
+      ...(s.between ?? []).map((c) => `between ${c.between[0]} and ${c.between[1]} thickness ${num(c.thickness)}`),
+    ];
+    const ex = body.length > 0 ? ` { ${body.join(" ")} }` : "";
     L.push(`  walls from rooms exterior ${num(s.exterior)} partition ${num(s.partition)}${ex}`);
   }
 
@@ -1615,6 +1678,34 @@ export const PLAN_JSON_SCHEMA = {
         exterior: { type: "number", exclusiveMinimum: 0, description: "Exterior ring thickness in millimetres." },
         partition: { type: "number", exclusiveMinimum: 0, description: "Partition thickness in millimetres." },
         except: { type: "array", items: { type: "string" }, description: "Room ids left out of the derivation." },
+        open: {
+          type: "array",
+          description:
+            "`open [id=] between A and B [width]`: the pair's partition is voided by a derived leaf-less opening across its clear span (not listed in `openings`).",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["between"],
+            properties: {
+              between: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 2, description: "The two room ids." },
+              id: { type: "string", description: "The derived opening's id, when the clause gives one." },
+              width: { type: "number", exclusiveMinimum: 0, description: "Opening width in millimetres, centred on the clear span." },
+            },
+          },
+        },
+        between: {
+          type: "array",
+          description: "`between A and B thickness t`: that one partition's thickness.",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["between", "thickness"],
+            properties: {
+              between: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 2, description: "The two room ids." },
+              thickness: { type: "number", exclusiveMinimum: 0, description: "Partition thickness in millimetres." },
+            },
+          },
+        },
       },
     },
     walls: {

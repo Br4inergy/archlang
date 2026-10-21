@@ -3418,6 +3418,11 @@ function assignIds(entries: Entry[], registry: Registry, diagnostics: Diagnostic
       e.id = assignId(e.node.id, def.idPrefix(e.node), idx, e.node.span);
     }
   }
+  // The ids a statement gives the elements it derives (`ElementDef.authoredChildIds`): checked
+  // against every other id, after them, so a duplicate is reported on the later name.
+  for (const e of entries) {
+    for (const c of registry.byKind.get(e.node.kind)?.authoredChildIds?.(e.node) ?? []) assignId(c.id, "", 0, c.span);
+  }
 }
 
 /**

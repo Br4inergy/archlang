@@ -35,6 +35,7 @@ import { type AccessEdge, type AccessGraph, buildDoorAccessGraph, EXTERIOR_NODE,
 import { entranceInputs, entranceWays, walkAccessGraph } from "../../analyze/entrance.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import type { LintContext, LintRule } from "../context.js";
+import { openingClauseById } from "../../wall-ref.js";
 import { mm, shortfall } from "../measure.js";
 import { passableDoorWidthMm } from "./doors.js";
 
@@ -223,7 +224,7 @@ const narrowRemedies = (min: number, doors: readonly AccessEdge[] | null, ctx: L
     : [
         ...doors.map(
           (e) =>
-            `Widen ${e.kind} "${e.doorId}" to \`width ${mm(clearingWidth(e, ctx))}\` (now ${mm(e.nominalWidth)})${doors.length > 1 ? "" : `, which lets the walk clear the ${mm(min)} mm minimum`}.`,
+            `Widen ${openingClauseById(ctx.ir.elements, e.doorId) ? `the opening ${openingClauseById(ctx.ir.elements, e.doorId)} derives (give it a \`width\`)` : `${e.kind} "${e.doorId}"`} to \`width ${mm(clearingWidth(e, ctx))}\` (now ${mm(e.nominalWidth)})${doors.length > 1 ? "" : `, which lets the walk clear the ${mm(min)} mm minimum`}.`,
         ),
         // A set is what was measured; that it needs every member is not claimed.
         ...(doors.length > 1 ? [`With these widened together the walk clears the ${mm(min)} mm minimum.`] : []),

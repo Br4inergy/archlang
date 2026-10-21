@@ -8,7 +8,7 @@
 import type { Token } from "./lexer.js";
 import type { AstElement, ElementKind, ExprPoint, Point } from "./ast.js";
 import type { Expr, ParseExprOpts, Value } from "./expr.js";
-import type { Diagnostic } from "./diagnostics.js";
+import type { Diagnostic, Span } from "./diagnostics.js";
 import type { ResolvedElement, RWall, RRoom } from "./ir.js";
 import type { Bounds, WallSegment } from "./geometry.js";
 import type { Theme } from "./theme.js";
@@ -299,6 +299,10 @@ export interface ElementDef {
    * `describe()` and `lint()`), and are carried by this element's own `transform`.
    */
   yieldsElements?(resolved: ResolvedElement): readonly ResolvedElement[];
+  /** The authored ids (`open id=<name> between …`) the {@link ElementDef.yieldsElements} of
+   *  this statement will carry, with their spans: checked for duplicates with every other id
+   *  (`E_DUP_ID`, on the later name) when ids are assigned. */
+  authoredChildIds?(node: AstElement): ReadonlyArray<{ id: string; span: Span }>;
   /**
    * Judge the rest of the group once every kind has resolved: called for a
    * {@link ElementDef.yieldsWalls} kind with the group's own resolved elements (source order,

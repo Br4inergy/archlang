@@ -252,6 +252,8 @@ export const wallsFromRooms: ElementDef = {
   /** The openings `open between` derives: ordinary openings, entered in the plan's elements
    *  right after the statement (`ElementDef.yieldsElements`). */
   yieldsElements: (resolved) => (resolved as RWallsFromRooms)._derivedOpenings,
+  authoredChildIds: (node) =>
+    ((node as WallsFromRoomsNode).pairs ?? []).flatMap((c) => (c.kind === "open" && c.id ? [c.id] : [])),
 
   /** An authored door, window or opening hosted on a run an `open between` clause voids
    *  would close what the clause opened: refused, on the clause (`E_WALL_BETWEEN_OPEN`). */

@@ -1,7 +1,8 @@
 # 28. Rooms may be primary: walls and openings derived from room relations
 
-- **Status:** Proposed (plan-soundness decisions D1 and D5, `docs/plans/plan-soundness/README.md`
-  §3; becomes Accepted when the first derived form lands with its byte-identity law)
+- **Status:** Accepted (plan-soundness decisions D1 and D5, `docs/plans/plan-soundness/README.md`
+  §3). Proposed until the first derived form, `walls from rooms`, landed with its byte-identity
+  law (PR #223); accepted 2026-10-22, when the form's last clauses landed (card PS3.0 part C).
 - **Date:** 2026-10
 - **Relates to:** [ADR 0004](0004-relational-placement-not-optimizer.md) (relational placement is
   deterministic arithmetic, not an optimizer), [ADR 0005](0005-no-invisible-architect.md) (refuse,
@@ -123,7 +124,9 @@ per group (`E_WALLS_FROM_ROOMS_DUP`). It derives:
   B` clause names the pair. `open` without `width` derives a leaf-less `opening` across the **clear
   span** of the run, between the faces of the walls that meet it at each end (so it carries no nib
   and trips neither `E_OPENING_NIB` nor `W_OPENING_AT_JUNCTION`); with `width` one centred on that
-  clear span. Either is an ordinary opening (in the access graph, in `describe().openings[]`), with
+  clear span. As built (PS3.0 part C): the pair's partition is still derived, as the opening's
+  host, and the opening voids it; at an end where several walls meet the run, the face is the
+  thickest one's, so no meeting wall's body lies inside the opening. Either is an ordinary opening (in the access graph, in `describe().openings[]`), with
   an auto-assigned id unless the clause gives one, so an open-plan join is a stated connection, not
   a gap `W_BOUNDARY_NO_WALL` would report. The drawing therefore shows an open-plan pair as two
   jamb lines with the meeting walls' piers at the ends, which is what the plan says. A
@@ -150,7 +153,9 @@ rooms (ADR 0005):**
 | A `polygon` or `circle` room is in the set and not excluded | `E_ROOM_NOT_RECTANGLE` |
 | An `open between` or `between … thickness` clause names a pair that shares no run | `E_WALL_BETWEEN_NOT_ADJACENT` |
 | An `open between` or `between … thickness` clause names a room that is not in the group, or a polygon/circle room; `except` accepts any room of the group, polygon and circle rooms included (it is how they are excluded) | `E_WALL_BETWEEN_ROOM` |
-| An authored wall lies on a pair the author also declared `open`, or a relational opening targets such a pair | `E_WALL_BETWEEN_OPEN` |
+| An authored wall lies on a pair the author also declared `open`, or an opening (relational, or hosted by position on the run) targets such a pair | `E_WALL_BETWEEN_OPEN` |
+| An `open … width` wider than the run's clear span, or a run with no clear span | `E_WALL_BETWEEN_WIDTH` |
+| One pair named by two clauses (`open` and `thickness`, or either twice) | `E_WALL_BETWEEN_DUP` |
 
 There is no tolerance row: a 1 mm jog in the outline is a legal tiling whose ring follows the jog,
 and a 1 mm interior gap is a hole. A plan whose corridor is "the leftover" fails the tiling test,

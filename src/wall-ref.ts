@@ -67,3 +67,28 @@ export function wallPhraseOf(w: { id: string; _derived?: RWall["_derived"] }): s
 export function wallRef(walls: readonly RWall[], key: WallKey): string {
   return wallPhraseOf(wallOf(walls, key) ?? { id: key.wallId });
 }
+
+/** An opening as {@link openingClauseOf} reads it. */
+interface MaybeDerivedOpening {
+  kind: string;
+  id: string;
+  _derived?: unknown;
+}
+
+/**
+ * The clause that derived an opening, when an `open between` clause of `walls from rooms`
+ * derived it without an `id=`: `` the `open between A and B` clause ``. Such an opening's id
+ * (`A|B:open`) cannot be written in source, so a hint names the clause the author edits
+ * instead; undefined for every other door, window or opening (name it by its id).
+ */
+export function openingClauseOf(el: MaybeDerivedOpening | undefined): string | undefined {
+  if (el?.kind !== "opening" || el._derived === undefined) return undefined;
+  const d = el._derived as { between: [string, string]; idAuthored: boolean };
+  if (d.idAuthored) return undefined;
+  return `the \`open between ${d.between[0]} and ${d.between[1]}\` clause`;
+}
+
+/** {@link openingClauseOf} for the connector with this id among the plan's elements. */
+export function openingClauseById(elements: readonly MaybeDerivedOpening[], id: string): string | undefined {
+  return openingClauseOf(elements.find((e) => e.kind === "opening" && e.id === id));
+}

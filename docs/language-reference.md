@@ -846,7 +846,11 @@ wall exterior thickness 250 material brick scale 1.5 angle 30 { … }
 ### Walls from rooms
 
 ```
-walls from rooms exterior <mm> partition <mm> [{ except <room> … }]
+walls from rooms exterior <mm> partition <mm> [{
+  except <room> …
+  open [id=<name>] between <A> and <B> [width <mm>]
+  between <A> and <B> thickness <mm>
+}]
 ```
 
 One statement derives every wall of the plan (or of the `component` it is written in) from
@@ -877,6 +881,12 @@ coordinates with no tolerance, and each failure refuses, naming the rooms:
 | A shared edge shorter than the partition is thick | `E_PARTITION_TOO_SHORT` |
 | A second statement in the same plan or component | `E_WALLS_FROM_ROOMS_DUP` |
 | `except` names no room written beside it | `E_WALL_BETWEEN_ROOM` |
+| A pair clause names a room not written beside it, a `polygon`/`circle` room, or an excepted room (on the name) | `E_WALL_BETWEEN_ROOM` |
+| A pair clause names two rooms that share no edge | `E_WALL_BETWEEN_NOT_ADJACENT` |
+| One pair named by two clauses (in either order of the rooms) | `E_WALL_BETWEEN_DUP` |
+| An authored wall, door, window or opening on an edge declared `open` | `E_WALL_BETWEEN_OPEN` |
+| An `open` width larger than the clear span, or no clear span at all | `E_WALL_BETWEEN_WIDTH` |
+| A clause thickness or width that is not positive | `E_WALL_THICKNESS` / `E_OPENING_WIDTH` |
 | No room to derive from (none written, or every one excepted) | `E_WALLS_FROM_NO_ROOMS` |
 | An authored wall beside it takes the id `exterior` (the derived ring's name) | `E_WALL_ID_RESERVED` |
 | What it would derive (authored walls on its lines split the runs) passes the element budget | `E_ELEMENT_LIMIT` |
@@ -910,8 +920,41 @@ statement is refused by Plan JSON (`E_JSON_DERIVED_IN_INSTANCE`) rather than los
 A `place`d component derives its own walls in its own frame; a root statement sees only the
 root's rooms.
 
-The `open between <A> and <B>` and `between <A> and <B> thickness <t>` clauses of the ADR are not
-available yet and fail to parse by name.
+**Pair clauses.** Each clause names two rooms that share an edge, in either order; a pair
+takes one clause, and every refusal of a clause points at it.
+
+- `between <A> and <B> thickness <t>` gives that one partition its own thickness, judged as a
+  wall's is. An authored wall on the same edge still replaces it.
+- `open between <A> and <B>` makes the two rooms one open-plan space along their shared edge.
+  The partition is still derived and listed in `derived_walls[]`; a leaf-less **opening**
+  voids it across its **clear span**: the edge less, at each end, half the thickness of the
+  thickest wall meeting it there, so each jamb lies on a meeting wall's face (no nib, no
+  `W_OPENING_AT_JUNCTION`). With `width <mm>`, the opening is that wide and centred on the clear
+  span, and the partition stays either side of it. The derived position is exact and is not
+  snapped to `grid`.
+- The opening is an ordinary opening: it joins the two rooms in the access graph, appears in
+  `describe --json`'s `openings[]` and in `schedule openings`, and counts toward the drawing and
+  element budgets. Its id is `<A>|<B>:open` (the rooms in source order), which no identifier can
+  spell and no lint hint or fix quotes, unless the clause gives one with `id=`. Plan JSON
+  carries the clauses in `walls_from_rooms.open[]`/`between[]`, never the opening as an
+  `openings[]` row.
+- Nothing else may stand on an open edge: an authored wall lying on it, or a door, window or
+  opening hosted on it, is `E_WALL_BETWEEN_OPEN`.
+
+```arch
+plan "Open plan" {
+  units mm
+  room id=living at (0,0) size 4000x3000 label "Living" uses living
+  room id=kitchen at (4000,0) size 3000x3000 label "Kitchen" uses kitchen
+  room id=hall at (0,3000) size 7000x1500 label "Hall" uses hall
+  walls from rooms exterior 200 partition 100 {
+    open between living and kitchen
+    between living and hall thickness 150
+  }
+  door at (5500, 4500) width 900 wall exterior hinge left swing in
+  door at (2000, 3000) width 800 wall partition hinge left swing in
+}
+```
 
 ### Room
 

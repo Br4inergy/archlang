@@ -36,7 +36,7 @@
  *  - The leaves of a double door move together only when both sit on one segment.
  */
 
-import { isDerivedWall, wallRef } from "../../wall-ref.js";
+import { isDerivedWall, openingClauseOf, wallRef } from "../../wall-ref.js";
 import {
   type AccessGraph,
   buildDoorAccessGraph,
@@ -600,8 +600,13 @@ function moveHints(
 }
 
 /** The id an agent edits by, for the hints. */
-const idHint = (ctx: LintContext, el: Hosted): string =>
-  `The ${KIND_WORD[el.kind]} is "${el.id}" on ${wallRef(ctx.ir.walls, el.host ?? { wallId: "" })}.`;
+const idHint = (ctx: LintContext, el: Hosted): string => {
+  const on = wallRef(ctx.ir.walls, el.host ?? { wallId: "" });
+  const clause = openingClauseOf(el);
+  return clause
+    ? `The opening is derived by ${clause} of \`walls from rooms\` (its \`width\` is set there), on ${on}.`
+    : `The ${KIND_WORD[el.kind]} is "${el.id}" on ${on}.`;
+};
 
 // ─── PS2.1 ─────────────────────────────────────────────────────────────────────────────
 

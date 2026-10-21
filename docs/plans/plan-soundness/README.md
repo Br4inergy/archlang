@@ -426,7 +426,7 @@ original brief follows.
   pin both by test).
 - Design input: `research/associativity.md` §4 P1/P6/P7; `research/2026-10-18-room-tiling.md`.
 
-**PS3.0 · `walls from rooms` (D5).** `todo` (after PS3.1 and PS3.2; may land before or with PS3.3)
+**PS3.0 · `walls from rooms` (D5).** `done` (parts A–C: PRs #222, #223, #224)
 - Closed-form: rectilinear union outline for the exterior ring; every shared edge run of two rooms
   becomes one partition segment unless an `open between` clause names the pair. Steps charged per
   room pair and per sweep before allocating.
@@ -456,6 +456,22 @@ original brief follows.
   gain their walls, the round snug refuses); `test/walls-from-rooms-digests.test.ts` the digest
   table. Not yet: `open between` and `between … thickness` (they fail to parse by name), and the
   relational openings of PS3.4.
+- *As built, part C (PR #224):* the two pair clauses. `between A and B thickness t` sets that
+  partition's thickness. `open [id=] between A and B [width]` keeps the pair's partition derived
+  as a host and derives a leaf-less opening across its clear span: the run less, at each end, half
+  the thickest wall perpendicular to it through that end (with `width`, centred on that span).
+  The opening is an ordinary `ROpening` that enters `ir.elements` after the statement
+  (`ElementDef.yieldsElements`). Its id is `A|B:open` unless the clause gives one, it carries
+  `_derived`, and its span is the clause's. Refusals, each on the clause:
+  - `E_WALL_BETWEEN_NOT_ADJACENT`;
+  - `E_WALL_BETWEEN_ROOM` (also polygon, circle or excepted rooms);
+  - `E_WALL_BETWEEN_OPEN` (an authored wall on the run, or an authored door/window/opening hosted
+    on it, through `ElementDef.auditGroup`);
+  - `E_WALL_BETWEEN_WIDTH`;
+  - `E_WALL_BETWEEN_DUP`.
+  Plan JSON carries `walls_from_rooms.open[]`/`between[]`. The twins (a hand-placed opening, an
+  authored partition taking over) are pinned in `test/walls-from-rooms.test.ts`, and the clause
+  plans are pinned in the digest table. ADR 0028 is Accepted.
 
 **PS3.2 · Resolve order and room-edge datums.** part A `done`, part B in review (after PS3.1)
 - Resolve rooms and relational placement before walls, then freeze a datum table.
@@ -473,6 +489,9 @@ original brief follows.
 - `window on <room>.<edge> [at …]` picks the exterior wall segment on that edge.
 - Hosted offsets on existing forms: `on <wall> at 150 from end`, `on <wall> at 150 from <room>.<edge>`,
   `on <wall> at axis 3`.
+- Note (PS3.0 part C): the opening an `open between` clause derives reports `placement:
+  "absolute"` in `describe().freedom`, so its hand-placed twin stays byte-identical. This card
+  may give it `derived` or `relational`.
 
 **PS3.5 · Semantic selectors.** `todo`
 - `segment north|south|east|west`, or `segment containing <room>.<edge>`, aliasing `segment <n>`.
@@ -613,7 +632,7 @@ original brief follows.
 |---|---|---|
 | 1 | PS0.1, PS0.7, PS1.1 | Done 2026-10-18: PS0.7 in PR #197 (ad58551, dfd1737), PS1.1 in PR #195 (df00ab5), PS0.1 in PR #196 (1e0c2d9, e81a136; also closed backlog C.4). Corpus catch rate 7/53 |
 | 2 | PS2.1–PS2.9, PS2.13 | Defect-corpus catch rate ≥ 90 % for classes 1, 2, 3, 4 and 6, with no false positive on the clean twins; every corpus `lint()` movement is explained (two-bed is expected to start warning: fix the example, see PS3.6). *Corrected 2026-10-19:* class 5 (clearances) belongs to PS2.11 in row 5, so it was removed from this row's acceptance. *Status:* wave 1 landed 2026-10-19 (PRs #199, #201, #200): classes 1, 3, 6 at 100 %, class 4 at 3/4 (PS2.17), class 2 at 1/6 waiting on PS2.4; overall 33/53 on `main@cc165f4`. Wave 2 landed 2026-10-19 (PRs #203, #204, #211): classes 1, 2, 3, 6 at 100 %, class 4 at 4/5 (80 %, below the bar until PS2.17 lands); overall 44/67 on `main@fcb3074` (the +1 is A2, the balcony-door-masked laundry, caught by PS0.10's main entrance; T2 still refuses without `site`). Wave 3 landed 2026-10-20 (PRs #214, #216, #217): classes 1, 2, 3, 4, 6 at 100 %, overall 46/68 on `main@06c6b56`; this row's acceptance is met (class 5 is row 5). Next: PS3.1 landed as ADR 0028 (PR #215, Proposed), then PS3.2 and PS3.6 |
-| 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form |
+| 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. *Status 2026-10-22 (PS3.0 done, PR #224):* met: ADR 0028 merged and Accepted; byte-identity law green (every digest suite unchanged, the PS3.0 table pinned); the class-2 corpus cases are refused or gain their walls in the D5 form; the widening drill moves the walls and the door with the room (`test/walls-from-rooms/widen.arch`). Remaining: rewriting `examples/relational.arch` and `examples/two-bed.arch` in the headline form (PS3.6, needs PS3.4's relational openings), and PS3.3/PS3.4 themselves |
 | 4 | PS0.4, PS4.1, PS4.2 | The widening drill's `impact` names every moved, held and broken item correctly |
 | 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically |
 | 6 | PS4.3, PS4.4, PS3.5, PS3.6, PS5.4, PS7.x | — |
