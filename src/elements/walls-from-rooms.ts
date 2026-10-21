@@ -78,7 +78,8 @@ export const wallsFromRooms: ElementDef = {
           continue;
         }
         if (ctx.isKeyword("open") || ctx.isKeyword("between")) {
-          (pairs ??= []).push(parsePair(ctx));
+          if (pairs === undefined) pairs = [];
+          pairs.push(parsePair(ctx));
           continue;
         }
         const t = ctx.peek();

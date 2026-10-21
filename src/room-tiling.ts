@@ -529,11 +529,7 @@ function refusalsOf(
   return out;
 }
 
-function shortRuns(
-  runs: readonly Run[],
-  thick: (r: Run) => number,
-  ids: readonly string[],
-): TilingRefusal | undefined {
+function shortRuns(runs: readonly Run[], thick: (r: Run) => number, ids: readonly string[]): TilingRefusal | undefined {
   const short = runs
     .filter((r) => Math.abs(r.b.x - r.a.x) + Math.abs(r.b.y - r.a.y) < thick(r))
     .map((r) => (r.lo < r.hi ? { ...r, p: r.lo, q: r.hi, t: thick(r) } : { ...r, p: r.hi, q: r.lo, t: thick(r) }))

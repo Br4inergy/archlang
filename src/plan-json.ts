@@ -1687,9 +1687,19 @@ export const PLAN_JSON_SCHEMA = {
             additionalProperties: false,
             required: ["between"],
             properties: {
-              between: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 2, description: "The two room ids." },
+              between: {
+                type: "array",
+                items: { type: "string" },
+                minItems: 2,
+                maxItems: 2,
+                description: "The two room ids.",
+              },
               id: { type: "string", description: "The derived opening's id, when the clause gives one." },
-              width: { type: "number", exclusiveMinimum: 0, description: "Opening width in millimetres, centred on the clear span." },
+              width: {
+                type: "number",
+                exclusiveMinimum: 0,
+                description: "Opening width in millimetres, centred on the clear span.",
+              },
             },
           },
         },
@@ -1701,7 +1711,13 @@ export const PLAN_JSON_SCHEMA = {
             additionalProperties: false,
             required: ["between", "thickness"],
             properties: {
-              between: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 2, description: "The two room ids." },
+              between: {
+                type: "array",
+                items: { type: "string" },
+                minItems: 2,
+                maxItems: 2,
+                description: "The two room ids.",
+              },
               thickness: { type: "number", exclusiveMinimum: 0, description: "Partition thickness in millimetres." },
             },
           },
