@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**108 errors** · **63 warnings**
+**116 errors** · **63 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -59,6 +59,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_INTENT_ROOM_MISSING`](#e_intent_room_missing) | error | A room the brief names is absent from the plan. |
 | [`E_INTENT_TOTAL_AREA`](#e_intent_total_area) | error | The plan's total floor area is outside the brief's band. |
 | [`E_INTENT_UNREACHABLE`](#e_intent_unreachable) | error | A room cannot be reached from the entrance through modeled doors. |
+| [`E_JSON_DERIVED_IN_INSTANCE`](#e_json_derived_in_instance) | error | Plan JSON cannot project a plan whose `place`d component derives its walls. |
 | [`E_JSON_KIND`](#e_json_kind) | error | Unknown element kind in plan JSON. |
 | [`E_JSON_MIRROR`](#e_json_mirror) | error | Plan JSON furniture, door or dimension is `mirror: true`, which `.arch` source cannot state. |
 | [`E_JSON_SCHEMA`](#e_json_schema) | error | Plan JSON does not match the schema. |
@@ -77,6 +78,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_OUTDOOR_SIZE`](#e_outdoor_size) | error | An outdoor surface must have a positive size. |
 | [`E_OUT_OF_RANGE`](#e_out_of_range) | error | A coordinate, length or drawing setting is outside the modelling range. |
 | [`E_PARSE`](#e_parse) | error | The source could not be read: its SHAPE is wrong. |
+| [`E_PARTITION_TOO_SHORT`](#e_partition_too_short) | error | `walls from rooms` meets a shared edge shorter than the partition thickness. |
 | [`E_PLACE_POLY`](#e_place_poly) | error | A rectangle-only placement clause aimed at a polygon room. |
 | [`E_PLACE_REF`](#e_place_ref) | error | Furniture placed in an unknown or unplaced room. |
 | [`E_PNG_DEPENDENCY`](#e_png_dependency) | error | PNG/PDF export needs an optional dependency that is not installed. |
@@ -91,9 +93,11 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_ROOF_POLY_DEGENERATE`](#e_roof_poly_degenerate) | error | `roof polygon` outline has fewer than 3 effective vertices. |
 | [`E_ROOF_SELF_INTERSECT`](#e_roof_self_intersect) | error | The roof outline crosses itself. |
 | [`E_ROOF_WALL`](#e_roof_wall) | error | `roof overhang … wall <id>` names a wall that cannot carry a roof. |
+| [`E_ROOMS_NOT_TILING`](#e_rooms_not_tiling) | error | `walls from rooms` meets rooms that do not tile one connected floor. |
+| [`E_ROOMS_OVERLAP`](#e_rooms_overlap) | error | `walls from rooms` meets two rooms that overlap. |
 | [`E_ROOM_ALIGN`](#e_room_align) | error | Unknown relational alignment edge. |
 | [`E_ROOM_ALIGN_AXIS`](#e_room_align_axis) | error | Relational alignment edge belongs to the other axis. |
-| [`E_ROOM_NOT_RECTANGLE`](#e_room_not_rectangle) | error | A room-edge datum names a polygon or circle room. |
+| [`E_ROOM_NOT_RECTANGLE`](#e_room_not_rectangle) | error | A room-edge datum, or `walls from rooms`, meets a polygon or circle room. |
 | [`E_ROOM_POLY_DEGENERATE`](#e_room_poly_degenerate) | error | Polygon room has fewer than three effective vertices. |
 | [`E_ROOM_POLY_SELF_INTERSECT`](#e_room_poly_self_intersect) | error | Polygon room intersects itself. |
 | [`E_ROOM_RADIUS`](#e_room_radius) | error | Circular room needs a positive radius. |
@@ -114,6 +118,10 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_UNKNOWN_REF`](#e_unknown_ref) | error | Unknown reference. |
 | [`E_VERT_SIZE`](#e_vert_size) | error | Vertical circulation must have a positive size. |
 | [`E_VOID_SIZE`](#e_void_size) | error | A floor void must have a positive size. |
+| [`E_WALLS_FROM_NO_ROOMS`](#e_walls_from_no_rooms) | error | A `walls from rooms` statement has no room to derive walls from. |
+| [`E_WALLS_FROM_ROOMS_DUP`](#e_walls_from_rooms_dup) | error | More than one `walls from rooms` statement in one plan or component. |
+| [`E_WALL_BETWEEN_ROOM`](#e_wall_between_room) | error | A `walls from rooms` clause names a room that is not in its group. |
+| [`E_WALL_ID_RESERVED`](#e_wall_id_reserved) | error | An authored wall takes the id the derived exterior ring has in this plan or component. |
 | [`E_WALL_THICKNESS`](#e_wall_thickness) | error | Wall must have a positive thickness. |
 | [`E_WHILE_LIMIT`](#e_while_limit) | error | `while` exceeded its iteration cap. |
 | [`E_WINDOW_WIDTH`](#e_window_width) | error | Window must have a positive width. |
@@ -796,6 +804,20 @@ room at (0,0) size 2000x2000 label "Bathroom" uses bath   # supply the missing r
 door on wall_hall_store width 800   # connect the isolated room
 ```
 
+## E_JSON_DERIVED_IN_INSTANCE
+
+*error* — Plan JSON cannot project a plan whose `place`d component derives its walls.
+
+**Cause.** Plan JSON carries `walls from rooms` as the statement, never the walls it derives, and it has no per-component record to put a component's statement in. The walls a placed instance derives would therefore vanish from the payload, so `planToJson` (`compile -f json`) refuses the projection and names the instance instead (ADR 0028 §3).
+
+**Fix.** Keep the plan in `.arch` source, or write that component's walls by hand to export it as Plan JSON.
+
+```arch static
+component unit() { room id=a at (0,0) size 4000x3000
+  walls from rooms exterior 200 partition 100 }
+place unit() as west at (0,0)   # compile -f json: error, instance "west"
+```
+
 ## E_JSON_KIND
 
 *error* — Unknown element kind in plan JSON.
@@ -1020,6 +1042,20 @@ stair id=s at (0,0) size 1000000000000x3000 dir up   # error: a 1e12 mm flight
 door on w1 at 40% width 900 wall w1   # error: `wall` pairs with the `at (x,y)` form only
 ```
 
+## E_PARTITION_TOO_SHORT
+
+*error* — `walls from rooms` meets a shared edge shorter than the partition thickness.
+
+**Cause.** Two rooms share a run of edge shorter than the derived partition is thick, so the partition would be wider than it is long: almost always two edges that were meant to line up and miss by a few millimetres. The compiler refuses and names the pair and the run rather than draw a sliver of wall (ADR 0028 §3).
+
+**Fix.** Line the two rooms' edges up so they meet at a corner, or make the shared edge at least as long as the partition is thick.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+room id=b at (4000,2950) size 3000x3000
+walls from rooms exterior 200 partition 100   # error: a and b share 50 mm
+```
+
 ## E_PLACE_POLY
 
 *error* — A rectangle-only placement clause aimed at a polygon room.
@@ -1196,6 +1232,34 @@ wall id=w1 exterior thickness 200 { (0,0) (8000,0) }
 roof overhang 600 wall w1   # error: not a closed ring
 ```
 
+## E_ROOMS_NOT_TILING
+
+*error* — `walls from rooms` meets rooms that do not tile one connected floor.
+
+**Cause.** `walls from rooms` draws the exterior ring on the outline of the rooms' union and a partition on every shared edge, so the rooms must form one edge-connected floor: two rooms touching only at a corner, a union pinched at a single point, or a gap between rooms (a hole, or a corridor left as 'the leftover') has no single outline to wall. A hole is legal only when `outdoor` surfaces (a courtyard, which gets an inner ring) or a `void` (no wall) of the same plan or component cover it exactly. The compiler refuses and names the rooms rather than guess where the missing floor is (ADR 0028 §3, ADR 0005).
+
+**Fix.** Write the leftover floor as a room of its own (a corridor, a lobby), move the rooms so they meet edge to edge, or cover a courtyard exactly with an `outdoor` surface.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+room id=b at (5000,0) size 3000x3000
+walls from rooms exterior 200 partition 100   # error: a and b do not touch
+```
+
+## E_ROOMS_OVERLAP
+
+*error* — `walls from rooms` meets two rooms that overlap.
+
+**Cause.** Two rooms of the set share floor with positive area, so the edge between them is not one line and no partition can be derived on it. The compiler refuses and names every overlapping pair rather than choose which room owns the shared floor (ADR 0028 §3).
+
+**Fix.** Move or resize the rooms so they meet edge to edge; the shared edge becomes the partition.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+room id=b at (3000,0) size 3000x3000
+walls from rooms exterior 200 partition 100   # error: a and b overlap by 1000 mm
+```
+
 ## E_ROOM_ALIGN
 
 *error* — Unknown relational alignment edge.
@@ -1222,11 +1286,11 @@ room id=b right-of a align right size 3000x3000   # error: `right` is horizontal
 
 ## E_ROOM_NOT_RECTANGLE
 
-*error* — A room-edge datum names a polygon or circle room.
+*error* — A room-edge datum, or `walls from rooms`, meets a polygon or circle room.
 
-**Cause.** Datums (`top`, `bottom`, `left`, `right`, `cx`, `cy`) are the four edges and the centre of a RECTANGULAR room, the same condition relational placement refuses with `E_PLACE_POLY`. A `room polygon` or `room circle` has no such edges, and its bounding box is not its floor, so the compiler refuses instead of guessing (ADR 0028 §2).
+**Cause.** Datums (`top`, `bottom`, `left`, `right`, `cx`, `cy`) are the four edges and the centre of a RECTANGULAR room, the same condition relational placement refuses with `E_PLACE_POLY`, and `walls from rooms` derives its walls from those same edges. A `room polygon` or `room circle` has no such edges, and its bounding box is not its floor, so the compiler refuses instead of guessing (ADR 0028 §2, §3).
 
-**Fix.** Write the coordinate as a number, or read the datum of a rectangular room.
+**Fix.** Write the coordinate as a number, or read the datum of a rectangular room. For `walls from rooms`, leave the room out with `{ except <room> }` and draw its walls by hand, or split it into rectangles.
 
 ```arch static
 room id=L polygon (0,0) (6000,0) (6000,4000) (0,4000)
@@ -1480,6 +1544,60 @@ stair id=s at (0,0) size 900x0 dir up   # error: zero depth
 
 ```arch static
 void id=well at (2000,1000) size 0x3000   # error: zero width
+```
+
+## E_WALLS_FROM_NO_ROOMS
+
+*error* — A `walls from rooms` statement has no room to derive walls from.
+
+**Cause.** The statement derives walls from the rooms written beside it, in the same plan or component; there is none, or its `except` clause leaves out every one. Deriving nothing silently would leave a plan with no walls where the author asked for them (ADR 0028 §3).
+
+**Fix.** Write the rooms beside the statement, or drop the statement (or the `except` that empties it).
+
+```arch static
+room id=a at (0,0) size 4000x3000
+walls from rooms exterior 200 partition 100 { except a }   # error: every room is excepted
+```
+
+## E_WALLS_FROM_ROOMS_DUP
+
+*error* — More than one `walls from rooms` statement in one plan or component.
+
+**Cause.** One `walls from rooms` statement already derives every wall of its group's rooms, so a second one would derive the same walls again, possibly with other thicknesses; the compiler refuses the second rather than choose between them (ADR 0028 §3).
+
+**Fix.** Keep one statement per plan, storey or component; put every exclusion in its `except` clause.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+walls from rooms exterior 200 partition 100
+walls from rooms exterior 250 partition 100   # error: a second statement
+```
+
+## E_WALL_BETWEEN_ROOM
+
+*error* — A `walls from rooms` clause names a room that is not in its group.
+
+**Cause.** `walls from rooms` derives from the rooms of the plan or component it is written in (ADR 0016: a component sees only its own rooms), so its `except` clause can leave out only one of those rooms. A name that is not one of them (a typo, a room of another component, a placed instance's room) excludes nothing (ADR 0028 §3).
+
+**Fix.** Name a room written beside the statement, or drop the name.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+walls from rooms exterior 200 partition 100 { except terrace }   # error: no room `terrace`
+```
+
+## E_WALL_ID_RESERVED
+
+*error* — An authored wall takes the id the derived exterior ring has in this plan or component.
+
+**Cause.** Beside a `walls from rooms` statement, the exterior ring it derives is named `exterior` internally (the courtyard rings and partitions have names no identifier can spell). An authored wall with that id would make one id name two walls, so a host, a hint and `describe().access` could not tell them apart (ADR 0028 §3). The span points at the id.
+
+**Fix.** Rename the authored wall (`wall id=shell …`), or drop it and let the statement derive it.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+wall id=exterior partition thickness 100 { (2000,0) (2000,3000) }   # error: the derived ring's name
+walls from rooms exterior 200 partition 100
 ```
 
 ## E_WALL_THICKNESS

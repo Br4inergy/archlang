@@ -105,6 +105,11 @@ physically wrong (openings off their wall, furniture through walls). Author by *
   instead, and `flush inset 50` from 50 mm off it — so write `furniture wc in r_bath anchor bottom flush
   size 400x700`, not an `inset 100` you worked out from a thickness you never named. (`flush` needs an
   anchored edge: on `centered`/`anchor center` it is `E_FURN_FLUSH`.)
+- **Let the rooms make the walls.** When the rooms are rectangles that tile the floor (write a
+  corridor as a room), `walls from rooms exterior 200 partition 100` derives the shell on their outline
+  and a partition on every shared edge, so no wall can go missing. Host openings by position or
+  category (`door at (x,y) … wall partition`); `{ except <room> }` leaves a room out. Refusals name the
+  rooms (`E_ROOMS_OVERLAP`, `E_ROOMS_NOT_TILING`, `E_PARTITION_TOO_SHORT`, `E_ROOM_NOT_RECTANGLE`).
 - **Read wall points off the rooms.** A rectangular room `r` exposes `r.top`, `r.bottom`, `r.left`,
   `r.right`, `r.cx`, `r.cy`, so `wall partition thickness 100 { (hall.right, hall.top) (hall.right,
   hall.bottom) }` follows the room when it grows. Use them in walls, openings, furniture and dims,

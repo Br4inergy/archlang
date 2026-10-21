@@ -70,6 +70,9 @@ export const KEYWORDS = {
     // new element goes on the end of both lists or neither.
     "outdoor",
     "fence",
+    // `walls from rooms` (ADR 0028 §3). The word was an `enum` value (`dims auto walls`)
+    // and moved here: no word sits in two categories.
+    "walls",
   ],
   /** Setting / attribute keywords → `keyword.other`, CM `propertyName`. */
   attribute: [
@@ -153,6 +156,8 @@ export const KEYWORDS = {
     // spelling for the same idea.
     "sill",
     "head",
+    // `walls from rooms … { except <room> … }` — leads the one body clause of the statement.
+    "except",
   ],
   /** Enum value keywords → `constant.language`, CM `atom`. */
   enum: [
@@ -187,7 +192,6 @@ export const KEYWORDS = {
     "overall",
     "rooms",
     "openings",
-    "walls",
     "all",
     "cw",
     "ccw",

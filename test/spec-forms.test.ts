@@ -544,6 +544,15 @@ const POSITIVE: Snippet[] = [
     note: "the other two styles",
     src: plan(`  fence panel { (0,0) (9000,0) }\n  fence post { (0,3000) (9000,3000) }`),
   },
+  // --- walls from rooms --------------------------------------------------------
+  {
+    keyword: "walls",
+    note: "derives the ring and the partitions; `except` leaves a room out",
+    src: plan(
+      `  room id=a at (0,0) size 4000x3000\n  room id=b at (4000,0) size 3000x3000\n` +
+        `  room id=t at (7000,0) size 2000x3000\n  walls from rooms exterior 200 partition 100 { except t }`,
+    ),
+  },
   // --- site boundary ---------------------------------------------------------
   {
     keyword: "site",
@@ -1132,12 +1141,12 @@ describe("spec.llm.md — the binding between what is documented and what is exe
     // the document genuinely never shows must be reported…
     expect(() => assertScriptingKeywordsTaught(specText(), ["flange"])).toThrow(/flange/);
     // …and — the load-bearing half — a real keyword must NOT be rescued by the generated
-    // `## Keyword reference` bullet, which is rendered from `KEYWORDS.control` itself. If
+    // `## Keyword reference` section, whose bullets are rendered from `KEYWORDS` itself. If
     // the excision ever broke, every keyword would pass by construction and the check
-    // would be testing its own input. `zone` is a control keyword that appears in that
-    // bullet and (as a STATEMENT_GRAMMAR line) elsewhere too, so it is not the probe;
-    // a made-up word planted into the bullet's own text is.
-    const planted = specText().replace(/(- \*\*Settings \/ control:\*\*)/, "$1 `flange`,");
+    // would be testing its own input. A made-up word planted into the section's own
+    // bullet is the probe. (Every control keyword is now shown in code elsewhere, so the
+    // section lists only the untaught enum values.)
+    const planted = specText().replace(/(- \*\*Enums \/ values[^*]*:\*\*)/, "$1 `flange`,");
     expect(planted).toContain("`flange`");
     expect(() => assertScriptingKeywordsTaught(planted, ["flange"])).toThrow(/flange/);
     // And the real list passes, which is the postcondition the generator relies on.

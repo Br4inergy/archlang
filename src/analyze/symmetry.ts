@@ -898,7 +898,11 @@ function repeatsOf(rooms: readonly RRoom[], furniture: readonly RFurniture[]): R
 
 /** The symmetry facts of one resolved storey. */
 export function symmetryFacts(ir: ResolvedPlan): SymmetryFacts {
-  const walls = ir.elements.filter((e): e is RWall => e.kind === "wall");
+  // Authored walls in source order, then the walls `walls from rooms` derived (never elements).
+  const walls = [
+    ...ir.elements.filter((e): e is RWall => e.kind === "wall"),
+    ...ir.walls.filter((w) => w._derived !== undefined),
+  ];
   const rooms = ir.elements.filter((e): e is RRoom => e.kind === "room");
   const doors = ir.elements.filter((e): e is RDoor => e.kind === "door");
   const windows = ir.elements.filter((e): e is RWindow => e.kind === "window");

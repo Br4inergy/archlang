@@ -158,6 +158,7 @@ export type {
   MirrorRepeat,
   SyntaxFacts,
   SyntaxRoom,
+  DerivedWallRow,
 } from "./describe.js";
 // Structured JSON I/O: the machine-native RPLAN/DStruct2Design plan shape.
 // `planFromJson` builds a PlanNode from JSON (catalogued E_JSON_* on bad shape),
@@ -185,6 +186,7 @@ export type {
   PlanJsonPage,
   RoomJson,
   WallJson,
+  WallsFromRoomsJson,
   OpeningJson,
   OpeningOnJson,
   FurnitureJson,

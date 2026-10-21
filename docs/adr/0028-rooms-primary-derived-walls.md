@@ -174,7 +174,8 @@ selector by `containing A.<edge>` (plan card PS3.5). Internally each derived wal
 identifier can spell (`A|B` with the room ids in source order, `exterior`, `exterior#2` for an inner
 ring) with `_idAuthored = false`, so the keyed internals (heights, hosting, lint, furnish) work
 unchanged and nothing can collide with an authored id; `describe()` prints that name only in
-`derived_walls[]` and in `heights.walls[]`. A lint hint about a derived host quotes the relational
+`derived_walls[]`, in `heights.walls[]` and as the `hostWallId` of an opening hosted on one (a
+join reference into the other two); never in a lint hint or fix. A lint hint about a derived host quotes the relational
 form (`between A and B at …`), never `on A|B`. Plan JSON exports the `walls from rooms` statement
 and the relational openings as written, as additive kinds in its schema (the Plan JSON and printer
 round-trip tests gain a case each); derived children are not exported as walls, and `arch fix` and

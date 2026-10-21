@@ -266,6 +266,34 @@
         }
       }
     },
+    "walls_from_rooms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exterior",
+        "partition"
+      ],
+      "description": "`walls from rooms` (ADR 0028 §3): derive every wall from the rooms — an exterior ring on their outline and a partition on each shared edge. The derived walls are not listed in `walls`.",
+      "properties": {
+        "exterior": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Exterior ring thickness in millimetres."
+        },
+        "partition": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Partition thickness in millimetres."
+        },
+        "except": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Room ids left out of the derivation."
+        }
+      }
+    },
     "walls": {
       "type": "array",
       "description": "Wall polylines (poché-filled; host doors/windows/openings).",

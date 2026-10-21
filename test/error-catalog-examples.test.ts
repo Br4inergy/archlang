@@ -57,6 +57,8 @@ const INTENT =
   "raised by `validateIntent()` on the intent channel, which `compile()`/`lint()` never run: there is no `.arch` source that produces it";
 const IMPORT = "needs a `World` serving the named module; a bare snippet cannot have one";
 const JSON_CHANNEL = "raised by `planFromJson()` on a JSON payload, not by compiling `.arch` source";
+const JSON_EXPORT =
+  "raised by `planToJson()` (`compile -f json`) on a plan that compiled, never by compile()/lint(); pinned in test/walls-from-rooms.test.ts";
 const DEP = "raised only when an OPTIONAL native dependency is absent, which a test process cannot arrange";
 const PLUGIN =
   "needs a third-party `ElementDef` passed through `compile(src, { plugins })`, which a bare snippet cannot have; pinned in test/transform-seam.test.ts";
@@ -95,6 +97,7 @@ const NOT_REPRODUCED: ReadonlyMap<string, string> = new Map([
 
   ["E_JSON_KIND", JSON_CHANNEL],
   ["E_JSON_MIRROR", JSON_CHANNEL],
+  ["E_JSON_DERIVED_IN_INSTANCE", JSON_EXPORT],
   ["E_JSON_SCHEMA", JSON_CHANNEL],
 
   ["E_INSTANCE_NO_TRANSFORM", PLUGIN],
@@ -202,6 +205,8 @@ suite("error catalog — every example that can raise its code does", () => {
     // raised in test/transform-seam.test.ts and test/plan-json.test.ts. E_INPUT_TOO_LARGE and
     // E_RATE_LIMITED took it to 50: a host raises them BEFORE compile() runs, so no source compiled
     // here can; they are raised in test/input-limit.test.ts and by the hosted MCP Worker's tests.
-    expect(NOT_REPRODUCED.size).toBeLessThanOrEqual(50);
+    // E_JSON_DERIVED_IN_INSTANCE took it to 51: `planToJson` raises it on a plan that compiles
+    // cleanly, so no compile()/lint() of a snippet can; raised in test/walls-from-rooms.test.ts.
+    expect(NOT_REPRODUCED.size).toBeLessThanOrEqual(51);
   });
 });

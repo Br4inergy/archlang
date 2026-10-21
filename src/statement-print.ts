@@ -246,6 +246,12 @@ export function statementText(s: LeafStatement): Doc {
       const pts = s.points.map(ptStr).join(" ");
       return `fence ${id}${s.style} { ${pts}${s.closed ? " close" : ""} }`;
     }
+    case "walls":
+      // One canonical `except` clause holds every excluded room, in source order, so a
+      // formatted statement re-parses to the same list.
+      return `walls from rooms exterior ${exprStr(s.exterior)} partition ${exprStr(s.partition)}${
+        s.except.length > 0 ? ` { except ${s.except.map((x) => x.id).join(" ")} }` : ""
+      }`;
     case "let":
       return s.value.t === "fnlit"
         ? `let ${s.name}(${s.value.params.join(", ")}) = ${exprStr(s.value.body)}`

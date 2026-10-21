@@ -416,6 +416,17 @@ export const outdoor: ElementDef = {
     return base({ at, size, rail: deriveRail(at, size, ctx.walls), railDerived: true });
   },
 
+  /**
+   * In a group that derives its walls (`walls from rooms`), an `outdoor` resolves before the
+   * walls (it is a hole cover the derivation reads), so a balcony's DERIVED rail is taken
+   * again here, against the final wall set: exactly the rail it would have read resolving
+   * after every wall. An authored rail is the author's and is left alone.
+   */
+  rewall(resolved, walls): void {
+    const o = resolved as ROutdoor;
+    if (o.railDerived && o.rail) o.rail = deriveRail(o.at, o.size, walls);
+  },
+
   bounds(resolved): Point[] {
     const o = resolved as ROutdoor;
     if (o.poly) return o.poly.map((p) => ({ ...p }));

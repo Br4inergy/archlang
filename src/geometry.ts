@@ -1,5 +1,6 @@
 /** Pure geometry helpers. All coordinates in millimetres. Deterministic. */
 
+import { wallPhraseOf } from "./wall-ref.js";
 import type { Point } from "./ast.js";
 import type { DoorHinge, DoorKind, DoorSwingDir } from "./grammar/tokens.js";
 import type { Arc } from "./geometry/arc.js";
@@ -664,7 +665,8 @@ export function nearestWallNote<T extends WallLike & { span?: { start: number; e
       }
     }
   }
-  return best?.span ? { span: best.span, message: `nearest wall "${best.id}" is here` } : null;
+  // A derived wall is named by its relation, never by its internal name (ADR 0028 §3).
+  return best?.span ? { span: best.span, message: `nearest ${wallPhraseOf(best)} is here` } : null;
 }
 
 /**

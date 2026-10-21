@@ -44,7 +44,18 @@ import {
   TITLE_FIELD_KEY,
   USE_KINDS,
 } from "./ast.js";
-import type { RRoom, RDoor, RWindow, ROpening, RFurniture, RDim, RColumn, RWall, ResolvedPlan } from "./ir.js";
+import type {
+  RRoom,
+  RDoor,
+  RWindow,
+  ROpening,
+  RFurniture,
+  RDim,
+  RColumn,
+  RWall,
+  RWallsFromRooms,
+  ResolvedPlan,
+} from "./ir.js";
 import type { Diagnostic } from "./diagnostics.js";
 import type { DoorEnumClause, DoorHinge, DoorKind, DoorSlideDir, DoorSwingDir, TitleField } from "./grammar/tokens.js";
 import { DOOR_ENUMS, DOOR_KIND_CLAUSES, DOOR_KINDS, enumList, TITLE_FIELDS } from "./grammar/tokens.js";
@@ -219,6 +230,13 @@ export interface RoomJson {
   area?: number;
   /** Output-only: the room's floor ring — the rectangle's four corners, or the polygon. */
   floor_polygon?: PointJson[];
+}
+
+/** The `walls from rooms` statement, as written (ADR 0028 §3). */
+export interface WallsFromRoomsJson {
+  exterior: number;
+  partition: number;
+  except?: string[];
 }
 
 export interface WallJson {
@@ -412,6 +430,12 @@ export interface PlanJson {
   room_types?: RoomType[];
   rooms: RoomJson[];
   walls: WallJson[];
+  /**
+   * The `walls from rooms` statement (ADR 0028 §3), as written: present only on a plan that
+   * has one. The walls it derives are NOT in `walls` (they have no author-facing id); a
+   * consumer that needs them reads `describe().derived_walls` or re-derives them.
+   */
+  walls_from_rooms?: WallsFromRoomsJson;
   openings: OpeningJson[];
   furniture: FurnitureJson[];
   dims?: DimJson[];
@@ -525,17 +549,29 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
   // the two surfaces can never disagree about whether this plan has heights.
   const heights = ir._heightsAuthored;
 
-  const walls: WallJson[] = ir.walls.map((w: RWall) => ({
-    id: w.id,
-    category: w.category,
-    points: w.points.map((p) => ({ x: p.x, y: p.y })),
-    thickness: w.thickness,
-    ...(heights ? { height: w.height } : {}),
-    closed: w.closed,
-    ...(w.material !== DEFAULT_MATERIAL ? { material: w.material } : {}),
-    ...(w.material !== DEFAULT_MATERIAL && w.hatchScale !== 1 ? { material_scale: w.hatchScale } : {}),
-    ...(w.material !== DEFAULT_MATERIAL && w.hatchAngle !== 0 ? { material_angle: w.hatchAngle } : {}),
-  }));
+  // Authored walls only: a derived wall is exported as the statement that derives it.
+  const walls: WallJson[] = ir.walls
+    .filter((w) => w._derived === undefined)
+    .map((w: RWall) => ({
+      id: w.id,
+      category: w.category,
+      points: w.points.map((p) => ({ x: p.x, y: p.y })),
+      thickness: w.thickness,
+      ...(heights ? { height: w.height } : {}),
+      closed: w.closed,
+      ...(w.material !== DEFAULT_MATERIAL ? { material: w.material } : {}),
+      ...(w.material !== DEFAULT_MATERIAL && w.hatchScale !== 1 ? { material_scale: w.hatchScale } : {}),
+      ...(w.material !== DEFAULT_MATERIAL && w.hatchAngle !== 0 ? { material_angle: w.hatchAngle } : {}),
+    }));
+
+  const stmt = ir.elements.find((e): e is RWallsFromRooms => e.kind === "walls" && e._instance === undefined);
+  const derivesWalls: WallsFromRoomsJson | undefined = stmt
+    ? {
+        exterior: stmt.exterior,
+        partition: stmt.partition,
+        ...(stmt.except.length > 0 ? { except: [...stmt.except] } : {}),
+      }
+    : undefined;
 
   // Doors, windows and cased openings in a single array **in source order** — they
   // share render layers, so preserving their interleaving keeps draw order stable.
@@ -657,6 +693,8 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
     room_types: roomTypes,
     rooms,
     walls,
+    // Emitted only when the plan has the statement, so every other payload is unchanged.
+    ...(derivesWalls ? { walls_from_rooms: derivesWalls } : {}),
     openings,
     furniture,
     ...(dims.length > 0 ? { dims } : {}),
@@ -708,6 +746,31 @@ export function planToJson(
 ): { json?: PlanJson; pages?: PlanJsonPage[]; diagnostics: Diagnostic[] } {
   const { ir, diagnostics, levels } = resolvePlan(source, opts);
   if (!ir) return { diagnostics };
+  // Plan JSON has no per-component record, so the walls a `place`d component's
+  // `walls from rooms` derives could only be dropped (they are never `walls[]` rows) or
+  // flattened into authored rows the payload could not round-trip. Neither may be silent:
+  // the projection is refused, naming the instance (ADR 0028 §3).
+  const storeys = levels.length > 0 ? levels.map((l) => l.ir) : [ir];
+  const statements = storeys.flatMap((x) => x.elements.filter((e) => e.kind === "walls" && e._instance !== undefined));
+  const deriving = [...new Set(statements.map((e) => e._instance!))];
+  if (deriving.length > 0) {
+    // Spanned on the first offending statement itself (inside the component body, and in
+    // the file that body was written in), the line the author would have to change.
+    const first = statements[0]!;
+    const named = deriving.map((i) => `"${i}"`).join(", ");
+    return {
+      diagnostics: [
+        ...diagnostics,
+        {
+          severity: "error",
+          message: `Plan JSON cannot carry the walls \`walls from rooms\` derives inside the placed instance${deriving.length > 1 ? "s" : ""} ${named}: the payload has no per-component record, so the projection is refused rather than drop them`,
+          code: "E_JSON_DERIVED_IN_INSTANCE",
+          ...(first.span ? { span: first.span } : {}),
+          ...(first._file !== undefined ? { file: first._file } : {}),
+        },
+      ],
+    };
+  }
   if (levels.length === 0) return { json: resolvedToJson(ir), diagnostics };
   const pages = levels.map((l) => ({
     level: l.level,
@@ -811,6 +874,9 @@ function validatePlanJson(json: unknown, val: Validator): PlanJson | null {
   if (walls !== undefined && !Array.isArray(walls)) val.err("/walls", "expected an array");
   if (Array.isArray(walls)) walls.forEach((w, i) => void validateWall(w, `/walls/${i}`, val));
 
+  const wfr = json.walls_from_rooms;
+  if (wfr !== undefined) validateWallsFromRooms(wfr, "/walls_from_rooms", val);
+
   const openings = json.openings;
   if (openings !== undefined && !Array.isArray(openings)) val.err("/openings", "expected an array");
   if (Array.isArray(openings)) openings.forEach((o, i) => void validateOpening(o, `/openings/${i}`, val));
@@ -892,6 +958,25 @@ function validateWall(w: unknown, path: string, val: Validator): void {
   // A VERTICAL height, not a plan extent — see `WallJson.height`.
   if (w.height !== undefined && !(isNum(w.height) && isDrawableHeight(w.height)))
     val.err(`${path}/height`, `expected a number greater than 0 and no more than ${MAX_HEIGHT}`);
+}
+
+/** `walls_from_rooms`: two positive thicknesses and an optional list of room ids (identifiers,
+ *  since they are written back into source). */
+function validateWallsFromRooms(w: unknown, path: string, val: Validator): void {
+  if (!isObj(w)) {
+    val.err(path, "expected an object");
+    return;
+  }
+  for (const k of ["exterior", "partition"] as const) {
+    if (!(isNum(w[k]) && (w[k] as number) > 0)) val.err(`${path}/${k}`, "expected a number greater than 0");
+  }
+  if (w.except !== undefined) {
+    if (!Array.isArray(w.except)) val.err(`${path}/except`, "expected an array of room ids");
+    else
+      w.except.forEach((x, i) => {
+        if (!(isStr(x) && /^[A-Za-z_][\w-]*$/.test(x))) val.err(`${path}/except/${i}`, "expected a room id");
+      });
+  }
 }
 
 /**
@@ -1071,6 +1156,12 @@ function emitArch(p: PlanJson): string {
     const pts = (w.points ?? []).map((pt) => `(${num(pt.x)},${num(pt.y)})`).join(" ");
     parts.push(`{ ${pts}${w.closed ? " close" : ""} }`);
     L.push(parts.join(" "));
+  }
+  // The round-trip half of `walls_from_rooms`: the statement, never the walls it derives.
+  if (p.walls_from_rooms) {
+    const s = p.walls_from_rooms;
+    const ex = s.except && s.except.length > 0 ? ` { except ${s.except.join(" ")} }` : "";
+    L.push(`  walls from rooms exterior ${num(s.exterior)} partition ${num(s.partition)}${ex}`);
   }
 
   for (const r of p.rooms ?? []) {
@@ -1512,6 +1603,18 @@ export const PLAN_JSON_SCHEMA = {
             items: POINT_SCHEMA,
           },
         },
+      },
+    },
+    walls_from_rooms: {
+      type: "object",
+      additionalProperties: false,
+      required: ["exterior", "partition"],
+      description:
+        "`walls from rooms` (ADR 0028 §3): derive every wall from the rooms — an exterior ring on their outline and a partition on each shared edge. The derived walls are not listed in `walls`.",
+      properties: {
+        exterior: { type: "number", exclusiveMinimum: 0, description: "Exterior ring thickness in millimetres." },
+        partition: { type: "number", exclusiveMinimum: 0, description: "Partition thickness in millimetres." },
+        except: { type: "array", items: { type: "string" }, description: "Room ids left out of the derivation." },
       },
     },
     walls: {

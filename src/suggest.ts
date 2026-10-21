@@ -26,6 +26,7 @@
  * layer as `describe`/`lint`.
  */
 
+import { wallPhraseOf } from "./wall-ref.js";
 import {
   accessDigraph,
   buildDoorAccessGraph,
@@ -266,6 +267,10 @@ function composeOpening(
   return `${kind} at (${numStr(point.x)}, ${numStr(point.y)}) width ${width}`;
 }
 
+/** A rationale's name for a wall: its id, or the relation of a derived one (ADR 0028 §3). */
+const named = (w: RWall, exterior: boolean): string =>
+  w._derived ? wallPhraseOf(w) : `${exterior ? "exterior " : ""}wall "${w.id}"`;
+
 export type SuggestOptions = AnalyzeOptions;
 
 /**
@@ -332,7 +337,7 @@ export function suggestTopology(source: string, opts: SuggestOptions = {}): Sugg
         const { pct } = projectPointOntoWall(host.wall as AttachableWall, point);
         bucket.push({
           insertText: composeOpening("door", host.wall, pct, point, DOOR_WIDTH, categoryCount),
-          rationale: `A door on exterior wall "${host.wall.id}" opens "${label}" to the outside as the building's entrance.`,
+          rationale: `A door on ${named(host.wall, true)} opens "${label}" to the outside as the building's entrance.`,
           len: free.len,
           wallId: host.wall.id,
           pct,
@@ -387,7 +392,7 @@ export function suggestTopology(source: string, opts: SuggestOptions = {}): Sugg
           : `opens "${label}" directly to the exterior (a new entrance)`;
         (reachableNeighbour ? interior : exterior).push({
           insertText: composeOpening("door", host.wall, pct, point, DOOR_WIDTH, categoryCount),
-          rationale: `A door on wall "${host.wall.id}" ${via}.`,
+          rationale: `A door on ${named(host.wall, false)} ${via}.`,
           len: free.len,
           wallId: host.wall.id,
           pct,
@@ -428,7 +433,7 @@ export function suggestTopology(source: string, opts: SuggestOptions = {}): Sugg
         const { pct } = projectPointOntoWall(host.wall as AttachableWall, point);
         raw.push({
           insertText: composeOpening("window", host.wall, pct, point, WINDOW_WIDTH, categoryCount),
-          rationale: `A window on exterior wall "${host.wall.id}" gives "${label}" natural light and egress.`,
+          rationale: `A window on ${named(host.wall, true)} gives "${label}" natural light and egress.`,
           len: free.len,
           wallId: host.wall.id,
           pct,
@@ -484,8 +489,8 @@ export function suggestTopology(source: string, opts: SuggestOptions = {}): Sugg
         const point = edgePoint(e, free.mid);
         const { pct } = projectPointOntoWall(host.wall as AttachableWall, point);
         const rationale = goodNeighbour
-          ? `A door on wall "${host.wall.id}" links "${label}" to "${goodNeighbour}", giving it a route that avoids the bedroom.`
-          : `A door on exterior wall "${host.wall.id}" opens "${label}" directly to the outside, off the bedroom.`;
+          ? `A door on ${named(host.wall, false)} links "${label}" to "${goodNeighbour}", giving it a route that avoids the bedroom.`
+          : `A door on ${named(host.wall, true)} opens "${label}" directly to the outside, off the bedroom.`;
         (goodNeighbour ? preferred : fallback).push({
           insertText: composeOpening("door", host.wall, pct, point, DOOR_WIDTH, categoryCount),
           rationale,

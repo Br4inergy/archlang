@@ -258,7 +258,7 @@ function rules(): [string, string][] {
     ],
     [
       "element",
-      `wall-stmt | room-stmt | door-stmt | window-stmt | opening-stmt | furniture-stmt | dim-stmt | column-stmt | stair-stmt | elevator-stmt | escalator-stmt | roof-stmt | void-stmt | outdoor-stmt | fence-stmt`,
+      `wall-stmt | room-stmt | door-stmt | window-stmt | opening-stmt | furniture-stmt | dim-stmt | column-stmt | stair-stmt | elevator-stmt | escalator-stmt | roof-stmt | void-stmt | outdoor-stmt | fence-stmt | walls-stmt`,
     ],
 
     // ---- plan settings ---------------------------------------------------
@@ -555,6 +555,12 @@ function rules(): [string, string][] {
     // whole file exists to prevent.
     ["fence-stmt", `"fence" rws id-opt ( fence-style rws )? "{" ws point ws ( point ws )+ ( "close" ws )? "}"`],
     ["fence-style", litAlt(FENCE_STYLES)],
+    // `walls from rooms` (ADR 0028 §3). The body holds `except` clauses only: `open between`
+    // and `between … thickness` fail to parse (not available yet), so they are not derivable.
+    [
+      "walls-stmt",
+      `"walls" rws "from" rws "rooms" rws "exterior" rws expr rws "partition" rws expr ( ws "{" ws ( "except" rws ident ( rws ident )* ws )* "}" )?`,
+    ],
 
     // ---- shared clause pieces -------------------------------------------
     ["id-opt", `( "id" ws "=" ws ident rws )?`],

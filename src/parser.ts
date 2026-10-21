@@ -89,6 +89,18 @@ export function clearParseCache(): void {
   parseCache.clear();
 }
 
+/**
+ * The byte span of each element statement's `id=<name>` NAME, kept beside the AST rather than
+ * in it, so the AST (and every projection of it, `arch ast --json` included) is unchanged. Read
+ * by a diagnostic that is about the id itself (`E_WALL_ID_RESERVED`).
+ */
+const ID_SPANS = new WeakMap<object, Span>();
+
+/** The span of a parsed element's authored `id=` name, when it has one. */
+export function idSpanOf(node: object): Span | undefined {
+  return ID_SPANS.get(node);
+}
+
 export function parse(src: string, registry: Registry = BUILTIN_REGISTRY): ParseOutcome {
   const key = `${fnv1a(src)}|${idToken(registry)}`;
   const hit = parseCache.get(key);
@@ -719,7 +731,15 @@ class Parser {
     const a = this.eatIdent().value;
     if (a !== "auto") this.fail(`Expected "auto" after "dims" but found "${a}"`, t);
     let mode: AutoDimsMode = "all";
-    if (this.isType("ident") && (AUTO_DIMS_MODES as readonly string[]).includes(this.peek().value)) {
+    // `walls` is both a mode and a statement keyword (`walls from rooms`): a mode word that
+    // starts a statement on the next line (`dims auto` then `walls from rooms …`) is left
+    // to that statement.
+    const startsStatement = this.statementStarts.has(this.peek().value) && this.isKeyword("from", 1);
+    if (
+      this.isType("ident") &&
+      (AUTO_DIMS_MODES as readonly string[]).includes(this.peek().value) &&
+      !startsStatement
+    ) {
       mode = this.eatIdent().value as AutoDimsMode;
     }
     plan.autoDims = mode;
@@ -870,10 +890,14 @@ class Parser {
     if (this.isKeyword("id")) {
       this.next();
       this.eat("equals");
-      return this.declName(this.eatIdent());
+      const t = this.eatIdent();
+      this.lastIdSpan = { start: t.start, end: t.end };
+      return this.declName(t);
     }
     return "";
   }
+  /** The span of the last `id=` name {@link parseIdOpt} read (see {@link idSpanOf}). */
+  private lastIdSpan: Span | undefined;
 
   /**
    * A name in a DECLARATION position. A dotted name (`west.main`) addresses an element
@@ -1251,8 +1275,11 @@ class Parser {
     else if (t.value === "set") node = this.parseSet();
     else {
       const def = this.registry.byKeyword.get(t.value);
-      if (def) node = def.parse(this.ctx);
-      else if (t.value === "let") node = this.parseLet();
+      if (def) {
+        this.lastIdSpan = undefined;
+        node = def.parse(this.ctx);
+        if (this.lastIdSpan && (node as { id?: string }).id) ID_SPANS.set(node, this.lastIdSpan);
+      } else if (t.value === "let") node = this.parseLet();
       // An ident immediately followed by "=" is an assignment.
       else if (this.peek(1).type === "equals") node = this.parseAssign();
       // Any ident followed by "(" is a component call. The component may be

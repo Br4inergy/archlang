@@ -23,8 +23,9 @@ import { describe as describePlan, describeLevel, PER_STOREY_OPTIONAL_KEYS } fro
 import type { SceneSummary } from "../src/index.js";
 
 /**
- * Level 1 declares BOTH per-storey optional keys (a `stair` → `verticals`, a `void` →
- * `voids`); level 2 declares neither. That asymmetry is the whole point: level 2's
+ * Level 1 declares every per-storey optional key (a `stair` → `verticals`, a `void` →
+ * `voids`, `walls from rooms` → `derived_walls`, its ring taken over by `shell`); level 2
+ * declares none. That asymmetry is the whole point: level 2's
  * narrowed read must not inherit level 1's.
  */
 const ASYMMETRIC = `plan "P" {
@@ -35,6 +36,7 @@ const ASYMMETRIC = `plan "P" {
     door id=front on shell at 4000 width 900
     stair id=s at (500,500) size 900x2600 dir up
     void id=well at (5000,1000) size 1200x1200
+    walls from rooms exterior 200 partition 100
   }
   level 2 "Loft" {
     wall id=shell exterior thickness 200 { (0,0) (8000,0) (8000,6000) (0,6000) close }

@@ -61,7 +61,8 @@ export type ElementKind =
   | "roof"
   | "void"
   | "outdoor"
-  | "fence";
+  | "fence"
+  | "walls";
 
 /** Fields every element AST node carries. */
 export interface NodeBase {
@@ -919,7 +920,25 @@ export type AstElement =
   | RoofNode
   | VoidNode
   | OutdoorNode
-  | FenceNode;
+  | FenceNode
+  | WallsFromRoomsNode;
+
+/**
+ * `walls from rooms exterior <t_ext> partition <t_int> [{ except <room> … }]` — one statement
+ * that derives the whole wall set of the group it is written in from the rooms resolved there
+ * (ADR 0028 §3): the exterior ring on the outline of the room union and a partition on every
+ * shared edge run. The `open between` and `between … thickness` clauses of the ADR are not
+ * available yet (they fail to parse, by name).
+ */
+export interface WallsFromRoomsNode extends NodeBase {
+  kind: "walls";
+  /** The exterior ring's thickness. */
+  exterior: Expr;
+  /** The partitions' thickness. */
+  partition: Expr;
+  /** The rooms left out of the derivation, in source order, each with its own span. */
+  except: Array<{ id: string; span: Span }>;
+}
 
 /** `let NAME = <expr>` — a binding statement. */
 export interface LetNode extends NodeBase {
