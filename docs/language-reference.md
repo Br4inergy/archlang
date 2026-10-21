@@ -843,6 +843,71 @@ wall exterior thickness 250 material brick { … }
 wall exterior thickness 250 material brick scale 1.5 angle 30 { … }
 ```
 
+### Walls from rooms
+
+```
+walls from rooms exterior <mm> partition <mm> [{ except <room> … }]
+```
+
+One statement derives every wall of the plan (or of the `component` it is written in) from
+the rooms written beside it ([ADR 0028](adr/0028-rooms-primary-derived-walls.md) §3): an
+**exterior ring** on the outline of their union and a **partition** on every edge two rooms
+share. A shared edge with no wall, a room past the shell and walled floor that belongs to no
+room cannot be written this way: the walls follow the rooms.
+
+```arch
+plan "Two rooms" {
+  units mm
+  room id=living at (0,0) size 4000x3000 label "Living" uses living
+  room id=bed at (4000,0) size 3000x3000 label "Bedroom" uses bedroom
+  walls from rooms exterior 200 partition 100
+  door at (3000, 3000) width 900 wall exterior hinge left swing in
+  door at (4000, 1500) width 800 wall partition hinge left swing in
+}
+```
+
+**The rooms must tile one connected floor, exactly.** Every decision is made on the resolved
+coordinates with no tolerance, and each failure refuses, naming the rooms:
+
+| Condition | Code |
+|---|---|
+| A `polygon` or `circle` room in the set | `E_ROOM_NOT_RECTANGLE` (leave it out with `except`) |
+| Two rooms overlap | `E_ROOMS_OVERLAP` |
+| Two parts, rooms touching only at a corner, or a hole (a corridor left as the leftover) | `E_ROOMS_NOT_TILING` |
+| A shared edge shorter than the partition is thick | `E_PARTITION_TOO_SHORT` |
+| A second statement in the same plan or component | `E_WALLS_FROM_ROOMS_DUP` |
+| `except` names no room written beside it | `E_WALL_BETWEEN_ROOM` |
+
+A hole is legal when `outdoor` surfaces cover it exactly (a courtyard, which gets a second,
+inner exterior ring) or a `void` covers it exactly (no wall is derived round it). A 1 mm jog
+in the outline is a legal tiling, and the ring follows it.
+
+**Hosting.** A derived wall has no id an author can type, so openings reach it by position
+(`at (x,y)`, the nearest wall) or by category (`wall exterior`, `wall partition`,
+`on exterior at <pos>` when the ring is the only exterior wall). Lint names a derived wall by
+its relation (`the partition between "living" and "bed"`), never by an id.
+
+**Direction**, which `hinge`, `swing in|out`, `at <pos>` and `segment <n>` read: the outer ring
+starts at its vertex with the smallest `y`, then `x`, and runs clockwise on the page (first
+along `+x`); a courtyard ring starts the same way and runs counter-clockwise (first along `+y`),
+so `swing in` opens into the building on both; a partition runs from its end with the smaller
+`y`, then `x`.
+
+**With authored walls.** An authored straight wall lying exactly on a derived line, overlapping
+it, replaces the derived wall over that span: the author's thickness and material win, and
+the rest of the derived run stays. A wall 1 mm off the line is kept beside the derived set.
+Every replaced span is reported in `describe --json`'s `derived_walls[]`, with the id of the
+wall that took it (`dropped[].by`).
+
+**Facts.** `describe --json` gains `derived_walls[]` (one row per derived wall: its internal
+name, the rooms of a partition, the spans an authored wall took) and a `freedom.walls`
+count, both only on a storey that derived a wall. Plan JSON carries the statement as
+`walls_from_rooms`, never the walls it derives. A `place`d component derives its own walls in
+its own frame; a root statement sees only the root's rooms.
+
+The `open between <A> and <B>` and `between <A> and <B> thickness <t>` clauses of the ADR are not
+available yet and fail to parse by name.
+
 ### Room
 
 ```
