@@ -156,9 +156,7 @@ export const wallsFromRooms: ElementDef = {
       return [];
     });
     const authored: TileWallSeg[] = own.flatMap((e) =>
-      e.kind === "wall"
-        ? segmentsOfWall(e).flatMap((s) => (s.arc ? [] : [{ a: s.a, b: s.b, wallId: e.id }]))
-        : [],
+      e.kind === "wall" ? segmentsOfWall(e).flatMap((s) => (s.arc ? [] : [{ a: s.a, b: s.b, wallId: e.id }])) : [],
     );
     const res = deriveWallsFromRooms(set, covers, authored, tInt);
     if (!res.ok) {

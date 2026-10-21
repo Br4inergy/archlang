@@ -92,7 +92,10 @@ describe("plan-json — round-trip byte-identity (SVG)", () => {
     const withExcept = src.replace("partition 100\n", "partition 100 { except r_hall }\n");
     expect(planToJson(withExcept).json!.walls_from_rooms!.except).toEqual(["r_hall"]);
     expect(planToJson(readFileSync("examples/two-bed.arch", "utf8")).json!.walls_from_rooms).toBeUndefined();
-    const bad = planFromJson({ ...(json as PlanJson), walls_from_rooms: { exterior: 0, partition: 100, except: ["a b"] } });
+    const bad = planFromJson({
+      ...(json as PlanJson),
+      walls_from_rooms: { exterior: 0, partition: 100, except: ["a b"] },
+    });
     expect(bad.diagnostics.map((d) => d.code)).toContain("E_JSON_SCHEMA");
   });
 

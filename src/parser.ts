@@ -723,7 +723,11 @@ class Parser {
     // starts a statement on the next line (`dims auto` then `walls from rooms …`) is left
     // to that statement.
     const startsStatement = this.statementStarts.has(this.peek().value) && this.isKeyword("from", 1);
-    if (this.isType("ident") && (AUTO_DIMS_MODES as readonly string[]).includes(this.peek().value) && !startsStatement) {
+    if (
+      this.isType("ident") &&
+      (AUTO_DIMS_MODES as readonly string[]).includes(this.peek().value) &&
+      !startsStatement
+    ) {
       mode = this.eatIdent().value as AutoDimsMode;
     }
     plan.autoDims = mode;

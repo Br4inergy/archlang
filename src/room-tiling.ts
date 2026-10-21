@@ -303,9 +303,7 @@ export function deriveWallsFromRooms(
   }
 
   // 5. Holes: each must be covered exactly by one kind of cover.
-  const holes = rings
-    .filter((r) => !r.outer)
-    .sort((p, q) => p.pts[0]!.y - q.pts[0]!.y || p.pts[0]!.x - q.pts[0]!.x);
+  const holes = rings.filter((r) => !r.outer).sort((p, q) => p.pts[0]!.y - q.pts[0]!.y || p.pts[0]!.x - q.pts[0]!.x);
   const courtyards: Point[][] = [];
   for (const h of holes) {
     const verdict = holeCover(h.pts, covers);
@@ -315,7 +313,9 @@ export function deriveWallsFromRooms(
       const xs = h.pts.map((p) => p.x);
       const ys = h.pts.map((p) => p.y);
       notTiling.push(
-        `the rooms enclose a hole x ${Math.min(...xs)}–${Math.max(...xs)}, y ${Math.min(...ys)}–${Math.max(...ys)} that is ${verdict} (bounded by ${named(h.owners)
+        `the rooms enclose a hole x ${Math.min(...xs)}–${Math.max(...xs)}, y ${Math.min(...ys)}–${Math.max(...ys)} that is ${verdict} (bounded by ${named(
+          h.owners,
+        )
           .map((x) => `"${x}"`)
           .join(", ")}); a hole must be covered exactly by \`outdoor\` surfaces (a courtyard) or by a \`void\``,
       );
@@ -330,9 +330,9 @@ export function deriveWallsFromRooms(
   const outer = outers[0];
   const specs: Array<Omit<DerivedWallSpec, "pieces" | "dropped"> & { path: Point[]; closed: boolean }> = [];
   if (outer) specs.push({ name: "exterior", role: "exterior", ring: "outer", path: outer.pts, closed: true });
-  courtyards.forEach((pts, k) =>
-    specs.push({ name: `exterior#${k + 2}`, role: "exterior", ring: "inner", path: pts, closed: true }),
-  );
+  courtyards.forEach((pts, k) => {
+    specs.push({ name: `exterior#${k + 2}`, role: "exterior", ring: "inner", path: pts, closed: true });
+  });
   const partitionSpecs = runs
     .map((r) => {
       const [a, b] = r.lo < r.hi ? [r.lo, r.hi] : [r.hi, r.lo];
@@ -364,7 +364,8 @@ function refusalsOf(
   named: (s: Iterable<number>) => string[],
 ): TilingRefusal[] {
   const out: TilingRefusal[] = [];
-  if (notTiling.length > 0) out.push({ code: "E_ROOMS_NOT_TILING", rooms: named(tilingRooms), why: notTiling.join("; ") });
+  if (notTiling.length > 0)
+    out.push({ code: "E_ROOMS_NOT_TILING", rooms: named(tilingRooms), why: notTiling.join("; ") });
   if (short) out.push(short);
   return out;
 }
@@ -401,14 +402,14 @@ function sweepLine(c: number, lo: Interval[], hi: Interval[], vertical: boolean,
   let j = 0;
   const seq = (list: Interval[], k: number): number => (k % 2 === 0 ? list[k >> 1]!.s : list[k >> 1]!.e);
   while (i < 2 * lo.length || j < 2 * hi.length) {
-    const v =
-      j >= 2 * hi.length || (i < 2 * lo.length && seq(lo, i) <= seq(hi, j)) ? seq(lo, i++) : seq(hi, j++);
+    const v = j >= 2 * hi.length || (i < 2 * lo.length && seq(lo, i) <= seq(hi, j)) ? seq(lo, i++) : seq(hi, j++);
     if (ends.length === 0 || ends[ends.length - 1] !== v) ends.push(v);
   }
   let pl = 0;
   let ph = 0;
   // The open piece/run being extended: its kind and its start.
-  let cur: { kind: "lo" | "hi" | "run"; s: number; e: number; owners: number[]; lo?: number; hi?: number } | null = null;
+  let cur: { kind: "lo" | "hi" | "run"; s: number; e: number; owners: number[]; lo?: number; hi?: number } | null =
+    null;
   const flush = (): void => {
     if (!cur) return;
     if (cur.kind === "run") {
@@ -433,11 +434,7 @@ function sweepLine(c: number, lo: Interval[], hi: Interval[], vertical: boolean,
     const L = pl < lo.length && lo[pl]!.s <= s ? lo[pl]!.room : -1;
     const H = ph < hi.length && hi[ph]!.s <= s ? hi[ph]!.room : -1;
     const kind = L >= 0 && H >= 0 ? "run" : L >= 0 ? "lo" : H >= 0 ? "hi" : null;
-    const same =
-      cur !== null &&
-      kind === cur.kind &&
-      cur.e === s &&
-      (kind !== "run" || (cur.lo === L && cur.hi === H));
+    const same = cur !== null && kind === cur.kind && cur.e === s && (kind !== "run" || (cur.lo === L && cur.hi === H));
     if (!same) flush();
     if (kind === null) continue;
     if (cur === null) {
@@ -508,7 +505,12 @@ function holeCover(ring: readonly Point[], covers: readonly TileCover[]): "outdo
     if (c.rect) {
       xsSet.add(c.rect.x0).add(c.rect.x1);
       ysSet.add(c.rect.y0).add(c.rect.y1);
-    } else for (const p of c.poly!) xsSet.add(p.x), ysSet.add(p.y);
+    } else {
+      for (const p of c.poly!) {
+        xsSet.add(p.x);
+        ysSet.add(p.y);
+      }
+    }
   }
   chargeSteps(sortSteps(xsSet.size) + sortSteps(ysSet.size));
   const xs = [...xsSet].sort((a, b) => a - b);

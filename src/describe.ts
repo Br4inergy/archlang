@@ -1653,7 +1653,11 @@ function summarizeResolved(
  * `heights` is deliberately NOT here: its gate is whole-PLAN (`_heightsAuthored`), so
  * when the block exists at all it exists on every storey.
  */
-export const PER_STOREY_OPTIONAL_KEYS = ["verticals", "voids", "derived_walls"] as const satisfies readonly (keyof SceneSummary)[];
+export const PER_STOREY_OPTIONAL_KEYS = [
+  "verticals",
+  "voids",
+  "derived_walls",
+] as const satisfies readonly (keyof SceneSummary)[];
 
 /**
  * Narrow a whole-plan summary to ONE storey: that level's facts become the top-level

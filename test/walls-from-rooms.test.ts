@@ -35,7 +35,14 @@ const R = (id: string, x: number, y: number, w: number, h: number): TileRoom => 
   id,
   rect: { x0: x, y0: y, x1: x + w, y1: y + h },
 });
-const codesOf = (src: string): string[] => [...new Set(compile(src).diagnostics.filter((d) => d.severity === "error").map((d) => d.code!))].sort();
+const codesOf = (src: string): string[] =>
+  [
+    ...new Set(
+      compile(src)
+        .diagnostics.filter((d) => d.severity === "error")
+        .map((d) => d.code!),
+    ),
+  ].sort();
 const irOf = (src: string): ResolvedPlan => {
   const r = resolvePlan(src);
   if (!r.ir) throw new Error(r.diagnostics.map((d) => `${d.code}: ${d.message}`).join("\n"));
@@ -103,7 +110,12 @@ suite("the derivation (src/room-tiling.ts)", () => {
   });
 
   it("a courtyard ring runs counter-clockwise, first along +y; a void hole derives no ring", () => {
-    const rooms = [R("n", 0, 0, 3000, 1000), R("s", 0, 2000, 3000, 1000), R("w", 0, 1000, 1000, 1000), R("e", 2000, 1000, 1000, 1000)];
+    const rooms = [
+      R("n", 0, 0, 3000, 1000),
+      R("s", 0, 2000, 3000, 1000),
+      R("w", 0, 1000, 1000, 1000),
+      R("e", 2000, 1000, 1000, 1000),
+    ];
     const hole = { x0: 1000, y0: 1000, x1: 2000, y1: 2000 };
     const court = derive(rooms, [{ kind: "outdoor", rect: hole }], [], 100);
     if (!court.ok) throw new Error("refused");
@@ -121,7 +133,10 @@ suite("the derivation (src/room-tiling.ts)", () => {
     // uncovered, half covered by each kind, and spilling: refused
     for (const covers of [
       [],
-      [{ kind: "outdoor", rect: { ...hole, x1: 1500 } }, { kind: "void", rect: { ...hole, x0: 1500 } }],
+      [
+        { kind: "outdoor", rect: { ...hole, x1: 1500 } },
+        { kind: "void", rect: { ...hole, x0: 1500 } },
+      ],
       [{ kind: "outdoor", rect: { ...hole, y1: 3000 } }],
     ] as TileCover[][]) {
       const r = derive(rooms, covers, [], 100);
@@ -135,11 +150,19 @@ suite("the derivation (src/room-tiling.ts)", () => {
       return r.ok ? [] : r.refusals.map((x) => [x.code, x.rooms]);
     };
     expect(refused([R("a", 0, 0, 1000, 1000), R("b", 999, 0, 1000, 1000)])).toEqual([["E_ROOMS_OVERLAP", ["a", "b"]]]);
-    expect(refused([R("a", 0, 0, 1000, 1000), R("b", 1000, 1000, 1000, 1000)])).toEqual([["E_ROOMS_NOT_TILING", ["a", "b"]]]);
-    expect(refused([R("a", 0, 0, 1000, 1000), R("b", 1001, 0, 1000, 1000)])).toEqual([["E_ROOMS_NOT_TILING", ["a", "b"]]]);
-    expect(refused([R("a", 0, 0, 1000, 1000), R("b", 1000, 950, 1000, 1000)])).toEqual([["E_PARTITION_TOO_SHORT", ["a", "b"]]]);
+    expect(refused([R("a", 0, 0, 1000, 1000), R("b", 1000, 1000, 1000, 1000)])).toEqual([
+      ["E_ROOMS_NOT_TILING", ["a", "b"]],
+    ]);
+    expect(refused([R("a", 0, 0, 1000, 1000), R("b", 1001, 0, 1000, 1000)])).toEqual([
+      ["E_ROOMS_NOT_TILING", ["a", "b"]],
+    ]);
+    expect(refused([R("a", 0, 0, 1000, 1000), R("b", 1000, 950, 1000, 1000)])).toEqual([
+      ["E_PARTITION_TOO_SHORT", ["a", "b"]],
+    ]);
     expect(refused([R("a", 0, 0, 1000, 1000), R("b", 1000, 900, 1000, 1000)])).toEqual([]);
-    expect(refused([R("a", 0, 0, 1000, 1000), { id: "c", shape: "circle" }])).toEqual([["E_ROOM_NOT_RECTANGLE", ["c"]]]);
+    expect(refused([R("a", 0, 0, 1000, 1000), { id: "c", shape: "circle" }])).toEqual([
+      ["E_ROOM_NOT_RECTANGLE", ["c"]],
+    ]);
     // a 1 mm jog is a legal tiling whose ring follows the jog
     expect(refused([R("a", 0, 0, 1000, 1000), R("b", 1000, 1, 1000, 1000)])).toEqual([]);
   });
@@ -168,8 +191,20 @@ suite("the derivation (src/room-tiling.ts)", () => {
     const mid = derive(STUDIO, [], [{ a: { x: 4000, y: 1000 }, b: { x: 4000, y: 2000 }, wallId: "m" }], 100);
     if (!mid.ok) throw new Error("refused");
     expect(mid.walls[1]!.pieces.map((p) => [p.name, p.points])).toEqual([
-      ["r_living|r_bed", [{ x: 4000, y: 0 }, { x: 4000, y: 1000 }]],
-      ["r_living|r_bed~2", [{ x: 4000, y: 2000 }, { x: 4000, y: 3000 }]],
+      [
+        "r_living|r_bed",
+        [
+          { x: 4000, y: 0 },
+          { x: 4000, y: 1000 },
+        ],
+      ],
+      [
+        "r_living|r_bed~2",
+        [
+          { x: 4000, y: 2000 },
+          { x: 4000, y: 3000 },
+        ],
+      ],
     ]);
     const off = derive(STUDIO, [], [{ a: { x: 4001, y: 0 }, b: { x: 4001, y: 6000 }, wallId: "p" }], 100);
     if (!off.ok) throw new Error("refused");
@@ -184,8 +219,8 @@ suite("the derivation (src/room-tiling.ts)", () => {
 function groupsOf(ir: ResolvedPlan): Map<string, { rooms: TileRoom[]; covers: TileCover[] }> {
   const out = new Map<string, { rooms: TileRoom[]; covers: TileCover[] }>();
   const get = (g: string) => {
-    let v = out.get(g);
-    if (!v) out.set(g, (v = { rooms: [], covers: [] }));
+    const v = out.get(g) ?? { rooms: [], covers: [] };
+    out.set(g, v);
     return v;
   };
   for (const e of ir.elements) {
@@ -201,7 +236,10 @@ function groupsOf(ir: ResolvedPlan): Map<string, { rooms: TileRoom[]; covers: Ti
             : R(r.id, r.at.x, r.at.y, r.size.w, r.size.h),
       );
     } else if (e.kind === "void") {
-      get(g).covers.push({ kind: "void", rect: { x0: e.at.x, y0: e.at.y, x1: e.at.x + e.size.w, y1: e.at.y + e.size.h } });
+      get(g).covers.push({
+        kind: "void",
+        rect: { x0: e.at.x, y0: e.at.y, x1: e.at.x + e.size.w, y1: e.at.y + e.size.h },
+      });
     } else if (e.kind === "outdoor") {
       get(g).covers.push(
         e.poly
@@ -270,11 +308,16 @@ suite("probe agreement (PS3.0 part A, PR #222)", () => {
     ["a short run", `  room id=a at (0,0) size 4000x3000\n  room id=b at (4000,2950) size 3000x3000`],
     ["a run exactly the thickness", `  room id=a at (0,0) size 4000x3000\n  room id=b at (4000,2900) size 3000x3000`],
     ["a thicker partition", `  room id=a at (0,0) size 4000x3000\n  room id=b at (4000,2900) size 3000x3000`, 150],
-    ["a polygon room", `  room id=a polygon (0,0) (4000,0) (4000,3000) (0,3000)\n  room id=b at (4000,0) size 3000x3000`],
+    [
+      "a polygon room",
+      `  room id=a polygon (0,0) (4000,0) (4000,3000) (0,3000)\n  room id=b at (4000,0) size 3000x3000`,
+    ],
     ["a circle room", `  room id=a circle at (2000,2000) radius 2000`],
   ];
   it.each(planted)("%s", (_n, body, t = 100) => {
-    const probe = probeSource(plan(t === 100 ? body : `  wall partition thickness ${t} { (90000,0) (90000,1000) }\n${body}`));
+    const probe = probeSource(
+      plan(t === 100 ? body : `  wall partition thickness ${t} { (90000,0) (90000,1000) }\n${body}`),
+    );
     if ("reason" in probe) throw new Error(probe.reason);
     const want = CODES.filter((c) => probe.some((s) => [...storeyCodes(s)].includes(c as Code)));
     expect(codesOf(plan(`${body}\n  walls from rooms exterior 200 partition ${t}`))).toEqual([...want].sort());
@@ -292,7 +335,9 @@ suite("the statement", () => {
     expect(d.message).toContain('"a"');
     expect(d.message).toContain('"b"');
     expect(src.slice(d.span!.start, d.span!.end)).toBe(stmt);
-    expect(codesOf(plan(`  room id=a at (0,0) size 4000x3000\n  ${stmt}\n  ${stmt}`))).toEqual(["E_WALLS_FROM_ROOMS_DUP"]);
+    expect(codesOf(plan(`  room id=a at (0,0) size 4000x3000\n  ${stmt}\n  ${stmt}`))).toEqual([
+      "E_WALLS_FROM_ROOMS_DUP",
+    ]);
     const bad = plan(`  room id=a at (0,0) size 4000x3000\n  ${stmt} { except terrace }`);
     const e = compile(bad).diagnostics.find((x) => x.code === "E_WALL_BETWEEN_ROOM")!;
     expect(bad.slice(e.span!.start, e.span!.end)).toBe("terrace");
@@ -308,11 +353,21 @@ suite("the statement", () => {
       ),
     );
     expect(derived(ir).map((w) => w.id)).toEqual(["exterior", "a|b"]);
-    expect(codesOf(plan(`  room id=a at (0,0) size 4000x3000\n  room id=c circle at (20000,0) radius 1000\n  walls from rooms exterior 200 partition 100`))).toEqual(["E_ROOM_NOT_RECTANGLE"]);
+    expect(
+      codesOf(
+        plan(
+          `  room id=a at (0,0) size 4000x3000\n  room id=c circle at (20000,0) radius 1000\n  walls from rooms exterior 200 partition 100`,
+        ),
+      ),
+    ).toEqual(["E_ROOM_NOT_RECTANGLE"]);
   });
 
   it("derived walls are walls, never elements, never authored, and carry `_derived`", () => {
-    const ir = irOf(plan(`  room id=a at (0,0) size 4000x3000\n  room id=b at (4000,0) size 3000x3000\n  walls from rooms exterior 200 partition 100`));
+    const ir = irOf(
+      plan(
+        `  room id=a at (0,0) size 4000x3000\n  room id=b at (4000,0) size 3000x3000\n  walls from rooms exterior 200 partition 100`,
+      ),
+    );
     expect(ir.elements.filter((e) => e.kind === "wall")).toEqual([]);
     expect(ir.walls.map((w) => [w.id, w.category, w.thickness, w._idAuthored, w._derived])).toEqual([
       ["exterior", "exterior", 200, false, { from: "rooms", ring: "outer" }],
@@ -357,12 +412,19 @@ suite("the statement", () => {
     expect(east._instance).toBe("east");
     // rotate 90: the vertical partition x=4000, y 0..3000 becomes horizontal
     expect(east.points[0]!.y).toBe(east.points[1]!.y);
-    expect(describe(src).derived_walls!.map((r) => r.name)).toEqual(["west.exterior", "west.a|b", "east.exterior", "east.a|b"]);
+    expect(describe(src).derived_walls!.map((r) => r.name)).toEqual([
+      "west.exterior",
+      "west.a|b",
+      "east.exterior",
+      "east.a|b",
+    ]);
   });
 
   it("counts toward the element budget at expansion: 10 per room of its group", () => {
     const many = (n: number) =>
-      plan(`  for i in 0..${n} {\n    room at (i * 1000, 0) size 1000x1000\n  }\n  walls from rooms exterior 200 partition 100`);
+      plan(
+        `  for i in 0..${n} {\n    room at (i * 1000, 0) size 1000x1000\n  }\n  walls from rooms exterior 200 partition 100`,
+      );
     expect(codesOf(many(400))).toEqual([]);
     const d = compile(many(460)).diagnostics.filter((x) => x.code === "E_ELEMENT_LIMIT");
     expect(d.length).toBe(1);
@@ -376,23 +438,27 @@ suite("the statement", () => {
     const { ir, diagnostics } = resolve(parse(src).plan!);
     // reported once, at the statement; the room (in range) stays, the walls and the door go
     expect(diagnostics.filter((d) => d.code === "E_OUT_OF_RANGE").length).toBe(1);
-    expect(src.slice(diagnostics.find((d) => d.code === "E_OUT_OF_RANGE")!.span!.start).startsWith("walls from rooms")).toBe(true);
+    expect(
+      src.slice(diagnostics.find((d) => d.code === "E_OUT_OF_RANGE")!.span!.start).startsWith("walls from rooms"),
+    ).toBe(true);
     expect(ir.walls).toEqual([]);
     expect(ir.elements.map((e) => e.kind)).toEqual(["room"]);
   });
 
   it("the statement keeps its clauses closed: `open between` and `between … thickness` refuse by name", () => {
     const parseError = (body: string) =>
-      compile(plan(`  room id=a at (0,0) size 4000x3000\n  walls from rooms exterior 200 partition 100 { ${body} }`)).diagnostics.find(
-        (d) => d.code === "E_PARSE",
-      )?.message;
+      compile(
+        plan(`  room id=a at (0,0) size 4000x3000\n  walls from rooms exterior 200 partition 100 { ${body} }`),
+      ).diagnostics.find((d) => d.code === "E_PARSE")?.message;
     expect(parseError("open between a and b")).toMatch(/not available yet/);
     expect(parseError("between a and b thickness 200")).toMatch(/not available yet/);
     expect(parseError("except")).toMatch(/at least one room/);
   });
 
   it("`dims auto` on the line before keeps its default mode and leaves `walls` to the statement", () => {
-    const ir = irOf(plan(`  dims auto\n  walls from rooms exterior 200 partition 100\n  room id=a at (0,0) size 4000x3000`));
+    const ir = irOf(
+      plan(`  dims auto\n  walls from rooms exterior 200 partition 100\n  room id=a at (0,0) size 4000x3000`),
+    );
     expect(ir.autoDims).toBe("all");
     expect(derived(ir).length).toBe(1);
     expect(irOf(plan(`  dims auto walls\n  room id=a at (0,0) size 4000x3000`)).autoDims).toBe("walls");
@@ -400,7 +466,9 @@ suite("the statement", () => {
 
   it("a balcony's derived rail is read against the derived ring (the outdoor resolves early, then rewalls)", () => {
     const ir = irOf(
-      plan(`  room id=a at (0,0) size 4000x3000\n  walls from rooms exterior 200 partition 100\n  outdoor balcony at (1000,3000) size 2000x1000`),
+      plan(
+        `  room id=a at (0,0) size 4000x3000\n  walls from rooms exterior 200 partition 100\n  outdoor balcony at (1000,3000) size 2000x1000`,
+      ),
     );
     const b = ir.elements.find((e) => e.kind === "outdoor") as { rail?: string[] };
     expect(b.rail).toEqual(expect.not.arrayContaining(["top"]));
@@ -408,7 +476,11 @@ suite("the statement", () => {
   });
 
   it("`roof overhang` follows the outer ring only, not a courtyard ring", () => {
-    const r = compile(plan(`${COURT}\n  outdoor patio at (3000,3000) size 3000x3000\n  walls from rooms exterior 200 partition 100\n  roof overhang 500`));
+    const r = compile(
+      plan(
+        `${COURT}\n  outdoor patio at (3000,3000) size 3000x3000\n  walls from rooms exterior 200 partition 100\n  roof overhang 500`,
+      ),
+    );
     expect(r.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
   });
 
@@ -437,7 +509,8 @@ suite("addressing: lint and compile never quote or edit a derived wall", () => {
 
   it("the rules that name a host reach derived walls (non-vacuous)", () => {
     const codes = new Set(lint(BAD).map((d) => d.code));
-    for (const c of ["W_FURNITURE_WALL_COLLISION", "W_OPENING_AT_JUNCTION", "W_OPENING_OVERLAP"]) expect(codes).toContain(c);
+    for (const c of ["W_FURNITURE_WALL_COLLISION", "W_OPENING_AT_JUNCTION", "W_OPENING_OVERLAP"])
+      expect(codes).toContain(c);
     // and they name the walls by relation
     const texts = lint(BAD).flatMap((d) => [d.message, ...(d.hints ?? [])]);
     expect(texts.some((t) => t.includes('the partition between "a" and "b"'))).toBe(true);
@@ -450,7 +523,8 @@ suite("addressing: lint and compile never quote or edit a derived wall", () => {
       const text = JSON.stringify({ m: d.message, h: d.hints, f: d.fixes, r: d.relatedSpans });
       expect(quotesDerived(text), `${d.code}: ${text}`).toBe(false);
       for (const f of d.fixes ?? []) {
-        for (const e of f.edits) expect(e.span.end <= stmt.start || e.span.start >= stmt.end, `${d.code} edits the statement`).toBe(true);
+        for (const e of f.edits)
+          expect(e.span.end <= stmt.start || e.span.start >= stmt.end, `${d.code} edits the statement`).toBe(true);
       }
     }
   });
@@ -476,8 +550,22 @@ suite("the widening drill", () => {
     expect(compile(widened).svg).not.toBe(compile(form).svg);
     const ir = irOf(widened);
     expect(derived(ir).map((w) => [w.id, w.points])).toEqual([
-      ["exterior", [{ x: 0, y: 0 }, { x: 8500, y: 0 }, { x: 8500, y: 5000 }, { x: 0, y: 5000 }]],
-      ["a|b", [{ x: 4500, y: 0 }, { x: 4500, y: 5000 }]],
+      [
+        "exterior",
+        [
+          { x: 0, y: 0 },
+          { x: 8500, y: 0 },
+          { x: 8500, y: 5000 },
+          { x: 0, y: 5000 },
+        ],
+      ],
+      [
+        "a|b",
+        [
+          { x: 4500, y: 0 },
+          { x: 4500, y: 5000 },
+        ],
+      ],
     ]);
   });
   it("the wall-first repro's defects cannot arise: no room leaves the shell, no partition is left inside a room", () => {
@@ -532,9 +620,14 @@ suite("class-2 defect corpus (space not enclosed) written with `walls from rooms
     const src = rewrite(before);
     expect(src).toContain("walls from rooms");
     expect(src).not.toMatch(/^\s*wall\s/m);
-    const errors = compile(src).diagnostics.filter((d) => d.severity === "error").map((d) => d.code!);
+    const errors = compile(src)
+      .diagnostics.filter((d) => d.severity === "error")
+      .map((d) => d.code!);
     if (errors.length > 0) {
-      expect(errors.every((c) => REFUSALS.includes(c)), errors.join(", ")).toBe(true);
+      expect(
+        errors.every((c) => REFUSALS.includes(c)),
+        errors.join(", "),
+      ).toBe(true);
       outcome.set(f, `refused ${errors.join(",")}`);
     } else {
       const codes = lint(src).map((d) => d.code);
@@ -564,8 +657,7 @@ suite("twins of the examples (the swap-back law)", () => {
   });
 
   it.each(pairs)("%s: lint() is identical but for the spans the edited prose shifted", (a, b) => {
-    const strip = (src: string) =>
-      lint(src).map(({ span: _s, fixes: _f, ...d }) => d);
+    const strip = (src: string) => lint(src).map(({ span: _s, fixes: _f, ...d }) => d);
     expect(strip(read(b))).toEqual(strip(read(a)));
   });
 

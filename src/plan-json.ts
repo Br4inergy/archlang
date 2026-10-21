@@ -550,21 +550,27 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
   const heights = ir._heightsAuthored;
 
   // Authored walls only: a derived wall is exported as the statement that derives it.
-  const walls: WallJson[] = ir.walls.filter((w) => w._derived === undefined).map((w: RWall) => ({
-    id: w.id,
-    category: w.category,
-    points: w.points.map((p) => ({ x: p.x, y: p.y })),
-    thickness: w.thickness,
-    ...(heights ? { height: w.height } : {}),
-    closed: w.closed,
-    ...(w.material !== DEFAULT_MATERIAL ? { material: w.material } : {}),
-    ...(w.material !== DEFAULT_MATERIAL && w.hatchScale !== 1 ? { material_scale: w.hatchScale } : {}),
-    ...(w.material !== DEFAULT_MATERIAL && w.hatchAngle !== 0 ? { material_angle: w.hatchAngle } : {}),
-  }));
+  const walls: WallJson[] = ir.walls
+    .filter((w) => w._derived === undefined)
+    .map((w: RWall) => ({
+      id: w.id,
+      category: w.category,
+      points: w.points.map((p) => ({ x: p.x, y: p.y })),
+      thickness: w.thickness,
+      ...(heights ? { height: w.height } : {}),
+      closed: w.closed,
+      ...(w.material !== DEFAULT_MATERIAL ? { material: w.material } : {}),
+      ...(w.material !== DEFAULT_MATERIAL && w.hatchScale !== 1 ? { material_scale: w.hatchScale } : {}),
+      ...(w.material !== DEFAULT_MATERIAL && w.hatchAngle !== 0 ? { material_angle: w.hatchAngle } : {}),
+    }));
 
   const stmt = ir.elements.find((e): e is RWallsFromRooms => e.kind === "walls" && e._instance === undefined);
   const derivesWalls: WallsFromRoomsJson | undefined = stmt
-    ? { exterior: stmt.exterior, partition: stmt.partition, ...(stmt.except.length > 0 ? { except: [...stmt.except] } : {}) }
+    ? {
+        exterior: stmt.exterior,
+        partition: stmt.partition,
+        ...(stmt.except.length > 0 ? { except: [...stmt.except] } : {}),
+      }
     : undefined;
 
   // Doors, windows and cased openings in a single array **in source order** — they
