@@ -158,6 +158,10 @@ export const KEYWORDS = {
     "head",
     // `walls from rooms … { except <room> … }` — leads the one body clause of the statement.
     "except",
+    // `walls from rooms … { open between <A> and <B> … between <A> and <B> thickness <t> }`:
+    // `between` leads a pair clause, `and` joins its two rooms (ADR 0028 §3).
+    "between",
+    "and",
   ],
   /** Enum value keywords → `constant.language`, CM `atom`. */
   enum: [

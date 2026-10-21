@@ -36,7 +36,7 @@
  *  - The leaves of a double door move together only when both sit on one segment.
  */
 
-import { isDerivedWall, wallRef } from "../../wall-ref.js";
+import { isDerivedWall, openingClauseOf, wallRef } from "../../wall-ref.js";
 import {
   type AccessGraph,
   buildDoorAccessGraph,
@@ -600,8 +600,13 @@ function moveHints(
 }
 
 /** The id an agent edits by, for the hints. */
-const idHint = (ctx: LintContext, el: Hosted): string =>
-  `The ${KIND_WORD[el.kind]} is "${el.id}" on ${wallRef(ctx.ir.walls, el.host ?? { wallId: "" })}.`;
+const idHint = (ctx: LintContext, el: Hosted): string => {
+  const on = wallRef(ctx.ir.walls, el.host ?? { wallId: "" });
+  const clause = openingClauseOf(el);
+  return clause
+    ? `The opening is derived by ${clause} of \`walls from rooms\` (its \`width\` is set there), on ${on}.`
+    : `The ${KIND_WORD[el.kind]} is "${el.id}" on ${on}.`;
+};
 
 // ─── PS2.1 ─────────────────────────────────────────────────────────────────────────────
 
@@ -644,12 +649,29 @@ export const openingAtJunction: LintRule = {
       const inside = mine.filter((j) => j.lo < o.hi - EPS && j.hi > o.lo + EPS);
       let left: { j: Junction; nib: number } | null = null;
       let right: { j: Junction; nib: number } | null = null;
+      // An opening `open between` DERIVED spans the clear span: each jamb sits on the face of the
+      // thickest wall meeting that end of the run. A thinner wall meeting the same end leaves a
+      // sliver of the run beside its face, inside the thickest wall's extent: that is the
+      // thickest wall's pier, not a nib (ADR 0028 §3, PS3.0 part C).
+      const derived = o.el.kind === "opening" && o.el._derived !== undefined;
+      const pier = (j: Junction, leftSide: boolean): boolean =>
+        derived &&
+        mine.some(
+          (k) =>
+            k !== j &&
+            !inside.includes(k) &&
+            k.lo <= j.lo + EPS &&
+            k.hi >= j.hi - EPS &&
+            (leftSide ? Math.abs(k.hi - o.lo) <= FLUSH_MM : Math.abs(k.lo - o.hi) <= FLUSH_MM),
+        );
       for (const j of mine) {
         if (inside.includes(j)) continue;
         if (j.hi <= o.lo + EPS) {
+          if (pier(j, true)) continue;
           const nib = Math.max(0, o.lo - j.hi);
           if (short(nib) && (!left || nib < left.nib)) left = { j, nib };
         } else {
+          if (pier(j, false)) continue;
           const nib = Math.max(0, j.lo - o.hi);
           if (short(nib) && (!right || nib < right.nib)) right = { j, nib };
         }

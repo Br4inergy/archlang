@@ -29,7 +29,7 @@
  * is actually wrong instead of advising a swap that would not help.
  */
 
-import { wallRef } from "../../wall-ref.js";
+import { openingClauseOf, wallRef } from "../../wall-ref.js";
 import type { Diagnostic, Span } from "../../diagnostics.js";
 import type { Bounds } from "../../geometry.js";
 import {
@@ -240,9 +240,9 @@ export const openingNotDimensioned: LintRule = {
         severity: "warning",
         code: "W_OPENING_NOT_DIMENSIONED",
         ...at(el),
-        message: `The ${el.kind} "${el.id}" on ${wallRef(ir.walls, el.host ?? { wallId: m.wallId })} is on no \`dims auto all\` chain: ${why}.`,
+        message: `The ${el.kind} ${openingClauseOf(el) ? "derived by an `open between` clause" : `"${el.id}"`} on ${wallRef(ir.walls, el.host ?? { wallId: m.wallId })} is on no \`dims auto all\` chain: ${why}.`,
         hints: [
-          `Dimension it by hand: a \`dim\` from the nearest corner to each jamb of "${el.id}" states the position the auto chains cannot.`,
+          `Dimension it by hand: a \`dim\` from the nearest corner to each jamb of ${openingClauseOf(el) ? `the opening ${openingClauseOf(el)} derives` : `"${el.id}"`} states the position the auto chains cannot.`,
         ],
       });
     }

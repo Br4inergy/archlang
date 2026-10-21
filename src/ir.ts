@@ -451,6 +451,19 @@ export interface ROpening extends RBase {
   /** `attached` vs `absolute` — see {@link RDoor._placement}. */
   _placement?: OpeningPlacement;
   /**
+   * Present only on an opening an `open between` clause of `walls from rooms` DERIVED (ADR
+   * 0028 §3): the two rooms it joins, in source order, and whether the clause gave it an
+   * `id=`. Its span is the clause's, so no lint fix edits it, and a hint quotes its id only
+   * when the author wrote one (the derived default, `A|B:open`, cannot be spelled). Internal.
+   */
+  _derived?: {
+    from: "rooms";
+    between: [string, string];
+    idAuthored: boolean;
+    /** The two rooms as the clause writes them, in its own (component) frame: never namespaced. */
+    written: [string, string];
+  };
+  /**
    * Top of the cased opening above this storey's floor, in mm — always resolved.
    * Its default is the HOST WALL's own height (a leaf-less opening is drawn full height),
    * falling back to the storey height when the opening sits on no wall at all.
@@ -719,6 +732,16 @@ export interface RWallsFromRooms extends RBase {
   _derivedWalls: RWall[];
   /** The facts row of each derived wall (ADR 0028 §6). Internal. */
   _derivedRows: DerivedWallRow[];
+  /** The openings its `open between` clauses derive, in run order. They enter
+   *  `ResolvedPlan.elements` right after the statement (`ElementDef.yieldsElements`), where
+   *  they are ordinary openings. Internal. */
+  _derivedOpenings: ROpening[];
+  /** The pair clauses as resolved (rooms, thickness, width), for Plan JSON. Absent when the
+   *  statement has none. */
+  pairs?: Array<
+    | { kind: "open"; between: [string, string]; id?: string; width?: number }
+    | { kind: "thickness"; between: [string, string]; thickness: number }
+  >;
 }
 
 /**
@@ -2612,6 +2635,23 @@ function resolveBody(
       }
       activeEntry = undefined;
     };
+    /** After every pass: let each deriver judge the group it derived in (`auditGroup`). */
+    const auditDerivers = (): void => {
+      for (const i of derivers) {
+        const def = order[i]!;
+        if (!def.auditGroup) continue;
+        diagSink = byKind[i]!;
+        const own: ResolvedElement[] = [];
+        for (const e of grp.entries) if (e.resolved !== undefined) own.push(e.resolved);
+        chargeSteps(own.length + 1);
+        for (const e of grp.entries) {
+          if (e.node.kind !== def.kind || !e.resolved) continue;
+          activeEntry = e;
+          def.auditGroup(e.resolved, own, pushDiag);
+        }
+        activeEntry = undefined;
+      }
+    };
     /** After the derivers: let each early kind refresh what it read off the walls. */
     const rewall = (): void => {
       for (const j of early) {
@@ -2641,6 +2681,7 @@ function resolveBody(
           if (i === wallKind && derivers.length > 0) refuseReservedIds();
           if (i === derivers[derivers.length - 1]) rewall();
         }
+        auditDerivers();
       });
     } finally {
       diagSink = sink;
@@ -2818,8 +2859,14 @@ function resolveBody(
 
   // 3. IR element list in source order (for rendering), less any element a `place` could
   //    not carry (`E_INSTANCE_NO_TRANSFORM` above). Relational placement has already run,
-  //    inside each group's resolution (3a, ADR 0004), so every room here is final.
-  const resolvedElements = entries.filter((e) => !dropped.has(e)).map((e) => e.resolved!);
+  //    inside each group's resolution (3a, ADR 0004), so every room here is final. The
+  //    elements a statement derives (`ElementDef.yieldsElements`) follow it.
+  const resolvedElements = entries
+    .filter((e) => !dropped.has(e))
+    .flatMap((e) => {
+      const kids = registry.byKind.get(e.resolved!.kind)?.yieldsElements?.(e.resolved!) ?? [];
+      return kids.length === 0 ? [e.resolved!] : [e.resolved!, ...kids];
+    });
 
   // 3b. The number domain, once every coordinate is final (frames carried, relational rooms
   //     placed): an element whose geometry is non-finite or beyond the modelling range is
@@ -3376,6 +3423,11 @@ function assignIds(entries: Entry[], registry: Registry, diagnostics: Diagnostic
       e.idAuthored = Boolean(e.node.id);
       e.id = assignId(e.node.id, def.idPrefix(e.node), idx, e.node.span);
     }
+  }
+  // The ids a statement gives the elements it derives (`ElementDef.authoredChildIds`): checked
+  // against every other id, after them, so a duplicate is reported on the later name.
+  for (const e of entries) {
+    for (const c of registry.byKind.get(e.node.kind)?.authoredChildIds?.(e.node) ?? []) assignId(c.id, "", 0, c.span);
   }
 }
 

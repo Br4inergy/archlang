@@ -99,6 +99,28 @@ describe("plan-json — round-trip byte-identity (SVG)", () => {
     expect(bad.diagnostics.map((d) => d.code)).toContain("E_JSON_SCHEMA");
   });
 
+  it("exports the pair clauses of `walls from rooms`, never the opening `open between` derives, and round-trips them", () => {
+    const src = `plan "p" {\n  units mm\n  grid 50\n  room id=a at (0,0) size 4000x3000 uses living\n  room id=b at (4000,0) size 3000x3000 uses kitchen\n  room id=c at (0,3000) size 7000x2000 uses hall\n  walls from rooms exterior 200 partition 100 { open between a and b  open id=ac between a and c width 900  between b and c thickness 150 }\n  door at (5500,5000) width 900 wall exterior hinge left swing in\n}\n`;
+    const { json } = planToJson(src);
+    expect(json!.walls_from_rooms).toEqual({
+      exterior: 200,
+      partition: 100,
+      open: [{ between: ["a", "b"] }, { between: ["a", "c"], id: "ac", width: 900 }],
+      between: [{ between: ["b", "c"], thickness: 150 }],
+    });
+    expect(json!.openings.map((o) => o.id)).toEqual(["door_1"]);
+    roundTrips(src);
+    for (const bad of [
+      { open: [{ between: ["a"] }] },
+      { open: [{ between: ["a", "b"], width: 0 }] },
+      { between: [{ between: ["a", "b"], thickness: -1 }] },
+      { open: [{ between: ["a", "b"], id: "not an id" }] },
+    ]) {
+      const out = planFromJson({ ...(json as PlanJson), walls_from_rooms: { exterior: 200, partition: 100, ...bad } });
+      expect(out.diagnostics.map((d) => d.code)).toContain("E_JSON_SCHEMA");
+    }
+  });
+
   /**
    * EVERY shipped example, partitioned — never sampled.
    *

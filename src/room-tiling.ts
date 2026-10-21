@@ -32,11 +32,18 @@
  *    exactly (one kind; every cover wholly inside the hole or wholly outside it), decided on
  *    a compressed grid of the hole's and the covers' edge coordinates. An `outdoor` hole is a
  *    courtyard and keeps its ring (an inner exterior wall); a `void` hole derives no wall.
- * 6. A shared run shorter than the partition thickness refuses (`E_PARTITION_TOO_SHORT`).
+ * 6. A shared run shorter than its partition's thickness refuses (`E_PARTITION_TOO_SHORT`);
+ *    a pair clause naming two rooms that share no run refuses (`E_WALL_BETWEEN_NOT_ADJACENT`).
  * 7. Coexistence: where an authored straight wall segment lies exactly on the line of a
  *    derived segment and overlaps it with positive length, the derived wall is dropped over
  *    that span (the author's wall wins) and every dropped span is reported. What remains of
- *    a ring is one or more open runs, in ring order.
+ *    a ring is one or more open runs, in ring order. On a pair declared `open` an authored
+ *    wall is refused instead (`E_WALL_BETWEEN_OPEN`): the run is already voided.
+ * 8. An `open` pair's opening spans the CLEAR SPAN of its run: from each end, the run is
+ *    cut back by half the thickness of the thickest wall that meets it there (a derived or
+ *    authored straight wall perpendicular to the run whose centreline passes through the
+ *    end), so a jamb lies on a meeting wall's face and carries no nib. With a `width`, the
+ *    opening is centred on that span and must fit in it (`E_WALL_BETWEEN_WIDTH`).
  *
  * ## Direction and names (ADR 0028 §3)
  *
@@ -79,6 +86,25 @@ export interface TileWallSeg {
   a: Point;
   b: Point;
   wallId: string;
+  /** The wall's thickness: read only to find the face of a wall that meets an `open` run. */
+  thickness?: number;
+}
+
+/**
+ * A pair clause of the statement, already checked to name two distinct rectangles of the set
+ * and no pair twice: `open` voids the pair's run with an opening (`width` absent: across the
+ * whole clear span), `thickness` sets that one partition's thickness.
+ */
+export type TilePair =
+  | { kind: "open"; a: string; b: string; width?: number }
+  | { kind: "thickness"; a: string; b: string; thickness: number };
+
+/** What the derivation reads beyond the rooms, covers, walls and partition thickness. */
+export interface TileOptions {
+  /** The exterior ring's thickness (the face an `open` run's clear span stops at). */
+  tExt?: number;
+  /** The pair clauses, in source order; a refusal about one names its index (`clause`). */
+  pairs?: readonly TilePair[];
 }
 
 export type TilingCode =
@@ -86,13 +112,26 @@ export type TilingCode =
   | "E_ROOMS_OVERLAP"
   | "E_ROOMS_NOT_TILING"
   | "E_PARTITION_TOO_SHORT"
-  | "E_ELEMENT_LIMIT";
+  | "E_ELEMENT_LIMIT"
+  | "E_WALL_BETWEEN_NOT_ADJACENT"
+  | "E_WALL_BETWEEN_OPEN"
+  | "E_WALL_BETWEEN_WIDTH";
 
 /** A refusal: its code, the rooms it names (source order) and the reason, in words. */
 export interface TilingRefusal {
   code: TilingCode;
   rooms: string[];
   why: string;
+  /** The pair clause at fault (its index in {@link TileOptions.pairs}), when one is. */
+  clause?: number;
+}
+
+/** The opening an `open` pair derives: centred at `at`, `width` along its run. */
+export interface DerivedOpeningSpec {
+  /** The clause's index in {@link TileOptions.pairs}. */
+  clause: number;
+  at: Point;
+  width: number;
 }
 
 /** One derived wall before coexistence, with what is left of it. */
@@ -104,6 +143,10 @@ export interface DerivedWallSpec {
   ring?: "outer" | "inner";
   /** Partitions only: the two rooms, in source order. */
   between?: [string, string];
+  /** Partitions only: the pair's own thickness (`between … thickness`), when a clause sets it. */
+  thickness?: number;
+  /** Partitions only: the opening an `open between` clause voids the run with. */
+  open?: DerivedOpeningSpec;
   /** The runs that remain after coexistence, in the wall's direction. The first keeps the
    *  name; the later ones are `<name>~2`, …. A ring with nothing dropped is one closed run. */
   pieces: Array<{ name: string; points: Point[]; closed: boolean }>;
@@ -153,11 +196,14 @@ export function deriveWallsFromRooms(
   covers: readonly TileCover[],
   walls: readonly TileWallSeg[],
   tInt: number,
-  /** Count the walls about to be derived toward the element budget (`MAX_ELEMENTS`); false
-   *  past it, and nothing is derived (`E_ELEMENT_LIMIT`). Absent: no budget. */
+  /** Count the walls (and openings) about to be derived toward the element budget
+   *  (`MAX_ELEMENTS`); false past it, and nothing is derived (`E_ELEMENT_LIMIT`). Absent: no
+   *  budget. */
   budget?: (walls: number) => boolean,
+  opts: TileOptions = {},
 ): TilingResult {
   const n = rooms.length;
+  const clausePairs = opts.pairs ?? [];
   chargeSteps(n + 1);
   // 1. Non-rectangles.
   const nonRect = rooms.filter((r) => !r.rect);
@@ -249,6 +295,35 @@ export function deriveWallsFromRooms(
   const notTiling: string[] = [];
   const tilingRooms: number[] = [];
 
+  // The pair clauses against the runs: each names the one run its two rooms share (two
+  // interior-disjoint rectangles share at most one), or none.
+  chargeSteps(runs.length + clausePairs.length + 1);
+  const index0 = new Map(ids.map((id, i) => [id, i]));
+  const pairKey = (i: number, j: number): string => (i < j ? `${i}|${j}` : `${j}|${i}`);
+  const runOfPair = new Map<string, Run>();
+  for (const r of runs) runOfPair.set(pairKey(r.lo, r.hi), r);
+  /** Each run's pair clause, by the run's pair key. */
+  const clauseOf = new Map<string, number>();
+  const unpaired: TilingRefusal[] = [];
+  clausePairs.forEach((p, k) => {
+    const i = index0.get(p.a)!;
+    const j = index0.get(p.b)!;
+    if (runOfPair.has(pairKey(i, j))) clauseOf.set(pairKey(i, j), k);
+    else
+      unpaired.push({
+        code: "E_WALL_BETWEEN_NOT_ADJACENT",
+        rooms: named([i, j]),
+        why: `"${p.a}" and "${p.b}" share no edge, so there is no partition between them to ${p.kind === "open" ? "open" : "set the thickness of"}`,
+        clause: k,
+      });
+  });
+  /** A run's partition thickness: its pair's own, else the statement's. */
+  const thick = (r: Run): number => {
+    const k = clauseOf.get(pairKey(r.lo, r.hi));
+    const p = k === undefined ? undefined : clausePairs[k];
+    return p?.kind === "thickness" ? p.thickness : tInt;
+  };
+
   // 4. Link the boundary pieces into rings; a vertex with two outgoing pieces is a pinch.
   chargeSteps(2 * pieces.length + 1);
   const out = new Map<string, number[]>();
@@ -270,7 +345,10 @@ export function deriveWallsFromRooms(
     notTiling.push(
       `the rooms touch at a single point ${pinches.slice(0, 4).join(" ")}${pinches.length > 4 ? " …" : ""} (a pinch)`,
     );
-    return { ok: false, refusals: refusalsOf(notTiling, tilingRooms, shortRuns(runs, tInt, ids), named) };
+    return {
+      ok: false,
+      refusals: [...refusalsOf(notTiling, tilingRooms, shortRuns(runs, thick, ids), named), ...unpaired],
+    };
   }
   const seen = new Uint8Array(pieces.length);
   const rings: Array<{ pts: Point[]; owners: number[]; outer: boolean }> = [];
@@ -330,13 +408,16 @@ export function deriveWallsFromRooms(
     }
   }
 
-  // 6. Short runs.
-  const short = shortRuns(runs, tInt, ids);
-  if (notTiling.length > 0 || short) return { ok: false, refusals: refusalsOf(notTiling, tilingRooms, short, named) };
+  // 6. Short runs, and the pair clauses that name no run.
+  const short = shortRuns(runs, thick, ids);
+  if (notTiling.length > 0 || short || unpaired.length > 0)
+    return { ok: false, refusals: [...refusalsOf(notTiling, tilingRooms, short, named), ...unpaired] };
 
   // 7. The walls, then coexistence.
   const outer = outers[0];
-  const specs: Array<Omit<DerivedWallSpec, "pieces" | "dropped"> & { path: Point[]; closed: boolean }> = [];
+  const specs: Array<
+    Omit<DerivedWallSpec, "pieces" | "dropped"> & { path: Point[]; closed: boolean; openClause?: number }
+  > = [];
   if (outer) specs.push({ name: "exterior", role: "exterior", ring: "outer", path: outer.pts, closed: true });
   courtyards.forEach((pts, k) => {
     specs.push({ name: `exterior#${k + 2}`, role: "exterior", ring: "inner", path: pts, closed: true });
@@ -344,24 +425,43 @@ export function deriveWallsFromRooms(
   const partitionSpecs = runs
     .map((r) => {
       const [a, b] = r.lo < r.hi ? [r.lo, r.hi] : [r.hi, r.lo];
-      return { a, b, path: [r.a, r.b] };
+      return { a, b, path: [r.a, r.b], clause: clauseOf.get(pairKey(r.lo, r.hi)), t: thick(r) };
     })
     .sort((p, q) => p.a - q.a || p.b - q.b || p.path[0]!.y - q.path[0]!.y || p.path[0]!.x - q.path[0]!.x);
   for (const p of partitionSpecs) {
+    const kind = p.clause === undefined ? undefined : clausePairs[p.clause]!.kind;
     specs.push({
       name: `${ids[p.a]}|${ids[p.b]}`,
       role: "partition",
       between: [ids[p.a]!, ids[p.b]!],
+      ...(kind === "thickness" ? { thickness: p.t } : {}),
+      ...(kind === "open" ? { openClause: p.clause } : {}),
       path: p.path,
       closed: false,
     });
   }
   const index = authoredIndex(walls);
+  // An authored wall on a run the author declared `open` is refused, not coexisted with: the
+  // run is already voided, so the wall would close what the clause opened.
+  const openRefusals: TilingRefusal[] = [];
+  for (const s of specs) {
+    if (s.openClause === undefined) continue;
+    const on = overlapping(s.path, index);
+    if (on.length === 0) continue;
+    const [a, b] = s.between!;
+    openRefusals.push({
+      code: "E_WALL_BETWEEN_OPEN",
+      rooms: [a, b],
+      why: `${on.map((w) => `wall "${w}"`).join(", ")} lies on the edge "${a}" and "${b}" share, which the clause declares open`,
+      clause: s.openClause,
+    });
+  }
+  if (openRefusals.length > 0) return { ok: false, refusals: openRefusals };
   // Coexistence splits a derived run once per authored wall lying on it, so the number of
   // walls derived is bounded by the cuts, not by the rooms: counted (and charged to the
-  // element budget) before any piece is allocated.
+  // element budget) before any piece is allocated, with one opening per `open` pair.
   let derivedCount = 0;
-  for (const s of specs) derivedCount += pieceBound(s.path, s.closed, index);
+  for (const s of specs) derivedCount += pieceBound(s.path, s.closed, index) + (s.openClause === undefined ? 0 : 1);
   if (budget && !budget(derivedCount)) {
     return {
       ok: false,
@@ -375,9 +475,43 @@ export function deriveWallsFromRooms(
     };
   }
   const result: DerivedWallSpec[] = specs.map((s) => {
-    const { path, closed, ...rest } = s;
+    const { path, closed, openClause: _o, ...rest } = s;
     return { ...rest, ...coexist(s.name, path, closed, index) };
   });
+  // 8. The openings of the `open` pairs, across each run's clear span.
+  const opened = specs.flatMap((s, k) => (s.openClause === undefined ? [] : [k]));
+  if (opened.length > 0) {
+    const faces = faceIndex(result, walls, tInt, opts.tExt ?? tInt);
+    const bad: TilingRefusal[] = [];
+    for (const k of opened) {
+      const s = specs[k]!;
+      const clause = s.openClause!;
+      const p = clausePairs[clause] as Extract<TilePair, { kind: "open" }>;
+      const [a, b] = [s.path[0]!, s.path[1]!];
+      const vertical = a.x === b.x;
+      const t0 = vertical ? a.y : a.x;
+      const t1 = vertical ? b.y : b.x;
+      const s0 = t0 + faceAt(a, vertical, faces);
+      const s1 = t1 - faceAt(b, vertical, faces);
+      const clear = s1 - s0;
+      const width = p.width ?? clear;
+      if (!(clear > 0) || width > clear) {
+        bad.push({
+          code: "E_WALL_BETWEEN_WIDTH",
+          rooms: [...s.between!],
+          why:
+            clear > 0
+              ? `an opening ${width} mm wide does not fit the ${clear} mm clear between the walls that meet the edge "${p.a}" and "${p.b}" share`
+              : `the walls that meet the edge "${p.a}" and "${p.b}" share leave no clear span on it to open`,
+          clause,
+        });
+        continue;
+      }
+      const mid = (s0 + s1) / 2;
+      result[k]!.open = { clause, at: vertical ? { x: a.x, y: mid } : { x: mid, y: a.y }, width };
+    }
+    if (bad.length > 0) return { ok: false, refusals: bad };
+  }
   const ringVertices = (outer?.pts.length ?? 0) + courtyards.reduce((t, r) => t + r.length, 0);
   return { ok: true, walls: result, counts: { partitions: partitionSpecs.length, ringVertices } };
 }
@@ -395,10 +529,10 @@ function refusalsOf(
   return out;
 }
 
-function shortRuns(runs: readonly Run[], tInt: number, ids: readonly string[]): TilingRefusal | undefined {
+function shortRuns(runs: readonly Run[], thick: (r: Run) => number, ids: readonly string[]): TilingRefusal | undefined {
   const short = runs
-    .filter((r) => Math.abs(r.b.x - r.a.x) + Math.abs(r.b.y - r.a.y) < tInt)
-    .map((r) => (r.lo < r.hi ? { ...r, p: r.lo, q: r.hi } : { ...r, p: r.hi, q: r.lo }))
+    .filter((r) => Math.abs(r.b.x - r.a.x) + Math.abs(r.b.y - r.a.y) < thick(r))
+    .map((r) => (r.lo < r.hi ? { ...r, p: r.lo, q: r.hi, t: thick(r) } : { ...r, p: r.hi, q: r.lo, t: thick(r) }))
     .sort((u, v) => u.p - v.p || u.q - v.q);
   if (short.length === 0) return undefined;
   const rooms = [...new Set(short.flatMap((r) => [r.p, r.q]))].sort((a, b) => a - b).map((i) => ids[i]!);
@@ -408,7 +542,7 @@ function shortRuns(runs: readonly Run[], tInt: number, ids: readonly string[]): 
     why: short
       .map(
         (r) =>
-          `"${ids[r.p]}" and "${ids[r.q]}" share a run of ${Math.abs(r.b.x - r.a.x) + Math.abs(r.b.y - r.a.y)} mm, from (${r.a.x}, ${r.a.y}) to (${r.b.x}, ${r.b.y}), shorter than the ${tInt} mm partition`,
+          `"${ids[r.p]}" and "${ids[r.q]}" share a run of ${Math.abs(r.b.x - r.a.x) + Math.abs(r.b.y - r.a.y)} mm, from (${r.a.x}, ${r.a.y}) to (${r.b.x}, ${r.b.y}), shorter than the ${r.t} mm partition`,
       )
       .join("; "),
   };
@@ -582,6 +716,83 @@ function holeCover(ring: readonly Point[], covers: readonly TileCover[]): "outdo
   }
   if (kinds === 3) return "covered by both outdoor and void";
   return kinds === 1 ? "outdoor" : "void";
+}
+
+/** The authored walls lying on a derived path with positive overlap, by id (first seen first). */
+function overlapping(
+  path: readonly Point[],
+  index: ReadonlyMap<string, Array<{ s: number; e: number; by: string }>>,
+): string[] {
+  const by: string[] = [];
+  for (let k = 0; k + 1 < path.length; k++) {
+    const a = path[k]!;
+    const b = path[k + 1]!;
+    const vertical = a.x === b.x;
+    const list = index.get(vertical ? `v:${a.x}` : `h:${a.y}`) ?? [];
+    chargeSteps(list.length + 1);
+    const lo = vertical ? Math.min(a.y, b.y) : Math.min(a.x, b.x);
+    const hi = vertical ? Math.max(a.y, b.y) : Math.max(a.x, b.x);
+    for (const w of list) if (Math.min(hi, w.e) > Math.max(lo, w.s) && !by.includes(w.by)) by.push(w.by);
+  }
+  return by;
+}
+
+/** Every straight axis-aligned wall segment of the group's final set (the derived pieces and
+ *  the authored walls), by line, with its half-thickness: what an `open` run's ends meet.
+ *  Charged one step per segment before it is built. */
+function faceIndex(
+  derived: readonly DerivedWallSpec[],
+  authored: readonly TileWallSeg[],
+  tInt: number,
+  tExt: number,
+): Map<string, Array<{ s: number; e: number; half: number }>> {
+  let n = authored.length + 1;
+  for (const d of derived) for (const p of d.pieces) n += p.points.length;
+  chargeSteps(n);
+  const segs: Array<{ a: Point; b: Point; t: number }> = [];
+  for (const d of derived) {
+    const t = d.role === "exterior" ? tExt : (d.thickness ?? tInt);
+    for (const p of d.pieces) {
+      const m = p.closed ? p.points.length : p.points.length - 1;
+      for (let k = 0; k < m; k++) segs.push({ a: p.points[k]!, b: p.points[(k + 1) % p.points.length]!, t });
+    }
+  }
+  for (const w of authored) if (w.thickness !== undefined) segs.push({ a: w.a, b: w.b, t: w.thickness });
+  const idx = new Map<string, Array<{ s: number; e: number; half: number }>>();
+  for (const { a, b, t } of segs) {
+    let k: string;
+    let s: number;
+    let e: number;
+    if (a.x === b.x && a.y !== b.y) {
+      k = `v:${a.x}`;
+      s = Math.min(a.y, b.y);
+      e = Math.max(a.y, b.y);
+    } else if (a.y === b.y && a.x !== b.x) {
+      k = `h:${a.y}`;
+      s = Math.min(a.x, b.x);
+      e = Math.max(a.x, b.x);
+    } else continue;
+    const list = idx.get(k);
+    if (list) list.push({ s, e, half: t / 2 });
+    else idx.set(k, [{ s, e, half: t / 2 }]);
+  }
+  return idx;
+}
+
+/** How far an `open` run's end `p` is cut back: half the thickness of the thickest wall
+ *  perpendicular to the run whose centreline passes through `p` (0 when none does). */
+function faceAt(
+  p: Point,
+  vertical: boolean,
+  faces: ReadonlyMap<string, Array<{ s: number; e: number; half: number }>>,
+): number {
+  // A vertical run is met by horizontal walls on the line y = p.y, and the other way round.
+  const list = faces.get(vertical ? `h:${p.y}` : `v:${p.x}`) ?? [];
+  chargeSteps(list.length + 1);
+  const t = vertical ? p.x : p.y;
+  let half = 0;
+  for (const w of list) if (w.s <= t && t <= w.e && w.half > half) half = w.half;
+  return half;
 }
 
 /** An upper bound on the runs coexistence leaves of one derived path: one, plus one per

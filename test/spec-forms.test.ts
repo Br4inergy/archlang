@@ -553,6 +553,14 @@ const POSITIVE: Snippet[] = [
         `  room id=t at (7000,0) size 2000x3000\n  walls from rooms exterior 200 partition 100 { except t }`,
     ),
   },
+  {
+    keyword: "walls",
+    note: "the pair clauses: `open between` (with and without `width`) and `between … thickness`",
+    src: plan(
+      `  room id=a at (0,0) size 4000x3000\n  room id=b at (4000,0) size 3000x3000\n  room id=c at (0,3000) size 7000x2000\n` +
+        `  walls from rooms exterior 200 partition 100 { open id=ab between a and b  open between a and c width 900  between b and c thickness 150 }`,
+    ),
+  },
   // --- site boundary ---------------------------------------------------------
   {
     keyword: "site",

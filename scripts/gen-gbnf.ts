@@ -555,11 +555,15 @@ function rules(): [string, string][] {
     // whole file exists to prevent.
     ["fence-stmt", `"fence" rws id-opt ( fence-style rws )? "{" ws point ws ( point ws )+ ( "close" ws )? "}"`],
     ["fence-style", litAlt(FENCE_STYLES)],
-    // `walls from rooms` (ADR 0028 §3). The body holds `except` clauses only: `open between`
-    // and `between … thickness` fail to parse (not available yet), so they are not derivable.
+    // `walls from rooms` (ADR 0028 §3). The body holds `except`, `open between` and
+    // `between … thickness` clauses, the closed list the parser accepts.
     [
       "walls-stmt",
-      `"walls" rws "from" rws "rooms" rws "exterior" rws expr rws "partition" rws expr ( ws "{" ws ( "except" rws ident ( rws ident )* ws )* "}" )?`,
+      `"walls" rws "from" rws "rooms" rws "exterior" rws expr rws "partition" rws expr ( ws "{" ws ( walls-clause ws )* "}" )?`,
+    ],
+    [
+      "walls-clause",
+      `"except" rws ident ( rws ident )* | "open" rws id-opt "between" rws ident rws "and" rws ident ( rws "width" rws expr )? | "between" rws ident rws "and" rws ident rws "thickness" rws expr`,
     ],
 
     // ---- shared clause pieces -------------------------------------------

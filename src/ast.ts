@@ -927,8 +927,9 @@ export type AstElement =
  * `walls from rooms exterior <t_ext> partition <t_int> [{ except <room> … }]` — one statement
  * that derives the whole wall set of the group it is written in from the rooms resolved there
  * (ADR 0028 §3): the exterior ring on the outline of the room union and a partition on every
- * shared edge run. The `open between` and `between … thickness` clauses of the ADR are not
- * available yet (they fail to parse, by name).
+ * shared edge run, less the pairs its clauses name: `open [id=<name>] between <A> and <B>
+ * [width <mm>]` voids the pair's run with a derived leaf-less opening, and `between <A> and
+ * <B> thickness <mm>` sets that one partition's thickness.
  */
 export interface WallsFromRoomsNode extends NodeBase {
   kind: "walls";
@@ -938,7 +939,29 @@ export interface WallsFromRoomsNode extends NodeBase {
   partition: Expr;
   /** The rooms left out of the derivation, in source order, each with its own span. */
   except: Array<{ id: string; span: Span }>;
+  /** The `open between` / `between … thickness` clauses, in source order. Absent when the
+   *  statement has none, so a statement without them parses to the node it always did. */
+  pairs?: WallsPairClause[];
 }
+
+/** One room named by a `walls from rooms` pair clause, with its own span. */
+export interface WallsPairRoom {
+  id: string;
+  span: Span;
+}
+
+/** A pair clause of `walls from rooms` (ADR 0028 §3); `span` covers the whole clause. */
+export type WallsPairClause =
+  | {
+      kind: "open";
+      /** The authored `id=` of the derived opening, with the name's span. */
+      id?: { id: string; span: Span };
+      a: WallsPairRoom;
+      b: WallsPairRoom;
+      width?: Expr;
+      span: Span;
+    }
+  | { kind: "thickness"; a: WallsPairRoom; b: WallsPairRoom; thickness: Expr; span: Span };
 
 /** `let NAME = <expr>` — a binding statement. */
 export interface LetNode extends NodeBase {

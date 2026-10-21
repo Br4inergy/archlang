@@ -394,6 +394,7 @@ Landed 2026-10-20 (wave 3): PS2.19 and PS2.17 in PR #216 (ef7dc46 … acc619f; s
 | PS2.21 | Enclosure budget follow-ups | From PR #204's final red-team: (1) the point-test charge assumes every curve crosses every other (`piecesBound ≈ 2c²` × ring vertices), so a plain round room drawn with ≥ 300 vertices is refused on `point-tests` although it crosses nothing; count only curve pairs whose boxes meet so finely drawn curved rooms stay measured (corpus max today is 56 vertices, aquarium's concourse). (2) The slowest admitted shape, a 50-partition × 30-tooth comb room, lints in ~1.6 s vs 0.44 s on main: bounded, not a hang, but twice the figure the PR body quotes. (3) `W_BOUNDARY_NO_WALL` sits outside the `FaceBudget` (ring × ring per room pair plus runs × wall segments), the same class as the ring-pair analyses `describe()` already pays; two interlocking 2000-tooth combs go 23 s → 35 s. Give it a count bound beside the existing ring-pair cost | todo |
 | PS2.22 | `W_ALIAS_MATCH` quotes a room id | For a room with no label the alias rule classifies the id and then writes it into the message ('Room "r_carport" reads as a garage only from the indirect term "carport"'), the one lint message that names an id; PS2.19's fallback words widen it (`r_plant`, `r_boiler`, `r_cellar`, `r_linen`, `r_nursery`; found by PR #216's red team). Word the unlabelled case without the id (the room's storey and position, or "an unlabelled room") and pin that no lint message over the corpus contains a room id | todo |
 | PS2.23 | Authored wall beside a derived line | An authored wall 1 mm (any non-zero distance) off a `walls from rooms` derived line is kept beside the derived wall, not merged (ADR 0028 §3 coexistence): two parallel bands nearly on top of each other. Lint it: an authored straight wall parallel to a derived segment, overlapping it along its length, whose centreline is closer than half the thicker wall's thickness, almost always meant to lie on the line (found by PR #223's red team) | todo |
+| PS2.24 | Wall meeting an open run mid-span | An authored wall perpendicular to a `walls from rooms` `open between` run, ending on it mid-span, is neither refused (it is not collinear, so not `E_WALL_BETWEEN_OPEN`) nor excused: today it only warns through `W_OPENING_AT_JUNCTION` (a wall standing inside the opening). Decide the rule: refuse it as `E_WALL_BETWEEN_OPEN`, or a lint finding with its own hint (give the opening a `width` that clears the wall, or move the wall). No code yet (found by PR #224's red team) | todo |
 
 ### PS3 · Relation-first authoring (D1 + D5; needs an ADR)
 
@@ -426,7 +427,7 @@ original brief follows.
   pin both by test).
 - Design input: `research/associativity.md` §4 P1/P6/P7; `research/2026-10-18-room-tiling.md`.
 
-**PS3.0 · `walls from rooms` (D5).** `todo` (after PS3.1 and PS3.2; may land before or with PS3.3)
+**PS3.0 · `walls from rooms` (D5).** `done` (parts A–C: PRs #222, #223, #224)
 - Closed-form: rectilinear union outline for the exterior ring; every shared edge run of two rooms
   becomes one partition segment unless an `open between` clause names the pair. Steps charged per
   room pair and per sweep before allocating.
@@ -456,6 +457,26 @@ original brief follows.
   gain their walls, the round snug refuses); `test/walls-from-rooms-digests.test.ts` the digest
   table. Not yet: `open between` and `between … thickness` (they fail to parse by name), and the
   relational openings of PS3.4.
+- *As built, part C (PR #224):* the two pair clauses. `between A and B thickness t` sets that
+  partition's thickness. `open [id=] between A and B [width]` keeps the pair's partition derived
+  as a host and derives a leaf-less opening across its clear span: the run less, at each end, half
+  the thickest wall perpendicular to it through that end (with `width`, centred on that span).
+  The opening is an ordinary `ROpening` that enters `ir.elements` after the statement
+  (`ElementDef.yieldsElements`). Its id is `A|B:open` unless the clause gives one, it carries
+  `_derived`, and its span is the clause's. Refusals, each on the clause:
+  - `E_WALL_BETWEEN_NOT_ADJACENT`;
+  - `E_WALL_BETWEEN_ROOM` (also polygon, circle or excepted rooms);
+  - `E_WALL_BETWEEN_OPEN` (an authored wall on the run, or an authored door/window/opening hosted
+    on it, through `ElementDef.auditGroup`);
+  - `E_WALL_BETWEEN_WIDTH`;
+  - `E_WALL_BETWEEN_DUP`.
+  Plan JSON carries `walls_from_rooms.open[]`/`between[]`. The twins (a hand-placed opening, an
+  authored partition taking over) are pinned in `test/walls-from-rooms-clauses.test.ts`, and the
+  clause plans are pinned in the digest table. ADR 0028 is Accepted. Red-team round 1:
+  - `W_OPENING_AT_JUNCTION` excuses a derived opening's jamb on the thickest meeting wall's face;
+    the thinner wall's pier beside it is not a nib.
+  - `E_WALL_BETWEEN_OPEN` for a position-hosted opening fires only on overlap with the voided
+    span.
 
 **PS3.2 · Resolve order and room-edge datums.** part A `done`, part B in review (after PS3.1)
 - Resolve rooms and relational placement before walls, then freeze a datum table.
@@ -473,6 +494,9 @@ original brief follows.
 - `window on <room>.<edge> [at …]` picks the exterior wall segment on that edge.
 - Hosted offsets on existing forms: `on <wall> at 150 from end`, `on <wall> at 150 from <room>.<edge>`,
   `on <wall> at axis 3`.
+- Note (PS3.0 part C): the opening an `open between` clause derives reports `placement:
+  "absolute"` in `describe().freedom`, so its hand-placed twin stays byte-identical. This card
+  may give it `derived` or `relational`.
 
 **PS3.5 · Semantic selectors.** `todo`
 - `segment north|south|east|west`, or `segment containing <room>.<edge>`, aliasing `segment <n>`.
@@ -613,7 +637,7 @@ original brief follows.
 |---|---|---|
 | 1 | PS0.1, PS0.7, PS1.1 | Done 2026-10-18: PS0.7 in PR #197 (ad58551, dfd1737), PS1.1 in PR #195 (df00ab5), PS0.1 in PR #196 (1e0c2d9, e81a136; also closed backlog C.4). Corpus catch rate 7/53 |
 | 2 | PS2.1–PS2.9, PS2.13 | Defect-corpus catch rate ≥ 90 % for classes 1, 2, 3, 4 and 6, with no false positive on the clean twins; every corpus `lint()` movement is explained (two-bed is expected to start warning: fix the example, see PS3.6). *Corrected 2026-10-19:* class 5 (clearances) belongs to PS2.11 in row 5, so it was removed from this row's acceptance. *Status:* wave 1 landed 2026-10-19 (PRs #199, #201, #200): classes 1, 3, 6 at 100 %, class 4 at 3/4 (PS2.17), class 2 at 1/6 waiting on PS2.4; overall 33/53 on `main@cc165f4`. Wave 2 landed 2026-10-19 (PRs #203, #204, #211): classes 1, 2, 3, 6 at 100 %, class 4 at 4/5 (80 %, below the bar until PS2.17 lands); overall 44/67 on `main@fcb3074` (the +1 is A2, the balcony-door-masked laundry, caught by PS0.10's main entrance; T2 still refuses without `site`). Wave 3 landed 2026-10-20 (PRs #214, #216, #217): classes 1, 2, 3, 4, 6 at 100 %, overall 46/68 on `main@06c6b56`; this row's acceptance is met (class 5 is row 5). Next: PS3.1 landed as ADR 0028 (PR #215, Proposed), then PS3.2 and PS3.6 |
-| 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form |
+| 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. *Status 2026-10-22 (PS3.0 done, PR #224):* met: ADR 0028 merged and Accepted; byte-identity law green (every digest suite unchanged, the PS3.0 table pinned); the class-2 corpus cases are refused or gain their walls in the D5 form; the widening drill moves the walls and the door with the room (`test/walls-from-rooms/widen.arch`). Remaining: rewriting `examples/relational.arch` and `examples/two-bed.arch` in the headline form (PS3.6, needs PS3.4's relational openings), and PS3.3/PS3.4 themselves |
 | 4 | PS0.4, PS4.1, PS4.2 | The widening drill's `impact` names every moved, held and broken item correctly |
 | 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically |
 | 6 | PS4.3, PS4.4, PS3.5, PS3.6, PS5.4, PS7.x | — |

@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**116 errors** · **63 warnings**
+**120 errors** · **63 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -120,7 +120,11 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_VOID_SIZE`](#e_void_size) | error | A floor void must have a positive size. |
 | [`E_WALLS_FROM_NO_ROOMS`](#e_walls_from_no_rooms) | error | A `walls from rooms` statement has no room to derive walls from. |
 | [`E_WALLS_FROM_ROOMS_DUP`](#e_walls_from_rooms_dup) | error | More than one `walls from rooms` statement in one plan or component. |
-| [`E_WALL_BETWEEN_ROOM`](#e_wall_between_room) | error | A `walls from rooms` clause names a room that is not in its group. |
+| [`E_WALL_BETWEEN_DUP`](#e_wall_between_dup) | error | A `walls from rooms` statement names one pair of rooms in two clauses. |
+| [`E_WALL_BETWEEN_NOT_ADJACENT`](#e_wall_between_not_adjacent) | error | A `walls from rooms` clause names two rooms that share no edge. |
+| [`E_WALL_BETWEEN_OPEN`](#e_wall_between_open) | error | A wall, door, window or opening is written on an edge a `walls from rooms` clause declares open. |
+| [`E_WALL_BETWEEN_ROOM`](#e_wall_between_room) | error | A `walls from rooms` clause names a room it cannot act on. |
+| [`E_WALL_BETWEEN_WIDTH`](#e_wall_between_width) | error | An `open between` opening does not fit the clear span of its edge. |
 | [`E_WALL_ID_RESERVED`](#e_wall_id_reserved) | error | An authored wall takes the id the derived exterior ring has in this plan or component. |
 | [`E_WALL_THICKNESS`](#e_wall_thickness) | error | Wall must have a positive thickness. |
 | [`E_WHILE_LIMIT`](#e_while_limit) | error | `while` exceeded its iteration cap. |
@@ -1573,17 +1577,76 @@ walls from rooms exterior 200 partition 100
 walls from rooms exterior 250 partition 100   # error: a second statement
 ```
 
+## E_WALL_BETWEEN_DUP
+
+*error* — A `walls from rooms` statement names one pair of rooms in two clauses.
+
+**Cause.** Each pair of rooms takes at most one clause: `open between` (the run is voided by an opening) or `between … thickness` (the partition gets its own thickness). A second clause on the same pair, in either order of the rooms, would either contradict the first or repeat it, and the compiler refuses rather than choose (ADR 0028 §3). The span points at the later clause.
+
+**Fix.** Keep one clause per pair.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+room id=b at (4000,0) size 3000x3000
+walls from rooms exterior 200 partition 100 { open between a and b  between b and a thickness 200 }   # error: the pair twice
+```
+
+## E_WALL_BETWEEN_NOT_ADJACENT
+
+*error* — A `walls from rooms` clause names two rooms that share no edge.
+
+**Cause.** `open between A and B` and `between A and B thickness t` act on the partition the statement derives on the edge run two rooms share. Two rooms that do not meet along an edge (apart, or touching only at a corner) have no such run, so the clause would act on nothing (ADR 0028 §3). The span points at the clause.
+
+**Fix.** Name two rooms that meet along an edge, or remove the clause.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+room id=b at (4000,0) size 3000x3000
+room id=c at (0,3000) size 7000x2000
+room id=d at (7000,0) size 2000x5000
+walls from rooms exterior 200 partition 100 { open between a and d }   # error: a and d do not meet
+```
+
+## E_WALL_BETWEEN_OPEN
+
+*error* — A wall, door, window or opening is written on an edge a `walls from rooms` clause declares open.
+
+**Cause.** `open between A and B` voids the pair's edge run with a derived opening: the two rooms are one open-plan space there. An authored wall lying on that run (exactly on its line, overlapping it), or an authored door, window or opening hosted by position across the span the derived opening voids, would close or narrow what the clause opened, so the compiler refuses rather than choose between them (ADR 0028 §3). The span points at the clause.
+
+**Fix.** Remove the authored wall or opening on that edge, or remove the `open between` clause and keep the wall (with a door in it).
+
+```arch static
+room id=a at (0,0) size 4000x3000
+room id=b at (4000,0) size 3000x3000
+walls from rooms exterior 200 partition 100 { open between a and b }
+door at (4000,1500) width 800 wall partition   # error: the edge is open
+```
+
 ## E_WALL_BETWEEN_ROOM
 
-*error* — A `walls from rooms` clause names a room that is not in its group.
+*error* — A `walls from rooms` clause names a room it cannot act on.
 
-**Cause.** `walls from rooms` derives from the rooms of the plan or component it is written in (ADR 0016: a component sees only its own rooms), so its `except` clause can leave out only one of those rooms. A name that is not one of them (a typo, a room of another component, a placed instance's room) excludes nothing (ADR 0028 §3).
+**Cause.** `walls from rooms` derives from the rooms of the plan or component it is written in (ADR 0016: a component sees only its own rooms). Its `except` clause can leave out only one of those rooms; an `open between` or `between … thickness` clause can name only one of those rooms that the statement derives walls round: a rectangle, not left out by `except` (a polygon or circle room has no edge run to share). A name that is not one of them (a typo, a room of another component, a placed instance's room) would act on nothing (ADR 0028 §3). The span points at the name.
 
-**Fix.** Name a room written beside the statement, or drop the name.
+**Fix.** Name a room written beside the statement (a rectangle, not excepted, in an `open`/`between` clause), or drop the name.
 
 ```arch static
 room id=a at (0,0) size 4000x3000
 walls from rooms exterior 200 partition 100 { except terrace }   # error: no room `terrace`
+```
+
+## E_WALL_BETWEEN_WIDTH
+
+*error* — An `open between` opening does not fit the clear span of its edge.
+
+**Cause.** `open between A and B` derives an opening across the clear span of the pair's edge run: the run less half the thickness of the thickest wall meeting it at each end. With `width`, the opening is centred on that span and must fit in it; without one it spans it whole, which needs a span longer than zero. Narrowing or sliding it to fit would be a choice the author did not make (ADR 0005), so the compiler refuses. The span points at the clause.
+
+**Fix.** Give a `width` no larger than the clear span (the message states it), or leave `width` out.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+room id=b at (4000,0) size 3000x3000
+walls from rooms exterior 200 partition 100 { open between a and b width 3000 }   # error: the clear span is 2800
 ```
 
 ## E_WALL_ID_RESERVED

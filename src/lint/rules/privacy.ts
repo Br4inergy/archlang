@@ -53,6 +53,7 @@ import { collinearOverlapLength, distPointToSegment, polygonEdges } from "../../
 import type { RDoor, RRoom } from "../../ir.js";
 import { fmt0, fmt2 } from "../../num-format.js";
 import { judgesAsDwelling, type LintContext, type LintRule } from "../context.js";
+import { openingClauseById } from "../../wall-ref.js";
 
 /** Uses that make a room one people pass through by design. */
 const PUBLIC_USES: ReadonlySet<UseKind> = new Set<UseKind>([
@@ -623,9 +624,12 @@ export const wetRoomDoor: LintRule = {
       const onlyTo = only ? room(far(only)) : undefined;
       if (home && only && only.kind === "opening" && onlyTo && hasAny(f.uses.get(onlyTo.id)!, HABITABLE_USES)) {
         reported.add(only.doorId);
+        const clause = openingClauseById(ctx.ir.elements, only.doorId);
         const hints = [
-          `Hang a leaf in it: write \`door\` in place of \`opening\` for ${only.doorId}, at the same position, at least 700 mm wide.`,
-          ...movesOnto(ctx, f, w, wBox, new Set([onlyTo.id]), order, tol, only.doorId),
+          clause
+            ? `Hang a leaf in it: remove ${clause} from \`walls from rooms\` and put a \`door\` on that partition, at least 700 mm wide.`
+            : `Hang a leaf in it: write \`door\` in place of \`opening\` for ${only.doorId}, at the same position, at least 700 mm wide.`,
+          ...movesOnto(ctx, f, w, wBox, new Set([onlyTo.id]), order, tol, clause ?? only.doorId),
           f.priv.get(onlyTo.id) === "bedroom"
             ? `Accept if an open en-suite inside the bedroom suite of ${onlyTo.id} is the design intent. The warning is advisory.`
             : "Accept if an open wash area is the design intent and it is screened from view. The warning is advisory.",
@@ -684,7 +688,7 @@ export const wetRoomDoor: LintRule = {
             ...(near
               ? [
                   `Keep the kitchen of ${quoted(ctx, to)} (${to.id}) at least ${mm(ctx.rules.wetDoorKitchenProximityMm)} mm ` +
-                    `from ${e.doorId}, measured from the doorway's face: its ${near.category} is ${mm(near.mm)} mm away.`,
+                    `from ${openingClauseById(ctx.ir.elements, e.doorId) ? `the opening ${openingClauseById(ctx.ir.elements, e.doorId)} derives` : e.doorId}, measured from the doorway's face: its ${near.category} is ${mm(near.mm)} mm away.`,
                 ]
               : []),
             ...(moves.length === 0

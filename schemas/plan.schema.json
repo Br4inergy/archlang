@@ -291,6 +291,65 @@
             "type": "string"
           },
           "description": "Room ids left out of the derivation."
+        },
+        "open": {
+          "type": "array",
+          "description": "`open [id=] between A and B [width]`: the pair's partition is voided by a derived leaf-less opening across its clear span (not listed in `openings`).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "between"
+            ],
+            "properties": {
+              "between": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "The two room ids."
+              },
+              "id": {
+                "type": "string",
+                "description": "The derived opening's id, when the clause gives one."
+              },
+              "width": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Opening width in millimetres, centred on the clear span."
+              }
+            }
+          }
+        },
+        "between": {
+          "type": "array",
+          "description": "`between A and B thickness t`: that one partition's thickness.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "between",
+              "thickness"
+            ],
+            "properties": {
+              "between": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "The two room ids."
+              },
+              "thickness": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Partition thickness in millimetres."
+              }
+            }
+          }
         }
       }
     },

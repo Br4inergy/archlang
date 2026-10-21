@@ -108,8 +108,11 @@ physically wrong (openings off their wall, furniture through walls). Author by *
 - **Let the rooms make the walls.** When the rooms are rectangles that tile the floor (write a
   corridor as a room), `walls from rooms exterior 200 partition 100` derives the shell on their outline
   and a partition on every shared edge, so no wall can go missing. Host openings by position or
-  category (`door at (x,y) … wall partition`); `{ except <room> }` leaves a room out. Refusals name the
-  rooms (`E_ROOMS_OVERLAP`, `E_ROOMS_NOT_TILING`, `E_PARTITION_TOO_SHORT`, `E_ROOM_NOT_RECTANGLE`).
+  category (`door at (x,y) … wall partition`); `{ except <room> }` leaves a room out. For an
+  open-plan join write `open between living and kitchen` in the body (an opening across the whole
+  shared edge, or `width <mm>` centred; never a door on that edge), and `between a and b thickness
+  150` for one thicker partition. Refusals name the rooms (`E_ROOMS_OVERLAP`, `E_ROOMS_NOT_TILING`,
+  `E_PARTITION_TOO_SHORT`, `E_ROOM_NOT_RECTANGLE`, `E_WALL_BETWEEN_NOT_ADJACENT`).
 - **Read wall points off the rooms.** A rectangular room `r` exposes `r.top`, `r.bottom`, `r.left`,
   `r.right`, `r.cx`, `r.cy`, so `wall partition thickness 100 { (hall.right, hall.top) (hall.right,
   hall.bottom) }` follows the room when it grows. Use them in walls, openings, furniture and dims,

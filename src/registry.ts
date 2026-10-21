@@ -8,7 +8,7 @@
 import type { Token } from "./lexer.js";
 import type { AstElement, ElementKind, ExprPoint, Point } from "./ast.js";
 import type { Expr, ParseExprOpts, Value } from "./expr.js";
-import type { Diagnostic } from "./diagnostics.js";
+import type { Diagnostic, Span } from "./diagnostics.js";
 import type { ResolvedElement, RWall, RRoom } from "./ir.js";
 import type { Bounds, WallSegment } from "./geometry.js";
 import type { Theme } from "./theme.js";
@@ -292,6 +292,25 @@ export interface ElementDef {
    * derived rail). It may update `resolved` in place: it was made in this resolution.
    */
   rewall?(resolved: ResolvedElement, walls: readonly RWall[]): void;
+  /**
+   * The ELEMENTS this element derives (the openings of `walls from rooms`' `open between`
+   * clauses, ADR 0028 §3), or none. They enter `ResolvedPlan.elements` right after it, as
+   * ordinary elements of their own kinds (drawn, counted toward the drawing budget, read by
+   * `describe()` and `lint()`), and are carried by this element's own `transform`.
+   */
+  yieldsElements?(resolved: ResolvedElement): readonly ResolvedElement[];
+  /** The authored ids (`open id=<name> between …`) the {@link ElementDef.yieldsElements} of
+   *  this statement will carry, with their spans: checked for duplicates with every other id
+   *  (`E_DUP_ID`, on the later name) when ids are assigned. */
+  authoredChildIds?(node: AstElement): ReadonlyArray<{ id: string; span: Span }>;
+  /**
+   * Judge the rest of the group once every kind has resolved: called for a
+   * {@link ElementDef.yieldsWalls} kind with the group's own resolved elements (source order,
+   * its own frame), after the last pass. `walls from rooms` refuses an authored door, window
+   * or opening hosted on a run its `open between` clause voids (`E_WALL_BETWEEN_OPEN`). Its
+   * diagnostics are reported with this kind's own.
+   */
+  auditGroup?(resolved: ResolvedElement, own: readonly ResolvedElement[], diag: (d: Diagnostic) => void): void;
   /**
    * Wall ids a {@link ElementDef.yieldsWalls} kind gives its derived walls that an identifier
    * CAN spell (`exterior`). In a group that holds the kind, an authored wall with one of these

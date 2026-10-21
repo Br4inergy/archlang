@@ -19,12 +19,20 @@
  * the drop is reported in `describe().derived_walls[]`.
  */
 
-import type { Point, WallsFromRoomsNode } from "../ast.js";
+import type { Point, WallsFromRoomsNode, WallsPairClause, WallsPairRoom } from "../ast.js";
+import type { Expr } from "../expr.js";
 import type { ElementDef, ParseCtx, ResolveCtx, TransformCtx } from "../registry.js";
-import type { DerivedWallRow, ROutdoor, RRoom, RVoid, RWall, RWallsFromRooms } from "../ir.js";
+import type { DerivedWallRow, ROpening, ROutdoor, RRoom, RVoid, RWall, RWallsFromRooms } from "../ir.js";
 import { DEFAULT_MATERIAL } from "../hatches.js";
 import { segmentsOfWall } from "../geometry.js";
-import { deriveWallsFromRooms, type TileCover, type TileRoom, type TileWallSeg } from "../room-tiling.js";
+import {
+  deriveWallsFromRooms,
+  type TileCover,
+  type TilePair,
+  type TileRoom,
+  type TileWallSeg,
+} from "../room-tiling.js";
+import { opening } from "./opening.js";
 import { wall } from "./wall.js";
 
 /** The words that lead a clause of the statement's body. */
@@ -54,6 +62,7 @@ export const wallsFromRooms: ElementDef = {
     ctx.eatKeyword("partition");
     const partition = ctx.parseExpr();
     const except: WallsFromRoomsNode["except"] = [];
+    let pairs: WallsPairClause[] | undefined;
     if (ctx.isType("lcurly")) {
       ctx.next();
       while (!ctx.isType("rcurly") && !ctx.isType("eof")) {
@@ -68,31 +77,26 @@ export const wallsFromRooms: ElementDef = {
           }
           continue;
         }
-        if (ctx.isKeyword("open")) {
-          ctx.fail(
-            "`open between <A> and <B>` is not available yet in `walls from rooms` (ADR 0028 §3): write the two rooms as one room, or write their walls by hand",
-          );
-        }
-        if (ctx.isKeyword("between")) {
-          ctx.fail(
-            "`between <A> and <B> thickness <t>` is not available yet in `walls from rooms` (ADR 0028 §3): write that partition by hand, on the shared edge, and it replaces the derived one",
-          );
+        if (ctx.isKeyword("open") || ctx.isKeyword("between")) {
+          if (pairs === undefined) pairs = [];
+          pairs.push(parsePair(ctx));
+          continue;
         }
         const t = ctx.peek();
         ctx.fail(
-          `Expected "except" in the \`walls from rooms\` body but found ${t.type === "eof" ? "end of input" : `"${t.value}"`}`,
+          `Expected "except", "open" or "between" in the \`walls from rooms\` body but found ${t.type === "eof" ? "end of input" : `"${t.value}"`}`,
         );
       }
       ctx.eat("rcurly");
     }
-    return { kind: "walls", id: "", exterior, partition, except, line: kw.line };
+    return { kind: "walls", id: "", exterior, partition, except, ...(pairs ? { pairs } : {}), line: kw.line };
   },
 
   idPrefix: () => "walls",
 
   resolve(node, ctx: ResolveCtx): RWallsFromRooms {
     const n = node as WallsFromRoomsNode;
-    const thick = (e: WallsFromRoomsNode["exterior"], what: string): number => {
+    const thick = (e: WallsFromRoomsNode["exterior"], what: string, span = n.span): number => {
       const v = ctx.eval(e);
       const t = ctx.snap(v) || v;
       if (!(t > 0)) {
@@ -100,7 +104,7 @@ export const wallsFromRooms: ElementDef = {
           severity: "error",
           message: `\`walls from rooms\` needs a positive ${what} thickness`,
           code: "E_WALL_THICKNESS",
-          span: n.span,
+          span,
         });
       }
       return t;
@@ -115,6 +119,7 @@ export const wallsFromRooms: ElementDef = {
       except: n.except.map((x) => x.id),
       _derivedWalls: [],
       _derivedRows: [],
+      _derivedOpenings: [],
       span: n.span,
     };
     const own = ctx.group?.() ?? [];
@@ -139,8 +144,21 @@ export const wallsFromRooms: ElementDef = {
         span: x.span,
       });
     }
-    if (!(tExt > 0) || !(tInt > 0)) return out;
     const excluded = new Set(n.except.map((x) => x.id));
+    const { pairs, clauses, bad } = resolvePairs(n, rooms, excluded, ctx);
+    if (pairs.length > 0) {
+      out.pairs = pairs.map((p, k) =>
+        p.kind === "open"
+          ? {
+              kind: "open",
+              between: [p.a, p.b],
+              ...(clauses[k]!.kind === "open" && clauses[k]!.id ? { id: clauses[k]!.id!.id } : {}),
+              ...(p.width !== undefined ? { width: p.width } : {}),
+            }
+          : { kind: "thickness", between: [p.a, p.b], thickness: p.thickness },
+      );
+    }
+    if (!(tExt > 0) || !(tInt > 0)) return out;
     const set: TileRoom[] = rooms
       .filter((r) => !excluded.has(r.id))
       .map((r) =>
@@ -168,13 +186,21 @@ export const wallsFromRooms: ElementDef = {
       return [];
     });
     const authored: TileWallSeg[] = own.flatMap((e) =>
-      e.kind === "wall" ? segmentsOfWall(e).flatMap((s) => (s.arc ? [] : [{ a: s.a, b: s.b, wallId: e.id }])) : [],
+      e.kind === "wall"
+        ? segmentsOfWall(e).flatMap((s) => (s.arc ? [] : [{ a: s.a, b: s.b, wallId: e.id, thickness: e.thickness }]))
+        : [],
     );
-    const res = deriveWallsFromRooms(set, covers, authored, tInt, ctx.elementBudget);
+    const res = deriveWallsFromRooms(set, covers, authored, tInt, ctx.elementBudget, { tExt, pairs });
     if (!res.ok) {
-      for (const r of res.refusals) ctx.diag({ severity: "error", ...refusalText(r), code: r.code, span: n.span });
+      for (const r of res.refusals) {
+        const span = r.clause === undefined ? n.span : clauses[r.clause]!.span;
+        ctx.diag({ severity: "error", ...refusalText(r), code: r.code, span });
+      }
       return out;
     }
+    // A clause the statement refused above (a room it cannot name, a pair named twice, a
+    // thickness or width that is not positive) derives nothing: the plan is already an error.
+    if (bad) return out;
     for (const spec of res.walls) {
       out._derivedRows.push({
         from: "rooms",
@@ -183,11 +209,11 @@ export const wallsFromRooms: ElementDef = {
         ...(spec.dropped.length > 0 ? { dropped: spec.dropped } : {}),
       });
       for (const piece of spec.pieces) {
-        out._derivedWalls.push({
+        const w: RWall = {
           kind: "wall",
           id: piece.name,
           category: spec.role,
-          thickness: spec.role === "exterior" ? tExt : tInt,
+          thickness: spec.role === "exterior" ? tExt : (spec.thickness ?? tInt),
           material: DEFAULT_MATERIAL,
           hatchScale: 1,
           hatchAngle: 0,
@@ -202,10 +228,69 @@ export const wallsFromRooms: ElementDef = {
             ...(spec.ring ? { ring: spec.ring } : {}),
             ...(spec.between ? { between: spec.between } : {}),
           },
-        });
+        };
+        out._derivedWalls.push(w);
+        // The opening an `open between` clause voids the run with: hosted on the run (whole,
+        // since an authored wall on an open run is refused), across its clear span.
+        if (spec.open && piece.name === spec.name) {
+          const clause = clauses[spec.open.clause] as Extract<WallsPairClause, { kind: "open" }>;
+          out._derivedOpenings.push({
+            kind: "opening",
+            id: clause.id?.id ?? `${spec.name}:open`,
+            at: spec.open.at,
+            width: spec.open.width,
+            host: segmentsOfWall(w)[0]!,
+            head: w.height,
+            span: clause.span,
+            _derived: {
+              from: "rooms",
+              between: spec.between!,
+              idAuthored: clause.id !== undefined,
+              written: [clause.a.id, clause.b.id],
+            },
+          });
+        }
       }
     }
     return out;
+  },
+
+  /** The openings `open between` derives: ordinary openings, entered in the plan's elements
+   *  right after the statement (`ElementDef.yieldsElements`). */
+  yieldsElements: (resolved) => (resolved as RWallsFromRooms)._derivedOpenings,
+  authoredChildIds: (node) =>
+    ((node as WallsFromRoomsNode).pairs ?? []).flatMap((c) => (c.kind === "open" && c.id ? [c.id] : [])),
+
+  /** An authored door, window or opening hosted by position on the span an `open between`
+   *  clause voids would close what the clause opened: refused, on the clause
+   *  (`E_WALL_BETWEEN_OPEN`). One beside it, on the partition a `width` leaves, is fine. */
+  auditGroup(resolved, own, diag): void {
+    const s = resolved as RWallsFromRooms;
+    if (s._derivedOpenings.length === 0) return;
+    const byWall = new Map(s._derivedOpenings.map((o) => [o.host!.wallId, o]));
+    for (const e of own) {
+      if (e.kind !== "door" && e.kind !== "window" && e.kind !== "opening") continue;
+      const o = e.host ? byWall.get(e.host.wallId) : undefined;
+      if (!o) continue;
+      // Only over the voided span: the partition a `width` leaves beside it is ordinary wall,
+      // and a jamb touching the opening's is allowed (positive overlap, exactly).
+      const vertical = o.host!.a.x === o.host!.b.x;
+      const along = (p: Point): number => (vertical ? p.y : p.x);
+      const lo = Math.max(along(o.at) - o.width / 2, along(e.at) - e.width / 2);
+      const hi = Math.min(along(o.at) + o.width / 2, along(e.at) + e.width / 2);
+      if (!(hi > lo)) continue;
+      const [a, b] = o._derived!.between;
+      diag({
+        severity: "error",
+        message: `\`walls from rooms\` cannot open the pair: ${e.kind} "${e.id}" stands on the edge "${a}" and "${b}" share, which the clause declares open`,
+        code: "E_WALL_BETWEEN_OPEN",
+        span: o.span,
+        ...(e.span ? { relatedSpans: [{ span: e.span, message: `the ${e.kind} on the open edge` }] } : {}),
+        hints: [
+          `Remove the ${e.kind} (the edge is already open), or remove the \`open between\` clause and keep the wall with the ${e.kind} in it.`,
+        ],
+      });
+    }
   },
 
   yieldsWalls: (resolved) => (resolved as RWallsFromRooms)._derivedWalls,
@@ -259,9 +344,137 @@ export const wallsFromRooms: ElementDef = {
         }
         return row;
       }),
+      _derivedOpenings: s._derivedOpenings.map((o) => {
+        const moved = opening.transform!(o, { ...t, id: t.nsId(o.id) }) as ROpening;
+        moved._derived = { ...o._derived!, between: [t.nsId(o._derived!.between[0]), t.nsId(o._derived!.between[1])] };
+        if (f.prefix !== undefined) moved._instance = f.prefix;
+        if (f.component !== undefined) moved._component = f.component;
+        return moved;
+      }),
     };
   },
 };
+
+/** `open [id=<name>] between <A> and <B> [width <mm>]` or `between <A> and <B> thickness <mm>`. */
+function parsePair(ctx: ParseCtx): WallsPairClause {
+  const first = ctx.peek();
+  let id: { id: string; span: { start: number; end: number } } | undefined;
+  const open = ctx.isKeyword("open");
+  if (open) {
+    ctx.next();
+    const name = ctx.parseIdOpt();
+    if (name) {
+      const t = ctx.peek(-1);
+      id = { id: name, span: { start: t.start, end: t.end } };
+    }
+  }
+  ctx.eatKeyword("between");
+  const room = (): WallsPairRoom => {
+    const t = ctx.eatIdent();
+    return { id: t.value, span: { start: t.start, end: t.end } };
+  };
+  const a = room();
+  ctx.eatKeyword("and");
+  const b = room();
+  const span = (): { start: number; end: number } => ({ start: first.start, end: ctx.peek(-1).end });
+  if (open) {
+    let width: Expr | undefined;
+    if (ctx.isKeyword("width")) {
+      ctx.next();
+      width = ctx.parseExpr();
+    }
+    return { kind: "open", ...(id ? { id } : {}), a, b, ...(width ? { width } : {}), span: span() };
+  }
+  ctx.eatKeyword("thickness");
+  const thickness = ctx.parseExpr();
+  return { kind: "thickness", a, b, thickness, span: span() };
+}
+
+/**
+ * The statement's pair clauses, checked and evaluated in source order: each must name two
+ * rectangular rooms of the derivation (`E_WALL_BETWEEN_ROOM`, on the name) and no pair twice
+ * (`E_WALL_BETWEEN_DUP`, on the later clause); a thickness is judged as a wall's is
+ * (`E_WALL_THICKNESS`), a width as an opening's (`E_OPENING_WIDTH`). Returns the clauses that
+ * passed, as the derivation reads them, beside their source clauses; `bad` when any failed.
+ */
+function resolvePairs(
+  n: WallsFromRoomsNode,
+  rooms: readonly RRoom[],
+  excluded: ReadonlySet<string>,
+  ctx: ResolveCtx,
+): { pairs: TilePair[]; clauses: WallsPairClause[]; bad: boolean } {
+  const pairs: TilePair[] = [];
+  const clauses: WallsPairClause[] = [];
+  let bad = false;
+  const byId = new Map(rooms.map((r) => [r.id, r]));
+  const seen = new Set<string>();
+  for (const c of n.pairs ?? []) {
+    let ok = true;
+    const word = c.kind === "open" ? "open between" : "between";
+    for (const x of [c.a, c.b]) {
+      const r = byId.get(x.id);
+      const why = !r
+        ? "names no room written beside it: a clause names rooms of the plan or component the statement is written in"
+        : r.circle || r.poly
+          ? `is a ${r.circle ? "circle" : "polygon"} room: only rectangular rooms share an edge run`
+          : excluded.has(x.id)
+            ? "is left out by `except`, so no wall is derived round it"
+            : undefined;
+      if (why === undefined) continue;
+      ok = false;
+      ctx.diag({
+        severity: "error",
+        message: `\`${word} ${c.a.id} and ${c.b.id}\` cannot name "${x.id}": it ${why}`,
+        code: "E_WALL_BETWEEN_ROOM",
+        span: x.span,
+      });
+    }
+    const key = JSON.stringify([c.a.id, c.b.id].sort());
+    if (seen.has(key)) {
+      ok = false;
+      ctx.diag({
+        severity: "error",
+        message: `"${c.a.id}" and "${c.b.id}" are already named by an earlier clause of this \`walls from rooms\`: a pair takes one clause, \`open between\` or \`between … thickness\``,
+        code: "E_WALL_BETWEEN_DUP",
+        span: c.span,
+      });
+    }
+    seen.add(key);
+    if (c.kind === "thickness") {
+      const v = ctx.eval(c.thickness);
+      const t = ctx.snap(v) || v;
+      if (!(t > 0)) {
+        ok = false;
+        ctx.diag({
+          severity: "error",
+          message: `\`between ${c.a.id} and ${c.b.id} thickness\` needs a positive thickness`,
+          code: "E_WALL_THICKNESS",
+          span: c.span,
+        });
+      }
+      if (ok) pairs.push({ kind: "thickness", a: c.a.id, b: c.b.id, thickness: t });
+    } else {
+      let width: number | undefined;
+      if (c.width) {
+        const v = ctx.eval(c.width);
+        width = ctx.snap(v) || v;
+        if (!(width > 0)) {
+          ok = false;
+          ctx.diag({
+            severity: "error",
+            message: `\`open between ${c.a.id} and ${c.b.id} width\` needs a positive width`,
+            code: "E_OPENING_WIDTH",
+            span: c.span,
+          });
+        }
+      }
+      if (ok) pairs.push({ kind: "open", a: c.a.id, b: c.b.id, ...(width !== undefined ? { width } : {}) });
+    }
+    if (ok) clauses.push(c);
+    else bad = true;
+  }
+  return { pairs, clauses, bad };
+}
 
 function coverOfVoid(v: RVoid): TileCover {
   return { kind: "void", rect: { x0: v.at.x, y0: v.at.y, x1: v.at.x + v.size.w, y1: v.at.y + v.size.h } };
@@ -300,6 +513,23 @@ function refusalText(r: { code: string; rooms: string[]; why: string }): { messa
         hints: [
           "Remove the short authored walls lying on the derived lines, or write those walls by hand without the statement.",
         ],
+      };
+    case "E_WALL_BETWEEN_NOT_ADJACENT":
+      return {
+        message: `\`walls from rooms\` cannot apply the clause: ${r.why}`,
+        hints: ["Name two rooms that meet along an edge, or remove the clause."],
+      };
+    case "E_WALL_BETWEEN_OPEN":
+      return {
+        message: `\`walls from rooms\` cannot open the pair: ${r.why}`,
+        hints: [
+          "Remove the authored wall (or the door, window or opening on that edge), or remove the `open between` clause and keep the wall.",
+        ],
+      };
+    case "E_WALL_BETWEEN_WIDTH":
+      return {
+        message: `\`walls from rooms\` cannot derive the opening: ${r.why}`,
+        hints: ["Give a `width` no larger than the clear span, or leave `width` out to open the whole clear span."],
       };
     default:
       return {
