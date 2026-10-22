@@ -295,7 +295,8 @@ export interface OpeningJson {
    * A relational placement as written (ADR 0028 §5): `between` two rooms or `edge`, a room
    * edge (`r.top`), with the `at` position text when one is written. Emitted, beside the
    * resolved `x`/`y`, only for a relational opening of the plan itself (one inside a `place`d
-   * instance is exported by its coordinates, as every instance element is); on input it is
+   * instance is exported by its coordinates, as every instance element is, and so is one
+   * positioned `at axis <label>`, since Plan JSON carries no axes); on input it is
    * the placement `planJsonToArch` writes back, and `x`/`y` are then not needed.
    */
   relation?: OpeningRelationJson;
@@ -604,7 +605,11 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
     )
     .map((e) => {
       const base: OpeningJson = { kind: e.kind, id: e.id, x: e.at.x, y: e.at.y, width: e.width };
-      if (e._relation && e._instance === undefined) base.relation = { ...e._relation };
+      // Plan JSON carries no `axes`, so a relation positioned `at axis <label>` could not be
+      // re-imported (E_OPENING_DATUM): it is exported by its coordinates instead, lossy the way
+      // axes already are, never a compile error.
+      const onAxis = e._relation?.at !== undefined && /^axis\s/.test(e._relation.at);
+      if (e._relation && e._instance === undefined && !onAxis) base.relation = { ...e._relation };
       else if (e.host?.category !== undefined) base.wall = e.host.category;
       if (e.kind === "door") {
         // A door's clauses are emitted only when its KIND accepts them, because

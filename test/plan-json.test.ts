@@ -125,6 +125,25 @@ describe("plan-json — round-trip byte-identity (SVG)", () => {
         JSON.stringify(bad),
       ).toContain("E_JSON_SCHEMA");
     }
+    // Plan JSON carries no axes: a relation `at axis <label>` exports by its coordinates (lossy,
+    // as axes already are), never as a `relation` that re-imports as E_OPENING_DATUM.
+    const onAxis = `plan "p" {\n  units mm\n  grid 50\n  axes {\n    x at 6000\n    y at 1500\n  }\n  room id=a at (0,0) size 4000x5000 uses living\n  room id=b at (4000,0) size 4000x5000 uses bedroom\n  walls from rooms exterior 200 partition 100\n  door id=d between a and b at axis A width 800 hinge left swing in\n  window id=w on b.top at axis 1 width 1200\n}\n`;
+    const axisJson = planToJson(onAxis).json!;
+    expect(axisJson.openings.map((o) => [o.id, o.relation, o.x, o.y])).toEqual([
+      ["d", undefined, 4000, 1500],
+      ["w", undefined, 6000, 0],
+    ]);
+    // The axes themselves do not survive (the grid layer and the frame it widens are lost), so
+    // the round trip is pinned on what the openings cut and draw: walls, doors and glazing.
+    const back = planFromJson(axisJson as PlanJson);
+    expect(back.diagnostics.filter((d) => d.severity === "error")).toEqual([]);
+    const layer = (svg: string, id: string): string => {
+      const m = new RegExp(`<g id="${id}"[\\s\\S]*?</g>`).exec(svg);
+      expect(m, id).not.toBeNull();
+      return m![0];
+    };
+    const [orig, again] = [compile(onAxis).svg, compile(back.source!).svg];
+    for (const id of ["A-WALL", "A-DOOR", "A-GLAZ"]) expect(layer(again, id)).toBe(layer(orig, id));
     const winBetween = planFromJson({
       ...(json as PlanJson),
       openings: [{ kind: "window", width: 800, relation: { between: ["a", "b"] } }],
