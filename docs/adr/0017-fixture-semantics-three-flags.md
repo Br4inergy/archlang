@@ -85,3 +85,13 @@ where the handed rules flip (see
 - The derived table means a family added without a glyph is caught rather than shipped:
   the legend filters on `hasFixtureGlyph`, and the spec generator interpolates the list it
   documents instead of retyping it.
+
+## Amendment 2026-10-23: a stated `facing` licenses a turn (card PS3.7)
+
+Decision 2 refuses to derive a turn for `sofa`/`chair`/`bench`/`desk` because the plan "never
+stated" which way they face. [ADR 0029](0029-furniture-relations.md) adds the statement:
+`furniture … facing <id>` derives the quarter-turn whose front ray first enters the target, and
+refuses with no hit, a tie, a symmetric category or a transposed footprint. The flags keep their
+meanings: `directional` is still not set on seating, nothing is derived without a `facing` clause,
+and `orientationMatters` is unchanged. A stated `clear front|sides <mm>` is likewise a
+declaration, never a `clearanceMm` default; the catalogue's four measured values stay as they are.
