@@ -164,6 +164,8 @@ export const KEYWORDS = {
     "and",
     // `door … at axis <label>` (ADR 0028 §5): leads a position that stands on a positioning axis.
     "axis",
+    // `wall … around [<A> <B> …]` (ADR 0028 §4): the wall is the outline of the listed rooms.
+    "around",
   ],
   /** Enum value keywords → `constant.language`, CM `atom`. */
   enum: [

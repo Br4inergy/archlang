@@ -1,6 +1,6 @@
 /** `wall <category> thickness N { (x,y)… [close] }` — poché fill + crisp faces. */
 
-import type { ArcDirWord, ExprPoint, Point, WallArcNode, WallNode } from "../ast.js";
+import type { ArcDirWord, ExprPoint, Point, WallArcNode, WallNode, WallRelationNode, WallsPairRoom } from "../ast.js";
 import type { Span } from "../diagnostics.js";
 import { heightRangeDiagnostic, isDrawableHeight } from "../datum.js";
 import { ARC_DIRS } from "../ast.js";
@@ -15,6 +15,7 @@ import { DEFAULT_MATERIAL, hatchesUsed, isKnownMaterial, KNOWN_MATERIALS } from 
 import { lowerWallSet } from "../wall-lowering.js";
 import { fmt3, MAX_ANGLE_DEG, outOfRangeDiagnostic } from "../num-format.js";
 import { exprSpan } from "../expr.js";
+import { resolveWallRelation } from "../wall-relation.js";
 
 export const wall: ElementDef = {
   kind: "wall",
@@ -73,6 +74,25 @@ export const wall: ElementDef = {
       const hk = ctx.next();
       height = ctx.parseExpr();
       heightSpan = { start: hk.start, end: ctx.peek(-1).end };
+    }
+    // The pairwise forms (ADR 0028 §4) stand where the point list would: the wall's points
+    // are derived from the rooms at resolve.
+    if (ctx.isKeyword("between") || ctx.isKeyword("around")) {
+      return {
+        kind: "wall",
+        id,
+        category,
+        thickness,
+        material,
+        materialScale,
+        materialAngle,
+        ...(height !== undefined ? { height } : {}),
+        ...(heightSpan !== undefined ? { heightSpan } : {}),
+        points: [],
+        closed: false,
+        relation: parseRelation(ctx),
+        line: kw.line,
+      };
     }
     ctx.eat("lcurly");
     const points: ExprPoint[] = [];
@@ -143,10 +163,19 @@ export const wall: ElementDef = {
 
   idPrefix: (node) => (node as WallNode).category || "wall",
 
+  /** An `around` ring counts its vertex upper bound, 4 per listed room, toward the element
+   *  budget at expansion (ADR 0028 §3, §4); every other wall counts as itself only. */
+  expansionCharge(node) {
+    const rel = (node as WallNode).relation;
+    if (rel?.kind !== "around") return undefined;
+    const n = rel.rooms.length;
+    return { count: 4 * n, what: `\`wall … around\` over ${n} rooms may draw a ring of up to ${4 * n} vertices` };
+  },
+
   resolve(node, ctx: ResolveCtx): RWall {
     const n = node as WallNode;
     const id = ctx.id;
-    const points = n.points.map((p) => ctx.snapPt(ctx.evalPt(p)));
+    let points = n.points.map((p) => ctx.snapPt(ctx.evalPt(p)));
     const tv = ctx.eval(n.thickness);
     const thickness = ctx.snap(tv) || tv;
     if (thickness <= 0) {
@@ -200,6 +229,10 @@ export const wall: ElementDef = {
     if (n.height !== undefined && !isDrawableHeight(height)) {
       ctx.diag(heightRangeDiagnostic(`Wall "${id}"`, "height", height, n.heightSpan ?? n.span));
     }
+    // A pairwise form's points come from the rooms, once the thickness is known (a shared
+    // run shorter than the wall is thick is refused). Refused, the wall has no points.
+    const related = n.relation ? resolveWallRelation(n.relation, id, thickness, ctx) : undefined;
+    if (n.relation) points = related?.points ?? [];
     const arcs = n.arcs ? resolveArcs(n, id, points, ctx) : undefined;
     return {
       kind: "wall",
@@ -216,9 +249,10 @@ export const wall: ElementDef = {
       ...(hatchScaleSpan ? { _hatchScaleSpan: hatchScaleSpan } : {}),
       points,
       ...(arcs ? { arcs } : {}),
-      closed: n.closed,
+      closed: related?.closed ?? n.closed,
       openings: [],
       span: n.span,
+      ...(related ? { _relation: related.relation } : {}),
     };
   },
 
@@ -309,6 +343,13 @@ export const wall: ElementDef = {
     // Curved edges ride along exactly (see `transformArc`): a placed component's
     // curved facade is the same curve, turned or mirrored, never a re-fitted one.
     if (el.arcs) w.arcs = el.arcs.map((arc) => (arc ? t.arc(arc) : undefined));
+    // A pairwise wall's rooms are named as the plan names them (`west.a`).
+    if (el._relation) {
+      w._relation =
+        "between" in el._relation
+          ? { between: [t.nsId(el._relation.between[0]), t.nsId(el._relation.between[1])] }
+          : { around: el._relation.around.map((r) => t.nsId(r)) };
+    }
     return w;
   },
 };
@@ -384,6 +425,27 @@ function resolveArcs(n: WallNode, id: string, points: Point[], ctx: ResolveCtx):
     any = true;
   }
   return any ? out : undefined;
+}
+
+/** `between <A> and <B>` or `around [<A> <B> …]` (at least one room), from the keyword. */
+function parseRelation(ctx: ParseCtx): WallRelationNode {
+  const kw = ctx.next();
+  const room = (): WallsPairRoom => {
+    const t = ctx.eatIdent();
+    return { id: t.value, span: { start: t.start, end: t.end } };
+  };
+  if (kw.value === "between") {
+    const a = room();
+    ctx.eatKeyword("and");
+    const b = room();
+    return { kind: "between", a, b, span: { start: kw.start, end: b.span.end } };
+  }
+  ctx.eat("lbracket");
+  const rooms: WallsPairRoom[] = [];
+  while (ctx.isType("ident")) rooms.push(room());
+  if (rooms.length === 0) ctx.fail("`around` needs at least one room id inside `[ ]`");
+  const close = ctx.eat("rbracket");
+  return { kind: "around", rooms, span: { start: kw.start, end: close.end } };
 }
 
 function describe(ctx: ParseCtx): string {

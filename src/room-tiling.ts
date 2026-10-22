@@ -577,6 +577,79 @@ export function linkRings(
   return { pinched: false, outers, courtyards };
 }
 
+/**
+ * `wall … between <A> and <B>` (ADR 0028 §4): the one shared run of two rectangles, by the
+ * same sweep `walls from rooms` runs, as a two-point path from its end with the smaller `y`,
+ * then `x` (§3's partition direction). Refusals: `E_ROOM_NOT_RECTANGLE`, `E_ROOMS_OVERLAP`,
+ * `E_WALL_BETWEEN_NOT_ADJACENT` (no run) and `E_PARTITION_TOO_SHORT` (a run shorter than
+ * `thickness`; not judged when `thickness` is not positive, which the wall reports itself).
+ * Two interior-disjoint rectangles share at most one run, so nothing is chosen.
+ */
+export function deriveBetween(
+  a: TileRoom,
+  b: TileRoom,
+  thickness: number,
+): { ok: false; refusal: TilingRefusal } | { ok: true; points: [Point, Point] } {
+  const swept = sweepRooms([a, b]);
+  if (!swept.ok) return { ok: false, refusal: swept.refusals[0]! };
+  const run = swept.runs[0];
+  if (!run) {
+    return {
+      ok: false,
+      refusal: {
+        code: "E_WALL_BETWEEN_NOT_ADJACENT",
+        rooms: [a.id, b.id],
+        why: `"${a.id}" and "${b.id}" share no edge`,
+      },
+    };
+  }
+  const len = Math.abs(run.b.x - run.a.x) + Math.abs(run.b.y - run.a.y);
+  if (thickness > 0 && len < thickness) {
+    return {
+      ok: false,
+      refusal: {
+        code: "E_PARTITION_TOO_SHORT",
+        rooms: [a.id, b.id],
+        why: `"${a.id}" and "${b.id}" share a run of ${len} mm, from (${run.a.x}, ${run.a.y}) to (${run.b.x}, ${run.b.y}), shorter than the ${thickness} mm wall`,
+      },
+    };
+  }
+  return { ok: true, points: [{ ...run.a }, { ...run.b }] };
+}
+
+/**
+ * `wall … around [<A> <B> …]` (ADR 0028 §4): the rectilinear outline of the rooms' union, by
+ * the same sweep and ring linking `walls from rooms` runs, as one closed ring from its vertex
+ * with the smallest `y`, then `x`, running clockwise on the page (§3's outer-ring direction).
+ * Refusals: `E_ROOM_NOT_RECTANGLE`, `E_ROOMS_OVERLAP` and `E_ROOMS_NOT_TILING` (a pinch, a
+ * second edge-connected component, or ANY hole: one wall is one ring, and the hole covers
+ * `walls from rooms` reads are not resolved before an authored wall, so a hole is refused
+ * whatever covers it rather than drawn round or left open).
+ */
+export function deriveAround(
+  rooms: readonly TileRoom[],
+): { ok: false; refusals: TilingRefusal[] } | { ok: true; points: Point[] } {
+  const swept = sweepRooms(rooms);
+  if (!swept.ok) return swept;
+  const notTiling: string[] = [];
+  const tilingRooms: number[] = [];
+  const ringed = linkRings(swept.pieces, null, swept.ids, swept.named, notTiling, tilingRooms);
+  const outer = ringed.outers[0];
+  if (notTiling.length > 0 || !outer) {
+    return {
+      ok: false,
+      refusals: [
+        {
+          code: "E_ROOMS_NOT_TILING",
+          rooms: swept.named(tilingRooms),
+          why: notTiling.join("; ") || "the rooms have no floor to go round",
+        },
+      ],
+    };
+  }
+  return { ok: true, points: outer.pts.map((p) => ({ ...p })) };
+}
+
 function refusalsOf(
   notTiling: string[],
   tilingRooms: number[],

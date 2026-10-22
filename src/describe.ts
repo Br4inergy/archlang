@@ -511,9 +511,11 @@ export interface FreedomReport {
   openings: { total: number; attached: number; absolute: number; relational?: number };
   furniture: { total: number; anchored: number; againstWall: number; absolute: number };
   elements: FreedomElement[];
-  /** The walls: how many were derived by `walls from rooms` (ADR 0028 §6) and how many
-   *  were typed as points. Present only on a storey that derived a wall. */
-  walls?: { total: number; derived: number; absolute: number };
+  /** The walls: how many were derived by `walls from rooms` (ADR 0028 §6), how many were
+   *  typed as points, and (`relational`, present only when there is one) how many authored
+   *  walls were written `between`/`around` rooms (§4). Present only on a storey that derived a
+   *  wall or holds a pairwise one. */
+  walls?: { total: number; derived: number; absolute: number; relational?: number };
 }
 
 /** One positioning axis as a fact: where the datum is and what it is called. */
@@ -948,9 +950,22 @@ function emptyFreedom(): FreedomReport {
  * describe's own order (rooms, doors, windows, openings, furniture).
  */
 /** The walls family of `freedom` (ADR 0028 §6): derived walls against walls typed as points. */
-function wallFreedom(walls: readonly RWallFact[]): { total: number; derived: number; absolute: number } {
+function wallFreedom(walls: readonly RWallFact[]): {
+  total: number;
+  derived: number;
+  absolute: number;
+  relational?: number;
+} {
   const derived = walls.filter((w) => w._derived !== undefined).length;
-  return { total: walls.length, derived, absolute: walls.length - derived };
+  // An authored wall written `between`/`around` rooms (ADR 0028 §4): `relational`, present
+  // only when there is one, so a storey without one reports exactly what it did.
+  const relational = walls.filter((w) => w._relation !== undefined).length;
+  return {
+    total: walls.length,
+    derived,
+    absolute: walls.length - derived - relational,
+    ...(relational > 0 ? { relational } : {}),
+  };
 }
 
 function buildFreedom(
@@ -1170,10 +1185,16 @@ function summarize(
   const openingEls = ir.elements.filter((e): e is ROpening => e.kind === "opening");
   const furnEls = ir.elements.filter((e): e is RFurniture => e.kind === "furniture");
   const verticalEls: RVertical[] = verticalsOf(ir);
-  // The walls `walls from rooms` derived, as facts (ADR 0028 §6), copied so the IR is never shared.
-  const derivedRows: DerivedWallRow[] = ir.elements
-    .filter((e): e is RWallsFromRooms => e.kind === "walls")
-    .flatMap((e) => e._derivedRows.map((r) => structuredClone(r)));
+  // The walls `walls from rooms` derived, and the authored walls written `between`/`around`
+  // rooms (ADR 0028 §4), as facts (§6), in source order, copied so the IR is never shared.
+  const derivedRows: DerivedWallRow[] = ir.elements.flatMap((e): DerivedWallRow[] => {
+    if (e.kind === "walls") return (e as RWallsFromRooms)._derivedRows.map((r) => structuredClone(r));
+    if (e.kind !== "wall" || !(e as RWallFact)._relation || (e as RWallFact).points.length === 0) return [];
+    const rel = (e as RWallFact)._relation!;
+    return "between" in rel
+      ? [{ from: "between", name: e.id, between: [...rel.between] }]
+      : [{ from: "around", name: e.id, around: [...rel.around] }];
+  });
   const voidEls = ir.elements.filter((e): e is RVoid => e.kind === "void");
   const outdoorEls = ir.elements.filter((e): e is ROutdoor => e.kind === "outdoor");
   const fenceEls = ir.elements.filter((e): e is RFence => e.kind === "fence");

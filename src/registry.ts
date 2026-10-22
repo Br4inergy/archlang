@@ -325,6 +325,14 @@ export interface ElementDef {
    * ids is refused (`E_WALL_ID_RESERVED`), so a wall id names one wall there.
    */
   reservedIds?: readonly string[];
+  /**
+   * What a statement that DERIVES geometry from rooms counts toward the plan's element budget
+   * (`MAX_ELEMENTS`) beyond itself, charged at expansion before anything resolves, with the
+   * phrase the `E_ELEMENT_LIMIT` refusal quotes (`wall … around`: a ring of up to 4 vertices
+   * per listed room, ADR 0028 §4). A statement past the cap is removed, as a
+   * {@link ElementDef.yieldsWalls} statement is. Absent or `undefined`: nothing beyond itself.
+   */
+  expansionCharge?(node: AstElement): { count: number; what: string } | undefined;
 }
 
 /**

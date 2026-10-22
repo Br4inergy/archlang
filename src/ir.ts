@@ -291,7 +291,18 @@ export interface RWall extends RBase {
      *  relational `door|opening between` the pair is refused (`E_WALL_BETWEEN_OPEN`). */
     open?: { span?: Span };
   };
+  /**
+   * Present only on an AUTHORED wall written in a pairwise form (ADR 0028 §4): the rooms as
+   * written (namespaced inside a `place`), `between` two or `around` a list. The wall is an
+   * ordinary authored wall otherwise (its own id, span and hosting); this is read only by
+   * `describe()` (`derived_walls[]`, `freedom.walls.relational`). Internal.
+   */
+  _relation?: WallRelation;
 }
+
+/** A pairwise wall's relation as written ({@link RWall._relation}). */
+export type WallRelation = { between: [string, string] } | { around: string[] };
+
 /** A resolved relational-placement constraint carried on an unplaced room until
  *  `placeRelational` computes its absolute `at` in dependency order. */
 export interface RelConstraint {
@@ -726,10 +737,15 @@ export type ResolvedElement =
 
 /** One `describe().derived_walls[]` row: a derived wall before coexistence (ADR 0028 §6). */
 export interface DerivedWallRow {
-  from: "rooms";
-  /** The internal name (`exterior`, `exterior#2`, `A|B`), namespaced inside a `place`. */
+  /** `rooms` for a wall `walls from rooms` derived; `between`/`around` for an authored wall
+   *  written in a pairwise form (ADR 0028 §4, §6). */
+  from: "rooms" | "between" | "around";
+  /** The internal name (`exterior`, `exterior#2`, `A|B`), namespaced inside a `place`; for a
+   *  pairwise wall, its authored id. */
   name: string;
   between?: [string, string];
+  /** `around` only: the rooms the ring goes round, as written. */
+  around?: string[];
   /** The spans an authored wall took over (its id in `by`), in the wall's direction. */
   dropped?: Array<{ x1: number; y1: number; x2: number; y2: number; by: string }>;
 }
@@ -2596,7 +2612,8 @@ function resolveBody(
         if (e.file !== undefined) r._file = e.file;
         if (r.kind === "wall") {
           r._idAuthored = e.idAuthored === true;
-          grpWalls.push(r);
+          // A pairwise wall the rooms refused (ADR 0028 §4) has no points: no body to draw or host.
+          if (r.points.length > 0) grpWalls.push(r);
         } else if (r.kind === "room") {
           r._idAuthored = e.idAuthored === true;
           grpRooms.push(r);
@@ -2829,8 +2846,9 @@ function resolveBody(
     });
     const derived: RWall[] = [];
     for (const t of done.carried) {
-      if (t.kind === "wall") walls.push(t);
-      else if (t.kind === "room") rooms2.push(t);
+      if (t.kind === "wall") {
+        if (t.points.length > 0) walls.push(t);
+      } else if (t.kind === "room") rooms2.push(t);
       else derived.push(...(registry.byKind.get(t.kind)?.yieldsWalls?.(t) ?? []));
     }
     // A group's derived walls follow its authored ones (ADR 0028 §3), as they do in its
@@ -3326,8 +3344,9 @@ function descendantView(
       // A refusal is neither a wall nor a room: the descendant's own pass already dropped
       // and reported it.
       if (typeof v === "string") continue;
-      if (v.kind === "wall") walls.push(v);
-      else if (v.kind === "room") rooms.push(v);
+      if (v.kind === "wall") {
+        if (v.points.length > 0) walls.push(v);
+      } else if (v.kind === "room") rooms.push(v);
       else derived.push(...(def?.yieldsWalls?.(v) ?? []));
     }
     for (const w of derived) walls.push(w);
@@ -3398,14 +3417,27 @@ function chargeDerivedElements(
   for (const grp of groups) {
     let rooms = -1;
     for (const e of grp.entries) {
-      if (!registry.byKind.get(e.node.kind)?.yieldsWalls) continue;
+      const def = registry.byKind.get(e.node.kind);
+      // A statement that is no deriver may still count toward the budget beyond itself (a
+      // `wall … around` ring, ADR 0028 §4): `ElementDef.expansionCharge`.
+      const extra = def?.yieldsWalls ? undefined : def?.expansionCharge?.(e.node);
+      if (!def?.yieldsWalls && !(extra && extra.count > 0)) continue;
       if (budget.capped) {
         refused.add(e);
         continue;
       }
-      if (rooms < 0) rooms = grp.entries.filter((x) => x.node.kind === "room").length;
-      budget.count += DERIVED_ELEMENTS_PER_ROOM * rooms;
-      charged.set(e, DERIVED_ELEMENTS_PER_ROOM * rooms);
+      let count: number;
+      let what: string;
+      if (extra) {
+        count = extra.count;
+        what = extra.what;
+      } else {
+        if (rooms < 0) rooms = grp.entries.filter((x) => x.node.kind === "room").length;
+        count = DERIVED_ELEMENTS_PER_ROOM * rooms;
+        charged.set(e, count);
+        what = `\`walls from rooms\` over ${rooms} rooms may derive up to ${count} walls`;
+      }
+      budget.count += count;
       if (budget.count <= MAX_ELEMENTS) continue;
       budget.capped = true;
       refused.add(e);
@@ -3413,7 +3445,7 @@ function chargeDerivedElements(
         stampProvenance(
           {
             severity: "error",
-            message: `Plan expands to more than ${MAX_ELEMENTS} elements: \`walls from rooms\` over ${rooms} rooms may derive up to ${DERIVED_ELEMENTS_PER_ROOM * rooms} walls, so it derives none`,
+            message: `Plan expands to more than ${MAX_ELEMENTS} elements: ${what}, so it derives none`,
             code: "E_ELEMENT_LIMIT",
             ...(e.node.span ? { span: e.node.span } : {}),
           },
