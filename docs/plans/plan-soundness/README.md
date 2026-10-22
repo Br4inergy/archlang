@@ -41,7 +41,7 @@ make the wrong thing hard to write), **checks** (rules that read the facts it al
   none, and 26 fall outside the eight classes below (`audits/2026-10-18-first-contact.md`).
 - **The flagship example is wrong and lints clean.** `examples/two-bed.arch` says "central corridor".
   Its access graph is a chain: hall → bathroom → master bedroom → kitchen/living → bedroom 2.
-  `arch lint` returns `[]`.
+  `arch lint` returns `[]`. *(PS3.6, PR #227: re-laid with every room off the corridor, in the room-graph form.)*
 - **The facts exist; no rule reads them.** On the family-apartment reconstruction, `describe --json`
   already knows that:
   - the front door opens into the kitchen;
@@ -351,7 +351,7 @@ clearances 3/10, stair 0/3, annotation 0/4 untouched). Corpus `lint()` movement,
 rule in each PR: 71 corpus files moved on lint only; 7 examples were edited so the new rules
 report nothing on them (accessible, relational, hillside-villa, practice-office, two-storey,
 corner-cafe, terrace-row, plus courtyard-house, furnished-flat, library and garden-house in the
-earlier PRs); `examples/two-bed.arch` is left warning (3 × `W_ROOM_VIA_PRIVATE`) for PS3.6. The
+earlier PRs); `examples/two-bed.arch` is left warning (3 × `W_ROOM_VIA_PRIVATE`) for PS3.6 (fixed there, PR #227). The
 reconstructed `repro/family-apartment.arch` went from no architectural warning to 13 (5 at
 junctions, 2 overlaps, 1 ambiguous connector, 1 route through a private room, 1 wet-room door,
 3 missing defining pieces). Follow-ups from the reviews are cards PS2.17–PS2.20 and the notes on
@@ -587,13 +587,48 @@ original brief follows.
 - `segment north|south|east|west`, or `segment containing <room>.<edge>`, aliasing `segment <n>`.
 - Refuse unless exactly one segment matches.
 
-**PS3.6 · Teach it.** `todo`
+**PS3.6 · Teach it.** `done` (PR #227)
 - `spec.llm.md` and `skills/archlang/SKILL.md` lead with a minimal room-graph example (rooms, then
   `wall between`, then `door between`). Prior art: a minimal task-scoped grammar helps; the full
   grammar does not.
 - Rewrite `examples/two-bed.arch` (after PS2.5 flags it) and `examples/relational.arch` (G.12's live
   repro) in the new forms.
 - Respect the `spec.llm.md` size cap rules (trim duplication first).
+- *As built (PR #227):*
+  - **Lead example.** `LEAD_EXAMPLE` in `scripts/gen-llm-spec.ts`, under "Start here: rooms first"
+    right after the seven rules: three rooms (`living` at the origin, `hall` and `bedroom`
+    `right-of`), `walls from rooms … { open between living and hall }`, a front door
+    `on hall.bottom at center`, `door between hall and bedroom at 800 from start`, two windows
+    `on <room>.<edge>` and one furniture piece. 0 compile diagnostics and 0 lint warnings, pinned in
+    `test/spec-forms.test.ts`, which also compiles every `arch` fence of the page. It replaces the
+    embedded `examples/attached.arch`, so the spec went down from 29,965 to 28,910 characters. The
+    umbrella skill carries the same text verbatim. `test/task-skills.test.ts` allows that one
+    fence and no other.
+  - **`two-bed`'s geometry.** Old: kitchen/living (0,0) 4000×5000, master (4000,0) 6000×5000,
+    bedroom 2 (0,5000) 4000×3000, bath (4000,5000) 3000×3000, hall (7000,5000) 3000×3000, so
+    the access graph was a chain. New, in the same 10000×8000 shell: kitchen/living (0,0)
+    4000×8000, master (4000,0) 6000×3600, hall (4000,3600) 6000×1400 (the corridor; front door
+    at its east end), bath (4000,5000) 2400×3000, bedroom 2 `right-of` the bath 3600×3000. Every
+    room is at access depth 2, through the hall. The hall opens to the living room by
+    `open between`. 0 warnings (it had 3 × `W_ROOM_VIA_PRIVATE`). `accessibility-advisory` reports 6:
+    `W_SWING_OBSTRUCTED`, `W_DOOR_CLEARANCE` and 4 × `W_PATH_TOO_NARROW`, all from the profile's
+    wider door and path minimums (the old plan had 3 of the same kind beside its 3
+    `W_ROOM_VIA_PRIVATE`).
+  - **`relational`.** It had 7 warnings: 3 × `W_ROOM_DISCONNECTED`, `W_ROOM_NOT_ENCLOSED` and
+    3 × `W_BOUNDARY_NO_WALL`. All 7 came from the missing derived walls, and none was kept. It
+    gained a hall room (8000×1200) between the day rooms and bed/bath, so the bath is not reached
+    through the bedroom. Its walls and openings are derived. It has 0 warnings.
+  - **Swap-back.** `test/walls-from-rooms/two-bed.arch` and `relational.arch` are now the
+    hand-typed twins: walls as points, openings `on <wall> at <mm>`. They are SVG- and
+    `lint()`-identical to the examples. The relational twin uses `grid 25` (see PS3.10).
+
+**PS3.10 · Snap a derived open-pair opening to the grid?** `todo`
+- `open between`'s derived opening centres on the clear span exactly. That can be a half-grid
+  position, which a typed `at` on the same `grid` cannot reach (`relational.arch`: 2025 and 2525
+  on `grid 50`, between a 200 mm ring's face and a 100 mm partition's).
+- Decide whether the derived centre should snap to the plan grid, toward the inside of the clear
+  span, so that a typed twin always exists. A snapped centre would move the PS3.0 part C digest
+  rows, so it needs its own PR with the rows explained.
 
 **PS3.7 · Furniture relations: `facing <id>`, `against <wall|room.edge>`, `clear front|sides <mm>`.**
 `todo` (after PS3.2; needs an ADR 0017 amendment)
@@ -722,7 +757,7 @@ original brief follows.
 |---|---|---|
 | 1 | PS0.1, PS0.7, PS1.1 | Done 2026-10-18: PS0.7 in PR #197 (ad58551, dfd1737), PS1.1 in PR #195 (df00ab5), PS0.1 in PR #196 (1e0c2d9, e81a136; also closed backlog C.4). Corpus catch rate 7/53 |
 | 2 | PS2.1–PS2.9, PS2.13 | Defect-corpus catch rate ≥ 90 % for classes 1, 2, 3, 4 and 6, with no false positive on the clean twins; every corpus `lint()` movement is explained (two-bed is expected to start warning: fix the example, see PS3.6). *Corrected 2026-10-19:* class 5 (clearances) belongs to PS2.11 in row 5, so it was removed from this row's acceptance. *Status:* wave 1 landed 2026-10-19 (PRs #199, #201, #200): classes 1, 3, 6 at 100 %, class 4 at 3/4 (PS2.17), class 2 at 1/6 waiting on PS2.4; overall 33/53 on `main@cc165f4`. Wave 2 landed 2026-10-19 (PRs #203, #204, #211): classes 1, 2, 3, 6 at 100 %, class 4 at 4/5 (80 %, below the bar until PS2.17 lands); overall 44/67 on `main@fcb3074` (the +1 is A2, the balcony-door-masked laundry, caught by PS0.10's main entrance; T2 still refuses without `site`). Wave 3 landed 2026-10-20 (PRs #214, #216, #217): classes 1, 2, 3, 4, 6 at 100 %, overall 46/68 on `main@06c6b56`; this row's acceptance is met (class 5 is row 5). Next: PS3.1 landed as ADR 0028 (PR #215, Proposed), then PS3.2 and PS3.6 |
-| 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. *Status 2026-10-22 (PS3.0 done, PR #224):* met: ADR 0028 merged and Accepted; byte-identity law green (every digest suite unchanged, the PS3.0 table pinned); the class-2 corpus cases are refused or gain their walls in the D5 form; the widening drill moves the walls and the door with the room (`test/walls-from-rooms/widen.arch`). Remaining: rewriting `examples/relational.arch` and `examples/two-bed.arch` in the headline form (PS3.6), and PS3.3. *2026-10-22 (PS3.4 done, PR #225):* relational openings landed, and the widening drill now moves a `door between` and a `window on <room>.<edge>` with the room (`test/openings-between.test.ts`). *2026-10-23 (PS3.3 done, PR #226):* the pairwise forms landed, and the drill moves a `wall … between` and a `wall … around` ring with the room (`test/wall-between-around.test.ts`). Remaining: the PS3.6 rewrites of `examples/relational.arch` and `examples/two-bed.arch` |
+| 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. *Status 2026-10-22 (PS3.0 done, PR #224):* met: ADR 0028 merged and Accepted; byte-identity law green (every digest suite unchanged, the PS3.0 table pinned); the class-2 corpus cases are refused or gain their walls in the D5 form; the widening drill moves the walls and the door with the room (`test/walls-from-rooms/widen.arch`). Remaining: rewriting `examples/relational.arch` and `examples/two-bed.arch` in the headline form (PS3.6), and PS3.3. *2026-10-22 (PS3.4 done, PR #225):* relational openings landed, and the widening drill now moves a `door between` and a `window on <room>.<edge>` with the room (`test/openings-between.test.ts`). *2026-10-23 (PS3.3 done, PR #226):* the pairwise forms landed, and the drill moves a `wall … between` and a `wall … around` ring with the room (`test/wall-between-around.test.ts`). Remaining: the PS3.6 rewrites of `examples/relational.arch` and `examples/two-bed.arch`. *2026-10-23 (PS3.6 done, PR #227): fully met, every bullet:* ADR merged (0028, Accepted); byte-identity law green (every moved digest row is one of the two rewritten examples or the two-bed twin, each explained in the re-pin commit); `relational.arch` lints clean with walls derived (597210c7: 0 warnings, was 7); `two-bed.arch` lints clean in the same form (a60e9124: 0 warnings, was 3 × `W_ROOM_VIA_PRIVATE`); the widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. Defect-corpus catch rate unchanged at 46/68 |
 | 4 | PS0.4, PS4.1, PS4.2 | The widening drill's `impact` names every moved, held and broken item correctly |
 | 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically |
 | 6 | PS4.3, PS4.4, PS3.5, PS3.6, PS5.4, PS7.x | — |
