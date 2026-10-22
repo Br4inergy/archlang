@@ -13,10 +13,33 @@ a `fix`). This page is everything you need to author it.
 2. **Origin is top-left; +x goes right, +y goes DOWN** (screen/SVG convention — *not* math y-up).
 3. **Coordinates are `(x, y)` tuples; sizes are `WxH`** (e.g. `4000x3000`) or `<expr> x <expr>` with spaces.
 4. **Doors and windows must lie ON a wall segment** (on its centerline), or you get a
-   `W_DOOR_OFF_WALL` / `W_WINDOW_OFF_WALL` warning. Attach with `door on <wall> at <pos>` — hosted by construction.
+   `W_DOOR_OFF_WALL` / `W_WINDOW_OFF_WALL` warning. Host them by rooms (below) or `on <wall> at <pos>` — hosted by construction.
 5. **String interpolation is `"{expr}"`** inside double quotes (e.g. `label "Unit {i}"`).
 6. **`id=` comes FIRST — right after the element keyword, before any category word** (`wall id=w1 exterior …`, `furniture id=b1 bed …`; `wall exterior id=w1 …` and `furniture bed id=b1 …` are parse errors). Ids are unique; omit `id=` to auto-generate one, and name a thing only when you reference it.
 7. **Everything is expand-time and pure** — `let`/`for`/`if`/functions all evaluate during compile.
+
+## Start here: rooms first
+
+Write the rooms (a corridor is a room), let `walls from rooms` derive every wall, and host each
+opening by the rooms it joins. This plan compiles and lints clean:
+
+```arch
+plan "Room graph" {
+  units mm
+  grid 100
+  room id=living at (0,0) size 4000x4000 uses living
+  room id=hall right-of living size 1500x4000 uses hall
+  room id=bedroom right-of hall size 3000x4000 uses bedroom
+  walls from rooms exterior 200 partition 100 { open between living and hall }
+  door on hall.bottom at center width 900 swing into hall
+  door between hall and bedroom at 800 from start width 800 swing into bedroom
+  window on living.left width 1500
+  window on bedroom.right width 1200
+  furniture bed in bedroom anchor bottom-right flush size 1500x2000
+}
+```
+
+To type some walls and derive others, name one by its rooms: `wall … between <A> and <B>`.
 
 ## Structure
 
@@ -167,50 +190,6 @@ space beats routing a bath through a bedroom — then re-`repair` and `validate 
 | String math without interpolation | Use `"{expr}"`, e.g. `label "{round(W / 1000)} m"`. Only the built-ins above and your own `let f(…)` are callable — `aream2` is NOT built in. |
 
 ## Worked examples
-
-### `examples/attached.arch`
-
-```arch
-# A one-bedroom flat authored with the v1.13 placement sugar — no hand-computed
-# coordinates for openings or furniture. It exercises, together:
-#   • `strip` — a row of rooms laid out end to end
-#   • openings attached to a wall by position (`door|window … on <wall> at <pos>`)
-#   • a door that opens toward a named room (`swing into`) hinged at a wall end
-#   • furniture placed relative to a room (`in <room> anchor …`)
-# Compiles clean and passes `arch lint`.
-plan "Attached 1BR" {
-  units mm
-  grid 100
-  north up
-
-  # Living + bedroom laid left-to-right by a strip, sharing a 4 m depth.
-  strip right at (0,0) gap 0 height 4000 {
-    room id=r_living size 4000 label "Living"  uses living
-    room id=r_bed    size 3000 label "Bedroom" uses bedroom
-  }
-
-  # Exterior shell as four straight walls (each a clean start→end to attach onto)
-  # plus the partition between the two rooms.
-  wall id=w_north exterior  thickness 200 { (0,0) (7000,0) }
-  wall id=w_south exterior  thickness 200 { (0,4000) (7000,4000) }
-  wall id=w_west  exterior  thickness 200 { (0,0) (0,4000) }
-  wall id=w_east  exterior  thickness 200 { (7000,0) (7000,4000) }
-  wall id=w_part  partition thickness 100 { (4000,0) (4000,4000) }
-
-  # Entrance 2000 mm along the south wall, hinged at that wall's start end and
-  # opening into the living room. The bedroom door on the partition opens inward.
-  door id=d_main on w_south at 2000 width 1000 hinge near start swing into r_living
-  door id=d_bed  on w_part  at 2000 width 900  swing into r_bed
-
-  # A window centred on each room's exterior wall.
-  window on w_west at 50% width 1400
-  window on w_east at 50% width 1200
-
-  # Furniture placed by anchor inside each room (never off a coordinate).
-  furniture sofa in r_living anchor top-left inset 300 size 2000x900  label "Sofa"
-  furniture bed  in r_bed    anchor top-right inset 300 size 1500x2000 label "Bed"
-}
-```
 
 ### `examples/parametric.arch`
 

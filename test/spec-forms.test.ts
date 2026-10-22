@@ -52,6 +52,7 @@ import {
   clauseAtoms,
   CLAUSE_ATTRIBUTES,
   ELEMENT_GRAMMAR,
+  LEAD_EXAMPLE,
   renderLlmSpec,
   SCRIPTING_KEYWORDS,
   SETTING_GRAMMAR,
@@ -1259,5 +1260,47 @@ describe("spec.llm.md — the gate is not vacuous", () => {
     // snippet must produce real geometry, and a deliberately malformed one must fail.
     expect(compile(POSITIVE[0]!.src, { noCache: true }).svg).toContain("<svg");
     expect(errorsOf(plan(`  room id=r1 at (0,0) size`)).length).toBeGreaterThan(0);
+  });
+});
+
+describe("spec.llm.md — the lead example and every fence", () => {
+  /** Every ```arch fence of a Markdown page, in order. */
+  const archFences = (doc: string): string[] =>
+    [...doc.replace(/\r\n/g, "\n").matchAll(/^```arch\n([\s\S]*?)\n```$/gm)].map((m) => m[1]!);
+
+  it("the page leads with the room-graph example (ADR 0028 §7): its first fence, before the grammar", () => {
+    const doc = specText();
+    expect(archFences(doc)[0]).toBe(LEAD_EXAMPLE);
+    expect(doc.indexOf(LEAD_EXAMPLE)).toBeLessThan(doc.indexOf("## Structure"));
+    // The chain it exists to teach, each step present: absolute then relational rooms, the derived
+    // walls with an open pair, openings hosted by rooms, then furniture.
+    for (const form of [
+      /room id=\w+ at \(/,
+      /room id=\w+ right-of /,
+      /walls from rooms .*open between /,
+      /door between /,
+      /window on \w+\.(top|bottom|left|right) /,
+      /furniture /,
+    ]) {
+      expect(LEAD_EXAMPLE).toMatch(form);
+    }
+  });
+
+  it("the lead example compiles and lints with no diagnostic at all", () => {
+    expect(compile(LEAD_EXAMPLE, { noCache: true }).diagnostics).toEqual([]);
+    expect(lint(LEAD_EXAMPLE)).toEqual([]);
+  });
+
+  it("every ```arch fence on the page compiles with no error", () => {
+    const fences = archFences(specText());
+    expect(fences.length).toBe(2 + SPEC_EXAMPLES.length);
+    // The Structure fence is a skeleton with `…` placeholders, not a plan; every other fence compiles.
+    const plans = fences.filter((f) => !f.includes("# … elements and scripting …"));
+    expect(plans.length).toBe(fences.length - 1);
+    expect(plans.map((f) => errorsOf(f).map((d) => d.message))).toEqual(plans.map(() => []));
+  });
+
+  it("skills/archlang/SKILL.md leads with the same example, verbatim", () => {
+    expect(archFences(readFileSync(resolve("skills/archlang/SKILL.md"), "utf8"))[0]).toBe(LEAD_EXAMPLE);
   });
 });

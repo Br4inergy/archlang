@@ -59,9 +59,10 @@ describe("spec.llm.md is in sync with the token source + examples", () => {
     //     this test does not see. And a budget figure records what the generator emitted,
     //     never what two branches' arithmetic implies: parallel branches widening the same
     //     interpolated alternation do not add.
-    //   - Keep a working margin. The spec embeds `examples/attached.arch` and
-    //     `examples/parametric.arch` VERBATIM, so a margin of a dozen characters turns the
-    //     cap into a veto on unrelated example edits instead of a price on the spec's prose.
+    //   - Keep a working margin. The spec embeds `examples/parametric.arch` VERBATIM, so a
+    //     margin of a dozen characters turns the cap into a veto on unrelated example edits
+    //     instead of a price on the spec's prose. (The room-graph lead example, PS3.6, replaced
+    //     the embedded `examples/attached.arch`: 29,965 → 28,910 characters.)
     //
     // Where the budget goes: every structural keyword (`level`, `zone`, `place`, `site`,
     // `height`) and element line carries facts that cannot be inferred from the syntax — the

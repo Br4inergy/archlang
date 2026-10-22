@@ -85,9 +85,48 @@ owns that name, so the shell runs the wrong program.
 ## Write it right the first time (placement sugar — the preferred path)
 
 A geometry-blind generator that emits absolute coordinates produces plans that render but are
-physically wrong (openings off their wall, furniture through walls). Author by **attachment** instead
-— the compiler computes the coordinate, and fails loudly if the reference is ambiguous:
+physically wrong (openings off their wall, furniture through walls). Author by **relation** instead
+— the compiler computes the coordinate, and fails loudly if the reference is ambiguous.
 
+**Start from the rooms.** Write the rooms (a corridor is a room), let `walls from rooms` derive
+every wall, and host each opening by the rooms it joins. This plan compiles and lints clean:
+
+```arch
+plan "Room graph" {
+  units mm
+  grid 100
+  room id=living at (0,0) size 4000x4000 uses living
+  room id=hall right-of living size 1500x4000 uses hall
+  room id=bedroom right-of hall size 3000x4000 uses bedroom
+  walls from rooms exterior 200 partition 100 { open between living and hall }
+  door on hall.bottom at center width 900 swing into hall
+  door between hall and bedroom at 800 from start width 800 swing into bedroom
+  window on living.left width 1500
+  window on bedroom.right width 1200
+  furniture bed in bedroom anchor bottom-right flush size 1500x2000
+}
+```
+
+- **Let the rooms make the walls.** When the rooms are rectangles that tile the floor (write a
+  corridor as a room), `walls from rooms exterior 200 partition 100` derives the shell on their outline
+  and a partition on every shared edge, so no wall can go missing. Host openings by the rooms:
+  `door between living and bed at 800 from end width 800` (a door must say where: `center`,
+  `<mm> from start|end|<room>.<edge>`, `axis <n>`, offsets to the centre), `window on bed.top
+  width 1500` (centred by default). A jamb too near a meeting wall is refused (`E_OPENING_NIB`
+  names the legal spot), never slid. `{ except <room> }` leaves a room out. For an
+  open-plan join write `open between living and kitchen` in the body (an opening across the whole
+  shared edge, or `width <mm>` centred; never a door on that edge), and `between a and b thickness
+  150` for one thicker partition. Refusals name the rooms (`E_ROOMS_OVERLAP`, `E_ROOMS_NOT_TILING`,
+  `E_PARTITION_TOO_SHORT`, `E_ROOM_NOT_RECTANGLE`, `E_WALL_BETWEEN_NOT_ADJACENT`).
+- **Or name one wall by its rooms.** For a plan that derives some walls and types others,
+  `wall id=p partition thickness 100 between hall and bed` stands on the two rooms' shared edge
+  and `wall id=shell exterior thickness 200 around [hall bed bath]` is one ring on their outline
+  (no hole). They keep your id, thickness and material, host doors like any wall, and replace
+  the derived span beside `walls from rooms`.
+- **Read wall points off the rooms.** A rectangular room `r` exposes `r.top`, `r.bottom`, `r.left`,
+  `r.right`, `r.cx`, `r.cy`, so `wall partition thickness 100 { (hall.right, hall.top) (hall.right,
+  hall.bottom) }` follows the room when it grows. Use them in walls, openings, furniture and dims,
+  not in a `let` or a room's own `at`/`size` (`E_DATUM_BEFORE_ROOMS`).
 - **Attach openings to a wall by position, not `at (x,y)`.** `door on <wall> at <pos> …` /
   `window on <wall> at <pos> …` / `opening on <wall> at <pos> …`, where `<pos>` is millimetres along
   the wall or a percentage (`50%`). `swing into <room>` picks the swing direction toward a named room;
@@ -105,33 +144,13 @@ physically wrong (openings off their wall, furniture through walls). Author by *
   instead, and `flush inset 50` from 50 mm off it — so write `furniture wc in r_bath anchor bottom flush
   size 400x700`, not an `inset 100` you worked out from a thickness you never named. (`flush` needs an
   anchored edge: on `centered`/`anchor center` it is `E_FURN_FLUSH`.)
-- **Let the rooms make the walls.** When the rooms are rectangles that tile the floor (write a
-  corridor as a room), `walls from rooms exterior 200 partition 100` derives the shell on their outline
-  and a partition on every shared edge, so no wall can go missing. Host openings by the rooms:
-  `door between living and bed at 800 from end width 800` (a door must say where: `center`,
-  `<mm> from start|end|<room>.<edge>`, `axis <n>`, offsets to the centre), `window on bed.top
-  width 1500` (centred by default). A jamb too near a meeting wall is refused (`E_OPENING_NIB`
-  names the legal spot), never slid. `{ except <room> }` leaves a room out. For an
-  open-plan join write `open between living and kitchen` in the body (an opening across the whole
-  shared edge, or `width <mm>` centred; never a door on that edge), and `between a and b thickness
-  150` for one thicker partition. Refusals name the rooms (`E_ROOMS_OVERLAP`, `E_ROOMS_NOT_TILING`,
-  `E_PARTITION_TOO_SHORT`, `E_ROOM_NOT_RECTANGLE`, `E_WALL_BETWEEN_NOT_ADJACENT`).
-- **Read wall points off the rooms.** A rectangular room `r` exposes `r.top`, `r.bottom`, `r.left`,
-  `r.right`, `r.cx`, `r.cy`, so `wall partition thickness 100 { (hall.right, hall.top) (hall.right,
-  hall.bottom) }` follows the room when it grows. Use them in walls, openings, furniture and dims,
-  not in a `let` or a room's own `at`/`size` (`E_DATUM_BEFORE_ROOMS`).
-- **Or name one wall by its rooms.** For a plan that derives some walls and types others,
-  `wall id=p partition thickness 100 between hall and bed` stands on the two rooms' shared edge
-  and `wall id=shell exterior thickness 200 around [hall bed bath]` is one ring on their outline
-  (no hole). They keep your id, thickness and material, host doors like any wall, and replace
-  the derived span beside `walls from rooms`.
 - **Every room still needs a way in** — put a `door` or cased `opening` on a wall of *every* room
   (an open-plan space still needs a modeled opening), and keep furniture out of the doorway approach
   (≥300 mm) and the leaf's swing.
 - **Absolute `at (x,y)` is the fallback**, not the default — reach for it only when no attachment
   expresses what you mean.
 
-See `examples/attached.arch` for a full one-bedroom authored this way, and `archlang spec` for the grammar.
+See `examples/two-bed.arch` for a furnished two-bedroom flat authored this way, and `archlang spec` for the grammar.
 
 ## Author a repeating piece ONCE, then place it (v1.22)
 

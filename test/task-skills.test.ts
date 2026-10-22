@@ -32,6 +32,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildManifest } from "../src/manifest.js";
+import { LEAD_EXAMPLE } from "../scripts/gen-llm-spec.js";
 
 const DIR = "skills";
 const names = readdirSync(DIR)
@@ -222,7 +223,12 @@ describe.each(names)("skills/%s/SKILL.md", (name) => {
     expect(body).toContain("`archlang spec`");
     expect(body).toContain("--help`");
     // No grammar of its own: a fenced ArchLang block would be a second copy of the language.
-    expect(body).not.toMatch(/^```arch/m);
+    // The one exception is the umbrella's lead example (ADR 0028 §7), which is not a second
+    // copy but the SAME text as the spec's `LEAD_EXAMPLE`, pinned verbatim by
+    // test/spec-forms.test.ts; any other fence, there or in a task skill, still fails here.
+    const fences = [...body.replace(/\r\n/g, "\n").matchAll(/^```arch\n([\s\S]*?)\n```$/gm)].map((m) => m[1]);
+    expect(fences).toEqual(name === UMBRELLA ? [LEAD_EXAMPLE] : []);
+    expect(body.match(/^```arch/gm)?.length ?? 0).toBe(fences.length);
   });
 
   it("names only commands and flags the CLI declares", () => {
