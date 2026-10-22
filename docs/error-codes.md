@@ -274,7 +274,7 @@ door on w1 at 150% width 900   # error: 150% is past the wall end
 
 *error* — Opening attached to an unknown or ambiguous wall.
 
-**Cause.** A `door`/`window`/`opening … on <wall> at <pos>` names a wall id (or category) that no wall has, or one that matches more than one wall — so the compiler cannot pick the polyline to walk.
+**Cause.** A `door`/`window`/`opening … on <wall> at <pos>` names a wall id (or category) that no wall has, or one that matches more than one wall — so the compiler cannot pick the polyline to walk. A `wall … between`/`wall … around` the rooms refused (its own error, ADR 0028 §4) has no body, so naming it raises this code too, saying the wall "could not be placed (see its own error)": fix that error first.
 
 **Fix.** Reference an existing, unique wall id (add `id=` to the wall if needed).
 
@@ -364,7 +364,7 @@ wall interior thickness 100 { (a.left, 0) (a.left, 3000) }   # error: a could no
 
 *error* — Invalid `dim radius`/`dim diameter` reference.
 
-**Cause.** A curve call-out references an element that does not exist, is not the right shape (a `diameter` on a rectangular room, a `radius` on a wall with no `arc` edge), matches several walls, or omits `segment <n>` on a wall with more than one arc. The compiler will not guess which curve was meant.
+**Cause.** A curve call-out references an element that does not exist, is not the right shape (a `diameter` on a rectangular room, a `radius` on a wall with no `arc` edge), matches several walls, or omits `segment <n>` on a wall with more than one arc. The compiler will not guess which curve was meant. A `wall … between`/`wall … around` the rooms refused (its own error, ADR 0028 §4) has no body, so naming it raises this code too, saying the wall "could not be placed (see its own error)": fix that error first.
 
 **Fix.** Name an existing, unique wall id whose edge is an `arc` (adding `segment <n>` when it has several), or an existing `room circle` id for `diameter`.
 
@@ -523,7 +523,7 @@ fence picket { (0,0) arc (3000,3000) radius 3000 }   # error: curved edge
 
 *error* — Invalid `against wall` fixture placement.
 
-**Cause.** A wall-anchored fixture references an unknown wall, omits `segment` on a multi-segment wall, omits `side`, sits on a non-axis-aligned segment, has an out-of-range offset, or also sets `rotate`. The compiler will not guess which wall/side/segment was meant.
+**Cause.** A wall-anchored fixture references an unknown wall, omits `segment` on a multi-segment wall, omits `side`, sits on a non-axis-aligned segment, has an out-of-range offset, or also sets `rotate`. The compiler will not guess which wall/side/segment was meant. A `wall … between`/`wall … around` the rooms refused (its own error, ADR 0028 §4) has no body, so naming it raises this code too, saying the wall "could not be placed (see its own error)": fix that error first.
 
 **Fix.** Name an existing wall id, add `segment <n>` for multi-segment walls, give `side left|right`, keep the segment axis-aligned, and drop any explicit `rotate`.
 

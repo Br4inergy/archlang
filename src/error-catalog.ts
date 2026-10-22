@@ -174,7 +174,7 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   E_FURN_AGAINST: E(
     "E_FURN_AGAINST",
     "Invalid `against wall` fixture placement.",
-    "A wall-anchored fixture references an unknown wall, omits `segment` on a multi-segment wall, omits `side`, sits on a non-axis-aligned segment, has an out-of-range offset, or also sets `rotate`. The compiler will not guess which wall/side/segment was meant.",
+    "A wall-anchored fixture references an unknown wall, omits `segment` on a multi-segment wall, omits `side`, sits on a non-axis-aligned segment, has an out-of-range offset, or also sets `rotate`. The compiler will not guess which wall/side/segment was meant. A `wall … between`/`wall … around` the rooms refused (its own error, ADR 0028 §4) has no body, so naming it raises this code too, saying the wall \"could not be placed (see its own error)\": fix that error first.",
     "Name an existing wall id, add `segment <n>` for multi-segment walls, give `side left|right`, keep the segment axis-aligned, and drop any explicit `rotate`.",
     "furniture wc against wall w1 side left size 400x700   # error if w1 is unknown or multi-segment",
   ),
@@ -188,7 +188,7 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   E_ATTACH_WALL_REF: E(
     "E_ATTACH_WALL_REF",
     "Opening attached to an unknown or ambiguous wall.",
-    "A `door`/`window`/`opening … on <wall> at <pos>` names a wall id (or category) that no wall has, or one that matches more than one wall — so the compiler cannot pick the polyline to walk.",
+    "A `door`/`window`/`opening … on <wall> at <pos>` names a wall id (or category) that no wall has, or one that matches more than one wall — so the compiler cannot pick the polyline to walk. A `wall … between`/`wall … around` the rooms refused (its own error, ADR 0028 §4) has no body, so naming it raises this code too, saying the wall \"could not be placed (see its own error)\": fix that error first.",
     "Reference an existing, unique wall id (add `id=` to the wall if needed).",
     "door on w1 at 40% width 900   # error if no wall id=w1 (or several match)",
   ),
@@ -251,7 +251,7 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   E_DIM_CURVE_REF: E(
     "E_DIM_CURVE_REF",
     "Invalid `dim radius`/`dim diameter` reference.",
-    "A curve call-out references an element that does not exist, is not the right shape (a `diameter` on a rectangular room, a `radius` on a wall with no `arc` edge), matches several walls, or omits `segment <n>` on a wall with more than one arc. The compiler will not guess which curve was meant.",
+    "A curve call-out references an element that does not exist, is not the right shape (a `diameter` on a rectangular room, a `radius` on a wall with no `arc` edge), matches several walls, or omits `segment <n>` on a wall with more than one arc. The compiler will not guess which curve was meant. A `wall … between`/`wall … around` the rooms refused (its own error, ADR 0028 §4) has no body, so naming it raises this code too, saying the wall \"could not be placed (see its own error)\": fix that error first.",
     "Name an existing, unique wall id whose edge is an `arc` (adding `segment <n>` when it has several), or an existing `room circle` id for `diameter`.",
     "dim radius w1   # error if w1 is straight, unknown, or has two arc edges",
   ),
