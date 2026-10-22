@@ -333,8 +333,40 @@ export interface OpeningAttach {
    *  `for`-generated run of openings can place itself (`door on w1 at bay * i + 600`);
    *  `center` carries none. A literal evaluates to the number it always did, which is
    *  what keeps every pre-existing plan byte-identical. */
-  pos: { kind: "percent" | "mm" | "center"; value?: Expr };
+  pos: AttachPos;
   span?: Span;
+}
+
+/**
+ * Where a datum offset is measured from (ADR 0028 §5): an end of the run (`from start|end`,
+ * in the direction of ADR 0028 §3), or a room edge (`from <room>.<edge>`, the dotted name as
+ * written, with its byte span).
+ */
+export type AttachFrom = { word: "start" | "end" } | { datum: string; span: Span };
+
+/**
+ * An opening's position along its run. The first three are the original `on <wall> at`
+ * forms; the rest are ADR 0028 §5's datum forms: `<mm> from start|end|<room>.<edge>`,
+ * `axis <label>` (a positioning axis crossing the run), and `default` (no `at` written,
+ * the `on <room>.<edge>` form only).
+ */
+export type AttachPos =
+  | { kind: "percent" | "mm" | "center"; value?: Expr }
+  | { kind: "from"; value: Expr; from: AttachFrom }
+  | { kind: "axis"; label: string; span: Span }
+  | { kind: "default" };
+
+/**
+ * `door|opening … between <A> and <B> [at <pos>]` (ADR 0028 §5): the opening is hosted on
+ * the one wall body on the shared edge run of two rectangular rooms, derived or authored,
+ * at a position measured along that run. Exclusive with `at (x,y)` and `on <wall>`.
+ */
+export interface OpeningBetween {
+  a: WallsPairRoom;
+  b: WallsPairRoom;
+  pos: AttachPos;
+  /** From `between` to the end of the position. */
+  span: Span;
 }
 
 export interface DoorNode extends NodeBase {
@@ -349,6 +381,8 @@ export interface DoorNode extends NodeBase {
   at?: ExprPoint;
   /** Wall-attached placement (`on <wall> at <pos>`). Exclusive with `at`. */
   attach?: OpeningAttach;
+  /** Relational placement (`between <A> and <B> at <pos>`). Exclusive with `at`/`attach`. */
+  between?: OpeningBetween;
   width: Expr;
   /** Optional wall (id or category) the door is hosted by (in `at` mode). */
   wall?: string;
@@ -417,6 +451,8 @@ export interface OpeningNode extends NodeBase {
   kind: "opening";
   at?: ExprPoint;
   attach?: OpeningAttach;
+  /** Relational placement (`between <A> and <B> at <pos>`). */
+  between?: OpeningBetween;
   width: Expr;
   wall?: string;
   /**

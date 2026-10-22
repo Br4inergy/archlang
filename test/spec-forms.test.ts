@@ -230,6 +230,14 @@ const POSITIVE: Snippet[] = [
   },
   {
     keyword: "door",
+    note: "relational placement: `between <A> and <B> at …`, `on <room>.<edge>`, the datum positions",
+    src: plan(
+      `  room id=a at (0,0) size 4000x5000\n  room id=b at (4000,0) size 4000x5000\n  walls from rooms exterior 200 partition 100\n` +
+        `  door between a and b at 800 from end width 800\n  door on a.bottom at 1000 from start width 900\n  opening between a and b at 1200 from a.top width 900\n  window on b.top width 1500`,
+    ),
+  },
+  {
+    keyword: "door",
     note: "mm and `center` positions along a wall",
     src: plan(`${BOX}\n  door on w1 at center width 900\n  door on w1 at 1200 width 800`),
   },
@@ -693,6 +701,14 @@ const NEGATIVE: Negative[] = [
     src: plan(`${BOX}\n  door garage on w1 at 50% width 2400 open 0.5`),
   },
   {
+    code: "E_OPENING_NIB",
+    channel: "compile",
+    note: "a relational door whose jamb lands on the ring's face is refused, never slid",
+    src: plan(
+      `  room id=a at (0,0) size 4000x5000\n  room id=b at (4000,0) size 4000x5000\n  walls from rooms exterior 200 partition 100\n  door between a and b at 500 from start width 800`,
+    ),
+  },
+  {
     code: "E_DOOR_KIND_CURVED",
     channel: "compile",
     note: "a non-hinged kind on an `arc` wall",
@@ -990,10 +1006,6 @@ const NOT_REPRODUCED_HERE = new Map<string, string>([
   ["W_NO_ENTRANCE", "access-graph outcome over the whole building — test/lint.test.ts"],
   ["W_BEDROOM_NO_WINDOW", "room-programme rule keyed on classification + openings — test/lint.test.ts"],
   ["W_BATH_VIA_BEDROOM", "access-graph topology rule between classified rooms — test/lint.test.ts"],
-  [
-    "W_SWING_OBSTRUCTED",
-    "quarter-disc vs. fixture geometry — a spatial analysis outcome, owned by test/lint.test.ts and test/doors.test.ts",
-  ],
   [
     "E_INTENT_NO_SITE",
     "not a compile diagnostic at all: it is raised by validateIntent() on the intent channel — test/intent.test.ts",

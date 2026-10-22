@@ -9,6 +9,7 @@ import type { AnalyzeOptions } from "../analyze.js";
 import type { UseKind } from "../ast.js";
 import { DEFAULT_TOL } from "../analyze.js";
 import { FIXTURE_WALL_TOL_MM } from "../fixture-orientation.js";
+import { JUNCTION_NIB_DEFAULTS } from "../opening-junctions.js";
 
 /** Tunable thresholds for the lint rules. All distances in mm, areas in m². */
 export interface LintRuleset {
@@ -254,8 +255,8 @@ export const DEFAULT_RULESET: LintRuleset = {
   maxDetourRatio: 3.0,
   pocketRunClearanceMm: 50,
   minCornerNibRatio: 1.0,
-  minJunctionNibMm: 100,
-  junctionNibThicknessRatio: 0.5,
+  minJunctionNibMm: JUNCTION_NIB_DEFAULTS.minJunctionNibMm,
+  junctionNibThicknessRatio: JUNCTION_NIB_DEFAULTS.junctionNibThicknessRatio,
   minMullionMm: 100,
   minStraddleCoverMm: 100,
   wetDoorKitchenProximityMm: 1500,

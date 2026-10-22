@@ -6,7 +6,7 @@ import type { SceneNode } from "../scene.js";
 import type { RWindow } from "../ir.js";
 import { add, mul, nearestWallNote, normal, segmentDirAt, wallFaceProbes } from "../geometry.js";
 import type { WallSegment } from "../geometry.js";
-import { parseAttachTarget, resolveAttachment } from "../attach.js";
+import { parseAttachTarget, resolveOpeningLead } from "../attach.js";
 import { fixesFrom, offWallFix, openingWidthFix } from "../fix-producers.js";
 import { parseOpeningHeights, resolveOpeningHeights, WINDOW_HEAD, WINDOW_SILL } from "../datum.js";
 
@@ -79,7 +79,7 @@ export const windowEl: ElementDef = {
       ...(at ? { at } : {}),
       ...(attach ? { attach } : {}),
     };
-    if (!attach && ctx.isKeyword("wall")) {
+    if (at && ctx.isKeyword("wall")) {
       ctx.next();
       node.wall = ctx.eatIdent().value;
     }
@@ -106,11 +106,19 @@ export const windowEl: ElementDef = {
     }
     const heights = (host: ReturnType<typeof ctx.hostSegment>): { sill: number; head: number } =>
       resolveOpeningHeights(ctx, `Window "${id}"`, n, { sill: WINDOW_SILL, head: WINDOW_HEAD }, host, n.span);
-    if (n.attach) {
-      const a = resolveAttachment(n.attach, ctx.walls, ctx.snapPt, ctx.diag, `Window "${id}"`, (e) => ctx.eval(e));
-      const at = a ? a.at : { x: 0, y: 0 };
-      const host = a ? a.host : null;
-      return { kind: "window", id, at, width, host, ...heights(host), span: n.span };
+    const lead = resolveOpeningLead(n, "window", width, ctx, `Window "${id}"`);
+    if (lead) {
+      const { at, host, relation } = lead;
+      return {
+        kind: "window",
+        id,
+        at,
+        width,
+        host,
+        ...heights(host),
+        span: n.span,
+        ...(relation ? { _placement: "relational" as const, _relation: relation } : {}),
+      };
     }
     const at = ctx.snapPt(ctx.evalPt(n.at!));
     if (ctx.walls.length > 0 && !ctx.isOnWall(at, n.wall)) {

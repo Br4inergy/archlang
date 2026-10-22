@@ -162,6 +162,8 @@ export const KEYWORDS = {
     // `between` leads a pair clause, `and` joins its two rooms (ADR 0028 §3).
     "between",
     "and",
+    // `door … at axis <label>` (ADR 0028 §5): leads a position that stands on a positioning axis.
+    "axis",
   ],
   /** Enum value keywords → `constant.language`, CM `atom`. */
   enum: [

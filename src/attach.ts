@@ -12,13 +12,16 @@
  * `snapPt` the rest of resolve uses, so output is byte-stable.
  */
 
-import type { ExprPoint, OpeningAttach, Point } from "./ast.js";
+import type { AttachFrom, AttachPos, ExprPoint, OpeningAttach, OpeningBetween, Point, WallsPairRoom } from "./ast.js";
 import type { Diagnostic, FixSuggestion } from "./diagnostics.js";
 import type { Expr, ParseExprOpts } from "./expr.js";
-import type { ParseCtx } from "./registry.js";
+import type { ParseCtx, ResolveCtx } from "./registry.js";
 import type { WallLike, WallSegment } from "./geometry.js";
 import { segmentLength, segmentPointAlong, segmentsOfWall } from "./geometry.js";
+import type { OpeningRelation } from "./ir.js";
+import { EDGE_WORDS } from "./room-datums.js";
 import { fmt3 as numStr } from "./num-format.js";
+import { hostedDatumDistance, placeBetween, placeOnEdge, type RelationCtx } from "./opening-relation.js";
 
 /**
  * The fix for `E_ATTACH_POS_RANGE`: clamp the out-of-range attach position to the
@@ -39,7 +42,8 @@ function attachClampFix(attach: OpeningAttach, valueText: string): FixSuggestion
 }
 
 /**
- * Parse the attachment position after `at`: `<expr>%` | `<expr>` (mm) | `center`.
+ * Parse the attachment position after `at`: `<expr>%` | `<expr>` (mm) | `center`, and ADR
+ * 0028 §5's datum forms `<expr> from start|end|<room>.<edge>` and `axis <label>`.
  *
  * The value is a full expression — the same one every other numeric slot takes, parsed
  * by the same {@link ParseCtx.parseExpr} entry point — so `for i in 0..4 { door on w1 at
@@ -49,33 +53,97 @@ function attachClampFix(attach: OpeningAttach, valueText: string): FixSuggestion
  *
  * `noModulo` is what makes the trailing `%` readable: see {@link ParseExprOpts}.
  * `center` is still matched first, as a keyword, so it can never be read as a
- * bare reference.
+ * bare reference. `axis` is read as the datum word only when a label follows it (a number,
+ * or a name other than the `width` that always follows a position): `axis <label>` was never
+ * a legal expression, so a plan that names a binding `axis` (`at axis width 900`) reads as
+ * it always did. `from` after the value was never legal either.
  */
-function parseAttachPos(ctx: ParseCtx): { pos: OpeningAttach["pos"]; end: number } {
+function parseAttachPos(ctx: ParseCtx): { pos: AttachPos; end: number } {
   if (ctx.isKeyword("center")) {
     const c = ctx.next();
     return { pos: { kind: "center" }, end: c.end };
+  }
+  if (ctx.isKeyword("axis")) {
+    const after = ctx.peek(1);
+    if (after.type === "number" || (after.type === "ident" && after.value !== "width")) {
+      ctx.next();
+      const t = ctx.next();
+      return { pos: { kind: "axis", label: t.value, span: { start: t.start, end: t.end } }, end: t.end };
+    }
   }
   const value = ctx.parseExpr({ noModulo: true });
   if (ctx.isType("percent")) {
     const pct = ctx.next();
     return { pos: { kind: "percent", value }, end: pct.end };
   }
+  if (ctx.isKeyword("from")) {
+    ctx.next();
+    if (ctx.isKeyword("axis")) {
+      ctx.fail(
+        "An offset is measured `from start`, `from end` or `from <room>.<edge>`; to stand on an axis write `at axis <label>`",
+      );
+    }
+    const t = ctx.eatIdent();
+    const from: AttachFrom =
+      t.value === "start" || t.value === "end"
+        ? { word: t.value }
+        : { datum: t.value, span: { start: t.start, end: t.end } };
+    return { pos: { kind: "from", value, from }, end: t.end };
+  }
   return { pos: { kind: "mm", value }, end: ctx.peek(-1).end };
+}
+
+/** Is `name` written as a room edge (`r.top`, `west.main.left`)? Only such an `on` target may
+ *  leave its position out. */
+export function isEdgeName(name: string): boolean {
+  const dot = name.lastIndexOf(".");
+  return dot > 0 && EDGE_WORDS.includes(name.slice(dot + 1));
 }
 
 /**
  * Parse an opening's leading position — shared by door/window/opening. Either the
  * existing absolute `at (x,y)` (with the `wall <ref>` clause left to the caller,
- * since it follows `width`) or the wall-attached `on <wall> at <pos>`.
+ * since it follows `width`), the wall-attached `on <wall> at <pos>` (which may also name
+ * a room edge, `on <room>.<edge> [at <pos>]`, ADR 0028 §5), or — for a door or a cased
+ * opening, `between` true — the relational `between <A> and <B> [at <pos>]`.
  */
-export function parseAttachTarget(ctx: ParseCtx): { at?: ExprPoint; attach?: OpeningAttach } {
+export function parseAttachTarget(
+  ctx: ParseCtx,
+  between = false,
+): { at?: ExprPoint; attach?: OpeningAttach; between?: OpeningBetween } {
   if (ctx.isKeyword("on")) {
     const onTok = ctx.next();
     const wall = ctx.eatIdent().value;
+    // `on <room>.<edge>` may leave its position out (a window then stands at the edge's
+    // centre); every other `on` target needs its `at`, exactly as before.
+    if (!ctx.isKeyword("at") && isEdgeName(wall)) {
+      return { attach: { wall, pos: { kind: "default" }, span: { start: onTok.start, end: ctx.peek(-1).end } } };
+    }
     ctx.eatKeyword("at");
     const { pos, end } = parseAttachPos(ctx);
     return { attach: { wall, pos, span: { start: onTok.start, end } } };
+  }
+  if (ctx.isKeyword("between")) {
+    if (!between) {
+      ctx.fail(
+        "A window is placed on one room's exterior edge (`window on <room>.<edge> [at …]`), not `between` two rooms",
+      );
+    }
+    const kw = ctx.next();
+    const room = (): WallsPairRoom => {
+      const t = ctx.eatIdent();
+      return { id: t.value, span: { start: t.start, end: t.end } };
+    };
+    const a = room();
+    ctx.eatKeyword("and");
+    const b = room();
+    let pos: AttachPos = { kind: "default" };
+    let end = b.span.end;
+    if (ctx.isKeyword("at")) {
+      ctx.next();
+      ({ pos, end } = parseAttachPos(ctx));
+    }
+    return { between: { a, b, pos, span: { start: kw.start, end } } };
   }
   ctx.eatKeyword("at");
   return { at: ctx.parsePoint() };
@@ -112,6 +180,9 @@ export function resolveAttachment(
   diag: (d: Diagnostic) => void,
   what: string,
   evalNum: (e: Expr) => number,
+  /** The datum positions (`from start|end|<room>.<edge>`, `axis <label>`, ADR 0028 §5); a
+   *  plan that writes none never reads it. */
+  rel?: RelationCtx,
 ): { at: Point; host: WallSegment } | null {
   const matches = walls.filter((w) => w.id === attach.wall || w.category === attach.wall);
   if (matches.length === 0) {
@@ -143,7 +214,8 @@ export function resolveAttachment(
   let dist: number;
   const p = attach.pos;
   // One evaluation, shared by both value kinds. `center` carries no expression.
-  const raw = p.kind === "center" || p.value === undefined ? 0 : evalNum(p.value);
+  const value = "value" in p ? p.value : undefined;
+  const raw = value === undefined ? 0 : evalNum(value);
   if (p.kind !== "center" && !Number.isFinite(raw)) {
     diag({
       severity: "error",
@@ -153,7 +225,23 @@ export function resolveAttachment(
     });
     return null;
   }
-  if (p.kind === "center") {
+  if (p.kind === "from" || p.kind === "axis" || p.kind === "default") {
+    // A datum position: measured from an end of the run or from where a datum line crosses
+    // it, then held to the run exactly as a millimetre position is (no clamp to offer: the
+    // written form is not a distance from the start).
+    const d = rel ? hostedDatumDistance(attach, segs, segmentLength, total, raw, rel, what) : null;
+    if (d === null) return null;
+    if (!(d >= 0 && d <= total)) {
+      diag({
+        severity: "error",
+        message: `${what} attachment position is ${numStr(d)} mm along the wall run, outside it (0…${total})`,
+        code: "E_ATTACH_POS_RANGE",
+        span: attach.span,
+      });
+      return null;
+    }
+    dist = d;
+  } else if (p.kind === "center") {
     dist = total / 2;
   } else if (p.kind === "percent") {
     const pct = raw;
@@ -200,4 +288,53 @@ export function resolveAttachment(
     acc += segLen;
   }
   return null; // unreachable: a non-empty wall always has a final segment
+}
+
+/**
+ * Resolve an opening's hosted lead — `between <A> and <B> …`, `on <room>.<edge> …` (both
+ * relational, ADR 0028 §5) or `on <wall> at …` — to its point and host. `undefined` for the
+ * `at (x,y)` form, which each element resolves itself (its off-wall warning is its own).
+ * After a diagnostic the opening stands nowhere (`host: null`), as an unresolvable
+ * attachment always has.
+ *
+ * `on <name>` is read as a wall reference whenever a wall has that id or category, exactly
+ * as before; otherwise a name written as a room edge (`r.top`) is that edge. A name that is
+ * both a wall and a room edge of the group is refused (`E_DATUM_NAME`), never read either way.
+ */
+export function resolveOpeningLead(
+  n: { attach?: OpeningAttach; between?: OpeningBetween },
+  kind: "door" | "window" | "opening",
+  width: number,
+  ctx: ResolveCtx,
+  what: string,
+): { at: Point; host: WallSegment | null; relation?: OpeningRelation } | undefined {
+  const rel: RelationCtx = {
+    grid: ctx.grid,
+    walls: ctx.walls,
+    snapPt: ctx.snapPt,
+    diag: ctx.diag,
+    eval: (e) => ctx.eval(e),
+    ...(ctx.datums ? { datums: ctx.datums } : {}),
+  };
+  const none = { at: { x: 0, y: 0 }, host: null };
+  if (n.between) return placeBetween(n.between, kind, width, rel, what) ?? none;
+  const attach = n.attach;
+  if (!attach) return undefined;
+  if (isEdgeName(attach.wall) && ctx.datums) {
+    const isWall = ctx.walls.some((w) => w.id === attach.wall || w.category === attach.wall);
+    const room = attach.wall.slice(0, attach.wall.lastIndexOf("."));
+    const isRoom = ctx.datums.table.rooms.has(room) || ctx.datums.table.refused.has(room);
+    if (isWall && isRoom) {
+      ctx.diag({
+        severity: "error",
+        message: `\`on ${attach.wall}\` could be the wall "${attach.wall}" or an edge of the room "${room}"; rename the wall so the name reads one way`,
+        code: "E_DATUM_NAME",
+        ...(attach.span ? { span: attach.span } : {}),
+      });
+      return none;
+    }
+    if (!isWall) return placeOnEdge(attach, kind, width, rel, what) ?? none;
+  }
+  const a = resolveAttachment(attach, ctx.walls, ctx.snapPt, ctx.diag, what, (e) => ctx.eval(e), rel);
+  return a ?? none;
 }

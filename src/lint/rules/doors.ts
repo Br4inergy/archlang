@@ -5,6 +5,7 @@
  */
 
 import { isDerivedWall, wallRef } from "../../wall-ref.js";
+import { relationText } from "../../opening-relation.js";
 import { det } from "../../algebra/d4.js";
 import { CLI_NAME } from "../../command-name.js";
 import { connectorClearWidth, DEFAULT_CLEAR_ALLOWANCE_MM, rectOf } from "../../analyze.js";
@@ -437,9 +438,11 @@ export const doorNearCorner: LintRule = {
           `${mm(need)} mm, the wall's own thickness, but measures ${mm(worst.have)} mm ` +
           `(${mm(short)} mm short).`,
         hints: [
-          isDerivedWall(ir.walls, seg)
-            ? `Move the door ${mm(short)} mm further from that corner along the wall: its \`at (x,y)\` is the one position to change.`
-            : `Move the door ${mm(short)} mm further from that corner — \`on ${seg.wallId} at <pos>\` measures along the run, so the position is the one number to change.`,
+          d._relation
+            ? `Move the door ${mm(short)} mm further from that corner along the wall: the position in \`${relationText(d._relation)}\` is the one number to change.`
+            : isDerivedWall(ir.walls, seg)
+              ? `Move the door ${mm(short)} mm further from that corner along the wall: its \`at (x,y)\` is the one position to change.`
+              : `Move the door ${mm(short)} mm further from that corner — \`on ${seg.wallId} at <pos>\` measures along the run, so the position is the one number to change.`,
           isDerivedWall(ir.walls, seg)
             ? "Or move the rooms so the corner moves away from the jamb: the wall is derived from them."
             : `Or lengthen wall "${seg.wallId}" past the door, so the corner moves away from the jamb instead.`,

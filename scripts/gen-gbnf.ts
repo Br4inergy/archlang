@@ -61,6 +61,7 @@ import {
   RAIL_EDGES,
 } from "../src/ast.js";
 import { PAPER_ORIENTATIONS, PAPER_SIZES } from "../src/sheet.js";
+import { EDGE_WORDS } from "../src/room-datums.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..");
@@ -416,7 +417,7 @@ function rules(): [string, string][] {
     ["use-kind", useKind],
     // The KIND word leads, after any `id=` — the shipped `room polygon` / `room circle`
     // / `dim faces` shape. Its alternation is INJECTED from `DOOR_KINDS`, guarded above.
-    ["door-stmt", `"door" rws id-opt ( door-kind rws )? opening-placement door-clauses`],
+    ["door-stmt", `"door" rws id-opt ( door-kind rws )? ( opening-placement | opening-between ) door-clauses`],
     ["door-kind", litAlt(DOOR_KINDS)],
     // One `( … )?` per DOOR_ENUMS key, in the table's key order, plus the trailing
     // `open` — and one `<key>-val` production per clause, all INJECTED from the table
@@ -445,7 +446,7 @@ function rules(): [string, string][] {
     // so a re-ordering is a parse error, and a door or a cased opening starts at the
     // floor — a `sill` clause there is not a redundant one, it is not in the language.
     ["window-stmt", `"window" rws id-opt opening-placement ( ws "sill" ws expr )? ( ws "head" ws expr )?`],
-    ["opening-stmt", `"opening" rws id-opt opening-placement ( ws "head" ws expr )?`],
+    ["opening-stmt", `"opening" rws id-opt ( opening-placement | opening-between ) ( ws "head" ws expr )?`],
     /*
      * The shared placement of `door`/`window`/`opening`, and the ONE place the
      * either/or between the two forms is stated.
@@ -459,9 +460,18 @@ function rules(): [string, string][] {
      * the one output it exists to make impossible, which is why this is a split
      * production rather than a shared target plus an optional tail.
      */
-    ["opening-placement", `opening-free | opening-hosted`],
+    ["opening-placement", `opening-free | opening-hosted | opening-edge`],
     ["opening-free", `"at" ws point ws "width" ws expr ( ws "wall" rws ref )?`],
     ["opening-hosted", `"on" rws ref rws "at" ws attach-pos ws "width" ws expr`],
+    /*
+     * The relational placements (ADR 0028 §5). `on <room>.<edge>` may leave its position
+     * out (the parser accepts that only for a name ending in an edge word, so the
+     * production names the edge word), and `between <A> and <B>` is a door's or a cased
+     * opening's alone: `window.parse()` refuses it, so `window-stmt` does not offer it.
+     */
+    ["opening-edge", `"on" rws edge-ref ws "width" ws expr`],
+    ["edge-ref", `ref "." ( ${litAlt(EDGE_WORDS)} )`],
+    ["opening-between", `"between" rws ref rws "and" rws ref ( rws "at" ws attach-pos )? ws "width" ws expr`],
     /*
      * The attachment position is a full EXPRESSION (v1.27.0), not a bare number — a
      * `for`-generated run of openings places itself with `on w1 at bay * i + 600`.
@@ -476,7 +486,12 @@ function rules(): [string, string][] {
      * `parseExpr` with no options. Writing `expr` here instead would hand a constrained
      * decoder `at 1000 % 3` — the one output shape this file exists to make impossible.
      */
-    ["attach-pos", `"center" | attach-expr ws "%" | attach-expr`],
+    /*
+     * ADR 0028 §5's datum positions join it: `axis <label>` (a number or a letter label) and
+     * `<expr> from start|end|<room>.<edge>`, both of which `parseAttachPos` reads.
+     */
+    ["attach-pos", `"center" | "axis" rws axis-label | attach-expr ws "%" | attach-expr ( rws "from" rws ref )?`],
+    ["axis-label", `[0-9]+ | ident`],
     /*
      * Two shapes, because the trailing `in <roomId>` is available to only one of them.
      * `at`/`against` do not name a room, so the piece may declare its owner at the end;

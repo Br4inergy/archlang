@@ -107,7 +107,7 @@ suite("door enums — one source, six call sites", () => {
 
 suite("door enums — the generators fail loudly, not silently", () => {
   const body = (): [string, string][] => [
-    ["door-stmt", `"door" rws id-opt ( door-kind rws )? opening-placement door-clauses`],
+    ["door-stmt", `"door" rws id-opt ( door-kind rws )? ( opening-placement | opening-between ) door-clauses`],
     ["door-kind", `"hinged" | "sliding" | "barn" | "bifold" | "pocket" | "garage"`],
     // A SEQUENCE of optionals in the parser's own clause order, not a `( clause )*`
     // set: `door … swing in hinge left` is a parse error, so a grammar that offered
@@ -135,7 +135,9 @@ suite("door enums — the generators fail loudly, not silently", () => {
     );
     // The kind word LEADS the statement (it is not a clause), which is what makes the
     // separate `door-kind` arm of the guard necessary at all.
-    expect(g).toContain(`door-stmt ::= "door" rws id-opt ( door-kind rws )? opening-placement door-clauses`);
+    expect(g).toContain(
+      `door-stmt ::= "door" rws id-opt ( door-kind rws )? ( opening-placement | opening-between ) door-clauses`,
+    );
   });
 
   it("gen-gbnf throws when a door clause has no production", () => {

@@ -118,6 +118,13 @@ export const COMPASS_DATUM_ALIASES: Readonly<Record<string, DatumWord>> = Object
   east: "right",
 });
 
+/** The words that name an EDGE (a line an opening's run can lie on, or an offset can be
+ *  measured from, ADR 0028 §5): the four frame words and their compass aliases. */
+export const EDGE_WORDS: readonly string[] = Object.freeze([
+  ...DATUM_WORDS.filter((w) => w !== "cx" && w !== "cy"),
+  ...Object.keys(COMPASS_DATUM_ALIASES),
+]);
+
 /**
  * A dotted name read as a datum: everything before the last dot names the room, the last
  * segment is the datum word (`west.main.top` is room `west.main`, word `top`). `undefined`

@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**120 errors** · **63 warnings**
+**124 errors** · **63 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -71,6 +71,10 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_LEVEL_NEST`](#e_level_nest) | error | `level` used inside a block or component. |
 | [`E_NON_FINITE`](#e_non_finite) | error | A number is too large to be finite. |
 | [`E_OPENING_ABOVE_WALL`](#e_opening_above_wall) | error | An opening's head is above the wall it is cut in. |
+| [`E_OPENING_DATUM`](#e_opening_datum) | error | An opening's position names no datum that applies to its run. |
+| [`E_OPENING_HOST_AMBIGUOUS`](#e_opening_host_ambiguous) | error | A relational opening's run carries more than one wall. |
+| [`E_OPENING_NIB`](#e_opening_nib) | error | A relational opening leaves too short a nib of wall at a junction; it is refused, never moved. |
+| [`E_OPENING_NO_SHARED_WALL`](#e_opening_no_shared_wall) | error | A relational opening's run carries no wall (or, on a room edge, no exterior wall). |
 | [`E_OPENING_WIDTH`](#e_opening_width) | error | Opening must have a positive width. |
 | [`E_OUTDOOR_POLY_DEGENERATE`](#e_outdoor_poly_degenerate) | error | An outdoor ring is degenerate, or a balcony was given one. |
 | [`E_OUTDOOR_POLY_SELF_INTERSECT`](#e_outdoor_poly_self_intersect) | error | An outdoor ring crosses itself. |
@@ -121,7 +125,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_WALLS_FROM_NO_ROOMS`](#e_walls_from_no_rooms) | error | A `walls from rooms` statement has no room to derive walls from. |
 | [`E_WALLS_FROM_ROOMS_DUP`](#e_walls_from_rooms_dup) | error | More than one `walls from rooms` statement in one plan or component. |
 | [`E_WALL_BETWEEN_DUP`](#e_wall_between_dup) | error | A `walls from rooms` statement names one pair of rooms in two clauses. |
-| [`E_WALL_BETWEEN_NOT_ADJACENT`](#e_wall_between_not_adjacent) | error | A `walls from rooms` clause names two rooms that share no edge. |
+| [`E_WALL_BETWEEN_NOT_ADJACENT`](#e_wall_between_not_adjacent) | error | A `walls from rooms` clause, or a door or opening placed `between` two rooms, names two rooms that share no edge. |
 | [`E_WALL_BETWEEN_OPEN`](#e_wall_between_open) | error | A wall, door, window or opening is written on an edge a `walls from rooms` clause declares open. |
 | [`E_WALL_BETWEEN_ROOM`](#e_wall_between_room) | error | A `walls from rooms` clause names a room it cannot act on. |
 | [`E_WALL_BETWEEN_WIDTH`](#e_wall_between_width) | error | An `open between` opening does not fit the clear span of its edge. |
@@ -962,6 +966,67 @@ wall id=w1 exterior thickness 200 height 2200 { (0,0) (4000,0) close }
   door id=d on w1 at 50% width 900 head 2400   # error: head above a 2200 wall
 ```
 
+## E_OPENING_DATUM
+
+*error* — An opening's position names no datum that applies to its run.
+
+**Cause.** A relational opening (`door|opening … between A and B`, `door|window|opening … on <room>.<edge>`) is placed along the shared edge run or the edge by `center`, `<mm> from start|end`, `<mm> from <room>.<edge>` or `axis <label>` (ADR 0028 §5). A door or a cased opening must write one (a door is held to an end or an edge, never centred by default); a plain `at <mm>` or `at <pct>%` names no datum there. `from <room>.<edge>` needs an edge perpendicular to the run through one of its ends (not a parallel edge, a centre line `cx|cy`, or an edge meeting the run elsewhere), and `axis <label>` an axis that crosses the run. On the existing `on <wall> at …` form the same datums are read where the datum line crosses the wall's straight run at exactly one point. The compiler refuses rather than pick a position (ADR 0005). The span points at the position or the datum.
+
+**Fix.** Write a position the run can read: `at 600 from start`, `at 600 from end`, `at center`, or an edge through one end of the run (`from a.top` on a vertical run).
+
+```arch static
+room id=a at (0,0) size 4000x3000
+room id=b at (4000,0) size 3000x3000
+walls from rooms exterior 200 partition 100
+door between a and b width 800   # error: a door needs a position
+```
+
+## E_OPENING_HOST_AMBIGUOUS
+
+*error* — A relational opening's run carries more than one wall.
+
+**Cause.** `door|opening … between A and B` stands in the one wall body on the pair's shared edge run, and `… on <room>.<edge>` in the one exterior wall body on that edge (ADR 0028 §5). Two authored halves, an authored span beside a derived remainder (the `~2` pieces coexistence leaves), or two exterior runs either side of a narrower neighbouring room give more than one, and the compiler does not choose between them (ADR 0005). The span points at the clause.
+
+**Fix.** Make the run one wall (drop the authored wall lying on the derived line, or join the halves), or place the opening `on <wall> at …` on the wall you mean.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+room id=b at (4000,0) size 3000x3000
+wall id=half partition thickness 100 { (4000,0) (4000,1500) }
+walls from rooms exterior 200 partition 100
+door between a and b at 600 from end width 800   # error: the authored half beside the derived remainder
+```
+
+## E_OPENING_NIB
+
+*error* — A relational opening leaves too short a nib of wall at a junction; it is refused, never moved.
+
+**Cause.** A relational opening's jamb must stand at least `max(100 mm, host thickness / 2)` from the face of every wall meeting its host, no meeting wall may stand inside its span, and it must lie on its run and on its host wall (ADR 0028 §5). These are the default values and the measure `W_OPENING_AT_JUNCTION` warns with for a hand-placed opening, including its exemption for a cased opening flush (0 mm) with a meeting wall's face; `compile()` reads no lint profile. The author asked for a derived position, so the compiler refuses rather than slide it (ADR 0004, ADR 0005), and names the nearest legal position in the hint. An opening placed `on <wall> at …` is not refused: it warns, as it always did. The span points at the clause.
+
+**Fix.** Use the position the hint names, narrow the opening, or move the wall that meets the run.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+room id=b at (4000,0) size 3000x3000
+walls from rooms exterior 200 partition 100
+door between a and b at 500 from start width 800   # error: the jamb is on the ring's face, with no nib
+```
+
+## E_OPENING_NO_SHARED_WALL
+
+*error* — A relational opening's run carries no wall (or, on a room edge, no exterior wall).
+
+**Cause.** `door|opening … between A and B` stands in the wall on the pair's shared edge run, derived or authored, and `… on <room>.<edge>` in the exterior wall on that edge (ADR 0028 §5). With no wall on the run, or with a partition on an edge that faces another room, there is nothing to stand in; the compiler does not invent one. The span points at the clause.
+
+**Fix.** Add the wall (`walls from rooms` derives every shared edge; or write it by hand on that line), or place the opening `between` the two rooms that share the edge.
+
+```arch static
+room id=a at (0,0) size 4000x3000
+room id=b at (4000,0) size 3000x3000
+wall id=shell exterior thickness 200 { (0,0) (7000,0) (7000,3000) (0,3000) close }
+door between a and b at 600 from start width 800   # error: no wall on x 4000
+```
+
 ## E_OPENING_WIDTH
 
 *error* — Opening must have a positive width.
@@ -1593,11 +1658,11 @@ walls from rooms exterior 200 partition 100 { open between a and b  between b an
 
 ## E_WALL_BETWEEN_NOT_ADJACENT
 
-*error* — A `walls from rooms` clause names two rooms that share no edge.
+*error* — A `walls from rooms` clause, or a door or opening placed `between` two rooms, names two rooms that share no edge.
 
-**Cause.** `open between A and B` and `between A and B thickness t` act on the partition the statement derives on the edge run two rooms share. Two rooms that do not meet along an edge (apart, or touching only at a corner) have no such run, so the clause would act on nothing (ADR 0028 §3). The span points at the clause.
+**Cause.** `open between A and B` and `between A and B thickness t` act on the partition the statement derives on the edge run two rooms share, and `door|opening … between A and B` stands in the wall on that run (ADR 0028 §3, §5). Two rooms that do not meet along an edge (apart, or touching only at a corner), or a room named twice, have no such run, so the clause would act on nothing. The span points at the clause.
 
-**Fix.** Name two rooms that meet along an edge, or remove the clause.
+**Fix.** Name two rooms that meet along an edge, or remove the clause (place the door `on <wall> at …` or `at (x,y)` instead).
 
 ```arch static
 room id=a at (0,0) size 4000x3000
@@ -1611,7 +1676,7 @@ walls from rooms exterior 200 partition 100 { open between a and d }   # error: 
 
 *error* — A wall, door, window or opening is written on an edge a `walls from rooms` clause declares open.
 
-**Cause.** `open between A and B` voids the pair's edge run with a derived opening: the two rooms are one open-plan space there. An authored wall lying on that run (exactly on its line, overlapping it), or an authored door, window or opening hosted by position across the span the derived opening voids, would close or narrow what the clause opened, so the compiler refuses rather than choose between them (ADR 0028 §3). The span points at the clause.
+**Cause.** `open between A and B` voids the pair's edge run with a derived opening: the two rooms are one open-plan space there. An authored wall lying on that run (exactly on its line, overlapping it), or an authored door, window or opening hosted by position across the span the derived opening voids, would close or narrow what the clause opened, so the compiler refuses rather than choose between them (ADR 0028 §3); the span points at the clause. A relational `door|opening … between A and B` on that pair is refused the same way, spanned on its own `between` clause with the `open` clause as a related span (§5).
 
 **Fix.** Remove the authored wall or opening on that edge, or remove the `open between` clause and keep the wall (with a door in it).
 

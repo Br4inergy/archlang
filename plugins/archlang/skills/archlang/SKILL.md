@@ -107,8 +107,11 @@ physically wrong (openings off their wall, furniture through walls). Author by *
   anchored edge: on `centered`/`anchor center` it is `E_FURN_FLUSH`.)
 - **Let the rooms make the walls.** When the rooms are rectangles that tile the floor (write a
   corridor as a room), `walls from rooms exterior 200 partition 100` derives the shell on their outline
-  and a partition on every shared edge, so no wall can go missing. Host openings by position or
-  category (`door at (x,y) … wall partition`); `{ except <room> }` leaves a room out. For an
+  and a partition on every shared edge, so no wall can go missing. Host openings by the rooms:
+  `door between living and bed at 800 from end width 800` (a door must say where: `center`,
+  `<mm> from start|end|<room>.<edge>`, `axis <n>`, offsets to the centre), `window on bed.top
+  width 1500` (centred by default). A jamb too near a meeting wall is refused (`E_OPENING_NIB`
+  names the legal spot), never slid. `{ except <room> }` leaves a room out. For an
   open-plan join write `open between living and kitchen` in the body (an opening across the whole
   shared edge, or `width <mm>` centred; never a door on that edge), and `between a and b thickness
   150` for one thicker partition. Refusals name the rooms (`E_ROOMS_OVERLAP`, `E_ROOMS_NOT_TILING`,

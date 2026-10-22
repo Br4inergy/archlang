@@ -30,9 +30,13 @@ const pt = (out: ExprSink, p: ExprPoint | undefined): void => {
 
 /** A door/window/opening's leading placement: `on <wall> at <pos>` contributes its
  *  (expression) position; `at (x,y)` contributes the point. */
-const openingLead = (out: ExprSink, s: { at?: ExprPoint; attach?: OpeningAttach }): void => {
-  if (s.attach) {
-    if (s.attach.pos.value !== undefined) out.push(s.attach.pos.value);
+const openingLead = (
+  out: ExprSink,
+  s: { at?: ExprPoint; attach?: OpeningAttach; between?: { pos: OpeningAttach["pos"] } },
+): void => {
+  const pos = s.attach?.pos ?? s.between?.pos;
+  if (pos) {
+    if ("value" in pos && pos.value !== undefined) out.push(pos.value);
   } else {
     pt(out, s.at);
   }

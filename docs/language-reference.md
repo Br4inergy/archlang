@@ -895,7 +895,8 @@ A hole is legal when `outdoor` surfaces cover it exactly (a courtyard, which get
 inner exterior ring) or a `void` covers it exactly (no wall is derived round it). A 1 mm jog
 in the outline is a legal tiling, and the ring follows it.
 
-**Hosting.** A derived wall has no id an author can type, so openings reach it by position
+**Hosting.** A derived wall has no id an author can type, so openings reach it by the rooms
+([`between <A> and <B>`, `on <room>.<edge>`](#openings-by-relation)), by position
 (`at (x,y)`, the nearest wall) or by category (`wall exterior`, `wall partition`,
 `on exterior at <pos>` when the ring is the only exterior wall). Lint names a derived wall by
 its relation (`the partition between "living" and "bed"`), never by an id.
@@ -959,6 +960,85 @@ plan "Open plan" {
   door at (2000, 3000) width 800 wall partition hinge left swing in
 }
 ```
+
+### Openings by relation
+
+```
+door|opening [id=<name>] … between <A> and <B> at <pos> width <mm> …
+door|window|opening [id=<name>] … on <room>.<edge> [at <pos>] width <mm> …
+<pos>  :=  center  |  <mm> from start|end  |  <mm> from <room>.<edge>  |  axis <label>
+```
+
+An opening may be placed by the rooms instead of by a wall
+([ADR 0028](adr/0028-rooms-primary-derived-walls.md) §5), which is how it reaches a wall that
+`walls from rooms` derived (such a wall has no id to name).
+
+- `between <A> and <B>` stands in the **one wall body on the edge run the two rooms share**,
+  derived or authored. `<edge>` is `top`, `bottom`, `left` or `right` (the compass words only
+  where a datum may use them).
+- `on <room>.<edge>` stands in the **one exterior wall body on that edge** of the room.
+- `<pos>` is measured **along the run** (or the edge), never along the host wall, and every
+  offset is to the opening's **centre**. The run starts at its end with the smaller `x`
+  (horizontal) or `y` (vertical), whichever way the host wall is drawn.
+  `<mm> from <room>.<edge>` needs an edge perpendicular to the run through one of its ends; the
+  offset runs from that end into the run. `axis <label>` puts the centre where that positioning axis crosses
+  the run. The position snaps to `grid`, as every coordinate does.
+- A **door** and a **cased opening** must write a position (a door is held to an end or a
+  room edge, never centred by default); a **window** on an edge stands at its centre when it
+  writes none. A window is never `between` two rooms (a parse error).
+- **The nib is enforced, never slid.** A jamb nearer than `max(100 mm, host thickness / 2)` to
+  the face of a wall meeting the host, a meeting wall standing inside the span, or a span past
+  the end of the run or of its wall is refused with `E_OPENING_NIB`, whose hint names the
+  nearest legal position. These are the default values and the measure of
+  [`W_OPENING_AT_JUNCTION`](error-codes.md), including its exemption for a cased opening flush
+  with a meeting wall's face; `compile()` reads no lint profile.
+
+```arch
+plan "Rooms first" {
+  units mm
+  grid 50
+  room id=living at (0,0) size 4000x5000 label "Living" uses living
+  room id=bed at (4000,0) size 4000x5000 label "Bedroom" uses bedroom
+  walls from rooms exterior 200 partition 100
+  door id=front on living.bottom at 1000 from start width 900 hinge left swing in
+  door id=d between living and bed at 800 from end width 800 hinge left swing into bed
+  window id=w1 on bed.top width 1500
+  window id=w2 on living.left at 1500 from living.top width 1200
+}
+```
+
+Widen `living` and the partition, its door, the bedroom and its window all move with it, and
+the door keeps its 800 mm from the end of the shared edge.
+
+| Condition | Code |
+|---|---|
+| No position on a door or cased opening; a plain `at <mm>` or `at <pct>%`; an edge parallel to the run, meeting it away from its ends, or a centre line (`cx`/`cy`); an axis parallel to the run, missing it, or not declared | `E_OPENING_DATUM` |
+| The two rooms share no edge (or one room is named twice) | `E_WALL_BETWEEN_NOT_ADJACENT` |
+| No wall on the run; on `on <room>.<edge>`, the wall there is a partition | `E_OPENING_NO_SHARED_WALL` |
+| More than one wall body on the run (an authored span beside a derived remainder, two exterior runs either side of a narrower neighbour) | `E_OPENING_HOST_AMBIGUOUS` |
+| The pair is declared `open` in `walls from rooms` | `E_WALL_BETWEEN_OPEN` |
+| A jamb too near a meeting wall's face, a wall inside the span, or a span past its run | `E_OPENING_NIB` |
+| A room the plan or component cannot see, a polygon or circle room | `E_UNKNOWN_REF`, `E_ROOM_NOT_RECTANGLE` |
+
+**Facts.** `describe --json` reports such an opening's `placement` as `relational` in
+`freedom` (with an `openings.relational` count, present only when there is one) and its
+placement as written in a `relation` field of its `doors[]`/`windows[]`/`openings[]` row
+(`"between living and bed at 800 from end"`), never the internal name of its host. A lint hint
+that moves it quotes the same form, measured from the anchor the author wrote (`from end`, or
+an edge through an end of the run; otherwise from the start). Plan JSON exports it as written
+(`relation: { between | edge, at }`) beside its resolved `x`/`y`, except one placed
+`at axis <label>`: Plan JSON carries no axes, so that one is exported by its `x`/`y` alone. (The opening an
+`open between` clause derives keeps `placement: "absolute"`, so its hand-placed twin stays
+byte-identical.)
+
+**The same datums on a wall.** `on <wall> at <mm> from start|end`,
+`on <wall> at <mm> from <room>.<edge>` and `on <wall> at axis <label>` read the run of an
+authored wall you name: `from start` measures from its first point, `from end` back from its last; a datum line must cross the wall's straight run at
+exactly one point (a closed ring crossed twice, a wall lying along the line or a curved wall is
+`E_OPENING_DATUM`), and the offset runs from that crossing along the wall's own direction. These
+are ordinary attached openings (`placement: "attached"`): out of range is
+[`E_ATTACH_POS_RANGE`](error-codes.md), and a short nib warns (`W_OPENING_AT_JUNCTION`) as
+it always did, so each draws, describes and lints byte for byte as its `on <wall> at <x>` twin.
 
 ### Room
 
