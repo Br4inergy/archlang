@@ -7,7 +7,8 @@
 # shell on the rooms' outline and a partition on every shared edge, and each opening is
 # hosted by the rooms it joins (`door between`, `on <room>.<edge>`), so changing the
 # anchor, a size or a direction reflows the walls, the doors and the windows with the
-# rooms. Nothing below is an absolute coordinate but the anchor.
+# rooms. Two things do not follow: the `dim` endpoints and the east-facade fixtures'
+# `offset`s are absolute, and would need editing.
 plan "Relational 1BR" {
   units mm
   grid 50

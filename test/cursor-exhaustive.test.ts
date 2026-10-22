@@ -174,6 +174,23 @@ describe("cursor.ts — statementExprs emits in the grammar's own order (regress
     // point0 has no arriving arc; point1 arrives via the one arc, so its radius trails it.
     expect(values).toEqual([200, 2, 45, 2500, 0, 0, 1000, 500, 800]);
   });
+
+  it("walls from rooms: exterior, partition, then each pair clause's width or thickness in order", () => {
+    // Both arms of the pair clauses (PS3.6 fixed the handler, which pushed only the first two).
+    const src = [
+      'plan "P" {',
+      "  units mm",
+      "  room id=a at (0,0) size 4000x3000",
+      "  room id=b at (4000,0) size 3000x3000",
+      "  room id=c at (0,3000) size 7000x2000",
+      "  walls from rooms exterior 200 partition 100 { open between a and b width 900  between a and c thickness 150  open between b and c }",
+      "}",
+    ].join("\n");
+    const { plan } = parse(src);
+    const walls = plan!.body.find((s) => s.kind === "walls");
+    expect(walls).toBeDefined();
+    expect(statementExprs(walls!).map((e) => (e.t === "num" ? e.value : e))).toEqual([200, 100, 900, 150]);
+  });
 });
 
 describe("cursor.ts — eachExpr visits plan-level settings, not just statements", () => {
