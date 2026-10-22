@@ -120,6 +120,11 @@ physically wrong (openings off their wall, furniture through walls). Author by *
   `r.right`, `r.cx`, `r.cy`, so `wall partition thickness 100 { (hall.right, hall.top) (hall.right,
   hall.bottom) }` follows the room when it grows. Use them in walls, openings, furniture and dims,
   not in a `let` or a room's own `at`/`size` (`E_DATUM_BEFORE_ROOMS`).
+- **Or name one wall by its rooms.** For a plan that derives some walls and types others,
+  `wall id=p partition thickness 100 between hall and bed` stands on the two rooms' shared edge
+  and `wall id=shell exterior thickness 200 around [hall bed bath]` is one ring on their outline
+  (no hole). They keep your id, thickness and material, host doors like any wall, and replace
+  the derived span beside `walls from rooms`.
 - **Every room still needs a way in** — put a `door` or cased `opening` on a wall of *every* room
   (an open-plan space still needs a modeled opening), and keep furniture out of the doorway approach
   (≥300 mm) and the leaf's swing.
