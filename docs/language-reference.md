@@ -1024,14 +1024,16 @@ the door keeps its 800 mm from the end of the shared edge.
 `freedom` (with an `openings.relational` count, present only when there is one) and its
 placement as written in a `relation` field of its `doors[]`/`windows[]`/`openings[]` row
 (`"between living and bed at 800 from end"`), never the internal name of its host. A lint hint
-that moves it quotes the same form, measured from the start of the run. Plan JSON exports it
-as written (`relation: { between | edge, at }`) beside its resolved `x`/`y`. (The opening an
+that moves it quotes the same form, measured from the anchor the author wrote (`from end`, or
+an edge through an end of the run; otherwise from the start). Plan JSON exports it as written
+(`relation: { between | edge, at }`) beside its resolved `x`/`y`, except one placed
+`at axis <label>`: Plan JSON carries no axes, so that one is exported by its `x`/`y` alone. (The opening an
 `open between` clause derives keeps `placement: "absolute"`, so its hand-placed twin stays
 byte-identical.)
 
 **The same datums on a wall.** `on <wall> at <mm> from start|end`,
 `on <wall> at <mm> from <room>.<edge>` and `on <wall> at axis <label>` read the run of an
-authored wall you name: `from end` measures back from its last point; a datum line must cross the wall's straight run at
+authored wall you name: `from start` measures from its first point, `from end` back from its last; a datum line must cross the wall's straight run at
 exactly one point (a closed ring crossed twice, a wall lying along the line or a curved wall is
 `E_OPENING_DATUM`), and the offset runs from that crossing along the wall's own direction. These
 are ordinary attached openings (`placement: "attached"`): out of range is

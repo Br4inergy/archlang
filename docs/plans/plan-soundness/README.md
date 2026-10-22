@@ -395,6 +395,7 @@ Landed 2026-10-20 (wave 3): PS2.19 and PS2.17 in PR #216 (ef7dc46 … acc619f; s
 | PS2.22 | `W_ALIAS_MATCH` quotes a room id | For a room with no label the alias rule classifies the id and then writes it into the message ('Room "r_carport" reads as a garage only from the indirect term "carport"'), the one lint message that names an id; PS2.19's fallback words widen it (`r_plant`, `r_boiler`, `r_cellar`, `r_linen`, `r_nursery`; found by PR #216's red team). Word the unlabelled case without the id (the room's storey and position, or "an unlabelled room") and pin that no lint message over the corpus contains a room id | todo |
 | PS2.23 | Authored wall beside a derived line | An authored wall 1 mm (any non-zero distance) off a `walls from rooms` derived line is kept beside the derived wall, not merged (ADR 0028 §3 coexistence): two parallel bands nearly on top of each other. Lint it: an authored straight wall parallel to a derived segment, overlapping it along its length, whose centreline is closer than half the thicker wall's thickness, almost always meant to lie on the line (found by PR #223's red team) | todo |
 | PS2.24 | Wall meeting an open run mid-span | An authored wall perpendicular to a `walls from rooms` `open between` run, ending on it mid-span, is neither refused (it is not collinear, so not `E_WALL_BETWEEN_OPEN`) nor excused: today it only warns through `W_OPENING_AT_JUNCTION` (a wall standing inside the opening). Decide the rule: refuse it as `E_WALL_BETWEEN_OPEN`, or a lint finding with its own hint (give the opening a `width` that clears the wall, or move the wall). No code yet (found by PR #224's red team) | todo |
+| PS2.25 | `W_DOOR_NEAR_CORNER` disagrees with the junction measure | `W_DOOR_NEAR_CORNER` measures from a different point than the junction measure `E_OPENING_NIB` and `W_OPENING_AT_JUNCTION` share (`src/opening-junctions.ts`), so a relational door placed at the nib hint's "nearest legal position" (650 from end on a 400 mm host meeting a thinner wall) still warns. Fix: measure the corner from the meeting wall's face, or have the nib hint skip candidates that would warn. No code yet (found by PR #225's red team) | todo |
 
 ### PS3 · Relation-first authoring (D1 + D5; needs an ADR)
 
@@ -478,7 +479,7 @@ original brief follows.
   - `E_WALL_BETWEEN_OPEN` for a position-hosted opening fires only on overlap with the voided
     span.
 
-**PS3.2 · Resolve order and room-edge datums.** part A `done`, part B in review (after PS3.1)
+**PS3.2 · Resolve order and room-edge datums.** `done` (PRs #220, #221)
 - Resolve rooms and relational placement before walls, then freeze a datum table.
 - Ids are assigned before resolve, so the registry order can stay.
 - Proof: the byte-identity sweep including `compile().diagnostics`.
@@ -527,9 +528,12 @@ original brief follows.
     `freedom.openings.relational` count, both present only when such an opening exists. The
     `open between` derived opening keeps `placement: "absolute"`, as decided in PS3.0 part C:
     changing it would move the pinned PS3.0 digest rows, and §6 does not require it.
-  - **Lint.** Move hints quote `between A and B at <n> from start` (or the `on <room>.<edge>` form).
+  - **Lint.** Move hints quote `between A and B at <n> from <anchor>` (or the `on <room>.<edge>`
+    form), keeping the anchor the author wrote (`end`, or an edge through an end of the run),
+    else `start`. So the swap-back law lints byte for byte only when no move hint fires.
   - **Plan JSON.** A root-level relational opening carries `relation {between|edge, at?}`
-    beside its resolved `x`/`y`, round-tripped.
+    beside its resolved `x`/`y`, round-tripped. One placed `at axis <label>` is exported by its
+    `x`/`y` alone: Plan JSON carries no axes, so the relation would not re-import.
   - **Tests.** Every refusal is spanned and tested in `test/openings-between.test.ts`, together
     with the twins, the instance frames (rotate 90, mirror x and both) and the widening drill.
 
