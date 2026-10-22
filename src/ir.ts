@@ -2564,8 +2564,12 @@ function resolveBody(
     grpRooms: RRoom[],
     relational: { rooms: () => RRoom[]; stamp: (d: Diagnostic) => Diagnostic },
     axes: readonly RAxis[] | undefined,
+    /** The ids of the walls this group sees that a pairwise form refused (no points), as the
+     *  group names them; its own refused walls join as they resolve. */
+    refusedWalls: Set<string>,
   ): DatumTable => {
     ctx.walls = grpWalls;
+    ctx.unplacedWall = (ref) => refusedWalls.has(ref);
     ctx.rooms = grpRooms;
     delete ctx.datums;
     // The group's OWN elements resolved so far, in source order (never a descendant's).
@@ -2612,8 +2616,10 @@ function resolveBody(
         if (e.file !== undefined) r._file = e.file;
         if (r.kind === "wall") {
           r._idAuthored = e.idAuthored === true;
-          // A pairwise wall the rooms refused (ADR 0028 §4) has no points: no body to draw or host.
+          // A pairwise wall the rooms refused (ADR 0028 §4) has no points: no body to draw or
+          // host. Its id is recorded, so a reference to it names the refusal.
           if (r.points.length > 0) grpWalls.push(r);
+          else refusedWalls.add(r.id);
         } else if (r.kind === "room") {
           r._idAuthored = e.idAuthored === true;
           grpRooms.push(r);
@@ -2755,6 +2761,8 @@ function resolveBody(
   //      below in the original group order, so the plan-wide wall/room arrays, `instances`
   //      and the diagnostic order are exactly what one pass in that order produces.
   const placed = new Map<ResolveGroup, PlacedGroup>();
+  /** The ids of the instances' refused pairwise walls, as the root names them (`west.p`). */
+  const rootRefusedWalls = new Set<string>();
   /** Each group's frozen datum table, by instance prefix (`""` is the root plan). */
   const datumTables = new Map<string, DatumTable>();
   for (const grp of deepestFirst(groups)) {
@@ -2779,6 +2787,7 @@ function resolveBody(
       view.rooms,
       { rooms: () => view.rooms, stamp: (d) => stampProvenance(d, grp.frame, undefined) },
       undefined,
+      new Set(view.refusedWalls),
     );
     datumTables.set(f.prefix, table);
     const locals = grp.entries.map((e) => e.resolved!);
@@ -2848,6 +2857,7 @@ function resolveBody(
     for (const t of done.carried) {
       if (t.kind === "wall") {
         if (t.points.length > 0) walls.push(t);
+        else rootRefusedWalls.add(t.id);
       } else if (t.kind === "room") rooms2.push(t);
       else derived.push(...(registry.byKind.get(t.kind)?.yieldsWalls?.(t) ?? []));
     }
@@ -2906,6 +2916,7 @@ function resolveBody(
         stamp: (d) => d,
       },
       axes,
+      rootRefusedWalls,
     );
     datumTables.set("", table);
   }
@@ -3328,9 +3339,10 @@ function descendantView(
   groups: readonly ResolveGroup[],
   placed: ReadonlyMap<ResolveGroup, PlacedGroup>,
   registry: Registry,
-): { walls: RWall[]; rooms: RRoom[] } {
+): { walls: RWall[]; rooms: RRoom[]; refusedWalls: string[] } {
   const walls: RWall[] = [];
   const rooms: RRoom[] = [];
+  const refusedWalls: string[] = [];
   for (const d of groups) {
     const done = placed.get(d);
     if (!d.frame || !done) continue;
@@ -3346,12 +3358,13 @@ function descendantView(
       if (typeof v === "string") continue;
       if (v.kind === "wall") {
         if (v.points.length > 0) walls.push(v);
+        else refusedWalls.push(v.id);
       } else if (v.kind === "room") rooms.push(v);
       else derived.push(...(def?.yieldsWalls?.(v) ?? []));
     }
     for (const w of derived) walls.push(w);
   }
-  return { walls, rooms };
+  return { walls, rooms, refusedWalls };
 }
 
 /**

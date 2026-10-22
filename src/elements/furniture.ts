@@ -443,7 +443,13 @@ function placeAgainst(
     return null;
   };
   const matches = ctx.walls.filter((w) => w.id === ag.wall || w.category === ag.wall);
-  if (matches.length === 0) return err(`is placed \`against wall ${ag.wall}\` but no wall has that id or category`);
+  if (matches.length === 0) {
+    return err(
+      ctx.unplacedWall?.(ag.wall)
+        ? `is placed \`against wall ${ag.wall}\`, but wall "${ag.wall}" could not be placed (see its own error)`
+        : `is placed \`against wall ${ag.wall}\` but no wall has that id or category`,
+    );
+  }
   if (matches.length > 1)
     return err(`\`against wall ${ag.wall}\` matches ${matches.length} walls — reference a unique wall id`);
   const wall = matches[0]!;

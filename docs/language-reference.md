@@ -1009,7 +1009,7 @@ plan "Mixed" {
 
 | Refused when | Code |
 |---|---|
-| The two rooms, or two listed rooms, overlap; a room listed twice (on the name) | `E_ROOMS_OVERLAP` |
+| The two rooms, or two listed rooms, overlap; a room listed twice overlaps itself (on the repeated name) | `E_ROOMS_OVERLAP` |
 | `between`: the rooms share no edge (apart, touching only at a corner, or one room twice) | `E_WALL_BETWEEN_NOT_ADJACENT` |
 | A `polygon` or `circle` room (on the name) | `E_ROOM_NOT_RECTANGLE` |
 | `between`: the shared run is shorter than the wall is thick | `E_PARTITION_TOO_SHORT` |
@@ -1019,7 +1019,9 @@ plan "Mixed" {
 
 `around` refuses **every** hole, even one an `outdoor` surface or a `void` covers exactly: one
 wall is one ring, so a courtyard needs `walls from rooms` (or typed rings). A refused wall has
-no points: it draws nothing and hosts nothing. An `around` wall counts 4 per listed room toward
+no points: it draws nothing and hosts nothing, and an opening (`on <id>`), a piece of furniture
+(`against wall <id>`) or a `dim radius <id>` naming it is refused with a message saying that the
+wall could not be placed (`E_ATTACH_WALL_REF`, `E_FURN_AGAINST`, `E_DIM_CURVE_REF`). An `around` wall counts 4 per listed room toward
 the element budget, the most vertices its ring can have.
 
 **Facts.** `describe --json` lists each such wall in `derived_walls[]` as written

@@ -248,6 +248,7 @@ suite("refusals", () => {
   it("E_WALL_BETWEEN_NOT_ADJACENT: apart, touching at a corner, one room twice", () => {
     const corner =
       '  room id=a at (0,0) size 4000x3000 label "A"\n  room id=b at (4000,3000) size 3000x3000 label "B"\n  room id=z at (9000,0) size 1000x1000 label "Z"\n';
+    // `between a and a` is NOT_ADJACENT (a room shares no edge with itself), as a `door between` reports it
     for (const w of ["between a and b", "between a and z", "between a and a"]) {
       one(plan(`${corner}  wall partition thickness 100 ${w}\n`), "E_WALL_BETWEEN_NOT_ADJACENT", w);
     }
@@ -297,14 +298,38 @@ suite("refusals", () => {
     );
   });
 
-  it("a refused wall has no body: it draws nothing, and every consumer runs", () => {
-    const src = plan(`${ROOMS}  wall id=p partition thickness 100 between a and z\n  door on p at 50% width 800\n`);
-    expect(errors(src).map((d) => d.code)).toContain("E_UNKNOWN_REF");
-    // the door on it finds no wall, as on a wall that is not there
-    expect(errors(src).map((d) => d.code)).toEqual(["E_UNKNOWN_REF", "E_ATTACH_WALL_REF"]);
+  it("a refused wall has no body, and what names it says it could not be placed", () => {
+    const src = plan(
+      `${ROOMS}  wall id=p partition thickness 100 between a and z\n  door on p at 50% width 800\n  furniture id=f wardrobe against wall p in a\n  dim radius p offset 500\n`,
+    );
+    const errs = errors(src);
+    // the first error is the refusal, on its clause's room name; each follow-on names it
+    expect(errs.map((d) => d.code)).toEqual([
+      "E_UNKNOWN_REF",
+      "E_ATTACH_WALL_REF",
+      "E_FURN_AGAINST",
+      "E_DIM_CURVE_REF",
+    ]);
+    expect(src.slice(errs[0]!.span!.start, errs[0]!.span!.end)).toBe("z");
+    for (const d of errs.slice(1)) {
+      expect(d.message).toContain('"p"');
+      expect(d.message).toContain("could not be placed (see its own error)");
+      expect(d.message).not.toContain("no wall has that id");
+    }
+    // a name that is no wall at all keeps the old text
+    expect(errors(plan(`${ROOMS}  door on nope at 50% width 800\n`))[0]!.message).toContain(
+      "no wall has that id or category",
+    );
     expect(() => describe(src)).not.toThrow();
     expect(() => lint(src)).not.toThrow();
     expect(() => planToJson(src)).not.toThrow();
+  });
+
+  it("a refused wall inside a placed instance, named from the root, says the same", () => {
+    const src = `plan "p" {\n  units mm\n  grid 50\n  component unit() {\n    room id=a at (0,0) size 4000x3000 label "A"\n    room id=b at (5000,0) size 3000x3000 label "B"\n    wall id=p partition thickness 100 between a and b\n  }\n  place unit() as west at (0,0)\n  door on west.p at 50% width 800\n}\n`;
+    const errs = errors(src);
+    expect(errs.map((d) => d.code)).toEqual(["E_WALL_BETWEEN_NOT_ADJACENT", "E_ATTACH_WALL_REF"]);
+    expect(errs[1]!.message).toContain('wall "west.p" could not be placed');
   });
 
   it("every code is catalogued with the pairwise form named", async () => {

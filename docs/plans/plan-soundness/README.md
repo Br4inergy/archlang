@@ -512,8 +512,11 @@ original brief follows.
     so a courtyard needs `walls from rooms`. The covers also resolve after authored walls in a
     group without that statement, and honouring a `void` there would change the resolve
     order per node.
-  - **A refused wall** has no points and joins no wall list. An opening `on` it then reports
-    `E_ATTACH_WALL_REF`.
+  - **A refused wall** has no points and joins no wall list. Its id is recorded
+    (`ResolveCtx.unplacedWall`), so an opening `on` it, furniture `against wall` it or a
+    `dim radius` of it says it "could not be placed (see its own error)"
+    (`E_ATTACH_WALL_REF`, `E_FURN_AGAINST`, `E_DIM_CURVE_REF`; red team round 1). ADR 0028 §4
+    and §6 carry dated amendments for the hole rule and the row shape.
   - **Afterwards** it is an ordinary authored wall. It keeps the author's id, category,
     thickness, material and height, and its hosting, lint, heights and coexistence are a
     typed wall's. It carries only `_relation`.

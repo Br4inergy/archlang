@@ -115,6 +115,13 @@ export interface ResolveCtx {
    * resolves after the group's rooms. Optional (append-only).
    */
   datums?: DatumAccess;
+  /**
+   * Is `ref` the id of a wall this group sees that a pairwise form (`wall … between|around`,
+   * ADR 0028 §4) refused? Such a wall has no points and is in no wall list, so a reference to
+   * it says the wall could not be placed rather than that no wall has that id. Optional
+   * (append-only).
+   */
+  unplacedWall?(ref: string): boolean;
 }
 
 /**

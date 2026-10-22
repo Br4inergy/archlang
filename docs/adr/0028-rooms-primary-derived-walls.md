@@ -229,6 +229,14 @@ choose. `around` resolves to the rectilinear union outline of the listed rooms w
 and connectivity rule as §3 (`E_ROOMS_NOT_TILING`). These walls carry the author's id and
 direction rule of §3, and are the forms for a plan that derives some walls and types others.
 
+*Amended 2026-10-23 (card PS3.3, PR #226):* `around` refuses **every** hole with
+`E_ROOMS_NOT_TILING`, including one an `outdoor` surface or a `void` covers exactly. One wall
+is one ring, so it cannot draw a courtyard's inner ring, and a courtyard needs `walls from rooms`.
+A room listed twice overlaps itself (`E_ROOMS_OVERLAP`, on the repeated name). An `around`
+wall counts `4n` toward `MAX_ELEMENTS` at expansion, and its sweep is charged `n log n + 3n`
+before it runs. A refused pairwise wall has no points. An opening, a piece of furniture or a
+dimension that names it says that it could not be placed, not that no such wall exists.
+
 ### 5. Openings by relation
 
     door id=d hinged between <A> and <B> at (<mm> from <A>.<edge> | <mm> from start|end | center) width <mm> …
@@ -294,6 +302,13 @@ internal id of §3; for the pairwise forms it is the authored wall id).
 `freedom` gains a `walls` family, and openings gain the placement value `relational`, both emitted
 only when a derived wall or a relational opening exists. `describe()` of a plan with none of them
 does not change by a byte.
+
+*Amended 2026-10-23 (card PS3.3, PR #226):* a pairwise wall's row is
+`{ from: "between", name: <id>, between: [A, B] }` or
+`{ from: "around", name: <id>, around: [A, …] }`: the rooms as written, `around` an additive
+field. Rows follow source order, among a `walls from rooms` statement's own. `freedom.walls`
+gains `relational`, the count of pairwise walls, which `absolute` then excludes; it is present
+only when there is one.
 
 ### 7. Teaching order
 

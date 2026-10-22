@@ -416,7 +416,13 @@ function measureCurve(n: DimNode, ctx: ResolveCtx): { from: Point; to: Point; te
     };
   }
   const walls = ctx.walls.filter((w) => w.id === c.ref || w.category === c.ref);
-  if (walls.length === 0) return err("names no wall in this plan");
+  if (walls.length === 0) {
+    return err(
+      ctx.unplacedWall?.(c.ref)
+        ? `names wall "${c.ref}", which could not be placed (see its own error)`
+        : "names no wall in this plan",
+    );
+  }
   if (walls.length > 1) return err(`matches ${walls.length} walls — reference a unique wall id`);
   const segs = segmentsOfWall(walls[0]!);
   const arcSegs = segs.filter((s) => s.arc);

@@ -183,12 +183,16 @@ export function resolveAttachment(
   /** The datum positions (`from start|end|<room>.<edge>`, `axis <label>`, ADR 0028 §5); a
    *  plan that writes none never reads it. */
   rel?: RelationCtx,
+  /** Is the name a pairwise wall the rooms refused (`ResolveCtx.unplacedWall`)? */
+  unplacedWall?: (ref: string) => boolean,
 ): { at: Point; host: WallSegment } | null {
   const matches = walls.filter((w) => w.id === attach.wall || w.category === attach.wall);
   if (matches.length === 0) {
     diag({
       severity: "error",
-      message: `${what} is attached \`on ${attach.wall}\` but no wall has that id or category`,
+      message: unplacedWall?.(attach.wall)
+        ? `${what} is attached \`on ${attach.wall}\`, but wall "${attach.wall}" could not be placed (see its own error)`
+        : `${what} is attached \`on ${attach.wall}\` but no wall has that id or category`,
       code: "E_ATTACH_WALL_REF",
       span: attach.span,
     });
@@ -335,6 +339,6 @@ export function resolveOpeningLead(
     }
     if (!isWall) return placeOnEdge(attach, kind, width, rel, what) ?? none;
   }
-  const a = resolveAttachment(attach, ctx.walls, ctx.snapPt, ctx.diag, what, (e) => ctx.eval(e), rel);
+  const a = resolveAttachment(attach, ctx.walls, ctx.snapPt, ctx.diag, what, (e) => ctx.eval(e), rel, ctx.unplacedWall);
   return a ?? none;
 }
