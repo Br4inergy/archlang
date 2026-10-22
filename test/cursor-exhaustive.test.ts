@@ -143,6 +143,7 @@ const ALL = [...EXAMPLES, ...LIBS];
 const readExample = (name: string): string => readFileSync(`examples/${name}`, "utf8");
 
 describe("cursor.ts — statementExprs matches a reflective AST walk", () => {
+  // `relational.arch` (PS3.6) is the example that caught `walls from rooms` pair clauses' `width`/`thickness` missing.
   for (const name of ALL) {
     it(`every Expr field of every statement in ${name} is exactly what statementExprs sees`, () => {
       checkSource(readExample(name));
