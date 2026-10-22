@@ -251,13 +251,13 @@ explanation.
 
 | Code | Message (shape) |
 |---|---|
-| `E_FACING_TARGET` | `Furniture "<id>" faces "<t>", which <is not in this plan \| is a polygon room \| is a wall, not a piece, room or opening \| could not be placed \| is itself>` |
+| `E_FACING_TARGET` | `Furniture "<id>" faces "<t>", which is not in this plan / is a polygon room / is a wall, not a piece, room or opening / could not be placed / is the piece itself` |
 | `E_FACING_MISS` | `No front of furniture "<id>" points at "<t>": its front ray misses it at every quarter-turn` |
 | `E_FACING_TIE` | `Furniture "<id>" overlaps "<t>", so two of its fronts point at it equally near; move it off its target` |
-| `E_FACING_CONFLICT` | `Furniture "<id>" states its turn twice: \`facing\` and \`<rotate \| against …>\`; keep one` |
-| `E_FACING_SYMMETRIC` | `A <category> has no front, so it cannot face anything; drop \`facing\`` |
-| `E_FACING_TRANSPOSED` | `Facing "<t>" puts the back of <category> "<id>" on its short side; write \`size <h>x<w>\`` |
-| `E_FURN_CLEAR` | `\`clear <front\|sides>\` needs a positive depth in mm` / `is written twice` |
+| `E_FACING_CONFLICT` | `Furniture "<id>" states its turn twice, by facing and by rotate (or by against); keep one` |
+| `E_FACING_SYMMETRIC` | `A <category> has no front, so it cannot face anything; drop facing` |
+| `E_FACING_TRANSPOSED` | `Facing "<t>" puts the back of <category> "<id>" on its short side; write size <h>x<w>` |
+| `E_FURN_CLEAR` | `clear front / clear sides needs a positive depth in mm, or is written twice` |
 | `E_FURN_AGAINST` (reused) | the §2 cases, each naming the room edge |
 
 Each has a catalogue entry in `src/error-catalog.ts` with an executed example, a span on the
