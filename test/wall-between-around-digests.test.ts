@@ -16,7 +16,7 @@ import { WALL_BETWEEN_AROUND_PLANS } from "./wall-between-around-plans.js";
 const API: CompilerApi = { compile, describe, lint };
 
 const DIGESTS: [string, string][] = [
-  ["pairwise-forms", "94541736a88bfea49d819147b43b13e08fd6d86cf862f2b947e00de6eb71a950"],
+  ["pairwise-forms", "675455f4cd6f09bda4ab7fa8c771fd4587b96412b65198adcbc090a69fa90d3f"],
   ["beside-walls-from-rooms", "e491169ae7b920ba5ff752e145600069567e4743abae4386668f3096f81ba557"],
   ["frames", "99811e5cfa28e40fbbe9cc7da81f7872767235671c10d1ce4400c68574646bf0"],
   ["widen-4000", "18781e880e4e42843595c6116a9689622b3a9aa1dca04b1f3e4d177cf15ba887"],

@@ -34,7 +34,9 @@ const widen = (aw: number): string =>
   );
 
 export const WALL_BETWEEN_AROUND_PLANS: ReadonlyArray<readonly [string, string]> = [
-  ["pairwise-forms", plan("forms", `${ROOMS}${WALLS}${HOSTED}`)],
+  // `on e at … from end` walks the ring from its end, so this row also pins where the ring
+  // starts and which way it runs (§3): a wrong start moves the window.
+  ["pairwise-forms", plan("forms", `${ROOMS}${WALLS}${HOSTED}  window id=w3 on e at 1500 from end width 1000\n`)],
   [
     "beside-walls-from-rooms",
     plan(
