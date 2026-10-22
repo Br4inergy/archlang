@@ -33,15 +33,20 @@ plan "Relational 1BR" {
   units mm
   grid 50
 
-  room id=living  at (0,0)                        size 5000x4000 label "Living"
-  room id=kitchen right-of living align top gap 0 size 3000x4000 label "Kitchen"
-  room id=bed     below living    align left gap 0 size 5000x3500 label "Bedroom"
-  room id=bath    right-of bed    align top  gap 0 size 3000x3500 label "Bath"
+  room id=living  at (0,0)                          size 5000x4000 label "Living"
+  room id=kitchen right-of living align top  gap 0  size 3000x4000 label "Kitchen"
+  room id=hall    below living    align left gap 0  size 8000x1200 label "Hall"
+  room id=bed     below hall      align left gap 0  size 5000x2300 label "Bedroom"
+  room id=bath    right-of bed    align top  gap 0  size 3000x2300 label "Bath"
+  walls from rooms exterior 200 partition 100
 }
 ```
 
 Only `living` is anchored; every other room derives its position from a neighbour,
 so moving the anchor or resizing a room reflows the whole plan deterministically.
+`walls from rooms` derives the walls from the placed rooms, and an opening hosted by
+the rooms it joins (`door between hall and bed at …`) follows them too, so the walls and
+doors reflow with the rooms (`examples/relational.arch` is the whole plan).
 
 <img src="/examples/relational.svg" alt="Relational layout example" style="max-width:520px;border:1px solid #ddd;border-radius:8px;margin-top:1rem" />
 

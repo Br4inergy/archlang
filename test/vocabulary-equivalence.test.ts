@@ -54,6 +54,14 @@
  * Both types are the ones an authored `uses office` / `uses utility` already gets (rows of the
  * same table: `sized-office-mix`'s "Open Office", `courtyard-house`'s "Utility"). Edited by hand
  * to the values the corpus sweep measured, nothing else.
+ *
+ * ## Two examples' rows rewritten on 2026-10-23 (plan-soundness PS3.6): their SOURCE changed
+ *
+ * Not a classifier change: `examples/two-bed.arch` was re-laid (its "Kitchen / Living" room is
+ * now `r_living` with an authored `uses kitchen living`, and the rooms are listed in the new
+ * source order), and `examples/relational.arch` gained a "Hall" room (`["hall"]`/`Entrance`,
+ * as every other label-only "Hall" in this table). Every surviving label keeps its old
+ * `uses` and `room_type`. Edited by hand to what `describe()` measures, nothing else.
  */
 
 import { readFileSync, readdirSync } from "node:fs";

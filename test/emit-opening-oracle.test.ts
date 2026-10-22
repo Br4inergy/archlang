@@ -212,11 +212,23 @@ const REAL_OPTS: { name: string; opts: RealEmitOpts; onlyDoors?: boolean }[] = [
 
 /** Only assert byte-identity for statements the old printer could have handled
  *  faithfully — i.e. no sill/head. A statement WITH one is exactly the case W4b
- *  fixes, and is counted (and pinned by its own, separate law) in `fix-printer.test.ts`. */
+ *  fixes, and is counted (and pinned by its own, separate law) in `fix-printer.test.ts`.
+ *  ADR 0028 §5's relational forms postdate the old printer, which cannot spell them: a
+ *  `door|opening … between <A> and <B>` (its `legacyLeadText` reads `at` or `attach` only)
+ *  and an `attach` position of the datum kinds (`<mm> from start|end|<room>.<edge>`,
+ *  `axis <n>`, or no `at` on `on <room>.<edge>`; it knows `%`, mm and `center`). Both are
+ *  left out too; the corpus first held them when PS3.6 rewrote `two-bed` and `relational`,
+ *  and their print round trip is pinned in `print-roundtrip.test.ts` over the examples. */
+const isRelational = (n: OpeningLikeNode): boolean =>
+  ("between" in n && n.between !== undefined) ||
+  (n.attach !== undefined && !["percent", "mm", "center"].includes(n.attach.pos.kind));
+const RELATIONAL_COUNT = ALL_OPENINGS.filter(isRelational).length;
 const HEIGHTS_FREE_OPENINGS = ALL_OPENINGS.filter(
-  (n) => !(("sill" in n && n.sill !== undefined) || n.head !== undefined),
+  (n) => !(("sill" in n && n.sill !== undefined) || n.head !== undefined) && !isRelational(n),
 );
-const HEIGHTS_CARRYING_COUNT = ALL_OPENINGS.length - HEIGHTS_FREE_OPENINGS.length;
+const HEIGHTS_CARRYING_COUNT = ALL_OPENINGS.filter(
+  (n) => ("sill" in n && n.sill !== undefined) || n.head !== undefined,
+).length;
 
 describe("emitOpening === legacyEmitOpening (byte-identity, no sill/head/heights)", () => {
   it(`ran over a non-trivial corpus (${ALL_OPENINGS.length} openings, ${CORPUS_SOURCES.length} files + ${HAND_WRITTEN_SOURCES.length} hand-written + ${FUZZ_SOURCES.length} fuzz seeds)`, () => {
@@ -229,6 +241,11 @@ describe("emitOpening === legacyEmitOpening (byte-identity, no sill/head/heights
     // or the corpus below has stopped exercising sill/head/heights at all and
     // `fix-printer.test.ts`'s own law (which needs this set non-empty) is vacuous.
     expect(HEIGHTS_CARRYING_COUNT).toBeGreaterThan(0);
+  });
+
+  it("counted the relational openings excluded from the byte-identity assertion below", () => {
+    // The examples carry relational openings since PS3.6; the exclusion must not be vacuous.
+    expect(RELATIONAL_COUNT).toBeGreaterThan(0);
   });
 
   // One `it()` per real `EmitOpts` combination, looping every heights-free opening

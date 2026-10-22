@@ -108,7 +108,7 @@ const EXAMPLE_ROWS = [
     "two-bed",
     "Two-bed flat",
     "Homes",
-    "A two-bedroom apartment either side of a central corridor — the plainest complete dwelling in the set.",
+    "A two-bedroom apartment with every room off a central corridor, its walls derived from the rooms — the plainest complete dwelling in the set.",
   ],
   [
     "attached",
@@ -228,7 +228,7 @@ const EXAMPLE_ROWS = [
     "relational",
     "Relational (right-of)",
     "Scripting & composition",
-    "Rooms positioned relative to one another with right-of, below and align, resolved to coordinates by arithmetic.",
+    "Rooms positioned relative to one another with right-of, below and align; the walls and doors are derived from the rooms, so they reflow with them.",
   ],
   [
     "parametric",

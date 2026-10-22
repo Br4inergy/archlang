@@ -298,53 +298,6 @@ handedness can, exactly, as one reflection about the footprint's own centre line
 This item is the third case, and the answer is the same as the handedness one.
 
 
-### G.12 · A wall cannot be derived from a resolved room boundary — `todo`
-
-**Planned as card PS3 of the plan-soundness programme** (`docs/plans/plan-soundness/README.md`):
-the owner decided relation-first forms as additive syntax.
-
-Found while closing G.6. It is why `examples/relational.arch` ships four warnings that cannot be
-repaired without giving up the thing the example exists to teach.
-
-**Relational placement and interior walls are mutually exclusive.** `room id=kitchen right-of
-living align top gap 0` resolves to real coordinates — and nothing can read them back out. A wall
-point is an `Expr`; the only name-bearing `Expr` node is `ref`, which resolves against the `let`
-environment and the nine built-ins (`min` `max` `abs` `sqrt` `floor` `ceil` `round` `len` `str`).
-There is no member access in the grammar at all. Measured, not read off the source:
-
-```
-wall partition thickness 100 { (kitchen.x, 0) (kitchen.x, 4000) }
-  → E_UNKNOWN_REF  Unknown name "kitchen.x"   (x2, one per point)
-```
-
-So a relationally-laid plan gets rooms that reflow **or** partitions, never both, and the
-consequence is not cosmetic: with no wall on a shared boundary there is nothing for a `door` to be
-hosted on, so `W_ROOM_DISCONNECTED` is unavoidable for every room whose only neighbour-boundary is
-an internal one. In `relational.arch` that is three of four rooms, plus `W_ROOM_NOT_ENCLOSED` on
-the bath.
-
-**Two workarounds, both measured and both rejected — do not re-derive these.**
-
-- **A cased `opening` on the wall-free boundary.** Clears `W_ROOM_DISCONNECTED` from `arch lint`,
-  raises `W_OPENING_OFF_WALL` from `arch validate`. A warning trade, not a fix. The asymmetry is by
-  design (`lint` is the soundness layer; `validate` is parse + resolve + lint) and is not a defect.
-- **`let`-hoisted dimensions with the walls written as arithmetic over them.** This WORKS —
-  `size LW x LH` parses, and `wall … { (LW,0) (LW,LH) }` places a partition exactly on the shared
-  boundary — and it fixes only the case where a SIZE changes. Change a relational clause instead
-  (`bath right-of bed` → `bath below kitchen`) and the rooms move while every wall, door and
-  fixture stays put, silently. It also reconstructs by hand the coordinate model `right-of` exists
-  to eliminate, at which point the relational clauses are decorative.
-
-**What would actually close this** is a way for a wall to name a resolved boundary rather than a
-number — something in the shape of `wall partition between living and kitchen`, or a room-edge
-reference legal in wall-point position. That is a language design question, not a bug fix, and it
-interacts with `place` frames (an instance-local room edge crossing into plan coordinates) and with
-`grid` snapping. **Do not treat the workarounds above as the answer**; either is a step backwards
-from what the example currently states honestly in its header.
-
-Until then `examples/relational.arch` is this item's live reproduction: it carries the four
-warnings on purpose and says why.
-
 ### G.8 · A per-category `style` — `todo`
 
 Also deferred by name in v1.32.0 and previously untracked. `style <kind> { … }` reaches the fixture

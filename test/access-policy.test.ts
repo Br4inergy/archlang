@@ -196,19 +196,17 @@ describe("one access policy: every surface agrees on reachability", () => {
     );
   });
 
-  it("every shipped single-file example — incl. relational's open plan, which has no partition to stop the raster", () => {
+  it("every shipped single-file example — incl. relational's open plan, whose open pairs are openings", () => {
     const files = readdirSync("examples").filter(
       (f) => f.endsWith(".arch") && f !== "imports.arch" && f !== "museum-wings.arch",
     );
     for (const f of files) assertAgree(readFileSync(`examples/${f}`, "utf8"));
-    // relational's kitchen, bedroom and bath have no door: the grid (no interior wall at
-    // all) walks straight into them, but circulation reports them as `no_door_route`.
+    // relational's kitchen, bedroom and bath once had no door (no interior wall at all), and
+    // circulation reported them `no_door_route`. Since PS3.6 its walls are derived and its
+    // open-plan joins are `open between` openings, so every room is measured.
     const rel = describePlan(readFileSync("examples/relational.arch", "utf8"));
-    expect(rel.circulation?.unmeasured).toEqual([
-      { roomId: "kitchen", reason: "no_door_route" },
-      { roomId: "bed", reason: "no_door_route" },
-      { roomId: "bath", reason: "no_door_route" },
-    ]);
+    expect(rel.circulation?.unmeasured).toBeUndefined();
+    expect(rel.circulation?.rooms.map((r) => r.roomId).sort()).toEqual(["bath", "bed", "hall", "kitchen", "living"]);
   });
 
   it("random plans that carry a connector touching three rooms", () => {
