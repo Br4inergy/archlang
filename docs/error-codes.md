@@ -82,7 +82,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_OUTDOOR_SIZE`](#e_outdoor_size) | error | An outdoor surface must have a positive size. |
 | [`E_OUT_OF_RANGE`](#e_out_of_range) | error | A coordinate, length or drawing setting is outside the modelling range. |
 | [`E_PARSE`](#e_parse) | error | The source could not be read: its SHAPE is wrong. |
-| [`E_PARTITION_TOO_SHORT`](#e_partition_too_short) | error | `walls from rooms` meets a shared edge shorter than the partition thickness. |
+| [`E_PARTITION_TOO_SHORT`](#e_partition_too_short) | error | `walls from rooms`, or a `wall … between`, meets a shared edge shorter than the wall's thickness. |
 | [`E_PLACE_POLY`](#e_place_poly) | error | A rectangle-only placement clause aimed at a polygon room. |
 | [`E_PLACE_REF`](#e_place_ref) | error | Furniture placed in an unknown or unplaced room. |
 | [`E_PNG_DEPENDENCY`](#e_png_dependency) | error | PNG/PDF export needs an optional dependency that is not installed. |
@@ -97,11 +97,11 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_ROOF_POLY_DEGENERATE`](#e_roof_poly_degenerate) | error | `roof polygon` outline has fewer than 3 effective vertices. |
 | [`E_ROOF_SELF_INTERSECT`](#e_roof_self_intersect) | error | The roof outline crosses itself. |
 | [`E_ROOF_WALL`](#e_roof_wall) | error | `roof overhang … wall <id>` names a wall that cannot carry a roof. |
-| [`E_ROOMS_NOT_TILING`](#e_rooms_not_tiling) | error | `walls from rooms` meets rooms that do not tile one connected floor. |
-| [`E_ROOMS_OVERLAP`](#e_rooms_overlap) | error | `walls from rooms` meets two rooms that overlap. |
+| [`E_ROOMS_NOT_TILING`](#e_rooms_not_tiling) | error | `walls from rooms`, or a `wall … around`, meets rooms that do not tile one connected floor. |
+| [`E_ROOMS_OVERLAP`](#e_rooms_overlap) | error | `walls from rooms`, or a `wall … between`/`wall … around`, meets two rooms that overlap. |
 | [`E_ROOM_ALIGN`](#e_room_align) | error | Unknown relational alignment edge. |
 | [`E_ROOM_ALIGN_AXIS`](#e_room_align_axis) | error | Relational alignment edge belongs to the other axis. |
-| [`E_ROOM_NOT_RECTANGLE`](#e_room_not_rectangle) | error | A room-edge datum, or `walls from rooms`, meets a polygon or circle room. |
+| [`E_ROOM_NOT_RECTANGLE`](#e_room_not_rectangle) | error | A room-edge datum, `walls from rooms`, or a `wall … between`/`wall … around`, meets a polygon or circle room. |
 | [`E_ROOM_POLY_DEGENERATE`](#e_room_poly_degenerate) | error | Polygon room has fewer than three effective vertices. |
 | [`E_ROOM_POLY_SELF_INTERSECT`](#e_room_poly_self_intersect) | error | Polygon room intersects itself. |
 | [`E_ROOM_RADIUS`](#e_room_radius) | error | Circular room needs a positive radius. |
@@ -125,7 +125,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_WALLS_FROM_NO_ROOMS`](#e_walls_from_no_rooms) | error | A `walls from rooms` statement has no room to derive walls from. |
 | [`E_WALLS_FROM_ROOMS_DUP`](#e_walls_from_rooms_dup) | error | More than one `walls from rooms` statement in one plan or component. |
 | [`E_WALL_BETWEEN_DUP`](#e_wall_between_dup) | error | A `walls from rooms` statement names one pair of rooms in two clauses. |
-| [`E_WALL_BETWEEN_NOT_ADJACENT`](#e_wall_between_not_adjacent) | error | A `walls from rooms` clause, or a door or opening placed `between` two rooms, names two rooms that share no edge. |
+| [`E_WALL_BETWEEN_NOT_ADJACENT`](#e_wall_between_not_adjacent) | error | A `walls from rooms` clause, a `wall … between`, or a door or opening placed `between` two rooms, names two rooms that share no edge. |
 | [`E_WALL_BETWEEN_OPEN`](#e_wall_between_open) | error | A wall, door, window or opening is written on an edge a `walls from rooms` clause declares open. |
 | [`E_WALL_BETWEEN_ROOM`](#e_wall_between_room) | error | A `walls from rooms` clause names a room it cannot act on. |
 | [`E_WALL_BETWEEN_WIDTH`](#e_wall_between_width) | error | An `open between` opening does not fit the clear span of its edge. |
@@ -274,7 +274,7 @@ door on w1 at 150% width 900   # error: 150% is past the wall end
 
 *error* — Opening attached to an unknown or ambiguous wall.
 
-**Cause.** A `door`/`window`/`opening … on <wall> at <pos>` names a wall id (or category) that no wall has, or one that matches more than one wall — so the compiler cannot pick the polyline to walk.
+**Cause.** A `door`/`window`/`opening … on <wall> at <pos>` names a wall id (or category) that no wall has, or one that matches more than one wall — so the compiler cannot pick the polyline to walk. A `wall … between`/`wall … around` the rooms refused (its own error, ADR 0028 §4) has no body, so naming it raises this code too, saying the wall "could not be placed (see its own error)": fix that error first.
 
 **Fix.** Reference an existing, unique wall id (add `id=` to the wall if needed).
 
@@ -364,7 +364,7 @@ wall interior thickness 100 { (a.left, 0) (a.left, 3000) }   # error: a could no
 
 *error* — Invalid `dim radius`/`dim diameter` reference.
 
-**Cause.** A curve call-out references an element that does not exist, is not the right shape (a `diameter` on a rectangular room, a `radius` on a wall with no `arc` edge), matches several walls, or omits `segment <n>` on a wall with more than one arc. The compiler will not guess which curve was meant.
+**Cause.** A curve call-out references an element that does not exist, is not the right shape (a `diameter` on a rectangular room, a `radius` on a wall with no `arc` edge), matches several walls, or omits `segment <n>` on a wall with more than one arc. The compiler will not guess which curve was meant. A `wall … between`/`wall … around` the rooms refused (its own error, ADR 0028 §4) has no body, so naming it raises this code too, saying the wall "could not be placed (see its own error)": fix that error first.
 
 **Fix.** Name an existing, unique wall id whose edge is an `arc` (adding `segment <n>` when it has several), or an existing `room circle` id for `diameter`.
 
@@ -523,7 +523,7 @@ fence picket { (0,0) arc (3000,3000) radius 3000 }   # error: curved edge
 
 *error* — Invalid `against wall` fixture placement.
 
-**Cause.** A wall-anchored fixture references an unknown wall, omits `segment` on a multi-segment wall, omits `side`, sits on a non-axis-aligned segment, has an out-of-range offset, or also sets `rotate`. The compiler will not guess which wall/side/segment was meant.
+**Cause.** A wall-anchored fixture references an unknown wall, omits `segment` on a multi-segment wall, omits `side`, sits on a non-axis-aligned segment, has an out-of-range offset, or also sets `rotate`. The compiler will not guess which wall/side/segment was meant. A `wall … between`/`wall … around` the rooms refused (its own error, ADR 0028 §4) has no body, so naming it raises this code too, saying the wall "could not be placed (see its own error)": fix that error first.
 
 **Fix.** Name an existing wall id, add `segment <n>` for multi-segment walls, give `side left|right`, keep the segment axis-aligned, and drop any explicit `rotate`.
 
@@ -1113,16 +1113,17 @@ door on w1 at 40% width 900 wall w1   # error: `wall` pairs with the `at (x,y)` 
 
 ## E_PARTITION_TOO_SHORT
 
-*error* — `walls from rooms` meets a shared edge shorter than the partition thickness.
+*error* — `walls from rooms`, or a `wall … between`, meets a shared edge shorter than the wall's thickness.
 
-**Cause.** Two rooms share a run of edge shorter than the derived partition is thick, so the partition would be wider than it is long: almost always two edges that were meant to line up and miss by a few millimetres. The compiler refuses and names the pair and the run rather than draw a sliver of wall (ADR 0028 §3).
+**Cause.** Two rooms share a run of edge shorter than the derived partition (or the `wall … between` written on it) is thick, so the wall would be wider than it is long: almost always two edges that were meant to line up and miss by a few millimetres. The compiler refuses and names the pair and the run rather than draw a sliver of wall (ADR 0028 §3, §4).
 
-**Fix.** Line the two rooms' edges up so they meet at a corner, or make the shared edge at least as long as the partition is thick.
+**Fix.** Line the two rooms' edges up so they meet at a corner, or make the shared edge at least as long as the wall is thick.
 
 ```arch static
 room id=a at (0,0) size 4000x3000
 room id=b at (4000,2950) size 3000x3000
 walls from rooms exterior 200 partition 100   # error: a and b share 50 mm
+wall partition thickness 100 between a and b   # error: the same run
 ```
 
 ## E_PLACE_POLY
@@ -1303,30 +1304,32 @@ roof overhang 600 wall w1   # error: not a closed ring
 
 ## E_ROOMS_NOT_TILING
 
-*error* — `walls from rooms` meets rooms that do not tile one connected floor.
+*error* — `walls from rooms`, or a `wall … around`, meets rooms that do not tile one connected floor.
 
-**Cause.** `walls from rooms` draws the exterior ring on the outline of the rooms' union and a partition on every shared edge, so the rooms must form one edge-connected floor: two rooms touching only at a corner, a union pinched at a single point, or a gap between rooms (a hole, or a corridor left as 'the leftover') has no single outline to wall. A hole is legal only when `outdoor` surfaces (a courtyard, which gets an inner ring) or a `void` (no wall) of the same plan or component cover it exactly. The compiler refuses and names the rooms rather than guess where the missing floor is (ADR 0028 §3, ADR 0005).
+**Cause.** `walls from rooms` draws the exterior ring on the outline of the rooms' union and a partition on every shared edge, so the rooms must form one edge-connected floor: two rooms touching only at a corner, a union pinched at a single point, or a gap between rooms (a hole, or a corridor left as 'the leftover') has no single outline to wall. A hole is legal only when `outdoor` surfaces (a courtyard, which gets an inner ring) or a `void` (no wall) of the same plan or component cover it exactly. `wall … around [<rooms>]` draws the same outline as one wall, so the same rule holds, except that it refuses every hole: one wall is one ring, and a courtyard needs `walls from rooms`. The compiler refuses and names the rooms rather than guess where the missing floor is (ADR 0028 §3, §4, ADR 0005).
 
-**Fix.** Write the leftover floor as a room of its own (a corridor, a lobby), move the rooms so they meet edge to edge, or cover a courtyard exactly with an `outdoor` surface.
+**Fix.** Write the leftover floor as a room of its own (a corridor, a lobby), move the rooms so they meet edge to edge, or cover a courtyard exactly with an `outdoor` surface (under `walls from rooms`; round a hole, type the rings' points).
 
 ```arch static
 room id=a at (0,0) size 4000x3000
 room id=b at (5000,0) size 3000x3000
 walls from rooms exterior 200 partition 100   # error: a and b do not touch
+wall exterior thickness 200 around [a b]   # error: the same, as one ring
 ```
 
 ## E_ROOMS_OVERLAP
 
-*error* — `walls from rooms` meets two rooms that overlap.
+*error* — `walls from rooms`, or a `wall … between`/`wall … around`, meets two rooms that overlap.
 
-**Cause.** Two rooms of the set share floor with positive area, so the edge between them is not one line and no partition can be derived on it. The compiler refuses and names every overlapping pair rather than choose which room owns the shared floor (ADR 0028 §3).
+**Cause.** Two rooms of the set share floor with positive area, so the edge between them is not one line and no partition (nor a `wall … between` the pair, nor one outline `around` them) can be derived on it. A room listed twice in `around [ … ]` would overlap itself and is refused the same way, on the repeated name. The compiler refuses and names every overlapping pair rather than choose which room owns the shared floor (ADR 0028 §3, §4).
 
-**Fix.** Move or resize the rooms so they meet edge to edge; the shared edge becomes the partition.
+**Fix.** Move or resize the rooms so they meet edge to edge; the shared edge becomes the partition. Name each room once.
 
 ```arch static
 room id=a at (0,0) size 4000x3000
 room id=b at (3000,0) size 3000x3000
 walls from rooms exterior 200 partition 100   # error: a and b overlap by 1000 mm
+wall partition thickness 100 between a and b   # error: the same pair
 ```
 
 ## E_ROOM_ALIGN
@@ -1355,11 +1358,11 @@ room id=b right-of a align right size 3000x3000   # error: `right` is horizontal
 
 ## E_ROOM_NOT_RECTANGLE
 
-*error* — A room-edge datum, or `walls from rooms`, meets a polygon or circle room.
+*error* — A room-edge datum, `walls from rooms`, or a `wall … between`/`wall … around`, meets a polygon or circle room.
 
-**Cause.** Datums (`top`, `bottom`, `left`, `right`, `cx`, `cy`) are the four edges and the centre of a RECTANGULAR room, the same condition relational placement refuses with `E_PLACE_POLY`, and `walls from rooms` derives its walls from those same edges. A `room polygon` or `room circle` has no such edges, and its bounding box is not its floor, so the compiler refuses instead of guessing (ADR 0028 §2, §3).
+**Cause.** Datums (`top`, `bottom`, `left`, `right`, `cx`, `cy`) are the four edges and the centre of a RECTANGULAR room, the same condition relational placement refuses with `E_PLACE_POLY`, and `walls from rooms` and the pairwise `wall … between`/`wall … around` derive their walls from those same edges. A `room polygon` or `room circle` has no such edges, and its bounding box is not its floor, so the compiler refuses instead of guessing (ADR 0028 §2, §3, §4). For a pairwise wall the span points at the room's name.
 
-**Fix.** Write the coordinate as a number, or read the datum of a rectangular room. For `walls from rooms`, leave the room out with `{ except <room> }` and draw its walls by hand, or split it into rectangles.
+**Fix.** Write the coordinate as a number, or read the datum of a rectangular room. For `walls from rooms`, leave the room out with `{ except <room> }` and draw its walls by hand, or split it into rectangles; for a pairwise wall, type its points.
 
 ```arch static
 room id=L polygon (0,0) (6000,0) (6000,4000) (0,4000)
@@ -1658,9 +1661,9 @@ walls from rooms exterior 200 partition 100 { open between a and b  between b an
 
 ## E_WALL_BETWEEN_NOT_ADJACENT
 
-*error* — A `walls from rooms` clause, or a door or opening placed `between` two rooms, names two rooms that share no edge.
+*error* — A `walls from rooms` clause, a `wall … between`, or a door or opening placed `between` two rooms, names two rooms that share no edge.
 
-**Cause.** `open between A and B` and `between A and B thickness t` act on the partition the statement derives on the edge run two rooms share, and `door|opening … between A and B` stands in the wall on that run (ADR 0028 §3, §5). Two rooms that do not meet along an edge (apart, or touching only at a corner), or a room named twice, have no such run, so the clause would act on nothing. The span points at the clause.
+**Cause.** `open between A and B` and `between A and B thickness t` act on the partition the statement derives on the edge run two rooms share, `wall … between A and B` stands on that run, and `door|opening … between A and B` stands in the wall on that run (ADR 0028 §3, §4, §5). Two rooms that do not meet along an edge (apart, or touching only at a corner), or a room named twice, have no such run, so the clause would act on nothing. The span points at the clause.
 
 **Fix.** Name two rooms that meet along an edge, or remove the clause (place the door `on <wall> at …` or `at (x,y)` instead).
 
@@ -1670,6 +1673,7 @@ room id=b at (4000,0) size 3000x3000
 room id=c at (0,3000) size 7000x2000
 room id=d at (7000,0) size 2000x5000
 walls from rooms exterior 200 partition 100 { open between a and d }   # error: a and d do not meet
+wall partition thickness 100 between a and d   # error: the same pair
 ```
 
 ## E_WALL_BETWEEN_OPEN

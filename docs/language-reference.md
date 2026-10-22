@@ -961,6 +961,75 @@ plan "Open plan" {
 }
 ```
 
+### Walls between and around rooms
+
+```
+wall [id=<name>] <category> thickness <mm> [material …] [height <mm>] between <A> and <B>
+wall [id=<name>] <category> thickness <mm> [material …] [height <mm>] around [<A> <B> …]
+```
+
+An authored wall may be written by the rooms instead of by points
+([ADR 0028](adr/0028-rooms-primary-derived-walls.md) §4), for a plan that derives some walls
+and types others. The clause stands where the point list would.
+
+- `between <A> and <B>` stands on the **edge run the two rectangular rooms share**: their
+  facing edges on one line, with positive overlap. Two rooms share at most one run, so
+  nothing is chosen. The wall runs from the run's end with the smaller `y`, then `x`.
+- `around [<A> …]` is **one closed wall on the outline of the listed rooms' union**. It runs
+  clockwise on the page from its vertex with the smallest `y`, then `x`, so `swing in` opens
+  into the building.
+
+The geometry is the one `walls from rooms` derives on the same rooms. The rooms are read as
+a datum is: the room's own plan or component, and a placed instance's room by its dotted name
+(`west.a`). Everything else is the author's: the id, category, thickness, material and
+height. The wall is an ordinary authored wall afterwards. Openings host on it by id
+(`door on p at …`), by `between <A> and <B>` or `on <room>.<edge>`, or by position. Lint
+names it by its id. Beside `walls from rooms`, it takes over the derived span exactly as the
+same wall typed as points does, and the drop is reported. When a room moves or grows, the
+wall follows it.
+
+```arch
+plan "Mixed" {
+  units mm
+  grid 50
+  room id=living at (0,0) size 4000x3000 label "Living" uses living
+  room id=bed at (4000,0) size 3000x3000 label "Bedroom" uses bedroom
+  room id=hall at (0,3000) size 7000x1500 label "Hall" uses hall
+  wall id=shell exterior thickness 200 around [living bed hall]
+  wall id=p partition thickness 100 between living and bed
+  wall id=q partition thickness 100 between hall and living
+  wall id=r partition thickness 100 between bed and hall
+  door id=front on hall.bottom at 1000 from start width 900 hinge left swing in
+  door id=d between living and bed at 800 from end width 800 hinge left swing into bed
+  door id=k on q at 50% width 800
+  window id=w1 on living.top width 1500
+  window id=w2 on bed.top width 1200
+}
+```
+
+| Refused when | Code |
+|---|---|
+| The two rooms, or two listed rooms, overlap; a room listed twice overlaps itself (on the repeated name) | `E_ROOMS_OVERLAP` |
+| `between`: the rooms share no edge (apart, touching only at a corner, or one room twice) | `E_WALL_BETWEEN_NOT_ADJACENT` |
+| A `polygon` or `circle` room (on the name) | `E_ROOM_NOT_RECTANGLE` |
+| `between`: the shared run is shorter than the wall is thick | `E_PARTITION_TOO_SHORT` |
+| `around`: the rooms form two parts, touch at a single point, or enclose any hole | `E_ROOMS_NOT_TILING` |
+| A room that could not be placed or has no size, or a name that is no room (on the name) | `E_DATUM_UNPLACED` / `E_UNKNOWN_REF` |
+| `between` a pair that `walls from rooms` declares `open` | `E_WALL_BETWEEN_OPEN` |
+
+`around` refuses **every** hole, even one an `outdoor` surface or a `void` covers exactly: one
+wall is one ring, so a courtyard needs `walls from rooms` (or typed rings). A refused wall has
+no points: it draws nothing and hosts nothing, and an opening (`on <id>`), a piece of furniture
+(`against wall <id>`) or a `dim radius <id>` naming it is refused with a message saying that the
+wall could not be placed (`E_ATTACH_WALL_REF`, `E_FURN_AGAINST`, `E_DIM_CURVE_REF`). An `around` wall counts 4 per listed room toward
+the element budget, the most vertices its ring can have.
+
+**Facts.** `describe --json` lists each such wall in `derived_walls[]` as written
+(`{ "from": "between", "name": "p", "between": ["living", "bed"] }`, or `"from": "around"` with
+`"around": [ … ]`), and counts it as `relational` in `freedom.walls`. Both keys are present only
+on a storey that has one. Plan JSON exports it as a wall with its resolved points: the round
+trip keeps the geometry and drops the relation, as it does for an opening placed `at axis`.
+
 ### Openings by relation
 
 ```

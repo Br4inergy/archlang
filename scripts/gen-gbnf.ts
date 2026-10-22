@@ -388,12 +388,16 @@ function rules(): [string, string][] {
     // ---- elements --------------------------------------------------------
     [
       "wall-stmt",
-      `"wall" rws id-opt ident rws "thickness" ws expr ( ws wall-material )? ( ws "height" ws expr )? ws "{" ws point ws ( wall-vertex ws )+ ( "close" ws )? "}"`,
+      `"wall" rws id-opt ident rws "thickness" ws expr ( ws wall-material )? ( ws "height" ws expr )? ws ( wall-body | wall-relation )`,
     ],
+    ["wall-body", `"{" ws point ws ( wall-vertex ws )+ ( "close" ws )? "}"`],
+    // The pairwise forms (ADR 0028 §4) stand where the point list would: the rooms' shared
+    // edge, or one ring on the outline of at least one listed room.
+    ["wall-relation", `"between" rws ref rws "and" rws ref | "around" ws "[" ws ref ( rws ref )* ws "]"`],
     ["wall-material", `"material" rws ident ( rws ( "scale" | "angle" ) ws expr ){0,2}`],
     // A wall vertex is a plain point or a CURVED edge arriving at one (v1.24).
     //
-    // Two arity facts are encoded in `wall-stmt` above rather than left to the
+    // Two arity facts are encoded in `wall-body` above rather than left to the
     // resolver, because BOTH are `ctx.fail` — parse errors with no catalogued code:
     // the body opens with a plain `point` (an `arc` cannot lead the list; there would
     // be nothing to curve away from) and then takes one or more further vertices,

@@ -128,6 +128,14 @@ const POSITIVE: Snippet[] = [
     note: "the vertical `height` clause, last before the body and after `material`",
     src: plan(`  wall id=w1 exterior thickness 200 material brick height 2400 { (0,0) (4000,0) close }`),
   },
+  {
+    keyword: "wall",
+    note: "the pairwise forms (ADR 0028 §4): `between <A> and <B>`, `around [<A> …]`",
+    src: plan(
+      `  room id=a at (0,0) size 4000x5000\n  room id=b at (4000,0) size 4000x5000\n` +
+        `  wall id=e exterior thickness 200 around [a b]\n  wall id=p partition thickness 100 between a and b`,
+    ),
+  },
 
   // --- room -----------------------------------------------------------------
   {

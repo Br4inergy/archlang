@@ -107,7 +107,19 @@ export interface WallNode extends NodeBase {
   heightSpan?: Span;
   /** Whether the polyline closes back to its first vertex. */
   closed: boolean;
+  /**
+   * The pairwise forms (ADR 0028 §4): `between <A> and <B>` (the two rooms' shared run) or
+   * `around [<A> …]` (the outline of their union, one closed ring), written in place of the
+   * point list, which is then empty. Absent on a wall typed as points, so such a wall parses
+   * to the node it always did.
+   */
+  relation?: WallRelationNode;
 }
+
+/** A wall's pairwise form (ADR 0028 §4); `span` covers the clause from its keyword. */
+export type WallRelationNode =
+  | { kind: "between"; a: WallsPairRoom; b: WallsPairRoom; span: Span }
+  | { kind: "around"; rooms: WallsPairRoom[]; span: Span };
 
 /** The two rotational directions an `arc` clause may name, as the reader sees them on
  *  the sheet. Canonical order — the wall parser, `geometry/arc.ts`'s `ArcDir` and the

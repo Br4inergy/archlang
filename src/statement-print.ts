@@ -167,6 +167,12 @@ export function statementText(s: LeafStatement): Doc {
       // `fmt` stays a fixed point. Dropping it would silently return a 2200 parapet as a
       // full-height wall.
       if (s.height !== undefined) head += ` height ${exprStr(s.height)}`;
+      // A pairwise form (ADR 0028 §4) stands where the point list would.
+      if (s.relation) {
+        return s.relation.kind === "between"
+          ? `${head} between ${s.relation.a.id} and ${s.relation.b.id}`
+          : `${head} around [${s.relation.rooms.map((r) => r.id).join(" ")}]`;
+      }
       // A curved edge re-emits as `arc (x,y) radius R [cw|ccw] [major]` — the canonical
       // clause order, so formatting is idempotent (a `fmt` of a `fmt` is a fixed point).
       const pts: Doc[] = s.points.map((p, i) => {

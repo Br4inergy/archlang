@@ -486,9 +486,55 @@ original brief follows.
 - *As built, part A (PR #220):* `resolveGroup` (`src/ir.ts`) resolves each group (root or `place`d instance) as rooms, relational placement, a frozen datum table (`src/room-datums.ts`: each rectangular room's edges and centre, the root's axes; internal only, read through `datumTablesOf`), walls, then openings and the rest in registry order. Diagnostics are buffered per kind and flushed in registry order, then placement's, and the `axes` block's are held to their old step, so a resolution that completes reports exactly what it did. The table charges one step per room the group sees (descendants again in each ancestor) and per axis. `test/resolve-order-byte-identity.test.ts` pins a diagnosing corpus with `compile().diagnostics` and its order, measured on `main` before the reorder; the 470-row per-payload sweep moved nothing under the reorder commit; the PS0.5 commit and the `E_PLACE_REF` message moved 7 rows, listed in PR #220. A resolution stopped by `E_STEP_LIMIT` reports, deterministically, the diagnostics raised before the crossing in the new order, and that set may differ from the old walls-first pass (ADR 0028 §1).
 - *As built, part B (PR #221):* a dotted name whose last segment is `top|bottom|left|right|cx|cy` (or a compass alias) is read from the group's frozen table by every statement after the rooms (`src/room-datums.ts` `tableReader`, installed by `resolveGroup` through `withDatumReader` in `src/expr.ts`); before the table (expansion, `let`, plan settings, the room pass) it is `E_DATUM_BEFORE_ROOMS`. Refusals: `E_DATUM_COMPASS`, `E_DATUM_NAME`, `E_ROOM_NOT_RECTANGLE`, `E_DATUM_UNPLACED`, `E_UNKNOWN_REF` for an unknown room. A read costs the one step of the name; the first read in a group under `place` also builds its instance-id set, one step per element. `test/room-edge-datums.test.ts` pins the swap-back law (datum plan == literal twin, every storey, diagnostics included) and a digest table; every existing digest suite is unchanged.
 
-**PS3.3 · `wall … between A and B` and `wall … around [ids]`.** `todo`
+**PS3.3 · `wall … between A and B` and `wall … around [ids]`.** `done` (PR #226)
 - Closed-form interval intersection and rectilinear union outline.
 - Steps are charged per read and per sweep.
+- *As built (PR #226), with these lead rulings:*
+  - **Grammar.** `wall [id=] <category> thickness <t> [material …] [height <h>] between <A>
+    and <B> | around [<A> …]`, written in place of the point body.
+  - **Geometry.** It is the `walls from rooms` derivation, shared rather than copied:
+    `src/room-tiling.ts` exports `sweepRooms` (non-rectangle, overlap, edge sweep) and
+    `linkRings` (rings, pinch, components, holes), and adds `deriveBetween` and
+    `deriveAround`. `between` runs from the run's smaller-y-then-x end. `around` is closed
+    and clockwise from its smallest-y-then-x vertex.
+  - **Rooms** are read from the group's frozen datum table (`ResolveCtx.datums`, through
+    `src/wall-relation.ts`). Walls already resolve after the rooms (PS3.2 part A), so the
+    resolve order is unchanged.
+  - **Refusals**, each tested on its span:
+    - `E_ROOMS_OVERLAP` (also a room listed twice, on the name);
+    - `E_WALL_BETWEEN_NOT_ADJACENT` (also one room twice);
+    - `E_ROOM_NOT_RECTANGLE`, `E_DATUM_UNPLACED` and `E_UNKNOWN_REF`, on the name;
+    - `E_PARTITION_TOO_SHORT` (the run shorter than the wall's thickness);
+    - `E_ROOMS_NOT_TILING`;
+    - `E_WALL_BETWEEN_OPEN` (the #224 audit, unchanged: such a wall is an authored wall).
+    The catalogue entries name the forms, each with an executed pairwise line.
+  - **Holes.** `around` refuses every hole, even one exactly covered. One wall is one ring,
+    so a courtyard needs `walls from rooms`. The covers also resolve after authored walls in a
+    group without that statement, and honouring a `void` there would change the resolve
+    order per node.
+  - **A refused wall** has no points and joins no wall list. Its id is recorded
+    (`ResolveCtx.unplacedWall`), so an opening `on` it, furniture `against wall` it or a
+    `dim radius` of it says it "could not be placed (see its own error)"
+    (`E_ATTACH_WALL_REF`, `E_FURN_AGAINST`, `E_DIM_CURVE_REF`; red team round 1). ADR 0028 §4
+    and §6 carry dated amendments for the hole rule and the row shape.
+  - **Afterwards** it is an ordinary authored wall. It keeps the author's id, category,
+    thickness, material and height, and its hosting, lint, heights and coexistence are a
+    typed wall's. It carries only `_relation`.
+  - **Facts.** `describe()` gains `derived_walls[]` rows `{from: "between"|"around", name: <id>,
+    between|around}` and `freedom.walls.relational`, both present only when such a wall
+    exists. The rows follow source order with the statement's own rows.
+  - **Plan JSON** exports the wall by its resolved points: the round trip keeps the geometry
+    and drops the relation, as for an opening placed `at axis`.
+  - **Bounds.** An `around` wall counts `4n` toward `MAX_ELEMENTS` at expansion
+    (`ElementDef.expansionCharge`), and the sweep charges `n log n + 3n` before it runs.
+  - **Proof.** `test/wall-between-around.test.ts` holds:
+    - the twins: SVG and lint byte-identical, describe apart from the pairwise facts;
+    - the twins beside `walls from rooms` (takeover with the drop reported);
+    - a `door between` hosted on the wall;
+    - all eight frames;
+    - the widening drill.
+    Every existing digest suite is unchanged, and `test/wall-between-around-digests.test.ts`
+    pins the new rows.
 
 **PS3.4 · `door|opening between A and B [at <pos>]`, `… on <room>.<edge>`.** `done` (PR #225)
 - Resolve to the shared wall. Enforce the nib (refuse, do not slide).
@@ -676,7 +722,7 @@ original brief follows.
 |---|---|---|
 | 1 | PS0.1, PS0.7, PS1.1 | Done 2026-10-18: PS0.7 in PR #197 (ad58551, dfd1737), PS1.1 in PR #195 (df00ab5), PS0.1 in PR #196 (1e0c2d9, e81a136; also closed backlog C.4). Corpus catch rate 7/53 |
 | 2 | PS2.1–PS2.9, PS2.13 | Defect-corpus catch rate ≥ 90 % for classes 1, 2, 3, 4 and 6, with no false positive on the clean twins; every corpus `lint()` movement is explained (two-bed is expected to start warning: fix the example, see PS3.6). *Corrected 2026-10-19:* class 5 (clearances) belongs to PS2.11 in row 5, so it was removed from this row's acceptance. *Status:* wave 1 landed 2026-10-19 (PRs #199, #201, #200): classes 1, 3, 6 at 100 %, class 4 at 3/4 (PS2.17), class 2 at 1/6 waiting on PS2.4; overall 33/53 on `main@cc165f4`. Wave 2 landed 2026-10-19 (PRs #203, #204, #211): classes 1, 2, 3, 6 at 100 %, class 4 at 4/5 (80 %, below the bar until PS2.17 lands); overall 44/67 on `main@fcb3074` (the +1 is A2, the balcony-door-masked laundry, caught by PS0.10's main entrance; T2 still refuses without `site`). Wave 3 landed 2026-10-20 (PRs #214, #216, #217): classes 1, 2, 3, 4, 6 at 100 %, overall 46/68 on `main@06c6b56`; this row's acceptance is met (class 5 is row 5). Next: PS3.1 landed as ADR 0028 (PR #215, Proposed), then PS3.2 and PS3.6 |
-| 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. *Status 2026-10-22 (PS3.0 done, PR #224):* met: ADR 0028 merged and Accepted; byte-identity law green (every digest suite unchanged, the PS3.0 table pinned); the class-2 corpus cases are refused or gain their walls in the D5 form; the widening drill moves the walls and the door with the room (`test/walls-from-rooms/widen.arch`). Remaining: rewriting `examples/relational.arch` and `examples/two-bed.arch` in the headline form (PS3.6), and PS3.3. *2026-10-22 (PS3.4 done, PR #225):* relational openings landed, and the widening drill now moves a `door between` and a `window on <room>.<edge>` with the room (`test/openings-between.test.ts`) |
+| 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. *Status 2026-10-22 (PS3.0 done, PR #224):* met: ADR 0028 merged and Accepted; byte-identity law green (every digest suite unchanged, the PS3.0 table pinned); the class-2 corpus cases are refused or gain their walls in the D5 form; the widening drill moves the walls and the door with the room (`test/walls-from-rooms/widen.arch`). Remaining: rewriting `examples/relational.arch` and `examples/two-bed.arch` in the headline form (PS3.6), and PS3.3. *2026-10-22 (PS3.4 done, PR #225):* relational openings landed, and the widening drill now moves a `door between` and a `window on <room>.<edge>` with the room (`test/openings-between.test.ts`). *2026-10-23 (PS3.3 done, PR #226):* the pairwise forms landed, and the drill moves a `wall … between` and a `wall … around` ring with the room (`test/wall-between-around.test.ts`). Remaining: the PS3.6 rewrites of `examples/relational.arch` and `examples/two-bed.arch` |
 | 4 | PS0.4, PS4.1, PS4.2 | The widening drill's `impact` names every moved, held and broken item correctly |
 | 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically |
 | 6 | PS4.3, PS4.4, PS3.5, PS3.6, PS5.4, PS7.x | — |

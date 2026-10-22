@@ -115,6 +115,13 @@ export interface ResolveCtx {
    * resolves after the group's rooms. Optional (append-only).
    */
   datums?: DatumAccess;
+  /**
+   * Is `ref` the id of a wall this group sees that a pairwise form (`wall … between|around`,
+   * ADR 0028 §4) refused? Such a wall has no points and is in no wall list, so a reference to
+   * it says the wall could not be placed rather than that no wall has that id. Optional
+   * (append-only).
+   */
+  unplacedWall?(ref: string): boolean;
 }
 
 /**
@@ -325,6 +332,14 @@ export interface ElementDef {
    * ids is refused (`E_WALL_ID_RESERVED`), so a wall id names one wall there.
    */
   reservedIds?: readonly string[];
+  /**
+   * What a statement that DERIVES geometry from rooms counts toward the plan's element budget
+   * (`MAX_ELEMENTS`) beyond itself, charged at expansion before anything resolves, with the
+   * phrase the `E_ELEMENT_LIMIT` refusal quotes (`wall … around`: a ring of up to 4 vertices
+   * per listed room, ADR 0028 §4). A statement past the cap is removed, as a
+   * {@link ElementDef.yieldsWalls} statement is. Absent or `undefined`: nothing beyond itself.
+   */
+  expansionCharge?(node: AstElement): { count: number; what: string } | undefined;
 }
 
 /**
