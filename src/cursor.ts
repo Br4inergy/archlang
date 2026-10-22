@@ -170,6 +170,11 @@ const STATEMENT_EXPRS: { [K in Statement["kind"]]: (s: Extract<Statement, { kind
   walls: (s, out) => {
     out.push(s.exterior);
     out.push(s.partition);
+    for (const p of s.pairs ?? []) {
+      if (p.kind === "open") {
+        if (p.width !== undefined) out.push(p.width);
+      } else out.push(p.thickness);
+    }
   },
   strip: (s, out) => {
     pt(out, s.at);
