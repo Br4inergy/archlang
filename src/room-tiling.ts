@@ -169,15 +169,16 @@ interface Interval {
   room: number;
 }
 
-/** A directed boundary piece on one line. */
-interface Piece {
+/** A directed boundary piece on one line, floor on its right; `owners` the rooms along it. */
+export interface TilePiece {
   a: Point;
   b: Point;
   owners: number[];
 }
 
-/** A shared run on one line between two rooms. */
-interface Run {
+/** A shared run on one line between two rooms (`lo`/`hi` their indices, by side), `a`→`b`
+ *  along the line's growing coordinate. */
+export interface TileRun {
   a: Point;
   b: Point;
   lo: number;
@@ -202,95 +203,10 @@ export function deriveWallsFromRooms(
   budget?: (walls: number) => boolean,
   opts: TileOptions = {},
 ): TilingResult {
-  const n = rooms.length;
   const clausePairs = opts.pairs ?? [];
-  chargeSteps(n + 1);
-  // 1. Non-rectangles.
-  const nonRect = rooms.filter((r) => !r.rect);
-  if (nonRect.length > 0) {
-    return {
-      ok: false,
-      refusals: [
-        {
-          code: "E_ROOM_NOT_RECTANGLE",
-          rooms: nonRect.map((r) => r.id),
-          why: nonRect.map((r) => `"${r.id}" is a ${r.shape ?? "polygon"} room`).join("; "),
-        },
-      ],
-    };
-  }
-  const R = rooms.map((r) => r.rect!);
-  const ids = rooms.map((r) => r.id);
-  const named = (set: Iterable<number>): string[] => [...new Set(set)].sort((a, b) => a - b).map((i) => ids[i]!);
-
-  // 2. Overlap: sweep by left edge.
-  chargeSteps(sortSteps(n) + n);
-  const byX = R.map((_, i) => i).sort((a, b) => R[a]!.x0 - R[b]!.x0 || a - b);
-  const pairs: Array<[number, number]> = [];
-  let active: number[] = [];
-  for (const i of byX) {
-    const r = R[i]!;
-    chargeSteps(2 * active.length + 1);
-    active = active.filter((j) => R[j]!.x1 > r.x0);
-    for (const j of active) {
-      const q = R[j]!;
-      if (Math.min(r.x1, q.x1) > Math.max(r.x0, q.x0) && Math.min(r.y1, q.y1) > Math.max(r.y0, q.y0)) {
-        pairs.push(i < j ? [i, j] : [j, i]);
-      }
-    }
-    active.push(i);
-  }
-  if (pairs.length > 0) {
-    pairs.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
-    return {
-      ok: false,
-      refusals: [
-        {
-          code: "E_ROOMS_OVERLAP",
-          rooms: named(pairs.flat()),
-          why: pairs.map(([a, b]) => `"${ids[a]}" overlaps "${ids[b]}"`).join("; "),
-        },
-      ],
-    };
-  }
-
-  // 3. Edges by line: one sort per axis, then a merge on each line. Charged before
-  //    allocating: the sort of 4n edges plus three passes over them.
-  const m = 4 * n;
-  chargeSteps(sortSteps(m) + 3 * m);
-  // Vertical lines x = c: `lo` = the room is on the -x side (its right edge), `hi` = +x side.
-  const vEdges: Array<{ c: number; side: 0 | 1; iv: Interval }> = [];
-  const hEdges: Array<{ c: number; side: 0 | 1; iv: Interval }> = [];
-  R.forEach((r, i) => {
-    if (!(r.x1 > r.x0 && r.y1 > r.y0)) return; // no area: no edge to derive from
-    vEdges.push({ c: r.x1, side: 0, iv: { s: r.y0, e: r.y1, room: i } });
-    vEdges.push({ c: r.x0, side: 1, iv: { s: r.y0, e: r.y1, room: i } });
-    hEdges.push({ c: r.y1, side: 0, iv: { s: r.x0, e: r.x1, room: i } });
-    hEdges.push({ c: r.y0, side: 1, iv: { s: r.x0, e: r.x1, room: i } });
-  });
-  const order = (p: { c: number; iv: Interval }, q: { c: number; iv: Interval }): number =>
-    p.c - q.c || p.iv.s - q.iv.s || p.iv.room - q.iv.room;
-  vEdges.sort(order);
-  hEdges.sort(order);
-
-  const pieces: Piece[] = [];
-  const runs: Run[] = [];
-  const sweepAxis = (edges: typeof vEdges, vertical: boolean): void => {
-    let k = 0;
-    while (k < edges.length) {
-      const c = edges[k]!.c;
-      const lo: Interval[] = [];
-      const hi: Interval[] = [];
-      while (k < edges.length && edges[k]!.c === c) {
-        const ed = edges[k]!;
-        (ed.side === 0 ? lo : hi).push(ed.iv);
-        k++;
-      }
-      sweepLine(c, lo, hi, vertical, pieces, runs);
-    }
-  };
-  sweepAxis(vEdges, true);
-  sweepAxis(hEdges, false);
+  const swept = sweepRooms(rooms);
+  if (!swept.ok) return swept;
+  const { ids, named, pieces, runs } = swept;
 
   const notTiling: string[] = [];
   const tilingRooms: number[] = [];
@@ -300,7 +216,7 @@ export function deriveWallsFromRooms(
   chargeSteps(runs.length + clausePairs.length + 1);
   const index0 = new Map(ids.map((id, i) => [id, i]));
   const pairKey = (i: number, j: number): string => (i < j ? `${i}|${j}` : `${j}|${i}`);
-  const runOfPair = new Map<string, Run>();
+  const runOfPair = new Map<string, TileRun>();
   for (const r of runs) runOfPair.set(pairKey(r.lo, r.hi), r);
   /** Each run's pair clause, by the run's pair key. */
   const clauseOf = new Map<string, number>();
@@ -318,95 +234,21 @@ export function deriveWallsFromRooms(
       });
   });
   /** A run's partition thickness: its pair's own, else the statement's. */
-  const thick = (r: Run): number => {
+  const thick = (r: TileRun): number => {
     const k = clauseOf.get(pairKey(r.lo, r.hi));
     const p = k === undefined ? undefined : clausePairs[k];
     return p?.kind === "thickness" ? p.thickness : tInt;
   };
 
-  // 4. Link the boundary pieces into rings; a vertex with two outgoing pieces is a pinch.
-  chargeSteps(2 * pieces.length + 1);
-  const out = new Map<string, number[]>();
-  pieces.forEach((p, i) => {
-    const k = key(p.a);
-    const list = out.get(k);
-    if (list) list.push(i);
-    else out.set(k, [i]);
-  });
-  const pinches: string[] = [];
-  for (const [k, list] of out) {
-    if (list.length < 2) continue;
-    chargeSteps(pieces.length + 1);
-    pinches.push(`(${k.replace(",", ", ")})`);
-    for (const i of list) tilingRooms.push(...pieces[i]!.owners);
-    for (const p of pieces) if (key(p.b) === k) tilingRooms.push(...p.owners);
-  }
-  if (pinches.length > 0) {
-    notTiling.push(
-      `the rooms touch at a single point ${pinches.slice(0, 4).join(" ")}${pinches.length > 4 ? " …" : ""} (a pinch)`,
-    );
+  // 4–5. The rings, the pinches, the components and the holes.
+  const ringed = linkRings(pieces, covers, ids, named, notTiling, tilingRooms);
+  if (ringed.pinched) {
     return {
       ok: false,
       refusals: [...refusalsOf(notTiling, tilingRooms, shortRuns(runs, thick, ids), named), ...unpaired],
     };
   }
-  const seen = new Uint8Array(pieces.length);
-  const rings: Array<{ pts: Point[]; owners: number[]; outer: boolean }> = [];
-  for (let i0 = 0; i0 < pieces.length; i0++) {
-    if (seen[i0]) continue;
-    const pts: Point[] = [];
-    const owners: number[] = [];
-    let i = i0;
-    // Every vertex has exactly one outgoing piece here (no pinch), and every piece ends
-    // where another starts (a boundary of a union of rectangles is closed), so this walk
-    // returns to its start.
-    while (!seen[i]) {
-      seen[i] = 1;
-      const p = pieces[i]!;
-      pts.push(p.a);
-      owners.push(...p.owners);
-      const next = out.get(key(p.b));
-      if (!next) break;
-      i = next[0]!;
-    }
-    // Canonical start: smallest y, then x.
-    let s = 0;
-    for (let j = 1; j < pts.length; j++) {
-      const p = pts[j]!;
-      const q = pts[s]!;
-      if (p.y < q.y || (p.y === q.y && p.x < q.x)) s = j;
-    }
-    const ring = [...pts.slice(s), ...pts.slice(0, s)];
-    rings.push({ pts: ring, owners, outer: ring[1]!.y === ring[0]!.y });
-  }
-  const outers = rings.filter((r) => r.outer);
-  if (outers.length > 1) {
-    const one = outers.map((r) => Math.min(...r.owners));
-    tilingRooms.push(...one);
-    notTiling.push(
-      `the rooms form ${outers.length} separate parts (one room from each: ${one.map((i) => `"${ids[i]}"`).join(", ")}); rooms touching only at a corner are not connected`,
-    );
-  }
-
-  // 5. Holes: each must be covered exactly by one kind of cover.
-  const holes = rings.filter((r) => !r.outer).sort((p, q) => p.pts[0]!.y - q.pts[0]!.y || p.pts[0]!.x - q.pts[0]!.x);
-  const courtyards: Point[][] = [];
-  for (const h of holes) {
-    const verdict = holeCover(h.pts, covers);
-    if (verdict === "outdoor") courtyards.push(h.pts);
-    else if (verdict !== "void") {
-      tilingRooms.push(...h.owners);
-      const xs = h.pts.map((p) => p.x);
-      const ys = h.pts.map((p) => p.y);
-      notTiling.push(
-        `the rooms enclose a hole x ${Math.min(...xs)}–${Math.max(...xs)}, y ${Math.min(...ys)}–${Math.max(...ys)} that is ${verdict} (bounded by ${named(
-          h.owners,
-        )
-          .map((x) => `"${x}"`)
-          .join(", ")}); a hole must be covered exactly by \`outdoor\` surfaces (a courtyard) or by a \`void\``,
-      );
-    }
-  }
+  const { outers, courtyards } = ringed;
 
   // 6. Short runs, and the pair clauses that name no run.
   const short = shortRuns(runs, thick, ids);
@@ -516,6 +358,225 @@ export function deriveWallsFromRooms(
   return { ok: true, walls: result, counts: { partitions: partitionSpecs.length, ringVertices } };
 }
 
+/** What {@link sweepRooms} finds in a set of interior-disjoint rectangles. */
+export interface SweptRooms {
+  ok: true;
+  /** The rooms' ids, in source order (a room's index is its place here). */
+  ids: string[];
+  /** The distinct room indices of `set`, sorted, as ids. */
+  named: (set: Iterable<number>) => string[];
+  /** The oriented boundary pieces (floor on the right of travel). */
+  pieces: TilePiece[];
+  /** The shared runs, each between two rooms, running from its smaller coordinate. */
+  runs: TileRun[];
+}
+
+/**
+ * Steps 1–3 of the algorithm, shared by `walls from rooms` and the pairwise wall forms
+ * (`wall … between`, `wall … around`, ADR 0028 §4): refuse a non-rectangle, then any overlap,
+ * then sort the edges per axis and merge each line into shared runs and boundary pieces.
+ * Charged before each stage (`n log n + 3n` for the edge sweep, with `n` the 4·rooms edges).
+ */
+export function sweepRooms(rooms: readonly TileRoom[]): { ok: false; refusals: TilingRefusal[] } | SweptRooms {
+  const n = rooms.length;
+  chargeSteps(n + 1);
+  // 1. Non-rectangles.
+  const nonRect = rooms.filter((r) => !r.rect);
+  if (nonRect.length > 0) {
+    return {
+      ok: false,
+      refusals: [
+        {
+          code: "E_ROOM_NOT_RECTANGLE",
+          rooms: nonRect.map((r) => r.id),
+          why: nonRect.map((r) => `"${r.id}" is a ${r.shape ?? "polygon"} room`).join("; "),
+        },
+      ],
+    };
+  }
+  const R = rooms.map((r) => r.rect!);
+  const ids = rooms.map((r) => r.id);
+  const named = (set: Iterable<number>): string[] => [...new Set(set)].sort((a, b) => a - b).map((i) => ids[i]!);
+
+  // 2. Overlap: sweep by left edge.
+  chargeSteps(sortSteps(n) + n);
+  const byX = R.map((_, i) => i).sort((a, b) => R[a]!.x0 - R[b]!.x0 || a - b);
+  const pairs: Array<[number, number]> = [];
+  let active: number[] = [];
+  for (const i of byX) {
+    const r = R[i]!;
+    chargeSteps(2 * active.length + 1);
+    active = active.filter((j) => R[j]!.x1 > r.x0);
+    for (const j of active) {
+      const q = R[j]!;
+      if (Math.min(r.x1, q.x1) > Math.max(r.x0, q.x0) && Math.min(r.y1, q.y1) > Math.max(r.y0, q.y0)) {
+        pairs.push(i < j ? [i, j] : [j, i]);
+      }
+    }
+    active.push(i);
+  }
+  if (pairs.length > 0) {
+    pairs.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+    return {
+      ok: false,
+      refusals: [
+        {
+          code: "E_ROOMS_OVERLAP",
+          rooms: named(pairs.flat()),
+          why: pairs.map(([a, b]) => `"${ids[a]}" overlaps "${ids[b]}"`).join("; "),
+        },
+      ],
+    };
+  }
+
+  // 3. Edges by line: one sort per axis, then a merge on each line. Charged before
+  //    allocating: the sort of 4n edges plus three passes over them.
+  const m = 4 * n;
+  chargeSteps(sortSteps(m) + 3 * m);
+  // Vertical lines x = c: `lo` = the room is on the -x side (its right edge), `hi` = +x side.
+  const vEdges: Array<{ c: number; side: 0 | 1; iv: Interval }> = [];
+  const hEdges: Array<{ c: number; side: 0 | 1; iv: Interval }> = [];
+  R.forEach((r, i) => {
+    if (!(r.x1 > r.x0 && r.y1 > r.y0)) return; // no area: no edge to derive from
+    vEdges.push({ c: r.x1, side: 0, iv: { s: r.y0, e: r.y1, room: i } });
+    vEdges.push({ c: r.x0, side: 1, iv: { s: r.y0, e: r.y1, room: i } });
+    hEdges.push({ c: r.y1, side: 0, iv: { s: r.x0, e: r.x1, room: i } });
+    hEdges.push({ c: r.y0, side: 1, iv: { s: r.x0, e: r.x1, room: i } });
+  });
+  const order = (p: { c: number; iv: Interval }, q: { c: number; iv: Interval }): number =>
+    p.c - q.c || p.iv.s - q.iv.s || p.iv.room - q.iv.room;
+  vEdges.sort(order);
+  hEdges.sort(order);
+
+  const pieces: TilePiece[] = [];
+  const runs: TileRun[] = [];
+  const sweepAxis = (edges: typeof vEdges, vertical: boolean): void => {
+    let k = 0;
+    while (k < edges.length) {
+      const c = edges[k]!.c;
+      const lo: Interval[] = [];
+      const hi: Interval[] = [];
+      while (k < edges.length && edges[k]!.c === c) {
+        const ed = edges[k]!;
+        (ed.side === 0 ? lo : hi).push(ed.iv);
+        k++;
+      }
+      sweepLine(c, lo, hi, vertical, pieces, runs);
+    }
+  };
+  sweepAxis(vEdges, true);
+  sweepAxis(hEdges, false);
+  return { ok: true, ids, named, pieces, runs };
+}
+
+/** What {@link linkRings} finds: the outer rings and the courtyard rings, canonical. */
+export interface LinkedRings {
+  /** A vertex with two outgoing pieces was found; nothing past step 4 was decided. */
+  pinched: boolean;
+  outers: Array<{ pts: Point[]; owners: number[] }>;
+  /** The holes covered exactly by `outdoor` surfaces (each a counter-clockwise ring). */
+  courtyards: Point[][];
+}
+
+/**
+ * Steps 4–5: link the boundary pieces into rings, refuse a pinch and more than one outer
+ * ring, and judge each hole. `covers` are the group's `outdoor`/`void` shapes; `null` means
+ * the caller draws one ring and no hole is legal (`wall … around`, ADR 0028 §4). The reasons
+ * a tiling fails are appended to `notTiling`, and the rooms they name to `tilingRooms`.
+ */
+export function linkRings(
+  pieces: readonly TilePiece[],
+  covers: readonly TileCover[] | null,
+  ids: readonly string[],
+  named: (set: Iterable<number>) => string[],
+  notTiling: string[],
+  tilingRooms: number[],
+): LinkedRings {
+  // 4. Link the boundary pieces into rings; a vertex with two outgoing pieces is a pinch.
+  chargeSteps(2 * pieces.length + 1);
+  const out = new Map<string, number[]>();
+  pieces.forEach((p, i) => {
+    const k = key(p.a);
+    const list = out.get(k);
+    if (list) list.push(i);
+    else out.set(k, [i]);
+  });
+  const pinches: string[] = [];
+  for (const [k, list] of out) {
+    if (list.length < 2) continue;
+    chargeSteps(pieces.length + 1);
+    pinches.push(`(${k.replace(",", ", ")})`);
+    for (const i of list) tilingRooms.push(...pieces[i]!.owners);
+    for (const p of pieces) if (key(p.b) === k) tilingRooms.push(...p.owners);
+  }
+  if (pinches.length > 0) {
+    notTiling.push(
+      `the rooms touch at a single point ${pinches.slice(0, 4).join(" ")}${pinches.length > 4 ? " …" : ""} (a pinch)`,
+    );
+    return { pinched: true, outers: [], courtyards: [] };
+  }
+  const seen = new Uint8Array(pieces.length);
+  const rings: Array<{ pts: Point[]; owners: number[]; outer: boolean }> = [];
+  for (let i0 = 0; i0 < pieces.length; i0++) {
+    if (seen[i0]) continue;
+    const pts: Point[] = [];
+    const owners: number[] = [];
+    let i = i0;
+    // Every vertex has exactly one outgoing piece here (no pinch), and every piece ends
+    // where another starts (a boundary of a union of rectangles is closed), so this walk
+    // returns to its start.
+    while (!seen[i]) {
+      seen[i] = 1;
+      const p = pieces[i]!;
+      pts.push(p.a);
+      owners.push(...p.owners);
+      const next = out.get(key(p.b));
+      if (!next) break;
+      i = next[0]!;
+    }
+    // Canonical start: smallest y, then x.
+    let s = 0;
+    for (let j = 1; j < pts.length; j++) {
+      const p = pts[j]!;
+      const q = pts[s]!;
+      if (p.y < q.y || (p.y === q.y && p.x < q.x)) s = j;
+    }
+    const ring = [...pts.slice(s), ...pts.slice(0, s)];
+    rings.push({ pts: ring, owners, outer: ring[1]!.y === ring[0]!.y });
+  }
+  const outers = rings.filter((r) => r.outer);
+  if (outers.length > 1) {
+    const one = outers.map((r) => Math.min(...r.owners));
+    tilingRooms.push(...one);
+    notTiling.push(
+      `the rooms form ${outers.length} separate parts (one room from each: ${one.map((i) => `"${ids[i]}"`).join(", ")}); rooms touching only at a corner are not connected`,
+    );
+  }
+
+  // 5. Holes: each must be covered exactly by one kind of cover (none, for one ring).
+  const holes = rings.filter((r) => !r.outer).sort((p, q) => p.pts[0]!.y - q.pts[0]!.y || p.pts[0]!.x - q.pts[0]!.x);
+  const courtyards: Point[][] = [];
+  for (const h of holes) {
+    const verdict = covers === null ? "one ring" : holeCover(h.pts, covers);
+    if (verdict === "outdoor") courtyards.push(h.pts);
+    else if (verdict !== "void") {
+      tilingRooms.push(...h.owners);
+      const xs = h.pts.map((p) => p.x);
+      const ys = h.pts.map((p) => p.y);
+      const box = `x ${Math.min(...xs)}–${Math.max(...xs)}, y ${Math.min(...ys)}–${Math.max(...ys)}`;
+      const by = named(h.owners)
+        .map((x) => `"${x}"`)
+        .join(", ");
+      notTiling.push(
+        covers === null
+          ? `the rooms enclose a hole ${box} (bounded by ${by}); an \`around\` wall is one ring, so it cannot also go round a hole`
+          : `the rooms enclose a hole ${box} that is ${verdict} (bounded by ${by}); a hole must be covered exactly by \`outdoor\` surfaces (a courtyard) or by a \`void\``,
+      );
+    }
+  }
+  return { pinched: false, outers, courtyards };
+}
+
 function refusalsOf(
   notTiling: string[],
   tilingRooms: number[],
@@ -529,7 +590,11 @@ function refusalsOf(
   return out;
 }
 
-function shortRuns(runs: readonly Run[], thick: (r: Run) => number, ids: readonly string[]): TilingRefusal | undefined {
+function shortRuns(
+  runs: readonly TileRun[],
+  thick: (r: TileRun) => number,
+  ids: readonly string[],
+): TilingRefusal | undefined {
   const short = runs
     .filter((r) => Math.abs(r.b.x - r.a.x) + Math.abs(r.b.y - r.a.y) < thick(r))
     .map((r) => (r.lo < r.hi ? { ...r, p: r.lo, q: r.hi, t: thick(r) } : { ...r, p: r.hi, q: r.lo, t: thick(r) }))
@@ -553,7 +618,14 @@ function shortRuns(runs: readonly Run[], thick: (r: Run) => number, ids: readonl
  * vertical line, above a horizontal one), `hi` those on its upper side, each sorted and
  * disjoint. Emits shared runs and oriented boundary pieces.
  */
-function sweepLine(c: number, lo: Interval[], hi: Interval[], vertical: boolean, pieces: Piece[], runs: Run[]): void {
+function sweepLine(
+  c: number,
+  lo: Interval[],
+  hi: Interval[],
+  vertical: boolean,
+  pieces: TilePiece[],
+  runs: TileRun[],
+): void {
   const at = (t: number): Point => (vertical ? { x: c, y: t } : { x: t, y: c });
   // The sorted, distinct endpoints of both sides (each side's sequence is already sorted).
   const ends: number[] = [];
