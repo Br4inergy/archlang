@@ -519,7 +519,7 @@ const BASELINE: [string, string][] = [
   ["examples/practice-office.arch", "469f2d99f8911d59d91d2e7c0fdfaf21628cb5cfc92d3a0f08634699d57e2012"], // added with the example, re-measured for net area, see header
   // Re-measured 2026-10-18 (PS0.7, the label classifier emits living; `describe()` only): the
   // same row, with the same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/relational.arch", "0daebc6c46696e5be32690a293ce40d159e5c690948180767c409b53ccd28190"], // re-measured for PS2.4, see header
+  ["examples/relational.arch", "1e257bc0db623c4dd9e56be955e4ebea5d04908499e0b0112612a06234b723d4"], // re-measured for PS2.4, see header; PS3.6 source rewrite, see ./byte-identity-baseline.ts
   // ADDED with the new example (the issued-sheet statements), then re-measured once when the
   // thickness call-out change met it (drawing only): the same row, with the same digest body,
   // as `./while-byte-identity-baseline.ts`, whose header has both.
@@ -534,7 +534,7 @@ const BASELINE: [string, string][] = [
   ["examples/transit-hall.arch", "36eeb0b92a45d3e1db704bd302ce34731bef4cb2ed637021e90ddca7f9744d76"],
   // Re-measured 2026-10-18 (PS0.7, the label classifier emits living; `describe()` only): the
   // same row, with the same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/two-bed.arch", "38dce8b3f9b2f408286f53ab8fd5af8501deff388f493ccced6277a9fb40e740"],
+  ["examples/two-bed.arch", "e090b95af12f5643ee1c1767a40a36be025872909f9b32172df2626f3de0a8b1"], // PS3.6 source rewrite, see ./byte-identity-baseline.ts
   ["examples/two-storey.arch", "76b5e43457bd8723b53bf77739de5083718f478b5fd29cf937b6eacf6fd91632"],
   ["examples/lib/doors.arch", "232f7d4cf35f3d44678b3e3641c4815139f9412a9fd079f99639026b99f005b6"],
   ["examples/lib/fixtures.arch", "25e792ed80e5571a57ac00323283b58af9ffd96646008637646f99600f4716f8"],

@@ -1300,6 +1300,19 @@
  * counts, plus `bungalow`'s first circulation route, whose clear bottleneck the worktop takes
  * from 2400 to 2300 mm (no threshold crossed; `lint()` unchanged), and `garden-house`'s copy
  * of the overflow message. Each row below is the new measurement with this file's digest bodies.
+ *
+ * ## `relational` and `two-bed` (both rows each): the examples were rewritten (PS3.6)
+ *
+ * Not a compiler change: both SOURCES were rewritten in ADR 0028's room-graph form. `two-bed`
+ * was re-laid round a central corridor (new rooms, `walls from rooms … { open between }`, doors
+ * `between`, windows `on <room>.<edge>`, its furniture re-placed), and `relational` gained a hall
+ * room, derived walls and openings, and re-placed fixtures. Every surface moves because the
+ * plan is a different plan. Proof that the code is innocent: with both previous sources
+ * (`1235529c`) put back, every digest suite on this branch (this file's two tables through
+ * `finish`, `height-byte-identity`, `iso-byte-identity`; `garage-byte-identity`,
+ * `while-byte-identity`, `import-module-lets`, `finish-furnish`, `walls-from-rooms-digests`)
+ * is green, 1027 of 1027; no other row of any table moved with the new sources. Each new row
+ * is the measurement with this file's digest bodies.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -1328,7 +1341,7 @@ export const BASELINE: [string, string][] = [
   ["one-room", "9519d5c396d8644e840a1520e6d84f75a8306d1309abebcbd61aa59560fda364"],
   ["parametric", "e45fddefabb204b9470fd9b06f59c2aec440a8fd786773effc1334f1b7fb904c"],
   ["practice-office", "2a3b241c5897a154d937b8e1b392e8468812a1acafd8b8fafaee8ad478c5caa9"], // added with the example, re-measured for net area, see header
-  ["relational", "c6edb70bd3b44ce2748dbcc02c44060cce9c89f003b4af8215865e03af3ccfb0"], // re-measured for PS2.4, see header
+  ["relational", "30b76e8a19ad8aad073f666bd19934ac382c7c6e301abd837a88f064ba73c3fa"], // re-measured for PS2.4, see header; PS3.6 source rewrite, see header
   ["sheet-notes", "f4ab64ec80be43d25a5949c971b07b00696f8fc2ab3927af72442ab70e8f551f"], // re-measured, see header
   ["studio", "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f"],
   ["terrace-row", "bfd1fe32b7d7631e046493c8595c890fb18e174136971fad52c4e17596b86584"], // re-measured, see header
@@ -1336,7 +1349,7 @@ export const BASELINE: [string, string][] = [
   ["tiny-house", "cd514ac3ec015cec85a671a20c16181b209ef0a8060afb8a724733006e82d270"],
   ["townhouse", "eaf7cc339ac1f514d5f650ee96fbd38923f584264b73392d1c9644abc1b3f2cf"], // re-measured, see header
   ["transit-hall", "526b3ee5f2c029458843bf2de8c5c37276f996f795d17cdd4e708966f0540b54"],
-  ["two-bed", "4f1707b820f441fb405c2b1438bd2c1b4b620f5494e751e78d5c3e894c52a5c7"],
+  ["two-bed", "0ec613240e85fd5911f2d0c3e79d069f274d266b7d3555bc62e3ad49a44eced1"], // PS3.6 source rewrite, see header
   ["two-storey", "0f5583f09f8bddf841e5866e040ba8d6645addf225c02eb246fee089d564d20a"], // re-measured, see header
 ];
 
@@ -1376,7 +1389,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["one-room", "fbbd7f194ce4ff25444b4a5e58d32ae1919f01a25e20f9ab8bf6aa9d7475def5"],
   ["parametric", "ec765bc02073b9cf32d8646760c3df96cc8ec60f351ea05506f89b1373c0ad22"],
   ["practice-office", "bc58498b17376ff2fcb8f5bf1713dcec5b6bbf851a3ed92be5ea4ff34f277996"], // added with the example, re-measured for net area, see header
-  ["relational", "3123fcd70975b4d3af165b3dde4f17c30a7a727a0ea9ef5e562aee8780ca7971"], // re-measured for PS2.4, see header
+  ["relational", "5ac199a9373bef52f66d7bedc8fdad5c8754c1073fb12c44e25e2274050977bb"], // re-measured for PS2.4, see header; PS3.6 source rewrite, see header
   ["sheet-notes", "8a72d4737654ecebe5fa7cce4590d84c70d3c73556115298e2a1c2eadde7d0f9"], // added with the example, see header
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["terrace-row", "1d051b48b165c88a4c001d8feea36f41e686efd062e7f0119424cbbc8999785e"],
@@ -1384,7 +1397,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["tiny-house", "00d5f2c7c050c3a774c142e84af2de662c8deb1dd8ef78c5f7fc68f77674f27f"],
   ["townhouse", "f61e88ee465adca56e1c65e40d4c6e539f6cc07774eb3e6136539255f061627b"], // re-measured, see header
   ["transit-hall", "fce22abf9ad40aa1de121328a80e33120015b5a7a338d04a8d22d32153b12dab"],
-  ["two-bed", "f397cf69203454e62a6c9b042f96c56bdba08a5ab59ace07175130c31842aaad"],
+  ["two-bed", "39e8db9f7233fa438d2ca1c517d67af5a862561e80ca93878b6edb1ac0d9ad5a"], // PS3.6 source rewrite, see header
   ["two-storey", "7389f95b73b7280475e3a92130748bb0560368e9b96f950d5e2364b294bbfc05"], // re-measured, see header
 ];
 
