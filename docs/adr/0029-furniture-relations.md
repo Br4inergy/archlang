@@ -1,6 +1,7 @@
 # 29. Furniture relations: `facing`, `against <room>.<edge>`, `clear front|sides`
 
-- **Status:** Proposed (plan-soundness card PS3.7, `docs/plans/plan-soundness/README.md`)
+- **Status:** Proposed (plan-soundness card PS3.7, `docs/plans/plan-soundness/README.md`); it becomes
+  Accepted when the PR that builds it merges
 - **Date:** 2026-10
 - **Relates to:** [ADR 0017](0017-fixture-semantics-three-flags.md) (amended: a stated `facing`
   is the licence decision 2 withheld), [ADR 0028](0028-rooms-primary-derived-walls.md) §5a
@@ -209,7 +210,7 @@ resolved `rotate`.
 |---|---|---|
 | `W_FURN_CLEAR_FRONT` | a declared `clear front` measures short | on (declared only) |
 | `W_FURN_CLEAR_SIDES` | a declared `clear sides` measures short on either side | on (declared only) |
-| `W_SEAT_FACING_AWAY` | undeclared (PS2.11): a seat with a table or desk within 600 mm whose front ray enters no table or desk within 600 mm | see below |
+| `W_SEAT_FACING_AWAY` | undeclared (PS2.11): a seat with a table or desk within 600 mm whose front ray enters no table or desk within 600 mm | on |
 
 Messages name things as a person would ("The wardrobe in Bedroom 2 needs 600 mm clear in front;
 the bed leaves 100 mm") and never an id; ids are in the hints.
@@ -221,16 +222,18 @@ or a view, not a table. A seat is *at a table* when the gap between the two foot
 the reach on both axes (`seatTableReachMm`, 600); it warns when no such table is entered by its
 front ray (§3's ray, at the seat's resolved turn) within the reach. A seat with `facing` is never
 judged (its turn is stated). The hint names the turn whose ray meets the nearest table, when one
-turn does uniquely, and the `facing <id>` clause; no machine-applicable fix in this card.
+turn does uniquely, and the `facing <id>` clause naming the nearest table; no machine-applicable
+fix in this card.
 
 Measured on the six first-contact plans: 51 seats are at a table and 26 warn (the audit counted 27
 by eye; the difference is a café chair whose front ray meets the next table within 600 mm). On
-`examples/` it warns 16 times on 9 plans (`corner-cafe` 9, and one office or desk chair each on
+`examples/` it warned 16 times on 9 plans (`corner-cafe` 9, and one office or desk chair each on
 `aquarium`, `furnished-flat`, `gallery-l`, `hillside-villa`, `materials`, `museum`, `themed`),
-each a chair drawn facing away from its table: real defects in the corpus. So the rule ships with
-`seatTableReachMm: null` (off) in `DEFAULT_RULESET`, which keeps every corpus `lint()` byte; turning
-it on and correcting the nine examples is its own card, whose PR moves those rows with this
-explanation.
+each a chair drawn facing away from its table: real defects in the corpus. The rule ships **on**
+(`seatTableReachMm: 600` in `DEFAULT_RULESET`, so every profile inherits it), and the same PR fixes
+those chairs, each by the one clause that says what it is for. The byte-identity law protects plans
+that use no new *form*; a new undeclared rule may move `lint()` on the corpus when every moved row
+is explained one by one and a real defect is fixed, never blessed.
 
 ### 7. Budgets and identity
 
@@ -267,7 +270,7 @@ offending clause and a test.
 
 - An author can say what a chair, a sofa or a desk is for, and the compiler turns it, reports the
   fact, and refuses when the geometry cannot satisfy it. A chair facing away from a table is still
-  writable with `rotate`, and the undeclared seat check reports it once it is turned on.
+  writable with `rotate`, and the undeclared seat check reports it.
 - Furniture can back onto a derived wall, which has no id, by its room edge.
 - Clearance stays the author's number. The catalogue keeps its four measured `clearanceMm` values
   and adds none.
