@@ -119,23 +119,33 @@ export function relationalClause(
     const { w, h } = room.size;
     return { top: y, bottom: y + h, left: x, right: x + w, cx: x + w / 2, cy: y + h / 2 };
   };
+  const edgeLine = (datum: string): EdgeLine | undefined => {
+    const d = splitDatum(datum);
+    const word = d ? (COMPASS_DATUM_ALIASES[d.word] ?? d.word) : undefined;
+    const l = d ? lines(d.room) : undefined;
+    return l && word && word in EDGE_OF ? EDGE_OF[word as EdgeWord](l) : undefined;
+  };
   let run: Run | undefined;
   if (r.between) {
     const a = lines(r.between[0]);
     const b = lines(r.between[1]);
     run = a && b ? sharedRun(a, b) : undefined;
   } else if (r.edge) {
-    const d = splitDatum(r.edge);
-    const word = d ? (COMPASS_DATUM_ALIASES[d.word] ?? d.word) : undefined;
-    const l = d ? lines(d.room) : undefined;
-    if (l && word && word in EDGE_OF) {
-      const e = EDGE_OF[word as EdgeWord](l);
-      run = { vertical: e.vertical, c: e.c, r0: e.lo, r1: e.hi };
-    }
+    const e = edgeLine(r.edge);
+    if (e) run = { vertical: e.vertical, c: e.c, r0: e.lo, r1: e.hi };
   }
   if (!run) return undefined;
   const t = run.vertical ? centre.y : centre.x;
-  return `${relationText({ ...r, at: undefined })} at ${numStr(t - run.r0)} from start`;
+  // Keep the anchor the author wrote (`from end`, `from <room>.<edge>` at an end of the run),
+  // as E_OPENING_NIB's hint does; `center`, an axis or no position read from the start.
+  const from = /\bfrom\s+(\S+)$/.exec(r.at ?? "")?.[1];
+  const datum = from !== undefined && from !== "start" && from !== "end" ? edgeLine(from) : undefined;
+  const meets = datum !== undefined && datum.vertical !== run.vertical;
+  let anchor: OnRun["anchor"] = { end: "r0", word: "start" };
+  if (from === "end") anchor = { end: "r1", word: "end" };
+  else if (meets && datum.c === run.r0) anchor = { end: "r0", word: from! };
+  else if (meets && datum.c === run.r1) anchor = { end: "r1", word: from! };
+  return `${relationText({ ...r, at: undefined })} at ${legalText(anchor, t, run)}`;
 }
 
 /**

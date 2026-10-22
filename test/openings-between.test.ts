@@ -5,8 +5,9 @@
  *    <room>.<edge> [at <pos>]`, with `<pos>` one of `center`, `<mm> from start|end`,
  *    `<mm> from <room>.<edge>`, `axis <label>` (offsets to the opening's centre);
  *  - the same datum positions on the existing `on <wall> at …` form;
- *  - the twins (swap-back law): a relational opening draws and lints byte for byte as the same
- *    opening hand-placed on the same host, and describes the same but for its `relation` and
+ *  - the twins (swap-back law): a relational opening draws byte for byte as the same opening
+ *    hand-placed on the same host, lints byte for byte as it whenever no hint moves it (a move
+ *    hint quotes the relation, by design), and describes the same but for its `relation` and
  *    its `relational` placement; a hosted datum offset equals its absolute twin in all three;
  *  - every refusal on its clause: E_OPENING_DATUM, E_OPENING_NO_SHARED_WALL,
  *    E_OPENING_HOST_AMBIGUOUS, E_OPENING_NIB (refused, never slid, naming the nearest legal
@@ -475,6 +476,23 @@ suite("addressing: a hint about a relational opening quotes the relation, never 
     const t = texts(src);
     expect(t).toMatch(/`between a and b at \d+ from start`/);
     expect(t).not.toMatch(/a\|b|on a\|b|exterior#/);
+  });
+
+  it("a move hint keeps the anchor the author wrote (`from end`, `from <room>.<edge>`)", () => {
+    for (const [at, re] of [
+      ["3500 from end", /`between a and b at \d+ from end`/],
+      ["1500 from a.top", /`between a and b at \d+ from a\.top`/],
+      ["3500 from a.bottom", /`between a and b at \d+ from a\.bottom`/],
+    ] as const) {
+      const src = P(
+        `  door id=d between a and b at 1000 from start width 800 hinge left swing in\n  door id=e between a and b at ${at} width 800 hinge right swing out\n`,
+      );
+      expect(
+        lint(src).map((d) => d.code),
+        at,
+      ).toContain("W_OPENING_OVERLAP");
+      expect(texts(src), at).toMatch(re);
+    }
   });
 
   it("a relational door's hinge-flip fix re-emits the relational statement", () => {
