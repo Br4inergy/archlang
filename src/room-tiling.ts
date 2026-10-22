@@ -4,6 +4,10 @@
  * the rooms at fault. Pure: no diagnostics, no ids beyond the internal names, no `RWall`
  * (the element module `src/elements/walls-from-rooms.ts` builds those).
  *
+ * The pairwise wall forms (ADR 0028 §4) reuse steps 1–5 through {@link sweepRooms} and
+ * {@link linkRings}: `wall … between` is one pair's shared run ({@link deriveBetween}) and
+ * `wall … around` the outer ring of a listed set with no hole ({@link deriveAround}).
+ *
  * Every decision is exact on the resolved coordinates; there is no tolerance anywhere
  * (`===`/`<` only). The work is charged to the evaluator's step meter (`MAX_EVAL_STEPS`)
  * BEFORE it is done or allocated, so any input returns within the budget.
