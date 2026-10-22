@@ -1,64 +1,64 @@
-# A two-bedroom apartment with a central corridor.
+# A two-bedroom apartment with a central corridor, written rooms first:
+#   1. the rooms, the corridor among them (a corridor is a room);
+#   2. `walls from rooms`, which derives the shell on their outline and a partition on
+#      every shared edge, so no wall can go missing;
+#   3. the openings, each hosted by the rooms it joins (`door between`, `on <room>.<edge>`);
+#   4. the furniture.
+# Every room opens off the hall, so no room is reached through a bedroom or the bath.
 plan "Two-Bedroom Flat" {
   units mm
   grid 100
   scale 1:100
   north right
 
-  wall id=w_shell   exterior  thickness 250 { (0,0) (10000,0) (10000,8000) (0,8000) close }
-  wall id=w_kb      partition thickness 100 { (4000,0) (4000,5000) }
-  wall id=w_bh      partition thickness 100 { (4000,5000) (10000,5000) }
-  wall id=w_kb2     partition thickness 100 { (0,5000) (4000,5000) }
-  wall id=w_bath_w  partition thickness 100 { (4000,5000) (4000,8000) }
-  wall id=w_hall    partition thickness 100 { (7000,5000) (7000,8000) }
+  room id=r_living at (0,0)       size 4000x8000 label "Kitchen / Living" uses kitchen living
+  room id=r_bed1   at (4000,0)    size 6000x3600 label "Master Bedroom"
+  room id=r_hall   at (4000,3600) size 6000x1400 label "Hall"
+  room id=r_bath   at (4000,5000) size 2400x3000 label "Bathroom"
+  room id=r_bed2   right-of r_bath align top size 3600x3000 label "Bedroom 2"
 
-  room id=r_kitchen at (0,0)        size 4000x5000 label "Kitchen / Living"
-  room id=r_bed1    at (4000,0)     size 6000x5000 label "Master Bedroom"
-  room id=r_bed2    at (0,5000)     size 4000x3000 label "Bedroom 2"
-  room id=r_bath    at (4000,5000)  size 3000x3000 label "Bathroom"
-  room id=r_hall    at (7000,5000)  size 3000x3000 label "Hall"
+  # The hall runs into the living space with no door leaf: an opening across the whole
+  # shared edge, stated rather than left as a gap.
+  walls from rooms exterior 300 partition 100 { open between r_hall and r_living }
 
-  door id=d_front at (8500,8000) width 1000 wall w_shell hinge left swing into r_hall
-  door at (4000,2500)  width 900  wall partition hinge left swing in
-  door id=d_bed2 on w_kb2 at 2000 width 900 hinge right swing into r_bed2
-  door at (5500,5000)  width 800  wall partition hinge left swing in
-  door at (7000,6500)  width 900  wall partition hinge right swing in
+  # The front door at the hall's east end; every other room off the hall. A door says
+  # where it stands (`at 1000 from start`: its centre, from the run's west end).
+  door id=d_front on r_hall.right at center width 900 hinge near start swing into r_hall
+  door between r_hall and r_bed1 at 1000 from start width 900 swing into r_bed1
+  door between r_hall and r_bath at 1000 from start width 800 swing into r_bath
+  door between r_hall and r_bed2 at 1000 from start width 900 swing into r_bed2
 
-  window at (2000,0)     width 2000 wall exterior
-  window at (8000,0)     width 2400 wall exterior
-  window at (0,3000)     width 1500 wall exterior
-  window at (10000,3000) width 1500 wall exterior
-  window id=w_bed2 at (2000,8000) width 1400 wall w_shell
+  window on r_living.top width 2000
+  window on r_living.left at 5500 from start width 1500
+  window on r_bed1.top at 2000 from end width 2400
+  window on r_bed2.bottom width 1400
 
-  # The master bed's head is already on the north wall (rotate 0). Bedroom 2's shares no
-  # wall with the corridor, so its head goes to the south wall instead.
-  furniture bed at (5000,300) size 1800x2100 label "Bed"
-  furniture bed at (300,5800) size 1400x2000 label "Bed" rotate 180
+  # Beds with their heads on a wall; `flush` measures from the wall's inner face.
+  furniture bed      in r_bed1 anchor top-left flush inset 300 size 1800x2100 label "Bed"
   furniture wardrobe in r_bed1 anchor top-right flush size 1200x600
-  furniture wardrobe against wall w_bath_w offset 1500 in r_bed2
+  furniture bed      in r_bed2 anchor bottom-right flush inset 300 size 1400x2000 label "Bed"
+  furniture wardrobe in r_bed2 anchor bottom-left flush size 600x1200 rotate 270
 
-  # Kitchen run along the west wall, clear of the window at (0,3000); the living half of
-  # the room takes a sofa and a small table.
-  furniture fridge       against wall w_shell segment 3 offset 7500 in r_kitchen
-  furniture stove        against wall w_shell segment 3 offset 6800 in r_kitchen
-  furniture kitchen_sink against wall w_shell segment 3 offset 6100 in r_kitchen
-  furniture counter      against wall w_shell segment 3 offset 5300 in r_kitchen
-  furniture sofa  at (2850,600) size 850x600 label "Sofa"  in r_kitchen
-  furniture table at (200,3200) size 700x500 label "Table" in r_kitchen
+  # Kitchen run along the west wall (the ring's segment 3, which runs from (0,8000) up to
+  # (0,0)), clear of the window; the living half of the room takes a sofa and a table.
+  furniture fridge       against wall exterior segment 3 offset 7500 in r_living
+  furniture stove        against wall exterior segment 3 offset 6800 in r_living
+  furniture kitchen_sink against wall exterior segment 3 offset 6100 in r_living
+  furniture counter      against wall exterior segment 3 offset 5300 in r_living
+  furniture sofa  at (2850,5400) size 850x2000 label "Sofa"  in r_living
+  furniture table at (800,5800)  size 1200x800 label "Table" in r_living
 
-  furniture shower against wall w_bath_w offset 2000 in r_bath
-  furniture wc     against wall w_shell segment 2 offset 4500 in r_bath
-  furniture basin  against wall w_shell segment 2 offset 3400 in r_bath
+  furniture shower in r_bath anchor bottom-left flush size 900x900
+  furniture wc     in r_bath anchor bottom flush size 400x700
+  furniture basin  in r_bath anchor right flush size 450x600
 
-  # The eaves: `w_shell` is the plan's one closed exterior ring, so no `wall` clause is
-  # needed to disambiguate it.
+  # The eaves: the derived shell is the plan's one closed exterior ring.
   roof overhang 500
 
   # Overall extents, outside face to outside face: `faces` pushes each endpoint out
   # onto the wall it runs into, so the printed span is the true 10300 × 8300 the
-  # building measures — the 10000 × 8000 room grid plus half the shell at each end,
-  # and note the shell is 300 not 250 here because `grid 100` snaps the thickness.
-  # Exactly the arithmetic a hand-written `text` gets wrong (it used to say 10000).
+  # building measures — the 10000 × 8000 room grid plus half the 300 shell at each end.
+  # Exactly the arithmetic a hand-written `text` gets wrong.
   dim faces (0,8000)->(10000,8000) offset 700
   dim faces (0,0)->(0,8000) offset 700
 

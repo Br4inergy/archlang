@@ -289,6 +289,9 @@ the piece's **centre**, defaults to the edge's midpoint, and is refused outside 
 `B ≠ A` is refused: the edge already names the room. It is closed-form, needs no wall id, and
 `examples/two-bed.arch`'s wardrobe (`against r_bed2.right offset 1500`, centre y 6500) and shower
 (`against r_bath.left offset 2000`, centre y 7000) rewrite to it one for one.
+*Amended 2026-10-23 (card PS3.6, PR #227):* the one-for-one claim held for the file before
+PS3.6. The example was then rewritten rooms first, and its wardrobes and shower are now placed
+by `in <room> anchor … flush`.
 `against wall exterior [segment <n>]` keeps working when the ring is the only exterior wall, with
 segments numbered along the ring's direction rule; an inner ring or an authored exterior wall beside
 the ring makes `exterior` ambiguous, as today.

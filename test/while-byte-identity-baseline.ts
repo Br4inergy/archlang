@@ -343,7 +343,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/one-room.arch", "e12596f5401f097b5cf431fda952e96fc6523d7ca6a97c1518ffe6dd64e72cbe"],
   ["examples/parametric.arch", "4b4e50a6118cdca922c93a88e9c783abe17fd7d29458e27f98f0400721c2c8c7"],
   ["examples/practice-office.arch", "469f2d99f8911d59d91d2e7c0fdfaf21628cb5cfc92d3a0f08634699d57e2012"], // added with the example, re-measured for net area, see header
-  ["examples/relational.arch", "0daebc6c46696e5be32690a293ce40d159e5c690948180767c409b53ccd28190"], // re-measured for PS2.4, see header
+  ["examples/relational.arch", "1e257bc0db623c4dd9e56be955e4ebea5d04908499e0b0112612a06234b723d4"], // re-measured for PS2.4, see header; PS3.6 source rewrite, see ./byte-identity-baseline.ts
   ["examples/sheet-notes.arch", "0104550fc3b3a39a71c1a005da79c3db5ea10ae21d9739e11a6d1f18ee7b7420"], // re-measured, see header
   ["examples/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
   ["examples/terrace-row.arch", "2d5fba9f0db68736e8da81277cb775268e1d3f35cceeb8d4a75c8c12fe5649c0"],
@@ -351,7 +351,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/tiny-house.arch", "c3d562235b68223d1018f22230e28fc54404a8fed6f1a617816ce834aa0f5b01"],
   ["examples/townhouse.arch", "fe8e58b3b89a6e35101d852a82a425bee082d28735de04f1ad6546b9be3466f8"],
   ["examples/transit-hall.arch", "36eeb0b92a45d3e1db704bd302ce34731bef4cb2ed637021e90ddca7f9744d76"],
-  ["examples/two-bed.arch", "38dce8b3f9b2f408286f53ab8fd5af8501deff388f493ccced6277a9fb40e740"],
+  ["examples/two-bed.arch", "e090b95af12f5643ee1c1767a40a36be025872909f9b32172df2626f3de0a8b1"], // PS3.6 source rewrite, see ./byte-identity-baseline.ts
   ["examples/two-storey.arch", "76b5e43457bd8723b53bf77739de5083718f478b5fd29cf937b6eacf6fd91632"],
   ["test/fixtures/axes-grid.arch", "a0a729cd0ec5bbfd90353f47e0fc9d3ee45601b66dbb67df459f54165465e8ff"],
   ["test/fixtures/chain30.arch", "858da6001d3d8032a10d372a3dac4c4eae453ad898c4f930ec4dd09ad4d9c54a"], // new fixture, see header

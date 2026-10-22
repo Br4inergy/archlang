@@ -12,8 +12,9 @@
  *  - the statement through `compile()`/`describe()`: every refusal code, coexistence with
  *    authored walls, `place`d instances, the element budget, the number domain, the parse
  *    refusals and the resolve order (a balcony rail sees the derived ring);
- *  - the twins of `examples/studio.arch` and `examples/two-bed.arch` written with the form:
- *    the SVG and `lint()` are byte-identical, and every `describe()` difference is listed;
+ *  - the twins: `examples/studio.arch` written with the form, and `examples/two-bed.arch` and
+ *    `examples/relational.arch` (written with it since PS3.6) typed back by hand: the SVG and
+ *    `lint()` are byte-identical, and every `describe()` difference of the studio is listed;
  *  - a derived wall is never an element, never authored, and carries `_derived`.
  */
 
@@ -756,7 +757,10 @@ suite("twins of the examples (the swap-back law)", () => {
   const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
   const pairs: Array<[string, string]> = [
     ["examples/studio.arch", "test/walls-from-rooms/studio.arch"],
+    // Since PS3.6 these two examples are the derived side and the twins are hand-typed
+    // (walls as points, openings `on <wall> at <mm>`): the swap-back law read the other way.
     ["examples/two-bed.arch", "test/walls-from-rooms/two-bed.arch"],
+    ["examples/relational.arch", "test/walls-from-rooms/relational.arch"],
   ];
   it.each(pairs)("%s: the SVG is byte-identical", (a, b) => {
     expect(compile(read(b)).svg).toBe(compile(read(a)).svg);

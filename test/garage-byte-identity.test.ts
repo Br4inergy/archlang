@@ -190,7 +190,7 @@ const BASELINE: Readonly<Record<string, string>> = {
   // `describe()` moves (uses + room_type) and nothing else; see ./byte-identity-baseline.ts,
   // "the label classifier emits living", for the swap-back proof. Re-measured again the same day
   // (PS2.5): `lint()` gains three W_ROOM_VIA_PRIVATE; see "the circulation-and-privacy rules".
-  "two-bed.arch": "4f1707b820f441fb405c2b1438bd2c1b4b620f5494e751e78d5c3e894c52a5c7",
+  "two-bed.arch": "0ec613240e85fd5911f2d0c3e79d069f274d266b7d3555bc62e3ad49a44eced1", // PS3.6 source rewrite, see ./byte-identity-baseline.ts
 };
 
 /**
@@ -223,7 +223,7 @@ const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
   // Re-measured 2026-10-20 (PS2.19), `describe()` only: see `byte-identity-baseline.ts`.
   "furnished-flat.arch": "abd789cdd3940cf2c6ef569014fa94ad1e74ede43fa44f53b81a73d471cfaf3c",
   // Re-measured 2026-10-18 (PS0.7, then PS2.5), the same causes as BASELINE's two-bed row.
-  "two-bed.arch": "f397cf69203454e62a6c9b042f96c56bdba08a5ab59ace07175130c31842aaad",
+  "two-bed.arch": "39e8db9f7233fa438d2ca1c517d67af5a862561e80ca93878b6edb1ac0d9ad5a", // PS3.6 source rewrite, see ./byte-identity-baseline.ts
 };
 
 suite("the outdoor tranche — the byte-identity law", () => {

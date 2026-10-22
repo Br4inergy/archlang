@@ -57,8 +57,31 @@ const SCALE_LADDER = AUTO_SCALE_DENOMINATORS.map((d) => `1:${d}`);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..");
 
-/** The example files embedded verbatim, in order (attachment-first flagship leads). */
-export const SPEC_EXAMPLES = ["attached.arch", "parametric.arch"] as const;
+/** The example files embedded verbatim under `## Worked examples`, in order. The page's lead
+ *  example is {@link LEAD_EXAMPLE}, not a file: it replaced `attached.arch` (ADR 0028 §7). */
+export const SPEC_EXAMPLES = ["parametric.arch"] as const;
+
+/**
+ * The room-graph example the spec leads with (ADR 0028 §7, card PS3.6): rooms (absolute, then
+ * relational), `walls from rooms` with an `open between`, then openings hosted by the rooms they
+ * join, then one piece of furniture. It is the shortest plan that shows that whole chain, and it
+ * is the first plan an agent reads, so it is written in the form that cannot express a missing
+ * wall, a wall-free shared edge or an opening off its wall. `skills/archlang/SKILL.md` carries
+ * the same text verbatim; `test/spec-forms.test.ts` compiles and lints both (0 diagnostics).
+ */
+export const LEAD_EXAMPLE = `plan "Room graph" {
+  units mm
+  grid 100
+  room id=living at (0,0) size 4000x4000 uses living
+  room id=hall right-of living size 1500x4000 uses hall
+  room id=bedroom right-of hall size 3000x4000 uses bedroom
+  walls from rooms exterior 200 partition 100 { open between living and hall }
+  door on hall.bottom at center width 900 swing into hall
+  door between hall and bedroom at 800 from start width 800 swing into bedroom
+  window on living.left width 1500
+  window on bedroom.right width 1200
+  furniture bed in bedroom anchor bottom-right flush size 1500x2000
+}`;
 
 /** The relational directions that align on each cross axis, derived from
  *  {@link REL_DIR_AXIS} so the spec's axis rule and the compiler's cannot diverge.
@@ -641,10 +664,21 @@ a \`fix\`). This page is everything you need to author it.
 2. **Origin is top-left; +x goes right, +y goes DOWN** (screen/SVG convention — *not* math y-up).
 3. **Coordinates are \`(x, y)\` tuples; sizes are \`WxH\`** (e.g. \`4000x3000\`) or \`<expr> x <expr>\` with spaces.
 4. **Doors and windows must lie ON a wall segment** (on its centerline), or you get a
-   \`W_DOOR_OFF_WALL\` / \`W_WINDOW_OFF_WALL\` warning. Attach with \`door on <wall> at <pos>\` — hosted by construction.
+   \`W_DOOR_OFF_WALL\` / \`W_WINDOW_OFF_WALL\` warning. Host them by rooms (below) or \`on <wall> at <pos>\` — hosted by construction.
 5. **String interpolation is \`"{expr}"\`** inside double quotes (e.g. \`label "Unit {i}"\`).
 6. **\`id=\` comes FIRST — right after the element keyword, before any category word** (\`wall id=w1 exterior …\`, \`furniture id=b1 bed …\`; \`wall exterior id=w1 …\` and \`furniture bed id=b1 …\` are parse errors). Ids are unique; omit \`id=\` to auto-generate one, and name a thing only when you reference it.
 7. **Everything is expand-time and pure** — \`let\`/\`for\`/\`if\`/functions all evaluate during compile.
+
+## Start here: rooms first
+
+Write the rooms (a corridor is a room), let \`walls from rooms\` derive every wall, and host each
+opening by the rooms it joins. This plan compiles and lints clean:
+
+\`\`\`arch
+${LEAD_EXAMPLE}
+\`\`\`
+
+To type some walls and derive others, name one by its rooms: \`wall … between <A> and <B>\`.
 
 ## Structure
 

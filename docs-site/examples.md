@@ -187,9 +187,10 @@ compile from nothing. Run `archlang describe` / `archlang lint` on it to see the
 
 ### Two-bedroom flat
 
-**5 rooms, 80 m², 5 doors, 5 windows** on a 10 × 8 m footprint at `scale 1:100` — a
-larger plan with a central corridor and several openings, placed absolutely at a real
-apartment's scale, with `north` reoriented.
+**5 rooms, 80 m², 4 doors, 4 windows** on a 10 × 8 m footprint at `scale 1:100` — a
+larger plan with every room off a central corridor, written rooms first: `walls from rooms`
+derives every wall, the corridor opens to the living room by `open between`, and each door
+and window is hosted by the rooms it joins. `north` is reoriented.
 
 <ArchLive :src="EXAMPLES['two-bed']" :rows="15" />
 
@@ -571,9 +572,10 @@ from one word.
 
 ### Relational (right-of / below)
 
-**4 rooms, 60 m²** at `scale 1:100`, positioned relative to one another with `right-of` /
+**5 rooms, 60 m²** at `scale 1:100`, positioned relative to one another with `right-of` /
 `below`, `align` and `gap` — resolved to absolute coordinates by deterministic arithmetic in
-topological order, not an optimizer (see [relational placement](/relational)).
+topological order, not an optimizer (see [relational placement](/relational)). The walls and
+openings are derived from the rooms, so they reflow with them.
 
 <ArchLive :src="EXAMPLES['relational']" :rows="11" />
 

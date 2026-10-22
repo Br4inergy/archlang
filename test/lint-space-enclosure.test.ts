@@ -352,15 +352,12 @@ function walkedNotReached(src: string, world: World): string[] {
 /**
  * The plans where the claim does not hold yet, measured, each with why. A body walks into
  * these rooms over a boundary with no wall and no connector, so the access graph has no edge
- * for the step. Every one is a boundary `W_BOUNDARY_NO_WALL` reports, except the one its
- * open-plan exemption lets through (relational's kitchen, open to the living room by design:
- * an open-plan join is not a defect, but the access graph cannot see it until it is modelled
- * as a cased opening or by PS3's `open between`). The set is pinned exactly: a new entry, or
- * one that starts to hold, turns this red.
+ * for the step. Every one is a boundary `W_BOUNDARY_NO_WALL` reports. (`examples/relational.arch`
+ * was here, its open-plan kitchen the one exempt entry, until PS3.6 derived its walls and wrote
+ * the join as `open between`, which the access graph sees: it now holds.) The set is pinned
+ * exactly: a new entry, or one that starts to hold, turns this red.
  */
 const NOT_YET: Record<string, string[]> = {
-  // living|kitchen open plan (exempt); living|bedroom, kitchen|bath, bedroom|bath reported.
-  "examples/relational.arch": ["kitchen", "bed", "bath"],
   // The corpus case itself: Living Room | Bedrooms 3 and 4, reported.
   "test/defect-corpus/space-not-enclosed/fa-no-wall-living-bedrooms.arch": ["r_bed3", "r_bed4"],
   // A zones fixture drawn with no partitions: Gallery A | Gallery B and Office | Store, reported.
@@ -381,7 +378,7 @@ describe("circulation-reachable implies access-reachable, on the corpus", () => 
     expect(found).toEqual(NOT_YET);
   });
 
-  it("every counterexample but the open-plan one is a boundary W_BOUNDARY_NO_WALL reports", () => {
+  it("every counterexample is a boundary W_BOUNDARY_NO_WALL reports", () => {
     for (const f of Object.keys(NOT_YET)) {
       const ds = only(readFileSync(f, "utf8"), "W_BOUNDARY_NO_WALL", { world: worldFor(dirname(f)) });
       expect(ds.length, f).toBeGreaterThan(0);

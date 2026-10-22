@@ -17,7 +17,9 @@ const API: CompilerApi = { compile, describe, lint };
 
 const DIGESTS: [string, string][] = [
   ["studio-twin", "25ad0dd4d393d4c72288a9ff004ff8aaef8e750e376f1da53136237322bba1d5"],
-  ["two-bed-twin", "92a53fbac3c5fb75dfdb999e101d9167dec6c5c35222febdbf2c1e1369b02067"],
+  // Re-pinned for PS3.6: the twin is now the hand-typed twin of the rewritten two-bed (a
+  // different plan); the previous twin under this compiler reproduces the previous row.
+  ["two-bed-twin", "bde125dcab98214a69781e03a9e33f4143f68197b78d215397a282f207e36af8"],
   ["widen-4000", "8f10a20c86ffc919a72b6bb7912c7fffea0f953f46777d3f84a598582c67209e"],
   ["widen-4500", "c50d7c02d2f34d92da146950a02856fa53648b2d961314cc29db95d97e78012d"],
   ["courtyard", "7db77fbb50cf24659f402e0ef09e2e15ebffa9d5833b9d1a16513dedf6a5fb4e"],
