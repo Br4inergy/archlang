@@ -20,6 +20,7 @@
  *   fmt       canonical formatting
  *   finish    add the sheet statements a plan lacks
  *   reroll    offer a proven-equivalent `for` loop for a repeated statement run
+ *   impact    change one number: what moved and why, what held, what broke
  *   spec      print the one-prompt language spec (spec.llm.md)
  *   new       scaffold a starter .arch
  *   explain   look up an error code
@@ -45,7 +46,7 @@ import { findCommand, renderCommandHelp, renderTopHelp } from "./cli/help.js";
 import { buildManifest, CLI_NAME, MANIFEST_COMMAND_NAMES } from "./manifest.js";
 import { closest } from "./expr.js";
 import { cmdBatch, cmdCompile, cmdMd, cmdPreview, cmdWatch } from "./cli/commands-render.js";
-import { cmdDescribe, cmdLint, cmdScore, cmdValidate } from "./cli/commands-analyze.js";
+import { cmdDescribe, cmdImpact, cmdLint, cmdScore, cmdValidate } from "./cli/commands-analyze.js";
 import {
   cmdAst,
   cmdComplete,
@@ -176,6 +177,8 @@ async function main(): Promise<void> {
       return finish(cmdSuggest(args));
     case "reroll":
       return finish(cmdReroll(args));
+    case "impact":
+      return finish(cmdImpact(args));
     case "spec":
       return finish(cmdSpec(args));
     case "context":

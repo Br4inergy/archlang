@@ -66,6 +66,8 @@ const RENDER =
   "raised by the PDF/PNG backends at render time (a glyph no embedded font covers), never by compile()/lint(); pinned in test/export-font-cjk.test.ts";
 const HOSTED =
   "raised by a HOST before compile() runs (the hosted MCP Worker's byte cap and rate limit, `inputTooLarge()`/`rateLimited()`), never by compile()/lint(), which have neither; pinned in test/input-limit.test.ts";
+const IMPACT =
+  "raised by `applyLetOverride()` (`arch impact --set`) before anything compiles, never by compile()/lint(); the example is executed in test/impact.test.ts";
 const FRAGMENT =
   "a one-line fragment: the code needs a building around it (a wall to be off, rooms to be unreachable between, a sheet to overflow), and the whole-plan spatial rules are owned by test/lint.test.ts";
 
@@ -101,6 +103,7 @@ const NOT_REPRODUCED: ReadonlyMap<string, string> = new Map([
   ["E_JSON_SCHEMA", JSON_CHANNEL],
 
   ["E_INSTANCE_NO_TRANSFORM", PLUGIN],
+  ["E_SET_OVERRIDE", IMPACT],
 
   ["E_PNG_DEPENDENCY", DEP],
   ["E_INPUT_TOO_LARGE", HOSTED],
@@ -207,6 +210,8 @@ suite("error catalog — every example that can raise its code does", () => {
     // here can; they are raised in test/input-limit.test.ts and by the hosted MCP Worker's tests.
     // E_JSON_DERIVED_IN_INSTANCE took it to 51: `planToJson` raises it on a plan that compiles
     // cleanly, so no compile()/lint() of a snippet can; raised in test/walls-from-rooms.test.ts.
-    expect(NOT_REPRODUCED.size).toBeLessThanOrEqual(51);
+    // E_SET_OVERRIDE took it to 52: `arch impact --set` raises it on the override, before any
+    // compile; its example is executed in test/impact.test.ts.
+    expect(NOT_REPRODUCED.size).toBeLessThanOrEqual(52);
   });
 });

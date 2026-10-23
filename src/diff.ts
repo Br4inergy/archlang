@@ -517,8 +517,16 @@ function diffOpenings(
  * if (d.ok) for (const r of d.rooms) console.log(r.id, r.change);
  */
 export function diffPlans(sourceA: string, sourceB: string, opts: DescribeOptions = {}): PlanDiff {
-  const { summary: before, autoRoomIds: autoBefore, fabric: fabricBefore } = describeWithAutoIds(sourceA, opts);
-  const { summary: after, autoRoomIds: autoAfter, fabric: fabricAfter } = describeWithAutoIds(sourceB, opts);
+  return diffSides(sourceA, sourceB, opts, opts);
+}
+
+/**
+ * @internal {@link diffPlans} with each side read under its own options: `arch impact --against`
+ * resolves each file's `import`s against its own directory. Not public API.
+ */
+export function diffSides(sourceA: string, sourceB: string, optsA: DescribeOptions, optsB: DescribeOptions): PlanDiff {
+  const { summary: before, autoRoomIds: autoBefore, fabric: fabricBefore } = describeWithAutoIds(sourceA, optsA);
+  const { summary: after, autoRoomIds: autoAfter, fabric: fabricAfter } = describeWithAutoIds(sourceB, optsB);
   const base: PlanDiff = {
     ok: before.ok && after.ok,
     diagnostics: [...before.diagnostics, ...after.diagnostics].filter((d) => d.severity === "error"),

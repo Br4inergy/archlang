@@ -185,6 +185,13 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "Type one of the `segment <n>` numbers the message lists, or name a different edge or direction.",
     "wall id=w exterior thickness 200 { (0,0) (3000,0) (3000,1000) (6000,1000) (6000,4000) (0,4000) close }\nfurniture wardrobe against wall w segment north side right   # error: segments 0 and 2 both face north",
   ),
+  E_SET_OVERRIDE: E(
+    "E_SET_OVERRIDE",
+    "`archlang impact --set NAME=value` cannot override that name with that value.",
+    "`--set NAME=value` replaces the expression of the root plan's one top-level `let NAME = …` with a numeric literal and compares the plan before and after. It is refused, and nothing is compared, when NAME is not exactly one top-level `let` (absent, bound only inside a block, a component or a `level`, a value-function `let f(x) = …`, declared twice, or reassigned with `NAME = …`), or when the value is not one number as the language writes it (`4500`, `4.5m`, `45cm`, `-200`). Raised by `applyLetOverride()`, never by `compile()`.",
+    "Name a top-level `let` the message lists, give a plain number, or compare two whole files with `archlang impact plan.arch --against old.arch`.",
+    "let W = 4000\nroom id=a at (0,0) size W x 3000   # archlang impact plan.arch --set D=4500: error, D is not a top-level let",
+  ),
   E_FURN_FLUSH: E(
     "E_FURN_FLUSH",
     "`flush` on a placement that touches no edge.",
