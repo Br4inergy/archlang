@@ -9,11 +9,12 @@
 
 | Measure | 2026-10-18 | 2026-10-24 |
 |---|---|---|
-| The 57 audited defects caught by default `lint` (old plans, unchanged) | 0 / 57 | **17 / 57** (1 of 4 B, 12 of 26 N, 4 of 27 m) |
-| …of the 48 the audit marked lintable (not `n/a`) | 0 / 48 | 17 / 48 |
+| The 57 audited defects caught by default `lint` (old plans, unchanged) | 0 / 57 | **17 / 57, 6 of them partially** (14 / 57 counting a partial catch as half) |
+| …by severity | — | B 1 / 4 · N 12 / 26 (6 of them partial) · m 4 / 27 |
+| …of the 48 the audit marked lintable (not `n/a`) | 0 / 48 | 17 / 48, 6 partial |
 | …with `--profile accessibility-advisory` added | — | 18 / 57 |
-| Default warnings on the old plans that are false positives | — | 0 of 39 |
-| Cold-authored plans: verified defects (B / N / m) | 57 (4 / 26 / 27) | **45 (2 / 24 / 19)** |
+| Warnings on the old plans that are false positives | — | 0 of 39 default; 0 under the profile (its threshold hits are neither caught nor false) |
+| Cold-authored plans: verified defects (B / N / m), area basis judged as in the baseline | 57 (4 / 26 / 27) | **48 (2 / 24 / 22)** |
 | …of which final `lint` reports | 0 | 1 |
 | Plans written rooms-first (`walls from rooms`, no `wall` statement) | 0 / 6 | **6 / 6** |
 | Openings-ignore-walls defects (class 1) | 4 | **0** |
@@ -72,7 +73,15 @@ not in the audit (townhouse, below).
 | 4 Café | 11 | 5 | C1 `W_OPENING_AT_JUNCTION` (`window_8`, 100 mm of `w_v3` in the span); C2 `W_OPENING_OVERLAP` (69 mm pier); C3 `W_SEAT_FACING_AWAY` ×11 of the 12 chairs; C5 `W_WET_ROOM_DOOR` (the staff WC onto the servery; the accessible-WC half is silent); C8 `W_ROOM_MISSING_DEFINING` ×2 (kitchen worktop, servery sink and stove) | C4, C6, C7, C9, C10, C11 |
 | 5 Townhouse | 8 | 2 | T4 `W_SEAT_FACING_AWAY` ×2; T5 `W_ROOM_MISSING_DEFINING` (worktop half; the fridge over `window_2` is missed) | T1, T2, T3, T6, T7, T8 |
 | 6 Clinic | 11 | 3 | K2 and K3 `W_OPENING_AT_JUNCTION` (50 mm jambs); K6 `W_SEAT_FACING_AWAY` ×8 (all 8 of the audit's chairs) | K1, K4, K5, K7, K8, K9, K10, K11 |
-| **Total** | **57** | **17** | B 1 / 4 (C1) · N 12 / 26 · m 4 / 27 | 40 |
+| **Total** | **57** | **17, 6 partially** | B 1 / 4 (C1) · N 12 / 26 · m 4 / 27 | 40 |
+
+**Six of the 17 catches are partial.** The warning names the defect but misses one half of it:
+- A7, S3 and T5: the worktop half. The hob against the side wall, the chair by the hob and the fridge over the window are missed.
+- C3: 11 of the 12 chairs.
+- C5: the staff WC only.
+- C8: the worktop, sink and stove, but not the missing wash-hand basin.
+
+All six are N. Counting each as half gives 14 / 57.
 
 Notes:
 - **New finding, not in the audit:** townhouse `g_front`, `W_OPENING_AT_JUNCTION`. The jamb at x 1950 is 100 mm from the hall/living partition face at 2050, and the rule needs 125. The audit measured this door for T1 but did not see the nib. It is a true class-1 defect, minor.
@@ -89,10 +98,7 @@ Notes:
   - The audit's context, area-basis and taste rows. Nine of these were `n/a`.
 - **Accessibility profile.** It adds one plausible catch: café `W_PATH_TOO_NARROW` "Accessible WC" at 790 mm. The message names no door, so the pinch is furniture: likely C7 (the audit measured 775). It also re-reports A2 (`W_DOORWAY_BLOCKED`, sofa 300 mm) and C2 (`W_SWING_OBSTRUCTED`, leaves 81 mm short).
 - **Accessibility profile, the rest.** These are profile thresholds the audit did not judge the residential briefs against (800 mm doors, 900 mm walks, 1050 mm swing radii); I count them neither caught nor false.
-- **False positives.** There are 0 under the default ruleset. Under the accessibility profile there are 3, all the use-blind `W_ROOM_TOO_SMALL` the audit already named as repair pressure (§12):
-  - apartment laundry, 4 m²;
-  - townhouse WC, 4.2 m²;
-  - studio entrance, 4.48 m². The audit's S6 says this entrance is too large, not too small.
+- **False positives: none, under either ruleset.** The accessibility profile's `W_ROOM_TOO_SMALL` hits are filed with the other profile thresholds as neither caught nor false: the apartment laundry (4 m²), the townhouse WC (4.2 m²) and the studio entrance (4.48 m²). The profile's 5 m² floor is deliberate (`roomAreaFloorMode: at-least-generic`). A 4.2 m² WC is arguably a true accessibility finding. The studio entrance sits oddly with the audit's S6, which calls it too large.
 
 ---
 
@@ -137,6 +143,7 @@ Severity and class follow the baseline audit. Lint is the final plan's default l
 | NA4 | The dining table has no chairs | `table_6` 1600 × 900, no seat in the plan | m | 4 | MISSED |
 | NA5 | Bedroom 1 is reached only through the living/dining/kitchen | `door between living and bed1`; no hall door | m | 3 | MISSED |
 | NA6 | Wall-thickness text inside rooms | "100" (5729,3575), "200" (2775,279) | m | 8 | MISSED |
+| NA7 | The brief's ~70 m² is met only on centrelines (as A12) | centreline 72.0; GIA 8800 × 7800 = 68.6 | m | **new** (area basis) | n/a |
 
 **2 · House** (12500 × 9800, 122.5 m² with the garage; final lint 0)
 
@@ -151,6 +158,7 @@ Severity and class follow the baseline audit. Lint is the final plan's default l
 | NH7 | Bed heads in bedrooms 2 and 3 stand 325 mm off the wall, in front of the windows | `anchor top-left flush inset 300`; bed y 450, face 125 | m | 5 | MISSED |
 | NH8 | The passage is 15 m² with dead ends at both ends | 12.5 × 1.2 m serving four doors | m | **new** (space efficiency) | n/a |
 | NH9 | Wall-thickness text inside rooms | "100" (9700,4593), "300" (8550,508) | m | 8 | MISSED |
+| NH10 | "~110 m²" is missed (as H8, judged on the habitable floor) | habitable 105.2 m² centreline (122.5 less the 17.3 m² garage); about 101 m² GIA | m | **new** (area basis) | n/a |
 
 **3 · Studio** (6000 × 5000, 30 m²; final lint 0)
 
@@ -161,6 +169,10 @@ Severity and class follow the baseline audit. Lint is the final plan's default l
 | NS3 | There is no sleeping alcove (the brief asks for one). The double bed sits flush in a corner, its long side across the west window | bed x 100–1700, y 2900–4900; `window_1` y 1750–3250 | N | 5 / brief | MISSED |
 | NS4 | The sofa is anchored `bottom-right flush` but not turned, so it faces the south wall 0 mm away with its back to the room | `sofa_l` y 4000–4900, rotate 0 | N | **new** (relation) | MISSED |
 | NS5 | Wall-thickness text inside rooms | "100" (4729,1275), "200" (450,279) | m | 8 | MISSED |
+| NS6 | The brief's 30 m² is met only on centrelines (as S7) | centreline 30.0; GIA 5800 × 4800 = 27.8 | m | **new** (area basis) | n/a |
+
+Not counted: the entrance share (baseline S6). The entry is 3.75 m², 12.5 % of 30 m² against S6's 15 %,
+and it doubles as the bathroom's lobby (the fix for S1).
 
 **4 · Café** (12000 × 7500, 90 m²; compile-only 36 warnings, final lint 1)
 
@@ -209,13 +221,17 @@ party walls the 2026-10-18 author assumed. The brief does not say.
 
 | Plan | Defects 10-18 (B/N/m) | Defects 10-24 (B/N/m) | Final lint caught, 10-18 | Final lint caught, 10-24 |
 |---|---|---|---|---|
-| 1 Apartment | 12 (0/5/7) | 6 (0/3/3) | 0 | 0 |
-| 2 House | 8 (0/3/5) | 9 (0/4/5) | 0 | 0 |
-| 3 Studio | 7 (0/3/4) | 5 (0/4/1) | 0 | 0 |
+| 1 Apartment | 12 (0/5/7) | 7 (0/3/4) | 0 | 0 |
+| 2 House | 8 (0/3/5) | 10 (0/4/6) | 0 | 0 |
+| 3 Studio | 7 (0/3/4) | 6 (0/4/2) | 0 | 0 |
 | 4 Café | 11 (1/6/4) | 9 (0/5/4) | 0 | 1 |
 | 5 Townhouse | 8 (2/2/4) | 9 (2/4/3) | 0 | 0 |
 | 6 Clinic | 11 (1/7/3) | 7 (0/4/3) | 0 | 0 |
-| **Total** | **57 (4/26/27)** | **45 (2/24/19)** | **0** | **1** |
+| **Total** | **57 (4/26/27)** | **48 (2/24/22)** | **0** | **1** |
+
+Area basis is judged as the baseline judged it: a defect where the brief's area is met only on
+centrelines, or missed (A12, H8 and S7 then; NA7, NH10 and NS6 now). Without those rows on both sides,
+the totals are 54 → 45.
 
 By class:
 
@@ -232,10 +248,10 @@ By class:
 | new: furniture relation | 9 | 3 |
 | new: transposed footprint | 3 | 1 |
 | new: door–door and leaf across a corridor | 2 | 2 |
-| new: other (brief, egress, zoning, size, context, area, taste) | 12 | 6 |
+| new: other (brief, egress, zoning, size, context, area, taste) | 12 (3 of them area basis) | 9 (3 of them area basis) |
 
 **Final lint catches about nothing in both runs, by construction:** both sets of authors repaired
-until lint was clean. The yardstick is the defects that survive the loop, which fell from 57 to 45
+until lint was clean. The yardstick is the defects that survive the loop, which fell from 57 to 48
 (blockers 4 → 2), with the class mix shifting:
 - Class 1 is gone (rooms-first).
 - Seat turns are gone (lint-driven).
@@ -287,7 +303,7 @@ Given today's spec, a cold author chooses rooms-first unprompted: 6 of 6, with 3
 and 0 `wall` statements. Against the walls-first baseline:
 - class 1 fell from 4 to 0;
 - no opening landed in the wrong room;
-- total surviving defects fell 57 → 45.
+- total surviving defects fell 57 → 48 (54 → 45 without area basis).
 
 The rooms-first gain is concentrated in class 1 and in swing wording (K1). It does not reach:
 - furniture (clearances 11 → 14);
@@ -314,6 +330,10 @@ caught surviving instances:
 The ones below have no card.
 
 - **PS2.30 · Room use inferred from contents.** A room holding a kitchen sink, stove or fridge but not typed `kitchen` (or untyped) gets `W_ROOM_USE_MISSING`, or the kitchen rules run on the inferred use. NA1, NS1, NC1. NC1 shows that deleting the type is the cheapest way to silence `W_ROOM_MISSING_DEFINING`.
+  - **Acceptance test: the exact laundering.** The final café (`first-contact-plans/2026-10-24-rerun/4-cafe.arch`) has `service` untyped, and lint reports only `W_WET_ROOM_DOOR`.
+  - Restoring `uses kitchen` on `service` brings back `W_ROOM_MISSING_DEFINING`: "Counter" is furnished (bar counter) but has no kitchen sink, no stove and no counter or worktop.
+  - The card is done when the untyped room gets the same finding.
+  - `bar_counter` does not count as the worktop in that message, and the card should keep it that way.
 - **PS2.31 · A table or desk with no seat.** A dining table or desk with no chair within `seatTableReachMm`. NA4, NT8, NK1. Also a waiting room's seat count, as a profile value.
 - **PS2.32 · A seat or sofa facing a wall.** A sofa or seat whose front ray meets a wall face within 600 mm: NS4, NK5, NH2's front. A sibling of PS2.28. Also make `in <room> anchor <edge> flush` turn a sofa's back to the anchored wall as it does a bed's head, or say in `spec.llm.md` that it does not.
 - **PS2.33 · An open leaf across a corridor.** An open leaf in a circulation room that leaves under 700 mm past it: NH3. A sibling of `W_LEAF_ACROSS_DOORWAY`.
@@ -329,7 +349,7 @@ NK6 public/staff zoning (PS2.16).
 
 Two cases were added with clean twins:
 - `test/defect-corpus/clearances/seat-facing-away.arch`: `done`, `W_SEAT_FACING_AWAY`. Its twin uses `facing t_dine`.
-- `test/defect-corpus/circulation-privacy/fire-door-inward.arch`: K1 reduced. Lint says nothing today, so the case is `todo` with the proposed code `W_EXIT_SWINGS_INWARD` (PS2.16, added to the folder README's proposed list). Its twin uses `swing outward`.
+- `test/defect-corpus/circulation-privacy/fire-door-inward.arch`: K1 reduced. Lint says nothing today, so the case is `todo` with the proposed code `W_EXIT_SWINGS_INWARD` (PS2.16, added to the folder README's proposed list). A "Staff room" makes `dwellingReading` read the plan as non-residential, the rule's scope. Its twin uses `swing outward`.
 
 Catch rate: 46 / 68 → **47 / 70**:
 - clearances 5 / 18;

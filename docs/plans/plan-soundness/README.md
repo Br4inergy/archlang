@@ -861,7 +861,8 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
    measures the wall-first baseline (`audits/2026-10-18-first-contact.md`, once written).
    *Measured 2026-10-24, see `audits/2026-10-24-first-contact-rerun.md`:* six cold authors on
    today's spec wrote rooms-first unprompted (6/6, 0 `wall` statements); class-1 defects fell 4 → 0
-   and surviving defects 57 → 45. There is no walls-first control arm yet.
+   and surviving defects 57 → 48 (area basis judged as in the baseline; 54 → 45 without it). There
+   is no walls-first control arm yet.
 2. **Where is the boundary between a fact and taste in each culture?** For example, a kitchen as the
    entry room is normal in some housing stocks. Profiles may need a `residential-generic` that is
    deliberately quiet.
@@ -896,8 +897,8 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
    vertical stacking of partitions, oblique joins inflating `bbox_outer`, circulation share (taste).
    Re-run after PS2 lands, and count the furniture turn.
    *Measured 2026-10-24, see `audits/2026-10-24-first-contact-rerun.md`:*
-   - The old plans re-linted: 17/57 caught, 0 false positives in 39 default warnings.
-   - The briefs re-authored cold: 45 defects (2 B), final lint 1.
+   - The old plans re-linted: 17/57 caught, 6 of them partially (14/57 counting halves), and 0 false positives.
+   - The briefs re-authored cold: 48 defects (2 B), final lint 1.
    - Seats: 24/24 inverted before the lint loop, 0/24 after; `facing` used 0 times.
    - Sofas: 1/3 face their TV.
    - Exterior doors: 8/8 swing the intended way.
