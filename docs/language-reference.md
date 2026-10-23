@@ -3033,8 +3033,8 @@ The returned `PlanDiff` reports:
   before, in plan coordinates) / `relabeled` / `moved`. A `moved` room has the same shape at
   another position and carries only its `offset` (`dx`, `dy` in mm, +y down the page), no
   area fields. The offset is the translation that carries the room's floor vertices onto the
-  new ones within 10 mm each, whatever vertex the ring is written from and whichever way it
-  winds (a circle: its centre); it is never read off the bbox.
+  new ones within 10 mm each, also when the ring is written from another vertex or in the
+  other direction (a circle: its centre); it is never read off the bbox.
 - **`openings`** — doors, windows, and openings `added` / `removed` / `resized` (before/after
   clear width in mm, and what they sit `between`), or `rehosted` when the width held but the
   host changed (the wall it stands in, or its `between A and B` / `on <room>.<edge>`

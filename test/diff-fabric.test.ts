@@ -78,6 +78,21 @@ suite("PS0.4 defect 1: a pure move is a move", () => {
     }
   });
 
+  it("two vertices near-tied on the lowest x do not flip a move into a resize", () => {
+    // Red-team probe (round 2): x 1000 and 1004 sit within the 10 mm noise floor, and a
+    // sub-10 mm nudge (1506 vs 1502) flips which is "lowest", so canonical starts differed and
+    // the move read "S -0.0 m²; left edge +502 mm". Compared as written first, it is a move;
+    // the offset is vertex 0's: (1506,1000) − (1000,1000) = 506 mm right.
+    // No `grid`: a 50 mm grid would snap 1004/1506/1502 and hide the near-tie.
+    const free = (ring: string) => box([`  room id=s polygon ${ring} label "S"`]).replace("  grid 50\n", "");
+    const d = diffPlans(
+      free("(1000,1000) (4000,1000) (4000,3000) (1004,3000)"),
+      free("(1506,1000) (4500,1000) (4500,3000) (1502,3000)"),
+    );
+    expect(d.rooms).toEqual([{ id: "s", label: "S", change: "moved", offset: { dx: 506, dy: 0 } }]);
+    expect(d.summary).toEqual(["Moved S 506 mm right"]);
+  });
+
   it("a room that grew is still `resized`, not moved", () => {
     const d = diffPlans(
       box([`  room id=r at (1000,1000) size 3000x2000 label "Study"`]),

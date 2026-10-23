@@ -305,11 +305,16 @@ function startAt(r: readonly Pt[], k: number, reverse: boolean): Pt[] {
   return out;
 }
 
-/** {@link translationOf} for a closed ring, whatever vertex it is written from and whichever
- *  way it winds: both rings are read from their lowest vertex, and `b` in both windings. Still
+/** {@link translationOf} for a closed ring, also when it is written from another vertex or in
+ *  the other direction: tried as written (both windings), then with both rings read from their
+ *  lowest vertex (both windings). The offset is vertex 0's (of the order that matched). Still
  *  the shape's own vertices, never a bbox or a centroid. Linear in the vertex count. */
 function ringTranslationOf(a: readonly Pt[], b: readonly Pt[]): { dx: number; dy: number } | null {
   if (a.length === 0 || a.length !== b.length) return null;
+  // As written first (both windings): a lowest vertex chosen within the 10 mm noise floor can
+  // flip between two near-tied vertices, so the canonical start is only the fallback.
+  const written = translationOf(a, b) ?? translationOf(a, startAt(b, 0, true));
+  if (written) return written;
   const ca = startAt(a, lowestVertex(a), false);
   const kb = lowestVertex(b);
   return translationOf(ca, startAt(b, kb, false)) ?? translationOf(ca, startAt(b, kb, true));
