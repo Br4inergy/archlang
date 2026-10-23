@@ -12,24 +12,20 @@ monotonically" means as a pinned law.
 
 ## 0. Measured today (what shapes the design)
 
-Prototype scripts ran over `dist/index.js` from the session scratch; nothing was committed from them.
+Prototype scripts ran over `dist/index.js` from scratch; none is committed.
 
 1. **`arch score` exists and is the intent meter only.** `cmdScore` (`src/cli/commands-analyze.ts:699`)
-   requires `--brief`, measures `validateIntent`, prints `score` as `Math.round(x·10⁴)/10⁴` and always
-   exits 0 on a measurement. The manifest entry is `src/manifest.ts:651` (there is no
-   `src/cli/manifest.ts`). The MCP `score` tool (`packages/mcp/src/tools.ts:560`) wraps the same meter.
-   Nothing named `taste` exists in `src/`; two comments already defer to "the taste layer"
-   (`src/lint/rules/privacy.ts:581`, `src/lint/ruleset.ts:165`).
+   requires `--brief`, prints `score` as `Math.round(x·10⁴)/10⁴` and exits 0 on a measurement.
+   Manifest: `src/manifest.ts:651`; MCP `score` tool: `packages/mcp/src/tools.ts:560`. Nothing
+   named `taste` exists in `src/`.
 2. **Known-good twins are not lint-clean.** Of the 70 defect-corpus pairs (`test/defect-corpus/`),
    only 42 clean twins have an empty default `lint()`. 28 carry other warnings, mostly
    `W_ROOM_NO_FIXTURE`, `W_HABITABLE_NO_WINDOW` and `W_ROOM_MISSING_DEFINING`, because a twin is
    the smallest plan that shows one defect. 27 pairs are separated by lint alone (bad warns, good
    is clean); 15 bad cases are lint-clean (`todo` rows). So the 0.5 validity cap cannot carry the
    row-5 acceptance by itself, and the corpus alone is not a known-good/known-bad set for taste (§4).
-3. **Examples:** 32 of 34 compile without a `world` (`imports`, `museum-wings` need one); 27 lint
-   clean. The 5 that warn are `furnished-flat`, `tiny-house`, `hillside-villa`
-   (`W_PATH_TOO_NARROW`), `garden-house`, `hillside-villa` (`W_ROOM_NOT_EQUATOR_FACING`) and `themed`
-   (`W_NO_ENTRANCE`).
+3. **Examples:** 32 of 34 compile without a `world`; 27 lint clean (`furnished-flat`,
+   `tiny-house`, `hillside-villa`, `garden-house`, `themed` warn).
 4. **The starting criteria do separate the circulation pairs.** A prototype of R3, R11, R14 over
    `describe --facts syntax` (definitions as in §3):
 
@@ -49,8 +45,7 @@ Prototype scripts ran over `dist/index.js` from the session scratch; nothing was
    0/6 because its bedrooms belong to four houses: the dwelling concept is missing (PS2.14), so §3
    counts only pairs joined without passing outside.
 6. **Examples with a real R3 inversion:** `furnished-flat` 2/4 and `relational` 1/2 (a public room
-   deeper than a bedroom). Both lint clean. That is the taste layer doing its job; neither is a
-   validity defect.
+   deeper than a bedroom). Both lint clean: taste, not validity.
 
 ## 1. Scope, non-goals and the ADR
 
@@ -62,9 +57,8 @@ Prototype scripts ran over `dist/index.js` from the session scratch; nothing was
   whatever the score; a plan with compile errors exits 2 and prints the errors (the `lint` path).
 - PS5.1 ships one profile, `generic`, and the eleven criteria R3, R6, R7, R9, R11, R12, R14, R15,
   R16, R17, R18.
-- Non-goals: no `A_*` code in `lint()` or `describe()`; no machine fix (ADR 0011 seam stays for
-  `uses` only, and only later); no MCP tool (a later card with its version bump); no `arch explain`
-  for `A_*` codes yet (§6 Q7); no facade criteria (R26, R27); no multi-dwelling criteria (R19, R20).
+- Non-goals: no `A_*` code in `lint()` or `describe()`; no machine fix; no MCP tool; no
+  `arch explain` for `A_*` (§6 Q7); no facade (R26, R27) or multi-dwelling (R19, R20) criteria.
 
 **PS5.2 · Profiles `cn-`, `uk-`, `us-residential-advisory`.**
 - Each name is both a taste profile (`Partial<TasteRuleset>`) and a lint profile
@@ -87,15 +81,24 @@ Prototype scripts ran over `dist/index.js` from the session scratch; nothing was
 
 **ADR needed: yes.** D2 lives only in the programme README, which is deleted when the programme
 ends (README "How to extend"). ADR 0005 allows "honestly named, caveated advisory checks" but says
-nothing of a score, a cap or a second channel. No ADR mentions taste. Propose, in PS5.1a:
+nothing of a score, a cap or a second channel. No ADR mentions taste. Propose, in PS5.1a, as
+**0032**: 0030 and 0031 are reserved by the owner's archlang-3d programme
+(`docs/plans/archlang-3d/adr-draft-0030-*.md`, `adr-draft-0031-*.md`, to land under those numbers);
+re-check `docs/adr/` and the open PRs before the PS5.1a PR lands.
 
-> **ADR 0030 · Taste is a separate, sourced score that never gates**
+> **ADR 0032 · Taste is a separate, sourced score that never gates**
 > - Quality judgements that are profile- or culture-dependent go to `taste()` / `arch score
 >   --taste`, never to `lint()` or `describe()`; neither ever reads the taste module.
 > - Only plain defects become `W_*` lint rules (D2). A taste criterion graduates to lint only with
 >   a defect-corpus case, a clean twin, and the corpus `lint()` movement explained.
 > - The score is in [0, 1], computed in integer arithmetic, capped at 0.5 while default `lint()`
->   reports any warning, and `null` when nothing is assessable. It never sets an exit code.
+>   reports any validity-layer warning, and `null` when nothing is assessable. It never sets an
+>   exit code.
+> - Every lint rule declares its layer (`layer: "validity" | "drafting"`) on its definition.
+>   Drafting-only codes (the annotation family: `W_DIM_INSIDE`, `W_DIM_TEXT_MISMATCH`, PS2.12's
+>   codes, and any later rule declared drafting) never cap; they are listed under
+>   `validity.drafting` so they stay visible. Compile-channel warnings never cap. The taste module
+>   keeps no list of codes of its own.
 > - Coverage first: a criterion that cannot judge says so (`assessable: false` and a reason); an
 >   unassessable criterion is excluded, never counted as a pass.
 > - Every threshold cites a source; a remembered value ([M]) is verified before it ships.
@@ -134,7 +137,8 @@ resolves once. `taste()` must not mutate any memoised value (iron law: clone).
   "score": 0.5,
   "uncapped": 0.7125,
   "capped": true,
-  "validity": { "pass": false, "warnings": 2, "codes": ["W_ROOM_VIA_PRIVATE"] },
+  "validity": { "pass": false, "warnings": 2, "codes": ["W_ROOM_VIA_PRIVATE"],
+                "drafting": { "warnings": 1, "codes": ["W_DIM_INSIDE"] } },
   "advisory": [],
   "coverage": {
     "rooms": 6, "classified": 5,
@@ -206,10 +210,20 @@ resolves once. `taste()` must not mutate any memoised value (iron law: clone).
 
 ### 2.5 The validity cap
 
-`validity.pass` is false when default-ruleset `lint()` returns any warning. Compile-channel
-warnings (`W_ROOM_OVERLAP`, the `while` deprecations) do not cap: they are not soundness
-findings. Profile-only warnings (PS5.2) go to `advisory` and do not cap: README §4 puts advisory
-code below validity. A plan with a compile error has no score.
+`validity.pass` is false when default-ruleset `lint()` returns any warning from a rule whose
+layer is `validity`. (Lead ruling, PR #242 review.)
+- **The layer lives on the rule.** `LintRule` (`src/lint/context.ts`) gains two required fields:
+  `layer: "validity" | "drafting"` and `codes: readonly string[]`, the codes the rule may emit
+  (a diagnostic does not name its rule today). `lintWithCoverage()` returns the code → layer map
+  beside the diagnostics, never inside them, as it does the coverage report; taste reads that map.
+  Required fields make the compiler refuse a rule with no layer.
+- **Drafting-only codes do not cap:** the `annotation` family (`W_DIM_INSIDE`,
+  `W_DIM_TEXT_MISMATCH`, PS2.12's `W_TITLE_OVERFLOW`, `W_LABEL_COLLISION` and the `dims auto`
+  widening) and any later rule declared `drafting`. They are listed under `validity.drafting`
+  (`{ codes, warnings }`) so they stay visible.
+- Compile-channel warnings (`W_ROOM_OVERLAP`, the `while` deprecations) do not cap: they are not
+  soundness findings. Profile-only warnings (PS5.2) go to `advisory` and do not cap: README §4
+  puts advisory code below validity. A plan with a compile error has no score.
 
 ## 3. The eleven criteria
 
@@ -223,9 +237,9 @@ are unreliable, so R3, R14 and R15 skip it (`upper-storey`). Ramps are `zero →
 | Id · subscore | Definition over today's facts | Already in `src` | Missing | Source | Cost |
 |---|---|---|---|---|---|
 | **R3** intimacy gradient · zoning | Pairs (public p, bedroom b), both reached. Inversion iff `depth(p) > depth(b)`; equal depth is no inversion (two rooms off one hall is the ideal). v = 1 − inversions/pairs; ramp 0 → 1. Assessable with ≥ 1 pair and an entrance | depths `src/analyze.ts:954` (`buildDoorAccessGraph`), main-entrance depth `src/analyze/entrance.ts:269`; use sets `privacy.ts:59-75` | the pair count; exporting the use sets | Alexander 127 [V] | P·B |
-| **R6** furniture–use match · furnishing | Per piece in a classified room: a `wet`-zoned piece in a room with no bath/wc/utility use, a `kitchen`-zoned piece in a room with no kitchen use, or a bedroom's defining piece (bed) in a room with no bedroom use and a public or wet use, is a mismatch. v = 1 − mismatches/pieces | zones `src/fixtures-catalog.ts:156-189` (only `wet`, `kitchen`); defining items `src/lint/defining.ts:44` | a sofa/dining zone (none exists; leave them out of PS5.1) | none (catalogue semantics) | F |
+| **R6** furniture–use match · furnishing | Per piece in a classified room: a `wet`-zoned piece in a room with no bath/wc/utility use, a `kitchen`-zoned piece in a room with no kitchen use, or a bedroom's defining piece (bed) in a room with no bedroom use and a public or wet use, is a mismatch. v = 1 − mismatches/pieces | zones `src/fixtures-catalog.ts:156-189` (only `wet`, `kitchen`); defining items `src/lint/defining.ts:44` | a sofa/dining zone (none; out of PS5.1) | none (catalogue semantics) | F |
 | **R7** daylight ratio · light | Per habitable room: G = Σ width × (head − sill) over windows whose `describe().windows[].room` is the room, A = `net_area_m2` (centreline `area_m2` if net is omitted, flagged in evidence). v = G/A; ramp 0 → target (generic 8 %). Zero windows is validity (`W_HABITABLE_NO_WINDOW`) and scores 0 here too | window→room `src/describe.ts:1318`, `src/analyze.ts:653`; sill/head `src/ir.ts:486-491`; net area ADR 0027 | the ratio; evidence says `heights: default` when no height was authored | IRC R303.1 8 % [S, `prior-art.md` §3]; GB 50096 7.1.5 1/7 for `cn` [V, `prior-art.md` §3.1] | W + R |
-| **R9** proportion · geometry | Per room (habitable, bath, wc; circulation and storage exempt): aspect = long/short side of the **minimum-area enclosing rectangle of the room's ring** (from the shape, never the bbox). Circle: 1. Ramp habitable 3 → 2, bath/wc 3.5 → 2.5 | ring `roomRing`; exact areas `src/geometry/polygon.ts:40` (doubles) | an exact hull + rotating-calipers helper on lattice integers (`src/geometry/min-rect.ts`): for each hull edge e, extents are Δ(p·e) and Δ(p×e) and `|e|` cancels in the ratio, so aspect and rectangularity are rationals | Palladio 2:1 [M, Quattro Libri I.xxi]; ResPlan p95 bedroom 1.57, bath 2.24 [prior, §4 of `design-taste.md`] | Σ V log V |
+| **R9** proportion · geometry | Per room (habitable, bath, wc; circulation and storage exempt): aspect = long/short side of the **minimum-area enclosing rectangle of the room's ring** (from the shape, never the bbox). Circle: 1. Ramp habitable 3 → 2, bath/wc 3.5 → 2.5 | ring `roomRing`; exact areas `src/geometry/polygon.ts:40` (doubles) | an exact hull + rotating-calipers helper on lattice integers (`src/geometry/min-rect.ts`): for each hull edge e, extents are Δ(p·e) and Δ(p×e) and the length of e cancels in the ratio, so aspect and rectangularity are rationals | Palladio 2:1 [M, Quattro Libri I.xxi]; ResPlan p95 bedroom 1.57, bath 2.24 [prior, §4 of `design-taste.md`] | Σ V log V |
 | **R11** kitchen–dining link · zoning | Per kitchen room: linked iff it also has a living or dining use, or an access edge (door or opening, including a derived `open between`) joins it to a living or dining room. v = linked/kitchens | edges `describe().access.edges` | nothing | Alexander 139 [V]; ResPlan 99 % touch [prior] | K·E |
 | **R12** dwelling aspect · light | Over windows of habitable rooms: number of distinct `facing`. 0 → 0; 1 → 0.5, or 0 when the plan declares `site` and that facing is the pole side; ≥ 2 → 1. Skips a non-dwelling plan (`dwellingReading`, `src/analyze/dwelling.ts:35`) | `windows[].facing` `src/describe.ts:270`; `windowFacingPage` `src/site.ts:170` | pole side from `site` (exists for `W_ROOM_NOT_EQUATOR_FACING`, `src/lint/rules/site.ts`) | London Plan D6, LPG C4.1 [S] | W |
 | **R14** common area at the heart · circulation | Rooms in the system ranked by integer total depth T = Σ step distances (rank 1 = smallest T; ties share the better rank). r = best rank among living/dining rooms, n = system rooms. 1 if r ≤ ⌈n/3⌉, else linear to 0 at r = n. Needs n ≥ 3 | `syntaxFacts` computes T before dividing (`src/analyze/syntax.ts:107-110`); RRA = RA/D_k with one D_k per storey, so ranking by T is ranking by RRA without `log2` | return T (integer) from the shared walk, or recompute with `bestPaths` | Alexander 129 [V]; Hanson 1998 [S] | V·(V+E) |
@@ -286,11 +300,9 @@ per criterion and never re-pins to green (AGENTS.md).
 
 **ResPlan priors without paid eval.** The priors in `design-taste.md` §4 are used only as ramp
 anchors (p50 near `one`, p95 near `zero`, after the 0.88 length / 0.77 area correction), each doc
-comment marked `[ResPlan prior, design-taste.md §4]`. They are not re-mined in this row: the raw
-pickle, scripts and outputs live in the 2026-10-18 session's scratch, not in the repository, and
-the doc numbers are adequate as anchors that the corpus law then checks. If a re-mine is wanted
-it is local, unpaid, CC BY 4.0, and its outputs stay out of the repository except as quoted
-numbers. No LLM judges a plan, `eval:live` is never run, and no model-loop gain is claimed.
+comment marked `[ResPlan prior, design-taste.md §4]`. They are not re-mined in this row (the raw data
+never entered the repository; the corpus law checks the anchors). A re-mine, if wanted, is local,
+unpaid and CC BY 4.0. No LLM judges a plan, `eval:live` is never run, and no model-loop gain is claimed.
 
 **Equivariance law:** `taste()` is invariant under a pure translation and under a D4 frame applied
 with `north` carried along (R12's pole side is the only compass reader); under a D4 frame with
@@ -309,11 +321,16 @@ the two standing invariants as tests:
 - **L2 · taste draws nothing.** `compile()` output for the corpus is unchanged (part of L1's payload).
 
 **PS5.1a · Skeleton, three criteria, the laws.** About 12–16 executor-hours.
-- Files: `docs/adr/0030-taste-separate-score.md` (new); `src/taste/{index,report,arith,criteria}.ts`
+- Files: `docs/adr/0032-taste-separate-score.md` (new); `src/taste/{index,report,arith,criteria}.ts`
   (new); `src/num-format.ts` (`fmtPermyriad`); `src/index.ts` (export); `src/cli/commands-analyze.ts`
   (`cmdScore` branch), `src/cli/io.ts` (`--taste` flag), `src/manifest.ts` (flag, output, example);
-  regenerated `gen:*` outputs (CLI reference, agent manifests, llms files); `test/taste-*.test.ts`,
-  `test/taste-corpus/` (first fixtures).
+  the lint rule registry: `src/lint/context.ts` (`LintRule.layer`, `LintRule.codes`, both
+  required), every rule in `src/lint/rules/*.ts` (`annotation` family `drafting`, the rest
+  `validity`), `src/lint.ts` (the code → layer map beside the diagnostics; `lint()` output
+  unchanged); regenerated `gen:*` outputs (CLI reference, agent manifests, llms files);
+  `test/taste-*.test.ts`, `test/lint-layers.test.ts` (every `W_*` code `lint()` can raise is in
+  exactly one rule's `codes`, so it has one explicit layer; every diagnostic raised over the
+  examples and both corpora is in its rule's `codes`), `test/taste-corpus/` (first fixtures).
 - Criteria: R3, R7, R14 (the three that §0.4 shows separating set A), with the full report shape,
   coverage, cap, budget, `generic` profile.
 - Acceptance: laws L1, L2, digest, equivariance, separation (set A rows for these three, set B,
@@ -384,10 +401,10 @@ move `lint()` and so move set B and the cap, which the separation law re-reads b
 2. **Q: Does the cap use the profile's lint?** *Recommend:* no. Default `lint()` only; profile-only
    warnings go to `advisory` (README §4 layers). Otherwise a `cn` profile would cap every plan
    whose bedroom is 8.9 m², turning advisory code into gating by the back door.
-3. **Q: Which warnings cap?** *Recommend:* any default `lint()` warning; compile-channel warnings
-   do not. Revisit if a lint code is ever reclassified as drafting-only (PS2.12's annotation codes
-   are the candidates: a dimension label over a bed is not a reason to halve a plan's taste; if
-   the lead disagrees, exclude `annotation`-family codes from the cap and say so in the ADR).
+3. **Q: Which warnings cap?** *Ruled (lead, PR #242):* validity-layer `lint()` warnings only.
+   Drafting-only codes (the annotation family and any rule declared `drafting`) do not cap and
+   are listed under `validity.drafting`; compile-channel warnings do not cap. The layer is a
+   required flag on each rule definition, never a list in the taste module (§2.5, ADR 0032).
 4. **Q: Floats in output?** *Recommend:* integer permyriads printed by `fmtPermyriad` (§2.3). Do not
    reuse `cmdScore`'s `Math.round(x·10⁴)/10⁴` for taste.
 5. **Q: R7 with no authored heights.** ADR 0022 deferred a daylight-ratio *fact* because the
@@ -415,13 +432,13 @@ move `lint()` and so move set B and the cap, which the separation law re-reads b
     (NA5 is not an R3 inversion; NH8, NA3, NT6 belong to R31, R25, not started). *Recommend:* say so
     in the PS5.1b PR; the row-5 yield on surviving defects comes from PS2.10–PS2.12.
 12. **Q: `relational.arch` and `furnished-flat.arch` show R3 inversions.** *Recommend:* leave both
-    examples as they are; they lint clean and taste is advice. If the lead wants the lead example to
-    score 1 on R3, that is a PS3.6-style example edit with its own digest rows, not part of PS5.
+    as they are; they lint clean and taste is advice.
 
 ## 7. What the first-contact re-measure after row 5 must cover
 
-D7's standing rule (README §3; the README has D1–D9, no D10) re-measures first contact after a met
-row. Row 5 changes what an author sees in these ways:
+D7's standing rule (README §3) re-measures first contact after a met row; D10 (PR #241) waives the
+row-4 re-measure and makes the one after row 5 mandatory. Row 5 changes what an author sees in
+these ways:
 
 - **New commands and fields:** `arch score --taste <profile> [--json]`; `validate --json` `next`
   (and `validate --profile`); three new profile names on `lint --profile` and `score --taste`.
@@ -455,7 +472,7 @@ Never rewrite that record (README "How to extend"); these are the corrections fo
 |---|---|
 | §0.2: the label classifier never emits `living`/`dining` (`src/vocabulary.ts:212-216`) | It does: `USE_VOCABULARY` has `living` and `dining` rows, and the fallback adds "great room", "reception room", "snug", "den" (`src/vocabulary.ts:166-235`; PS2.18, PS2.19) |
 | §0.1, §1: `two-bed.arch` is a chain; only `W_BATH_VIA_BEDROOM` reads route kinds | Re-laid in PS3.6 (PR #227); R1, R2, R13 shipped as `W_ROOM_VIA_PRIVATE`, `W_WET_ROOM_DOOR`, `W_ENTRANCE_INTO_PRIVATE`; R7's zero-window case as `W_HABITABLE_NO_WINDOW`; R21 in part as `W_ROOM_MISSING_DEFINING` |
-| Profiles at `src/lint/ruleset.ts:113-133`; `arch score --brief` at `commands-analyze.ts:660-690` | `LINT_PROFILES` at `src/lint/ruleset.ts:294` (`residential-basic`, `accessibility-advisory`); `cmdScore` at `src/cli/commands-analyze.ts:699` |
+| Line references (`ruleset.ts:113-133`, `commands-analyze.ts:660-690`) | Stale: `src/lint/ruleset.ts:294`, `src/cli/commands-analyze.ts:699` |
 | §5.1: charge steps on the existing meter | The step meter is resolve-time only; post-resolve analyses use counted budgets with coverage skips (§2.4) |
 | §5.1: ratios print through `fmt4` | `fmt4` rounds a double; taste computes in integers and prints permyriads (§2.3). R14's `rra` uses `Math.log2`; ranking by integer total depth is equivalent within a storey |
 | R3: ties broken by `walkDistanceMm` | Dropped: equal depth is the corridor ideal, and walk distances come from the nav grid (cell-quantised) |
@@ -464,5 +481,5 @@ Never rewrite that record (README "How to extend"); these are the corrections fo
 | R37: width ≥ 508 mm [M] | `prior-art.md` and `2026-10-18-furniture-and-multistorey.md` give R310 [S]: 0.53 m² (0.46 at grade), 610 high, 508 wide, sill ≤ 1118. README PS2.16's "area < 0.33 m²" is ADB 2.10's UK figure, not IRC |
 | R6: derive from catalog `zones` | Zones are only `wet` and `kitchen`; beds, sofas and tables carry none; a bedroom's defining piece comes from `DEFINING` (`src/lint/defining.ts:44`) |
 | R9, R18: minimum rotated rectangle | No such helper exists; PS5.1b adds an exact one (§3) |
-| R12 `uk`: W for single-aspect north | Taste never warns (D2); a W would be a PS2 card with a corpus case |
+| R12 `uk`: W for single-aspect north | Taste never warns (D2) |
 | ADR 0022 (not this file) defers a daylight-ratio fact, "default for an unauthored height undecided" | The IR already resolves 900/2100 defaults; taste uses them without adding a fact (§6 Q5) |
