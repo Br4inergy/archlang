@@ -167,6 +167,7 @@ pair.** (2026-10-18, amends D1; does not reverse it.)
   The 4 `test/resolve-order` plans that diagnose on purpose are skipped and listed.
   - (a) with no exclusions: 15 of 279 storeys refused (5.4 %).
   - (b) with the reviewed except list: also 15 of 279. So (b) is under the quarter.
+  - *2026-10-24:* 283 storeys, after four defect-corpus plans (PS1.2), none refused. That gives 15/283 (5.3 %) for both, and 16/283 on the literal reading.
   - All 15 refusals are `E_ROOM_NOT_RECTANGLE`. No decidable storey overlaps, fails to tile or has
     a run under the partition.
   - 13 of the 15 are undecided on tiling, because a non-rectilinear polygon or a circle room covers
@@ -339,6 +340,10 @@ the stronger variant: the audit's own studio measures 2025 mm door-to-sink and l
   patio door (PS0.10), the tee-crossed WC window, the stair foot under a door swing, the fire door
   swinging inward, a kitchen with no worktop. Same header scheme, clean twins, and the new codes
   added to the folder README's proposed list.
+- *2026-10-24 (`audits/2026-10-24-first-contact-rerun.md`):* two more cases with twins.
+  - `clearances/seat-facing-away` is `done` (`W_SEAT_FACING_AWAY`; its twin uses `facing`).
+  - `circulation-privacy/fire-door-inward` is K1 reduced. Lint is silent, so it is `todo` with the proposed `W_EXIT_SWINGS_INWARD` (PS2.16); its twin uses `swing outward`.
+  - The corpus is now 70 cases and the catch rate 47/70.
 - *Open (carried from PS1.1):* should the corpus also feed `eval:ci` as a non-gating metric? Read
   `.claude/rules/eval-dataset.md` first: the holdout rules apply.
 
@@ -891,6 +896,10 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
    counts on the PS1 corpus. Do not run or cite the paid eval. *Scheduled:* it needs the PS3 forms
    to exist, so it runs after row 3 of §7. Until then the first-contact experiment under question 8
    measures the wall-first baseline (`audits/2026-10-18-first-contact.md`, once written).
+   *Measured 2026-10-24, see `audits/2026-10-24-first-contact-rerun.md`:* six cold authors on
+   today's spec wrote rooms-first unprompted (6/6, 0 `wall` statements); class-1 defects fell 4 → 0
+   and surviving defects 57 → 48 (area basis judged as in the baseline; 54 → 45 without it). There
+   is no walls-first control arm yet.
 2. **Where is the boundary between a fact and taste in each culture?** For example, a kitchen as the
    entry room is normal in some housing stocks. Profiles may need a `residential-generic` that is
    deliberately quiet.
@@ -924,6 +933,12 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
    inside the plan (a common corridor as paving; PS2.14's dwelling work should give it a home),
    vertical stacking of partitions, oblique joins inflating `bbox_outer`, circulation share (taste).
    Re-run after PS2 lands, and count the furniture turn.
+   *Measured 2026-10-24, see `audits/2026-10-24-first-contact-rerun.md`:*
+   - The old plans re-linted: 17/57 caught, 6 of them partially (14/57 counting halves), and 0 false positives.
+   - The briefs re-authored cold: 48 defects (2 B), final lint 1.
+   - Seats: 24/24 inverted before the lint loop, 0/24 after; `facing` used 0 times.
+   - Sofas: 1/3 face their TV.
+   - Exterior doors: 8/8 swing the intended way.
 9. **Should a `let` be able to hold a room-edge datum?** PS3.2 part B (PR #221) refuses it
    (`E_DATUM_BEFORE_ROOMS`: a `let` is evaluated once, at expansion, before any room is placed).
    The alternative considered and declined there was a deferred `let`, evaluated where it is read;

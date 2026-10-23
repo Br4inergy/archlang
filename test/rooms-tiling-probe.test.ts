@@ -266,7 +266,7 @@ describe("the corpus (ADR 0028 Acceptance): both figures, pinned", () => {
 /** `[storeys, refused (a), refused (b), overlap/not-tiling/short/not-rect under (b)]`. */
 const PINNED_ROWS: Record<string, [number, number, number, string]> = {
   examples: [39, 7, 7, "0/0/0/7"],
-  "test/defect-corpus": [140, 5, 5, "0/0/0/5"],
+  "test/defect-corpus": [144, 5, 5, "0/0/0/5"],
   "test/recovery-corpus": [9, 0, 0, "0/0/0/0"],
   "test/fixtures": [13, 0, 0, "0/0/0/0"],
   "docs/plans/plan-soundness/repro": [6, 0, 0, "0/0/0/0"],
@@ -277,10 +277,11 @@ const PINNED_ROWS: Record<string, [number, number, number, string]> = {
   "test/callout-fixtures": [1, 0, 0, "0/0/0/0"],
   "test/finish-fixtures": [1, 0, 0, "0/0/0/0"],
   "test/resolve-order": [1, 0, 0, "0/0/0/0"],
-  total: [279, 15, 15, "0/0/0/15"],
+  total: [283, 15, 15, "0/0/0/15"],
 };
-/** Measured 2026-10-21 on `main@9fb7949`: 15 of 279 storeys refused, both figures (5.4 %). */
-const PINNED_SHARE_A: [number, number] = [15, 279];
-const PINNED_SHARE_B: [number, number] = [15, 279];
-/** The literal reading of "no use kind means outdoor": 16 of 279 (5.7 %). */
-const PINNED_SHARE_LITERAL: [number, number] = [16, 279];
+/** Measured 2026-10-21 on `main@9fb7949`: 15 of 279 storeys refused, both figures (5.4 %). 2026-10-24: 15 of 283
+ * (5.3 %) after four defect-corpus plans (seat-facing-away, fire-door-inward and their twins), none refused. */
+const PINNED_SHARE_A: [number, number] = [15, 283];
+const PINNED_SHARE_B: [number, number] = [15, 283];
+/** The literal reading of "no use kind means outdoor": 16 of 279 (5.7 %); 16 of 283 (5.7 %) since 2026-10-24. */
+const PINNED_SHARE_LITERAL: [number, number] = [16, 283];
