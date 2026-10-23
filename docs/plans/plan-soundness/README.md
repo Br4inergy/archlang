@@ -167,6 +167,7 @@ pair.** (2026-10-18, amends D1; does not reverse it.)
   The 4 `test/resolve-order` plans that diagnose on purpose are skipped and listed.
   - (a) with no exclusions: 15 of 279 storeys refused (5.4 %).
   - (b) with the reviewed except list: also 15 of 279. So (b) is under the quarter.
+  - *2026-10-24:* 283 storeys, after four defect-corpus plans (PS1.2), none refused. That gives 15/283 (5.3 %) for both, and 16/283 on the literal reading.
   - All 15 refusals are `E_ROOM_NOT_RECTANGLE`. No decidable storey overlaps, fails to tile or has
     a run under the partition.
   - 13 of the 15 are undecided on tiling, because a non-rectilinear polygon or a circle room covers
