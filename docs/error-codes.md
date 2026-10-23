@@ -123,7 +123,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_STEP_LIMIT`](#e_step_limit) | error | Evaluation did more work than any plan needs. |
 | [`E_STRIP_NEST`](#e_strip_nest) | error | Illegal `strip` nesting. |
 | [`E_STRIP_SIZE`](#e_strip_size) | error | Room in a `strip` is missing a size. |
-| [`E_SWING_SIDE`](#e_swing_side) | error | `swing inward|outward` on a wall with no single inside. |
+| [`E_SWING_SIDE`](#e_swing_side) | error | `swing inward` or `swing outward` on a wall with no single inside. |
 | [`E_TYPE`](#e_type) | error | Type mismatch. |
 | [`E_UNKNOWN_COMPONENT`](#e_unknown_component) | error | Unknown component. |
 | [`E_UNKNOWN_FN`](#e_unknown_fn) | error | Unknown function. |
@@ -1648,7 +1648,7 @@ strip right at (0,0) gap 100 { room size }   # error: no extent
 
 ## E_SWING_SIDE
 
-*error* — `swing inward|outward` on a wall with no single inside.
+*error* — `swing inward` or `swing outward` on a wall with no single inside.
 
 **Cause.** `swing inward|outward` is relative to the building: `inward` opens the leaf towards the one face of the host wall that has floor (probed one wall thickness off each face, against every room's own shape), `outward` away from it. A wall between two rooms has floor on both faces and a garden wall on neither, so neither word picks a side, and guessing one would put the leaf where the author did not mean it. The door falls back to its default swing.
 

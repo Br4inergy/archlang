@@ -679,7 +679,15 @@ original brief follows.
   2000-2200 along x 900 deep) once a sweep shows which corpus rows move (`finish`, the LSP hover,
   the fixture paste and the defining-piece rule read it), and explain each.
 
-**PS3.8 · Building-relative swing and offset wording.** `todo` (spec + grammar)
+**PS3.8 · Building-relative swing and offset wording.** `done` (PR #229; as built below)
+- **As built.** `swing inward|outward` resolves to `in|out` from the one face of the host that has
+  floor (the `garage` probe); floor on both faces or neither is `E_SWING_SIDE` on the word, and the
+  door keeps its default swing. `in` is the right of the wall's drawn direction on the page.
+  `spec.llm.md` says so with the K1 example. Plan JSON adds `swing_building` beside the resolved
+  `swing`. The unknown-word parse error lists all four words. Twins (both directions, loop, ring,
+  barn), all eight frames with a plan-space oracle, refusals and round trips are in
+  `test/swing-building.test.ts`; a digest table is in `test/swing-building-digests.test.ts`. Every
+  existing digest suite was unchanged. `set door(swing: inward)` waits for PS0.16.
 - `swing in|out` and `at <pos>` are relative to the wall's drawn direction; an author who drew a
   wall right-to-left put a fire exit's `swing out` opening inward and a living window in the
   laundry (`audits/2026-10-18-first-contact.md` K1 and the v1 apartment). Add `swing inward|outward`

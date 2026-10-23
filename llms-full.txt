@@ -909,7 +909,7 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `archlang e
 - `E_STEP_LIMIT` — Evaluation did more work than any plan needs. **Fix:** Remove the inner loop or the doubling, compute the value directly, or split the plan.
 - `E_STRIP_NEST` — Illegal `strip` nesting. **Fix:** Move the `strip` to the plan body, alongside the other elements.
 - `E_STRIP_SIZE` — Room in a `strip` is missing a size. **Fix:** Give the room a `size <main>` (main-axis extent) plus either a strip `height`/`width` or its own `size <main>x<cross>`.
-- `E_SWING_SIDE` — `swing inward|outward` on a wall with no single inside. **Fix:** Name the room the leaf opens into with `swing into <room>`, or write the wall-relative `swing in|out` (`in` is the right-hand side of the wall's drawn direction on the page, `out` the left).
+- `E_SWING_SIDE` — `swing inward` or `swing outward` on a wall with no single inside. **Fix:** Name the room the leaf opens into with `swing into <room>`, or write the wall-relative `swing in|out` (`in` is the right-hand side of the wall's drawn direction on the page, `out` the left).
 - `E_TYPE` — Type mismatch. **Fix:** Convert or supply the expected type.
 - `E_UNKNOWN_COMPONENT` — Unknown component. **Fix:** Define the component, import it, or fix the name (see the suggestion hint).
 - `E_UNKNOWN_FN` — Unknown function. **Fix:** Define it with `let f(…) = …`, or fix the name.

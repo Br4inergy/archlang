@@ -791,7 +791,7 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   ),
   E_SWING_SIDE: E(
     "E_SWING_SIDE",
-    "`swing inward|outward` on a wall with no single inside.",
+    "`swing inward` or `swing outward` on a wall with no single inside.",
     "`swing inward|outward` is relative to the building: `inward` opens the leaf towards the one face of the host wall that has floor (probed one wall thickness off each face, against every room's own shape), `outward` away from it. A wall between two rooms has floor on both faces and a garden wall on neither, so neither word picks a side, and guessing one would put the leaf where the author did not mean it. The door falls back to its default swing.",
     "Name the room the leaf opens into with `swing into <room>`, or write the wall-relative `swing in|out` (`in` is the right-hand side of the wall's drawn direction on the page, `out` the left).",
     "wall id=w1 partition thickness 100 { (3000,0) (3000,3000) }\nroom id=a at (0,0) size 3000x3000\nroom id=b at (3000,0) size 3000x3000\ndoor on w1 at 50% width 800 swing inward   # error: floor on both faces",
