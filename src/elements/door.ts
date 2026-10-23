@@ -160,11 +160,16 @@ function roomSideOf(at: Point, host: WallSegment | null, rooms: readonly RRoom[]
 
 /**
  * {@link roomSideOf}'s probe with its two `undefined` answers told apart: `"both"` when floor
- * lies on both faces (a wall between two rooms), `"none"` when on neither (a garden wall, or no
- * host at all). `swing inward|outward` needs the difference for its message.
+ * lies on both faces (a wall between two rooms, or one free-standing inside a room), `"none"`
+ * when on neither (a garden wall), `"nohost"` when there is no wall at all. `swing
+ * inward|outward` needs the difference for its message.
  */
-function floorSides(at: Point, host: WallSegment | null, rooms: readonly RRoom[]): "in" | "out" | "both" | "none" {
-  if (!host) return "none";
+function floorSides(
+  at: Point,
+  host: WallSegment | null,
+  rooms: readonly RRoom[],
+): "in" | "out" | "both" | "none" | "nohost" {
+  if (!host) return "nohost";
   // The tangent's normal, as in `swingInto`'s ring path: `in` is the face `doorSwing` uses.
   const { plus, minus } = wallFaceProbes(host, at, Math.max(host.thickness, 1));
   const onFloor = ({ x: px, y: py }: Point): boolean =>
@@ -207,8 +212,10 @@ function swingBuilding(
   }
   const why =
     side === "both"
-      ? "its wall has floor on both faces (it stands between two rooms)"
-      : "its wall has floor on neither face (no room borders the doorway)";
+      ? "its wall has floor on both faces"
+      : side === "none"
+        ? "its wall has floor on neither face (no room borders the doorway)"
+        : "it has no host wall";
   ctx.diag({
     severity: "error",
     message: `Door "${id}" swings ${word}, but ${why}, so there is no inside to swing ${word === "inward" ? "towards" : "away from"}`,
@@ -217,7 +224,9 @@ function swingBuilding(
     hints: [
       side === "both"
         ? "Name the room the leaf opens into: `swing into <room>`."
-        : `Use \`swing into <room>\` with a room that borders this wall, or the wall-relative \`swing ${DOOR_ENUMS.swing.join("|")}\`.`,
+        : side === "nohost"
+          ? "Put the door on a wall (`on <wall> at <pos>`, or `at (x,y)` on one), then name its side."
+          : `Use \`swing into <room>\` with a room that borders this wall, or the wall-relative \`swing ${DOOR_ENUMS.swing.join("|")}\`.`,
     ],
   });
   return undefined;

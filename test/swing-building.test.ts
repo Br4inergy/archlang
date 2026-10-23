@@ -149,6 +149,25 @@ suite("refusals", () => {
     expect(diags[1]!.message).toMatch(/floor on neither face/);
   });
 
+  it("a wall free-standing inside one room says floor on both faces, not between two rooms", () => {
+    const src = plan(
+      "free",
+      "  room id=r at (0,0) size 6000x4000\n  wall id=screen partition thickness 100 { (3000,1000) (3000,3000) }\n" +
+        "  door on screen at 50% width 800 swing inward",
+    );
+    const d = compile(src, { noCache: true }).diagnostics.find((x) => x.code === "E_SWING_SIDE")!;
+    expect(d.message).toMatch(/has floor on both faces, so/);
+    expect(d.message).not.toMatch(/between two rooms/);
+  });
+
+  it("a door with no host wall says so", () => {
+    const src = plan("nohost", "  room id=r at (0,0) size 6000x4000\n  door at (3000,2000) width 800 swing outward");
+    const d = compile(src, { noCache: true }).diagnostics.find((x) => x.code === "E_SWING_SIDE")!;
+    expect(d.message).toMatch(/it has no host wall/);
+    expect(d.message).not.toMatch(/floor on neither face/);
+    expect(src.slice(d.span!.start, d.span!.end)).toBe("outward");
+  });
+
   it("a kind with no `swing` raises only E_DOOR_KIND_CLAUSE, not a second error", () => {
     const one = plan(
       "k",

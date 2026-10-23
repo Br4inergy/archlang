@@ -20,7 +20,9 @@ const DIGESTS: [string, string][] = [
   ["loop", "066803bb5243583247f8d5c9bccd6d5da2bb72b81c30d7a5a9fb4186bbad2431"],
   ["ring", "142352155d5a15bc0abf34193616bc01616adbbd9c3626bd421df54a6186a682"],
   ["frames", "56aab4eb879870ca283b5782a66d7fa3aac52c7591edc0b15da3a2cf4523a08d"],
-  ["refused", "7ff180002fd7488d8b172c571d20c32004b4088a0617ec3d68efa229e0186952"],
+  // Moved once, by review round 1 (N1): the "both faces" message dropped "(it stands between two
+  // rooms)", which was false for a wall free-standing inside one room. Message text only.
+  ["refused", "d0ff72c2f1e61f259980b250b027ddbfdfcc724c82a6c5d98d80f0b64274f5c4"],
 ];
 
 suite("swing inward|outward: digest table", () => {
