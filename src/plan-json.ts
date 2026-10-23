@@ -233,7 +233,9 @@ export interface PointJson {
  * The marker on a FLATTENED row of a payload that carries `components`/`instances` (PS3.9):
  * the `place`d instance the row was born inside. Such a row is the instance's element in plan
  * coordinates under its dotted id, for a reader that only wants geometry; on input it is
- * skipped, because the `place` the instance prints re-creates it. Absent on every other row,
+ * skipped, because the `place` the instance prints re-creates it, so an edit to it is ignored
+ * (its `id` must carry the instance's namespace, so a root row cannot be marked and lost by
+ * mistake; a dimension has no id). Absent on every other row,
  * and on every row of a payload without `instances`.
  */
 export interface InstanceMark {
@@ -1079,7 +1081,9 @@ function validatePlanJson(json: unknown, val: Validator): PlanJson | null {
   return json as unknown as PlanJson;
 }
 
-const IDENT = /^[A-Za-z_][\w-]*$/;
+/** A component or instance name, as the lexer reads an identifier (no hyphen), so a bad one is
+ *  refused here with its JSON path rather than by the parser. */
+const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /**
  * `components` and `instances` (PS3.9): each component a name and a body of root-shaped rows,
@@ -1107,6 +1111,10 @@ function validateInstances(json: Record<string, unknown>, val: Validator): Reado
         val.err(`${at}/body`, "expected an object");
         return;
       }
+      // The four arrays the schema requires of a body (a root row array may be absent; a
+      // body's may not, so the two agree).
+      for (const k of ["rooms", "walls", "openings", "furniture"])
+        if (c.body[k] === undefined) val.err(`${at}/body/${k}`, "expected an array");
       validateRows(c.body, `${at}/body`, null, val);
       if (c.body.walls_from_rooms !== undefined)
         validateWallsFromRooms(c.body.walls_from_rooms, `${at}/body/walls_from_rooms`, val);
@@ -1162,6 +1170,15 @@ function validateRows(
         if (instances === null) val.err(`${path}/instance`, "a component body row belongs to no instance");
         else if (!(isStr(r.instance) && instances.has(r.instance)))
           val.err(`${path}/instance`, "expected the name of an instance in `instances`");
+        // The marker skips the row, so it must not land on a row the instance did not make: a
+        // root row labelled by mistake would vanish. Every marked row but a dimension (which
+        // has no id) carries its instance's namespace. Its other fields are not read: the row
+        // is regenerated from the component on the way back, and an edit to it is ignored.
+        else if (key !== "dims" && !(isStr(r.id) && r.id.startsWith(`${r.instance}.`)))
+          val.err(
+            `${path}/instance`,
+            `a row marked "instance": "${r.instance}" must have an id in that instance ("${r.instance}.<id>"); this one would be dropped`,
+          );
         return;
       }
       check(r, path, val);
@@ -1934,7 +1951,7 @@ const POINT_SCHEMA = {
 const INSTANCE_MARKER = {
   type: "string",
   description:
-    "Output-only, and present only when the payload carries `instances`: the placed instance this row was born inside. The row is that instance's element in plan coordinates under its dotted id (`west.kit`), kept for a reader that only wants geometry; planFromJson skips it, because the instance's `place` re-creates it. Never present on a row inside `components[].body`.",
+    "Output-only, and present only when the payload carries `instances`: the placed instance this row was born inside. The row is that instance's element in plan coordinates under its dotted id (`west.kit`), kept for a reader that only wants geometry. On input a marked row is regenerated from its component and an edit to it is IGNORED: edit `components[].body` (or `instances[]`) instead. A marked row's `id` must start with `<instance>.` (a dimension has none), so a root row cannot be marked and lost by mistake (E_JSON_SCHEMA). Never present on a row inside `components[].body`.",
 } as const;
 
 /**

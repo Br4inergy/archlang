@@ -591,15 +591,21 @@ payload does not round-trip (the dotted ids are `E_DOTTED_DECL` on the way back)
 exception is a storey where a placed component derives its walls with `walls from rooms`:
 only there does the payload gain `components` (each component's body, in its own frame and
 names, with the statement as written) and `instances` (`name`, `component`, `at`, `rotate`,
-`mirror`), and every flattened instance row gains `instance: "<name>"`, which
-`--from-json` skips. Every other payload is unchanged. The way back prints the root
-statements, then a `component <name>() { … }` per body, then a `place` per instance:
+`mirror`), and every flattened instance row gains `instance: "<name>"`. Every other
+payload is unchanged. The way back prints the root statements, then a
+`component <name>() { … }` per body, then a `place` per instance:
 
+- A marked row is **regenerated from its component; an edit to it is ignored**. Edit the
+  component's `body` or the `instances` entry instead. A marked row's `id` must start with
+  `<name>.` (a dimension has no id), so a root row marked by mistake is refused
+  (`E_JSON_SCHEMA`) rather than dropped.
 - A component that takes parameters comes back **parameterless**: its body is the
   resolved instance, arguments already applied.
-- The round trip compiles to the same SVG and `describe()` for a plan whose `place`s
-  **follow** its root statements; a plan that places first comes back in that grouped
-  order, which draws within a layer in another order.
+- The round trip compiles to the same SVG and `describe()`, and to the same `lint()` once
+  each finding's `span`, `fixes` and `relatedSpans` are stripped (the printed source is
+  different text), for a plan whose `place`s **follow** its root statements. A plan that
+  places first comes back in that grouped order, which draws within a layer in another
+  order.
 - Refused ([`E_JSON_DERIVED_IN_INSTANCE`](error-codes.md#e_json_derived_in_instance)): a
   nested `place`, two instances of one component that resolve to different bodies, and a
   component that comes in through an `import`.

@@ -309,6 +309,49 @@ suite("PS3.9 — validating `components` and `instances` on input", () => {
     delete p9.components;
     delete p9.instances;
     expect(codesAt(p9)).toContain("E_JSON_SCHEMA /rooms/1/instance");
+    // a body missing an array the schema requires
+    const p10 = payload();
+    delete (p10.components as Array<{ body: Record<string, unknown> }>)[0]!.body.furniture;
+    expect(codesAt(p10)).toContain("E_JSON_SCHEMA /components/0/body/furniture");
+    // names the lexer cannot read are refused with a path, never by the parser
+    const p11 = payload();
+    (p11.instances as Array<Record<string, unknown>>)[0]!.name = "west-wing";
+    expect(codesAt(p11)).toContain("E_JSON_SCHEMA /instances/0/name");
+    const p12 = payload();
+    (p12.components as Array<Record<string, unknown>>)[0]!.name = "my-unit";
+    expect(codesAt(p12)).toContain("E_JSON_SCHEMA /components/0/name");
+  });
+
+  it("refuses a root row marked by mistake: its id is not in the instance (S1)", () => {
+    const p = payload();
+    const rooms = p.rooms as Array<Record<string, unknown>>;
+    expect(rooms[0]!.id).toBe("lobby");
+    rooms[0]!.instance = "west";
+    const r = planJsonToArch(p);
+    expect(r.source).toBeUndefined();
+    expect(r.diagnostics.map((d) => d.code)).toEqual(["E_JSON_SCHEMA"]);
+    expect(r.diagnostics[0]!.message).toContain("/rooms/0/instance");
+    // every marked kind with an id is checked, not only rooms
+    for (const key of ["walls", "openings", "furniture"] as const) {
+      const q = payload();
+      const row = (q[key] as Array<Record<string, unknown>>).find((x) => x.instance === undefined) ?? {
+        ...(q[key] as Array<Record<string, unknown>>)[0],
+        id: "root_one",
+      };
+      const list = q[key] as Array<Record<string, unknown>>;
+      if (!list.includes(row)) list.push(row);
+      row.instance = "east";
+      expect(codesAt(q).some((c) => c.startsWith(`E_JSON_SCHEMA /${key}/`) && c.endsWith("/instance"))).toBe(true);
+    }
+  });
+
+  it("ignores an edit to a flattened row: it is regenerated from its component", () => {
+    const p = payload();
+    const row = (p.rooms as Array<Record<string, unknown>>).find((r) => r.id === "west.liv")!;
+    row.x = 99999;
+    row.label = "Moved";
+    expect(planJsonToArch(p).diagnostics).toEqual([]);
+    expect(arch(p)).toBe(arch(json(TWINS)));
   });
 
   it("a body row's `mirror: true` is still refused (only a `place` frame can reflect)", () => {

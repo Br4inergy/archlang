@@ -272,6 +272,11 @@ the payload carries `components`/`instances` and marks the flattened rows `insta
 back prints `component` + `place`, so the frame carries the reflection. Widening the record to every
 placed plan (which moves their Plan JSON) is plan-soundness card PS3.12.
 
+**Note (PR #232's red team): `door on <authored wall>` comes back absolute.** A door, window or
+opening written `on <wall> at <pos>` is exported by its `x`/`y` and host category, never the `on`
+clause, so after a round trip `describe().freedom` reports it absolute instead of attached (the
+"bar `freedom`" exception below). It holds at the root and inside a PS3.9 component body alike.
+
 **The CLI round-trip and its gap list.** `archlang compile -f json` writes the Plan JSON that
 `compile --from-json` reads back, and `test/cli-plan-json-roundtrip.test.ts` holds every example
 to byte-identical SVG, equal `describe()` facts (bar `freedom`, which flattens to absolute by
