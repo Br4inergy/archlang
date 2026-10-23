@@ -40,7 +40,14 @@ import {
 import { BUILTIN_NAMES } from "../src/builtins.js";
 import { CANONICAL_FIXTURES } from "../src/elements/fixtures-glyphs.js";
 import { defaultFootprint } from "../src/fixtures-catalog.js";
-import { DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KINDS, KEYWORDS, TITLE_FIELDS } from "../src/grammar/tokens.js";
+import {
+  DOOR_ENUMS,
+  DOOR_HINGE_NEAR,
+  DOOR_KINDS,
+  DOOR_SWING_BUILDING,
+  KEYWORDS,
+  TITLE_FIELDS,
+} from "../src/grammar/tokens.js";
 import { KNOWN_MATERIALS } from "../src/hatches.js";
 import { buildManifest } from "../src/manifest.js";
 import { STYLE_KINDS, THEMES } from "../src/theme.js";
@@ -114,7 +121,7 @@ export const ELEMENT_GRAMMAR: Record<string, string> = {
   // typed out: this line is prose inside a generator, so a retyped list would document a
   // language that no longer exists while `check:drift` stayed green. `assertDoorEnumsRendered`
   // below is the guard that keeps it interpolated.
-  door: `door [id=<name>] [${DOOR_KINDS.join("|")}] (at (x,y) | on <wall|room.edge> at <pos> | between <A> and <B> at <pos>) width <mm> [wall <id|category>] [hinge ${DOOR_ENUMS.hinge.join("|")}|${DOOR_HINGE_NEAR.map((v) => `near ${v}`).join("|")}] [swing ${DOOR_ENUMS.swing.join("|")}|into <roomId>] [slide ${DOOR_ENUMS.slide.join("|")}] [open <0..1>] [head <mm>]   # <pos>: mm along the wall (an EXPRESSION; a \`%\` suffix ENDS it — parenthesise a modulo), \`center\`, \`<mm> from start\`/\`end\`/\`<room>.<edge>\` (to the CENTRE; start = smaller x/y, on a wall its first point), \`axis <label>\`; by rooms only the last three, required for a door. \`between\`: the wall on the rooms' shared edge; \`on <room>.<edge>\`: its exterior wall. There a jamb < max(100, t/2) from a meeting wall's face REFUSES (E_OPENING_NIB), never slides. \`wall …\` pairs with \`at (x,y)\` only (else PARSE ERROR). KIND leads; \`hinged\` (default = omitted) is the ONLY kind with a swing arc. \`swing\` DIFFERS BY KIND: hinged = which side the leaf sweeps; barn/bifold = which FACE the panel hangs on / folds toward; sliding/pocket/garage take none. \`garage\` (a sectional/roller door) takes NO clause at all: it parks OVERHEAD, so there is no \`open\` position to draw and its projection side is DERIVED from which face has floor, never written. DASHED = above the cut plane or hidden (that projection, a barn/bifold track, a pocket cavity); a hinged swing is SOLID. \`hinge\` is hinged-only and \`slide\`/\`open\` sliding-family-only; a wrong pairing REFUSES (E_DOOR_KIND_CLAUSE), as does any non-hinged kind on an \`arc\` wall (E_DOOR_KIND_CURVED). \`slide\` reads along the wall like \`hinge\`; \`open\` is DRAWING-only (nothing measured reads it), [0,1] or E_DOOR_OPEN_RANGE. A \`pocket\` needs its own width + clearance of wall past the slide-side jamb, or W_POCKET_RUN. A jamb closer to a wall CORNER than the wall is thick raises W_DOOR_NEAR_CORNER (arc length on a curve; a free end, a collinear vertex and a tangent junction are not corners). \`head\` trails everything; no \`sill\` — a doorway starts at the floor`,
+  door: `door [id=<name>] [${DOOR_KINDS.join("|")}] (at (x,y) | on <wall|room.edge> at <pos> | between <A> and <B> at <pos>) width <mm> [wall <id|category>] [hinge ${DOOR_ENUMS.hinge.join("|")}|${DOOR_HINGE_NEAR.map((v) => `near ${v}`).join("|")}] [swing ${DOOR_ENUMS.swing.join("|")}|${DOOR_SWING_BUILDING.join("|")}|into <roomId>] [slide ${DOOR_ENUMS.slide.join("|")}] [open <0..1>] [head <mm>]   # <pos>: mm along the wall (an EXPRESSION; a \`%\` suffix ENDS it — parenthesise a modulo), \`center\`, \`<mm> from start\`/\`end\`/\`<room>.<edge>\` (to the CENTRE; start = smaller x/y, on a wall its first point), \`axis <label>\`; by rooms only the last three, required for a door. \`between\`: the wall on the rooms' shared edge; \`on <room>.<edge>\`: its exterior wall. There a jamb < max(100, t/2) from a meeting wall's face REFUSES (E_OPENING_NIB), never slides. \`wall …\` pairs with \`at (x,y)\` only (else PARSE ERROR). KIND leads; \`hinged\` (default = omitted) is the ONLY kind with a swing arc. \`swing\` DIFFERS BY KIND: hinged = which side the leaf sweeps (\`in\` = RIGHT of the wall's drawn direction on the page, y down; \`out\` = LEFT: a south wall drawn \`{ (0,4000) (6000,4000) }\` with \`swing out\` opens INTO the building; so prefer \`${DOOR_SWING_BUILDING.join("|")}\` = towards/away from the one face with floor, E_SWING_SIDE if both or neither, or \`into <room>\`); barn/bifold = which FACE the panel hangs on / folds toward; sliding/pocket/garage take none. \`garage\` (a sectional/roller door) takes NO clause at all: it parks OVERHEAD, so there is no \`open\` position to draw and its projection side is DERIVED from which face has floor, never written. DASHED = above the cut plane or hidden (that projection, a barn/bifold track, a pocket cavity); a hinged swing is SOLID. \`hinge\` is hinged-only and \`slide\`/\`open\` sliding-family-only; a wrong pairing REFUSES (E_DOOR_KIND_CLAUSE), as does any non-hinged kind on an \`arc\` wall (E_DOOR_KIND_CURVED). \`slide\` reads along the wall like \`hinge\`; \`open\` is DRAWING-only (nothing measured reads it), [0,1] or E_DOOR_OPEN_RANGE. A \`pocket\` needs its own width + clearance of wall past the slide-side jamb, or W_POCKET_RUN. A jamb closer to a wall CORNER than the wall is thick raises W_DOOR_NEAR_CORNER (arc length on a curve; a free end, a collinear vertex and a tangent junction are not corners). \`head\` trails everything; no \`sill\` — a doorway starts at the floor`,
   window: `window [id=<name>] <placement as door, no between> width <mm> [wall <id|category>] [sill <mm>] [head <mm>]   # \`on <room>.<edge>\` may omit \`at\` (centre). \`sill\`/\`head\` bound the glazing; \`sill 0\` is legal (floor-length), sill >= head is E_SILL_ABOVE_HEAD. Drawn as double glazing + a sill nose on the face with NO floor (none when both or neither face has floor)`,
   opening: `opening [id=<name>] <placement as door> width <mm> [wall <id|category>] [head <mm>]   # a leaf-less cased opening that still connects the two spaces in the access graph. \`head\` defaults to the HOST WALL's height (drawn full height), not a constant; no \`sill\``,
   furniture: `furniture [id=<name>] <category> (at (x,y) | against wall <id|category> [segment <n>] [offset <mm>] [side left|right] | against <room>.<edge> [offset <mm>] | in <roomId> (centered | anchor <a> [flush] [inset <mm>])) [size <W>x<H>] [label "…"] [rotate 0|90|180|270 | facing <id>] [clear front|sides <mm>] [in <roomId>]   # \`at\` size is plan W×H, a fixture's depth running AWAY from its wall (a WC is 400x700 on a N/S wall, 700x400 on E/W); \`against\` size is along×depth, \`offset\` = mm along the wall to the piece's CENTRE (default: midpoint), and it derives position+rotation (\`side\` inferred from \`in <roomId>\`); \`rotate\` is \`at\`/\`in\`-only (E_FURN_AGAINST; multi-segment wall ⇒ \`segment <n>\`). \`against\` may omit \`size\` for these + aliases (catalogued footprint): ${SIZE_OPTIONAL_FIXTURES.join("/")}. \`anchor <a>\` is ${FURNITURE_ANCHORS.join("|")}; \`inset\` (default 0) pulls it in from that edge, measured from the room rectangle (a wall CENTERLINE); \`flush\` measures from the backing wall's inner FACE instead, so \`anchor bottom flush\` sits on the plaster (it needs an anchored edge: E_FURN_FLUSH on \`centered\`/\`anchor center\`). \`against r.left\`: back on that edge's wall face, like \`against wall\`. \`facing <id>\` (a piece, rect room or opening) derives the turn whose front (rotate 0 = back north) points at it; no hit = E_FACING_MISS. A chair at a table facing away: W_SEAT_FACING_AWAY. \`clear\` = depth to keep free, lint-checked`,
@@ -354,6 +361,7 @@ export function assertDoorEnumsRendered(
   enums: Record<string, readonly string[]>,
   hingeNear: readonly string[],
   kinds: readonly string[] = DOOR_KINDS,
+  swingBuilding: readonly string[] = DOOR_SWING_BUILDING,
 ): void {
   const kindForm = kinds.join("|");
   if (!doorLine.includes(kindForm)) {
@@ -374,6 +382,12 @@ export function assertDoorEnumsRendered(
   const nearForm = hingeNear.map((v) => `near ${v}`).join("|");
   if (!doorLine.includes(nearForm)) {
     throw new Error(`ELEMENT_GRAMMAR.door does not render the \`hinge near\` vertex form as \`${nearForm}\`.`);
+  }
+  const buildingForm = `|${swingBuilding.join("|")}|`;
+  if (!doorLine.includes(buildingForm)) {
+    throw new Error(
+      `ELEMENT_GRAMMAR.door does not render the building-relative \`swing\` form as \`${buildingForm}\`.`,
+    );
   }
 }
 
@@ -552,7 +566,7 @@ export function renderLlmSpec(examples: Record<string, string>): string {
   }
 
   // Drift guard #3: the door line must still RENDER every door enum from the one table.
-  assertDoorEnumsRendered(ELEMENT_GRAMMAR.door ?? "", DOOR_ENUMS, DOOR_HINGE_NEAR);
+  assertDoorEnumsRendered(ELEMENT_GRAMMAR.door ?? "", DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KINDS, DOOR_SWING_BUILDING);
 
   // Drift guard #4: every OTHER closed value set the spec spells out must still come
   // from its source array, on the very line that teaches it. One call per set — a value

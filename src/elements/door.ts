@@ -14,7 +14,7 @@ import type { DoorSwing, WallSegment } from "../geometry.js";
 import { weightWidth } from "../scene.js";
 import { add, doorSwing, mul, nearestWallNote, normal, segmentDirAt, sub, unit, wallFaceProbes } from "../geometry.js";
 import { pointInPolygon, pointOnPolygonEdge } from "../geometry/polygon.js";
-import type { DoorClauseName, DoorKind } from "../grammar/tokens.js";
+import type { DoorClauseName, DoorKind, DoorSwingDir } from "../grammar/tokens.js";
 import type { DoorSwingBuilding } from "../grammar/tokens.js";
 import {
   DOOR_ENUMS,
@@ -43,9 +43,10 @@ import { DOOR_HEAD, parseOpeningHeights, resolveOpeningHeights } from "../datum.
  * and the diagnostic name another. `ctx.fail` returns `never`, which narrows the
  * result to the member type.
  */
-function eatEnumValue<T extends string>(ctx: ParseCtx, allowed: readonly T[], what: string): T {
+function eatEnumValue<T extends string>(ctx: ParseCtx, allowed: readonly T[], what: string, orForm?: string): T {
   const v = ctx.eatIdent().value;
-  if (!(allowed as readonly string[]).includes(v)) ctx.fail(`Expected ${what} ${enumList(allowed)} but found "${v}"`);
+  if (!(allowed as readonly string[]).includes(v))
+    ctx.fail(`Expected ${what} ${enumList(allowed)}${orForm ? ` or ${orForm}` : ""} but found "${v}"`);
   return v as T;
 }
 
@@ -216,7 +217,7 @@ function swingBuilding(
     hints: [
       side === "both"
         ? "Name the room the leaf opens into: `swing into <room>`."
-        : "Use `swing into <room>` with a room that borders this wall, or the wall-relative `swing in|out`.",
+        : `Use \`swing into <room>\` with a room that borders this wall, or the wall-relative \`swing ${DOOR_ENUMS.swing.join("|")}\`.`,
     ],
   });
   return undefined;
@@ -343,17 +344,21 @@ export const door: ElementDef = {
     }
     if (ctx.isKeyword("swing")) {
       ctx.next();
-      // `swing into <room>` picks in/out toward that room; `swing in|out` is explicit.
+      // `swing into <room>` picks in/out toward that room; `swing inward|outward` toward or
+      // away from the building's floor; `swing in|out` is explicit, relative to the wall.
       if (ctx.isKeyword("into")) {
         ctx.next();
         node.swingInto = ctx.eatIdent().value;
-      } else if (DOOR_SWING_BUILDING.some((w) => ctx.isKeyword(w))) {
-        // `swing inward|outward`: relative to the building, not to the wall's drawn direction.
-        const word = ctx.next();
-        node.swingBuilding = word.value as DoorSwingBuilding;
-        node.swingBuildingSpan = { start: word.start, end: word.end };
       } else {
-        node.swing = eatEnumValue(ctx, DOOR_ENUMS.swing, "swing");
+        // One read and one message for every bare word, so the refusal names all four.
+        const word = ctx.peek();
+        const v = eatEnumValue(ctx, [...DOOR_ENUMS.swing, ...DOOR_SWING_BUILDING], "swing", "`into <room>`");
+        if ((DOOR_SWING_BUILDING as readonly string[]).includes(v)) {
+          node.swingBuilding = v as DoorSwingBuilding;
+          node.swingBuildingSpan = { start: word.start, end: word.end };
+        } else {
+          node.swing = v as DoorSwingDir;
+        }
       }
     }
     // `slide left|right` — which way the panel travels. Its byte span (or the

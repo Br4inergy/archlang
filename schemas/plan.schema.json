@@ -519,6 +519,13 @@
             ],
             "description": "Hinged: which side of the wall the leaf sweeps to. Barn/bifold: which face the panel hangs on or folds toward. Not accepted on a sliding or pocket door."
           },
+          "swing_building": {
+            "enum": [
+              "inward",
+              "outward"
+            ],
+            "description": "`swing inward|outward` as written: relative to the building (towards or away from the one face of the host wall that has floor), beside the wall-relative `swing` it resolved to. On input it wins over `swing`."
+          },
           "door_kind": {
             "enum": [
               "hinged",

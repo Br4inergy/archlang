@@ -808,7 +808,8 @@ door at (1000, 0) width 800      # → out
 door at (3000, 0) width 800 swing in   # explicit → in
 ```
 
-Currently `door` supports `swing` (`in`/`out`) and `hinge` (`left`/`right`).
+Currently `door` supports `swing` (`in`/`out`) and `hinge` (`left`/`right`); `set` does not
+take `inward`/`outward`.
 
 ## Elements
 
@@ -1481,7 +1482,7 @@ strip down at (4000,0) gap 0 width 3000 {
 ### Door
 
 ```
-door [id=<id>] [<kind>] at (x,y) width <mm> [wall <ref>] [hinge left|right|near start|end] [swing in|out|into <room>] [slide left|right] [open <0..1>]
+door [id=<id>] [<kind>] at (x,y) width <mm> [wall <ref>] [hinge left|right|near start|end] [swing in|out|inward|outward|into <room>] [slide left|right] [open <0..1>]
 door [id=<id>] [<kind>] on <wall> at <pos> width <mm> [hinge …] [swing …] [slide …] [open …]
 ```
 
@@ -1492,6 +1493,26 @@ plane or hidden, and the path a leaf sweeps at floor level is neither.
 `wall <ref>` pins the door to a wall by `id` or `kind`; otherwise the nearest
 wall hosts it. `hinge` is relative to the wall's direction. Defaults: `hinge
 left`, `swing in`.
+
+**Which way `in` and `out` open.** `swing in|out` is relative to the wall's
+**drawn direction**: `in` puts the leaf on the right-hand side of travel along the
+wall as seen on the page (y grows downward), `out` on the left-hand side. So a
+south wall drawn west to east, `{ (0,4000) (6000,4000) }`, under a building
+above it, opens a `swing out` door **into** the building. An author thinking in
+building terms writes the building-relative word instead:
+
+- `swing inward` opens the leaf towards the one face of the host wall that has
+  floor (the inside of the building, on an exterior wall); `swing outward` opens
+  it away. Each resolves to the `in` or `out` it means, so the drawing,
+  `describe()` and `lint()` are exactly those of that twin.
+- A wall with floor on both faces (between two rooms) or on neither has no
+  inside: [`E_SWING_SIDE`](error-codes.md#e_swing_side). Name the room instead,
+  with `swing into <room>`.
+
+```arch static
+wall id=w_s exterior thickness 200 { (0,4000) (6000,4000) }
+door id=fire on w_s at 50% width 900 swing outward   # away from the building, however w_s was drawn
+```
 
 **Wall attachment (v1.13).** Instead of `at (x,y)`, place the opening **on** a
 named wall at a position along it: `<pos>` is a percentage of the wall's length

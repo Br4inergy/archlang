@@ -49,7 +49,15 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import type { DoorEnumClause } from "../src/grammar/tokens.js";
-import { DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KINDS, KEYWORDS, OPERATORS, TITLE_FIELDS } from "../src/grammar/tokens.js";
+import {
+  DOOR_ENUMS,
+  DOOR_HINGE_NEAR,
+  DOOR_KINDS,
+  DOOR_SWING_BUILDING,
+  KEYWORDS,
+  OPERATORS,
+  TITLE_FIELDS,
+} from "../src/grammar/tokens.js";
 import {
   USE_KINDS,
   FURNITURE_ANCHORS,
@@ -144,6 +152,7 @@ export function assertDoorVocab(
   body: [string, string][],
   enums: Record<string, readonly string[]>,
   kinds: readonly string[] = DOOR_KINDS,
+  swingBuilding: readonly string[] = DOOR_SWING_BUILDING,
 ): void {
   const emitted = body.map(([, prod]) => prod).join(" ");
   // The KIND word is not a clause (it leads the statement, the `room polygon` shape),
@@ -165,6 +174,15 @@ export function assertDoorVocab(
     );
   }
   if (!emitted.includes("door-kind")) throw new Error("gen-gbnf: `door-kind` is unreachable from `door-stmt`.");
+  // `swing inward|outward` is a second spelling of `swing` (beside `DOOR_ENUMS`, not a key of
+  // it), so the clause loop below cannot see it: its own arm, same rule.
+  const swingRule = body.find(([name]) => name === "swing-val");
+  if (swingRule && !swingRule[1].includes(litAlt(swingBuilding))) {
+    throw new Error(
+      `gen-gbnf: \`swing-val\` does not render the building-relative words (${litAlt(swingBuilding)}) — ` +
+        `inject them from DOOR_SWING_BUILDING, never retype.`,
+    );
+  }
   for (const [clause, values] of Object.entries(enums)) {
     const rule = body.find(([name]) => name === `${clause}-val`);
     if (!rule) {
@@ -444,7 +462,7 @@ function rules(): [string, string][] {
       ].join(" "),
     ],
     ["hinge-val", `"near" rws ( ${litAlt(DOOR_HINGE_NEAR)} ) | ${litAlt(DOOR_ENUMS.hinge)}`],
-    ["swing-val", `"into" rws ref | ${litAlt(DOOR_ENUMS.swing)}`],
+    ["swing-val", `"into" rws ref | ${litAlt(DOOR_SWING_BUILDING)} | ${litAlt(DOOR_ENUMS.swing)}`],
     ["slide-val", litAlt(DOOR_ENUMS.slide)],
     // `sill` is a WINDOW's alone and precedes `head`: the parsers read a fixed sequence,
     // so a re-ordering is a parse error, and a door or a cased opening starts at the

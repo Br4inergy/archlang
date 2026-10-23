@@ -1934,8 +1934,7 @@ export const PLAN_JSON_SCHEMA = {
           },
           swing_building: {
             enum: [...DOOR_SWING_BUILDING],
-            description:
-              "`swing inward|outward` as written: relative to the building (towards or away from the one face of the host wall that has floor), beside the wall-relative `swing` it resolved to. On input it wins over `swing`.",
+            description: `\`swing ${DOOR_SWING_BUILDING.join("|")}\` as written: relative to the building (towards or away from the one face of the host wall that has floor), beside the wall-relative \`swing\` it resolved to. On input it wins over \`swing\`.`,
           },
           door_kind: {
             enum: [...DOOR_KINDS],
