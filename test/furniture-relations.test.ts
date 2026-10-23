@@ -16,9 +16,10 @@ import { describe as suite, expect, it } from "vitest";
 import { compile, describe as describePlan, lint, planJsonToArch, planToJson } from "../src/index.js";
 import { furniture as furnitureDef } from "../src/elements/furniture.js";
 import { MAX_EVAL_STEPS, withStepMeter } from "../src/expr.js";
-import { facingTurn, frontRayHit } from "../src/furniture-relation.js";
+import { facingTurn, frontRayHit, type Strip, swingStandoff } from "../src/furniture-relation.js";
+import { type DoorSwing, doorSwing } from "../src/geometry.js";
 import { link } from "../src/import.js";
-import { evaluationSteps, type RFurniture, resolveAll } from "../src/ir.js";
+import { evaluationSteps, type RDoor, type RFurniture, type ResolvedElement, resolveAll } from "../src/ir.js";
 import { parse } from "../src/parser.js";
 import { BUILTIN_REGISTRY } from "../src/registry.js";
 import { NULL_WORLD } from "../src/world.js";
@@ -43,6 +44,13 @@ function pieces(src: string): RFurniture[] {
   return resolveAll(linked.plan, BUILTIN_REGISTRY, NULL_WORLD).ir.elements.filter(
     (e): e is RFurniture => e.kind === "furniture",
   );
+}
+
+/** Every resolved element of a source, in plan space. */
+function resolved(src: string): ResolvedElement[] {
+  const { plan: ast } = parse(src, BUILTIN_REGISTRY);
+  const linked = link(ast!, NULL_WORLD, BUILTIN_REGISTRY);
+  return resolveAll(linked.plan, BUILTIN_REGISTRY, NULL_WORLD).ir.elements;
 }
 
 function stepsOf(src: string): number {
@@ -326,25 +334,98 @@ suite("clear front|sides — declared, measured, checked", () => {
       expect(codes(base(c))).toContain("E_FURN_CLEAR");
   });
 
-  it("a declared `clear front` replaces the catalogue's W_FURN_CLEARANCE for that piece", () => {
-    const stove = (c: string) =>
-      plan(`${ROOMS}\n  furniture stove at (1000,100) size 600x600${c}\n  furniture sofa at (1000,900) size 2000x900`);
-    expect(lint(stove("")).map((d) => d.code)).toContain("W_FURN_CLEARANCE");
-    expect(lint(stove(" clear front 200")).map((d) => d.code)).not.toContain("W_FURN_CLEARANCE");
+  it("the catalogue clearance is a floor: a shallower declaration does not silence W_FURN_CLEARANCE", () => {
+    // A stove's catalogue clearance is 550; a WC's 450. The sofa leaves 200 in front of each.
+    for (const [cat, size] of [
+      ["stove", "600x600"],
+      ["wc", "400x700"],
+    ] as const) {
+      const depth = Number(size.split("x")[1]);
+      const src = (c: string) =>
+        plan(
+          `${ROOMS}\n  furniture ${cat} at (1000,100) size ${size}${c}\n  furniture sofa at (1000,${100 + depth + 200}) size 2000x900`,
+        );
+      const of = (c: string) => lint(src(c)).map((d) => d.code);
+      expect(of("")).toContain("W_FURN_CLEARANCE");
+      // `clear front 1` would launder the catalogue check: it stays, and the declaration is met.
+      expect(of(" clear front 1")).toContain("W_FURN_CLEARANCE");
+      expect(of(" clear front 1")).not.toContain("W_FURN_CLEAR_FRONT");
+      // Below the floor both are measured, and both warn when short.
+      expect(of(" clear front 300")).toEqual(expect.arrayContaining(["W_FURN_CLEARANCE", "W_FURN_CLEAR_FRONT"]));
+      // At or above the floor the declaration replaces it.
+      expect(of(" clear front 600")).toContain("W_FURN_CLEAR_FRONT");
+      expect(of(" clear front 600")).not.toContain("W_FURN_CLEARANCE");
+    }
+  });
+});
+
+suite("clear — a swing that only touches a zone leaves it clear", () => {
+  // A strip in front of a face at y 0: x 0..1000, depth 600 (y 0..600).
+  const strip: Strip = { face: 0, u: { x: 0, y: 1 }, lo: 0, hi: 1000, depth: 600 };
+  it("the leaf end on the strip's edge (one point) is no obstacle", () => {
+    // Hinge (1500,300), leaf to (1000,300), far jamb (1500,800): the disc reaches x 1000 at one point.
+    const sw: DoorSwing = {
+      hinge: { x: 1500, y: 300 },
+      leafEnd: { x: 1000, y: 300 },
+      farJamb: { x: 1500, y: 800 },
+      radius: 500,
+      sweep: 0,
+    };
+    expect(swingStandoff(strip, sw)).toBeNull();
+  });
+  it("a disc vertex on the face (one point) is no obstacle", () => {
+    // A disc wholly behind the face (y ≤ 0) whose far jamb sits on it at (500,0).
+    const sw: DoorSwing = {
+      hinge: { x: 500, y: -500 },
+      leafEnd: { x: 0, y: -500 },
+      farJamb: { x: 500, y: 0 },
+      radius: 500,
+      sweep: 0,
+    };
+    expect(swingStandoff(strip, sw)).toBeNull();
+  });
+  it("a disc that overlaps the strip with area is measured", () => {
+    const sw: DoorSwing = {
+      hinge: { x: 1200, y: 300 },
+      leafEnd: { x: 700, y: 300 },
+      farJamb: { x: 1200, y: 800 },
+      radius: 500,
+      sweep: 0,
+    };
+    // The overlap reaches back to the face's line? No: its nearest point is the leaf at y 300.
+    expect(swingStandoff(strip, sw)).toBe(300);
+  });
+  it("end to end: a shelf whose clear zone meets a door's leaf end at its corner is clear", () => {
+    const src = plan(
+      `${ROOMS}\n  door id=d on w at 1500 width 800 hinge left swing in\n  furniture id=s bookshelf at (500,1400) size 600x300 rotate 180 clear front 600`,
+    );
+    const d = resolved(src).find((e) => e.kind === "door") as RDoor;
+    const sw = doorSwing(d)!;
+    // The leaf parks at (1100, 800): exactly the zone's corner (x 500..1100, y 800..1400).
+    expect(sw.leafEnd).toEqual({ x: 1100, y: 800 });
+    expect(facts(src).furniture[0]!.clear).toEqual({ front: { declared: 600, measured: 600 } });
+    expect(lint(src).map((x) => x.code)).not.toContain("W_FURN_CLEAR_FRONT");
   });
 });
 
 suite("W_SEAT_FACING_AWAY (PS2.11, undeclared)", () => {
-  const cafe = (chair: string) =>
-    plan(`${ROOMS}\n  furniture id=t table at (2000,1500) size 900x900\n  furniture chair at ${chair}`);
+  const cafe = (chair: string, table = "id=t table") =>
+    plan(`${ROOMS}\n  furniture ${table} at (2000,1500) size 900x900\n  furniture chair at ${chair}`);
   it("a chair south of its table facing south warns; turned, it does not", () => {
     const ds = lint(cafe("(2225,2400) size 450x450")).filter((d) => d.code === "W_SEAT_FACING_AWAY");
     expect(ds).toHaveLength(1);
     expect(ds[0]!.message).toBe("A chair in r faces away from the table beside it.");
-    expect(ds[0]!.hints![0]).toBe('Add `facing t` to "chair_2" (it turns to `rotate 180`).');
+    expect(ds[0]!.hints![0]).toBe('On "chair_2", add `facing t` (it turns to `rotate 180`).');
     expect(ds[0]!.fixes).toBeUndefined();
     expect(lint(cafe("(2225,2400) size 450x450 rotate 180")).map((d) => d.code)).not.toContain("W_SEAT_FACING_AWAY");
     expect(lint(cafe("(2225,2400) size 450x450 facing t")).map((d) => d.code)).not.toContain("W_SEAT_FACING_AWAY");
+  });
+  it("a table with no authored id is named first, never by its auto id", () => {
+    const ds = lint(cafe("(2225,2400) size 450x450", "table")).filter((d) => d.code === "W_SEAT_FACING_AWAY");
+    expect(ds[0]!.hints![0]).toBe(
+      'On "chair_2", name the table (`id=`) and add `facing <its id>` (it turns to `rotate 180`).',
+    );
+    expect(ds[0]!.hints![0]).not.toContain("table_1");
   });
   it("a chair beyond the reach is not at the table", () => {
     expect(lint(cafe("(2225,3100) size 450x450")).map((d) => d.code)).not.toContain("W_SEAT_FACING_AWAY");
@@ -352,6 +433,26 @@ suite("W_SEAT_FACING_AWAY (PS2.11, undeclared)", () => {
   it("is off with `seatTableReachMm: null`", () => {
     const src = cafe("(2225,2400) size 450x450");
     expect(lint(src, { ruleset: { seatTableReachMm: null } }).map((d) => d.code)).not.toContain("W_SEAT_FACING_AWAY");
+  });
+  it("a table in the next room, behind a partition, is not the table a chair is sat at", () => {
+    // Red team round 1: a chair in b with its back on the partition, a table in a 350 mm away.
+    const src = plan(`  room id=a at (0,0) size 4000x4000 uses dining
+  room id=b right-of a size 3000x4000 uses bedroom
+  walls from rooms exterior 200 partition 100 { }
+  furniture id=t table at (2700,1500) size 900x900
+  furniture chair at (4050,1725) size 450x450 rotate 270`);
+    expect(lint(src).map((d) => d.code)).not.toContain("W_SEAT_FACING_AWAY");
+  });
+  it("the ray starts at the front edge's middle, not the footprint's centre", () => {
+    // Facing the table: front 550 mm from it, centre 800 mm (a 500-deep chair). At the table.
+    const deep = cafe("(3450,1700) size 500x450 rotate 90");
+    expect(lint(deep).map((d) => d.code)).not.toContain("W_SEAT_FACING_AWAY");
+    // The mirror: a table between the chair's centre and its front (so a ray from the centre
+    // would enter it, at 100 mm) is behind the front: the chair faces away from it.
+    const inside = plan(
+      `${ROOMS}\n  furniture id=t table at (2400,2600) size 200x200\n  furniture chair at (2000,2000) size 1000x1000`,
+    );
+    expect(lint(inside).map((d) => d.code)).toContain("W_SEAT_FACING_AWAY");
   });
 });
 

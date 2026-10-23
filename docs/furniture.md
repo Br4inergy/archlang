@@ -112,7 +112,10 @@ furniture wardrobe against bed.right clear front 600
   on the line, or on the line itself. It is the way to reach a wall `walls from rooms` derived.
 - **`clear front|sides <mm>`** is a declaration, never a catalogue default: a wardrobe's front is
   approached from the side or behind sliding doors often enough that a fixed number warned on
-  correct plans. Declared, it is measured against solid pieces, wall bodies and door swings.
+  correct plans. Declared, it is measured against solid pieces, wall bodies and door swings (an
+  obstacle that only touches the zone at a point or along a line leaves it clear). A catalogued
+  clearance is a floor: a declared `clear front` shallower than it does not silence
+  `W_FURN_CLEARANCE`; both are measured.
 
 ## The symbol catalogue
 

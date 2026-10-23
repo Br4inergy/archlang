@@ -183,10 +183,18 @@ nearest obstacle inside the strip, capped at the declared depth and floored at 0
 - every hinged door's **swing** (`doorSwing`, shared with `W_SWING_OBSTRUCTED`): the quarter-disc
   clipped to the strip, its nearest point found in closed form (the disc's vertices, the strip
   corners inside it, the strip edges' crossings with its radii and its arc, and the arc's extreme
-  point toward the face).
+  points along both axes).
 
-A piece with `clear front` declared is not also judged by the catalogue's `W_FURN_CLEARANCE` (the
-author's number replaces the catalogue's); every undeclared piece is judged exactly as today.
+An obstacle counts only when it overlaps the strip with positive **area**: a piece, a wall or a
+swing that touches the strip at a point or along a line (a leaf end on the strip's edge, a
+corner on the face) leaves it clear. For a swing that is decided on the same candidate points:
+the intersection is convex, so it has area exactly when three of them are not collinear.
+
+*Amended 2026-10-23 (PR #228, red team round 1):* the catalogue's `clearanceMm` is a **floor**. A
+piece whose declared `clear front` is at least its catalogue clearance is judged by
+`W_FURN_CLEAR_FRONT` alone (the author's number replaces the catalogue's). A shallower
+declaration cannot silence `W_FURN_CLEARANCE`: both are measured, and both can warn. Every
+undeclared piece is judged exactly as before.
 
 ### 5. Facts
 
@@ -219,11 +227,15 @@ the bed leaves 100 mm") and never an id; ids are in the hints.
 `table`, `dining_table`, `meeting_table`, `outdoor_table`, `desk`, `reception_desk` (and aliases).
 Lounge seating (`sofa`, `armchair`) and stools (`symmetric`, no front) are out: a sofa faces a TV
 or a view, not a table. A seat is *at a table* when the gap between the two footprints is at most
-the reach on both axes (`seatTableReachMm`, 600); it warns when no such table is entered by its
-front ray (§3's ray, at the seat's resolved turn) within the reach. A seat with `facing` is never
-judged (its turn is stated). The hint names the turn whose ray meets the nearest table, when one
-turn does uniquely, and the `facing <id>` clause naming the nearest table; no machine-applicable
-fix in this card.
+the reach on both axes (`seatTableReachMm`, 600) and both lie in the same room (the first room
+whose floor holds the footprint, `rectInRoomBox`; a piece in no room matches only pieces in no
+room), so a table behind a partition is never the one a chair is sat at; it warns when no such
+table is entered by its front ray (§3's ray, from the front edge's midpoint, at the seat's
+resolved turn) within the reach. A seat with `facing` is never judged (its turn is stated). The
+hint names the turn whose ray meets the nearest table, when one turn does uniquely, and the
+`facing <id>` clause naming that table; a table with no authored id is to be named first (`id=`),
+since a `facing` on an auto id breaks when an earlier piece is named. No machine-applicable fix in
+this card.
 
 Measured on the six first-contact plans: 51 seats are at a table and 26 warn (the audit counted 27
 by eye; the difference is café `chair_29`, south of its table and facing south, whose front ray

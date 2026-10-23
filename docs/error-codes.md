@@ -2208,7 +2208,7 @@ furniture sofa at (0,650) size 2000x900   # lint: sofa blocks the stove front
 
 *warning* — A declared `clear front` is not free.
 
-**Cause.** The piece declares `clear front <mm>` (ADR 0029 §4) and something stands inside that depth in front of it: a solid piece of furniture, a wall body, or a hinged door's swing. The warning states the declared depth, the depth measured free and what stands there. Only a piece that declares the zone is judged, never by a catalogue default.
+**Cause.** The piece declares `clear front <mm>` (ADR 0029 §4) and something stands inside that depth in front of it: a solid piece of furniture, a wall body, or a hinged door's swing. The warning states the declared depth, the depth measured free and what stands there. Only a piece that declares the zone is judged, never by a catalogue default. An obstacle that only touches the zone at a point or along a line leaves it clear. A catalogued clearance is a floor: a shallower declared `clear front` does not silence `W_FURN_CLEARANCE`, and both are measured.
 
 **Fix.** Move the obstruction or the piece apart by the shortfall the warning quotes, or lower the declared depth if less will do.
 
@@ -2598,7 +2598,7 @@ scale 1:50   # warning on a 20 m building: 1:100 or `paper A2` fits, or omit `sc
 
 *warning* — A chair at a table faces away from it.
 
-**Cause.** A chair, office chair or outdoor chair stands within reach of a table or desk (600 mm on both axes, `seatTableReachMm`), but its front ray, from the middle of its front edge, enters no such table within that reach: it is drawn with its back to the table it is sat at. At `rotate 0` a symbol's back is to the north. A chair that declares `facing` is not judged.
+**Cause.** A chair, office chair or outdoor chair stands within reach of a table or desk in the same room (600 mm on both axes, `seatTableReachMm`), but its front ray, from the middle of its front edge, enters no such table within that reach: it is drawn with its back to the table it is sat at. At `rotate 0` a symbol's back is to the north. A chair that declares `facing` is not judged.
 
 **Fix.** Add `facing <table id>` to the chair (the hint names the nearest table and the turn it derives), or give it the `rotate` that turns its front to the table.
 

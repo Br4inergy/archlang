@@ -1747,10 +1747,11 @@ checks the rest in closed form; it never searches for a layout.
 - `clear front <mm>` and `clear sides <mm>` declare a depth to keep free in front, or along both
   edges beside the back. They draw nothing; `describe()` reports the measured free depth and lint
   warns when a solid piece, a wall body or a door swing stands inside it
-  (`W_FURN_CLEAR_FRONT`, `W_FURN_CLEAR_SIDES`). Nothing has a default.
+  (`W_FURN_CLEAR_FRONT`, `W_FURN_CLEAR_SIDES`). Nothing has a default, and a catalogued
+  clearance is a floor: a `clear front` shallower than it does not silence `W_FURN_CLEARANCE`.
 
 Each clause shows in `describe()` only when written (`relation`, `facing`, `clear`). Undeclared,
-lint still reports a chair at a table or desk drawn with its back to it
+lint still reports a chair at a table or desk in the same room drawn with its back to it
 ([`W_SEAT_FACING_AWAY`](error-codes.md)).
 
 **Room-relative placement (v1.13).** `in <room> centered` centres the fixture in

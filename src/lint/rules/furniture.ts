@@ -97,11 +97,12 @@ export const furnClearance: LintRule = {
   check({ furniture, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const f of furniture) {
-      // A declared `clear front` replaces the catalogue's number (ADR 0029 §4): that piece is
-      // judged by `W_FURN_CLEAR_FRONT` instead.
-      if (f._clear?.front !== undefined) continue;
       const clear = frontClearanceMm(f.category);
       if (clear <= 0) continue;
+      // The catalogue's number is a FLOOR (ADR 0029 §4, amended 2026-10-23): a declared `clear
+      // front` at least as deep replaces it (that piece is judged by `W_FURN_CLEAR_FRONT`); a
+      // shallower one cannot silence it, and both are measured.
+      if (f._clear?.front !== undefined && f._clear.front >= clear) continue;
       const zone = frontClearanceRect(f, clear);
       for (const g of furniture) {
         // Ignore other services fixtures — and an underlay, which you stand on rather than

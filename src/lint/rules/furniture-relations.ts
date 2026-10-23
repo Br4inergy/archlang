@@ -8,7 +8,7 @@
  */
 
 import { actOnQuarterTurn, inverse } from "../../algebra/d4.js";
-import { pointInRoomBox, rectOf } from "../../analyze.js";
+import { pointInRoomBox, rectInRoomBox, rectOf } from "../../analyze.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import { canonicalFixture } from "../../elements/fixtures-glyphs.js";
 import {
@@ -112,22 +112,35 @@ function gapMm(a: RFurniture, b: RFurniture): number {
  * A chair at a table or desk whose front faces away from it (plan-soundness PS2.11, ADR 0029
  * §6). A seat is at a table when the two footprints are within `seatTableReachMm` of each
  * other on both axes; it warns when its front ray (the ray `facing` reads) enters no such table
- * within that reach. A seat that declares `facing` states its own turn and is never judged.
+ * within that reach. Seat and table must lie in the same room (or both in none). A seat that
+ * declares `facing` states its own turn and is never judged.
  * Hint only: the author picks the table, so there is no machine-applicable fix.
  */
 export const seatFacingAway: LintRule = {
   name: "seat-facing-away",
   family: "furniture",
   check(ctx: LintContext): Diagnostic[] {
-    const { furniture, rules, at, frameOf } = ctx;
+    const { furniture, rules, rooms, roomRects, at, frameOf } = ctx;
     const reach = rules.seatTableReachMm;
     if (reach === null) return [];
     const tables = furniture.filter((f) => TABLES.has(canonicalFixture(f.category) ?? ""));
     if (tables.length === 0) return [];
+    // The room a piece lies in: the first whose floor holds its footprint (`rectInRoomBox`, the
+    // room's own shape, with the wall-band slack), or none. A seat is at a table only in the same
+    // room, so a table behind a partition is never the one a chair is sat at.
+    const roomOf = (f: RFurniture): string | null => {
+      const fr = rectOf(f);
+      for (const r of rooms) {
+        const box = roomRects.get(r.id);
+        if (box !== undefined && rectInRoomBox(fr, box)) return r.id;
+      }
+      return null;
+    };
     const out: Diagnostic[] = [];
     for (const s of furniture) {
       if (s._facing !== undefined || !SEATS.has(canonicalFixture(s.category) ?? "")) continue;
-      const near = tables.filter((t) => gapMm(s, t) <= reach);
+      const home = roomOf(s);
+      const near = tables.filter((t) => gapMm(s, t) <= reach && roomOf(t) === home);
       if (near.length === 0) continue;
       const rect = rectOf(s);
       if (near.some((t) => (frontRayHit(rect, s.rotate ?? 0, rectOf(t)) ?? Infinity) <= reach)) continue;
@@ -141,12 +154,18 @@ export const seatFacingAway: LintRule = {
           : nearest.id;
       const g = frameOf(s);
       const turn = res.kind === "turn" && g !== null ? actOnQuarterTurn(inverse(g), res.turn) : null;
+      // A table with an auto id is named first: `facing` on an auto id would break the moment an
+      // earlier piece is named, and naming one renumbers every later auto id (ADR 0029 §6).
+      const facingClause =
+        nearest._idAuthored === true
+          ? `add \`facing ${localId}\``
+          : `name the ${pieceName(nearest)} (\`id=\`) and add \`facing <its id>\``;
       const hint =
         sameGroup && res.kind === "turn"
-          ? `Add \`facing ${localId}\` to "${s.id}" (it turns to \`rotate ${turn ?? res.turn}\`).`
+          ? `On "${s.id}", ${facingClause} (it turns to \`rotate ${turn ?? res.turn}\`).`
           : turn !== null
             ? `Turn "${s.id}" to face "${nearest.id}" (\`rotate ${turn}\`).`
-            : `Move "${s.id}" so its front lines up with "${nearest.id}", then add \`facing ${localId}\`.`;
+            : `Move "${s.id}" so its front lines up with "${nearest.id}", then ${facingClause}.`;
       out.push({
         severity: "warning",
         code: "W_SEAT_FACING_AWAY",

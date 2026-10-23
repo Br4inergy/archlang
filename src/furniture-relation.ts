@@ -254,8 +254,10 @@ export function swingStandoff(s: Strip, sw: DoorSwing): number | null {
   const inRect = (p: Point): boolean =>
     p.x >= r.x - 1e-9 && p.x <= r.x + r.w + 1e-9 && p.y >= r.y - 1e-9 && p.y <= r.y + r.h + 1e-9;
   const cands: Point[] = [h, sw.leafEnd, sw.farJamb, ...rectPoly(r)];
-  // The arc's extreme point toward the face (the direction −u).
-  cands.push({ x: h.x - s.u.x * R, y: h.y - s.u.y * R });
+  // The arc's extreme points along both axes: the one toward the face (−u) is where the
+  // standoff can be least, and the others are where an arc bulging through a strip edge has the
+  // third vertex the area test below needs.
+  cands.push({ x: h.x + R, y: h.y }, { x: h.x - R, y: h.y }, { x: h.x, y: h.y + R }, { x: h.x, y: h.y - R });
   // Crossings of the strip's four edge lines with the radii and the circle.
   const lines: Array<{ vertical: boolean; c: number }> = [
     { vertical: true, c: r.x },
@@ -280,17 +282,29 @@ export function swingStandoff(s: Strip, sw: DoorSwing): number | null {
       cands.push(L.vertical ? { x: L.c, y: h.y + sgn * k } : { x: h.x + sgn * k, y: L.c });
     }
   }
-  let m: number | null = null;
-  let hits = 0;
-  for (const p of cands) {
-    if (!inRect(p) || !inDisc(p)) continue;
-    const v = standoff(s, p);
-    if (m === null || v < m) m = v;
-    hits++;
-  }
-  // A contact at one point (a tangent or a corner touch) leaves the strip usable.
-  if (m === null || hits < 2) return null;
+  const inside = cands.filter((p) => inRect(p) && inDisc(p));
+  // The disc and the strip must overlap with positive AREA: a contact at a point or along a
+  // line (a leaf end on the strip's edge, a vertex on the face, a radius lying along a side)
+  // leaves the strip usable. The intersection is convex and every vertex of it is a candidate,
+  // so it has area exactly when three of the candidates found are not collinear.
+  if (!spansArea(inside)) return null;
+  let m = Infinity;
+  for (const p of inside) m = Math.min(m, standoff(s, p));
   return Math.max(0, m);
+}
+
+/** Do three of `pts` span a triangle of positive area? (Duplicates are harmless.) */
+function spansArea(pts: readonly Point[]): boolean {
+  const n = pts.length;
+  for (let i = 0; i < n; i++)
+    for (let j = i + 1; j < n; j++)
+      for (let k = j + 1; k < n; k++) {
+        const a = pts[i]!;
+        const b = pts[j]!;
+        const c = pts[k]!;
+        if (Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) > 1e-6) return true;
+      }
+  return false;
 }
 
 /** A thing that can stand in a clear zone. */

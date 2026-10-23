@@ -547,6 +547,8 @@ export interface RFurniture extends RBase {
   _facingSpan?: Span;
   /** `clear front|sides <mm>` (ADR 0029 §4), evaluated. Present only when declared. */
   _clear?: { front?: number; sides?: number };
+  /** The author wrote this piece's `id=` (set only then). Read by lint's seat hint. Internal. */
+  _idAuthored?: true;
 }
 export interface RDim extends RBase {
   kind: "dim";
@@ -2634,6 +2636,10 @@ function resolveBody(
         } else if (r.kind === "room") {
           r._idAuthored = e.idAuthored === true;
           grpRooms.push(r);
+        } else if (r.kind === "furniture") {
+          // Only when authored, so a plan's IR gains no key: lint's seat hint (ADR 0029 §6)
+          // names a piece by id only when the author gave it one.
+          if (e.idAuthored === true) r._idAuthored = true;
         } else if (def.yieldsWalls) {
           // Derived walls join the group's wall list at once, before any opening resolves
           // (ADR 0028 §3); they carry the statement's zone and file, never an authored id.

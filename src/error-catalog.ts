@@ -1188,7 +1188,7 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   W_FURN_CLEAR_FRONT: W(
     "W_FURN_CLEAR_FRONT",
     "A declared `clear front` is not free.",
-    "The piece declares `clear front <mm>` (ADR 0029 §4) and something stands inside that depth in front of it: a solid piece of furniture, a wall body, or a hinged door's swing. The warning states the declared depth, the depth measured free and what stands there. Only a piece that declares the zone is judged, never by a catalogue default.",
+    "The piece declares `clear front <mm>` (ADR 0029 §4) and something stands inside that depth in front of it: a solid piece of furniture, a wall body, or a hinged door's swing. The warning states the declared depth, the depth measured free and what stands there. Only a piece that declares the zone is judged, never by a catalogue default. An obstacle that only touches the zone at a point or along a line leaves it clear. A catalogued clearance is a floor: a shallower declared `clear front` does not silence `W_FURN_CLEARANCE`, and both are measured.",
     "Move the obstruction or the piece apart by the shortfall the warning quotes, or lower the declared depth if less will do.",
     "furniture wardrobe at (0,0) size 1800x600 clear front 600\nfurniture bed at (0,900) size 1500x2000   # lint: the bed leaves 300 mm",
   ),
@@ -1202,7 +1202,7 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   W_SEAT_FACING_AWAY: W(
     "W_SEAT_FACING_AWAY",
     "A chair at a table faces away from it.",
-    "A chair, office chair or outdoor chair stands within reach of a table or desk (600 mm on both axes, `seatTableReachMm`), but its front ray, from the middle of its front edge, enters no such table within that reach: it is drawn with its back to the table it is sat at. At `rotate 0` a symbol's back is to the north. A chair that declares `facing` is not judged.",
+    "A chair, office chair or outdoor chair stands within reach of a table or desk in the same room (600 mm on both axes, `seatTableReachMm`), but its front ray, from the middle of its front edge, enters no such table within that reach: it is drawn with its back to the table it is sat at. At `rotate 0` a symbol's back is to the north. A chair that declares `facing` is not judged.",
     "Add `facing <table id>` to the chair (the hint names the nearest table and the turn it derives), or give it the `rotate` that turns its front to the table.",
     "furniture table at (0,0) size 800x800\nfurniture chair at (175,850) size 450x450   # lint: south of the table, facing south",
   ),

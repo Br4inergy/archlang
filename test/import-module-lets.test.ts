@@ -489,7 +489,9 @@ suite("a module `let` that fails reports as it does in the module", () => {
 // defect `W_SEAT_FACING_AWAY` found (ADR 0029 §6); the cause and the proof that nothing else
 // moved are in `test/byte-identity-baseline.ts`'s header.
 // The two `test/recovery-corpus/` rows are copies of `materials` and `themed`: the same chairs,
-// left unedited because the recovery metric reads those copies as frozen inputs.
+// left unedited because the recovery metric reads those copies as frozen inputs. Re-measured
+// once more for PS3.7's red team round 1: the seat hint was reworded (`On "<chair>", add
+// `facing <id>``, or name an id-less desk first); the message, code and span are unchanged.
 const BASELINE: [string, string][] = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
   ["examples/aquarium.arch", "007894ef4d4f3155137916fd3c1745c2cdb5d8eacff119c1e2c643b2ad52b907"], // re-measured for PS2.4, see header
@@ -558,12 +560,12 @@ const BASELINE: [string, string][] = [
   ["test/fixtures/zones-wings.arch", "f7ee2a2b343dee5164a308b00204c546f3f8cfcfde21a32f128f58d5e2a1f072"], // re-measured for PS2.4, see header
   ["test/recovery-corpus/attached.arch", "591f4199087b7f7fcab65af3cab3f12dbe062456954e7ef0f02969a974d34b93"],
   ["test/recovery-corpus/clinic.arch", "fac5d9fab49df93fe8cbff6cc0bf26b9e84b1a32c26128e155d0eeb5da99feb1"],
-  ["test/recovery-corpus/materials.arch", "6a6f708627d24e9b1cc0b2efa150c68594e7ac787393c55089f2e19d5e641bc5"],
+  ["test/recovery-corpus/materials.arch", "ff98453277bdfdccf9f8173668a36d1ec4c982607f3eb1b4fb66523227aaf42b"],
   ["test/recovery-corpus/parametric.arch", "4b4e50a6118cdca922c93a88e9c783abe17fd7d29458e27f98f0400721c2c8c7"],
   ["test/recovery-corpus/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
   ["test/recovery-corpus/terrace-row.arch", "2d0b625c755cc704b1bac6c86a6d0817045ef873996681fa2a2540214feb01e9"],
   // Re-measured 2026-10-18 (PS0.7): a copy of `examples/themed.arch`, the same cause and value.
-  ["test/recovery-corpus/themed.arch", "b73eeb0c7ad2cdf8efe217bc45867fe55ccfcc660426cf6a2d1009fb441bfe48"],
+  ["test/recovery-corpus/themed.arch", "38145ed22c9ea0578179ecf487ce720c3e4c16da44a068f601af14283be16009"],
   ["test/recovery-corpus/two-storey.arch", "d911af2b9affed091c6bf157fde296fed715aff055619f015f3338caff273f68"],
   ["eval/goldens/accessible-bath.arch", "0f2e47f8b1a0afe5e110117ea229b829861353fe1d115b9a8af1ec2085774d14"],
   ["eval/goldens/accessible-flat.arch", "721d479d06915e309d209c1c84dbb4a5b1c40b7c8195891499ed5078c650fe3e"],
