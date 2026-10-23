@@ -65,6 +65,19 @@ suite("PS0.4 defect 1: a pure move is a move", () => {
     expect(d.rooms).toEqual([{ id: "c", label: "Drum", change: "moved", offset: { dx: 3000, dy: 0 } }]);
   });
 
+  it("a polygon rewritten from another start vertex, or the other way round, still reads as a move", () => {
+    // Red-team probe (round 1): the ring was compared vertex i with vertex i, so the same
+    // rectangle written from another corner read "resized +0.0 m²".
+    const before = `  room id=r polygon (1000,1000) (4000,1000) (4000,3000) (1000,3000) label "Study"`;
+    const rotated = `  room id=r polygon (4500,1000) (4500,3000) (1500,3000) (1500,1000) label "Study"`;
+    const reversed = `  room id=r polygon (4500,3000) (4500,1000) (1500,1000) (1500,3000) label "Study"`;
+    for (const after of [rotated, reversed]) {
+      const d = diffPlans(box([before]), box([after]));
+      expect(d.rooms).toEqual([{ id: "r", label: "Study", change: "moved", offset: { dx: 500, dy: 0 } }]);
+      expect(d.summary).toEqual(["Moved Study 500 mm right"]);
+    }
+  });
+
   it("a room that grew is still `resized`, not moved", () => {
     const d = diffPlans(
       box([`  room id=r at (1000,1000) size 3000x2000 label "Study"`]),
@@ -140,6 +153,26 @@ suite("PS0.4 defect 2: a re-hosted opening is reported", () => {
     expect(w).toMatchObject({ change: "rehosted", relationBefore: "on bed.bottom", relationAfter: "on bath.bottom" });
     expect(d.summary).toContain("window window_3 re-hosted: on bed.bottom → on bath.bottom");
     expectNoInternalNames(d);
+  });
+
+  it("a derived `open between` opening is named by its clause in every sentence, never `A|B:open`", () => {
+    // Red-team round 1: the width/Added/Removed sentences printed `opening living|hall:open`.
+    const rel = read("examples/relational.arch");
+    const wider = rel.replace("open between living and hall width 1200", "open between living and hall width 1500");
+    const without = rel.replace("    open between living and hall width 1200\n", "");
+    expect(wider).not.toBe(rel);
+    expect(without).not.toBe(rel);
+    const resized = diffPlans(rel, wider);
+    expect(resized.ok).toBe(true);
+    expect(resized.summary).toEqual(["opening between living and hall width 1200 mm → 1500 mm"]);
+    expectNoInternalNames(resized);
+    const removed = diffPlans(rel, without);
+    expect(removed.ok).toBe(true);
+    expect(removed.summary).toContain("Removed opening between living and hall");
+    expectNoInternalNames(removed);
+    const added = diffPlans(without, rel);
+    expect(added.summary).toContain("Added opening between living and hall (1200 mm)");
+    expectNoInternalNames(added);
   });
 
   it("a resized door that was also re-hosted keeps its width line and appends the host line", () => {

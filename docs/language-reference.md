@@ -3014,9 +3014,11 @@ topped up.
 ### Comparing two plans — `diffPlans`
 
 Where `describe(source)` turns **one** plan into facts, `diffPlans(sourceA, sourceB, opts?)`
-turns **two** into the *delta* between them. It runs entirely on top of `describe()` — no
-geometry of its own — so it is equally pure, deterministic, and never throws: if either side
-fails to resolve it returns `{ ok: false, … }` with the collected error diagnostics.
+turns **two** into the *delta* between them. It reads each side's `describe()` summary plus the
+walls and opening hosts of that same resolve (which `describe()` does not report), and does a
+little geometry of its own: a vertex-by-vertex translation test to tell a move from a resize,
+and wall centreline lengths. It is equally pure, deterministic, and never throws: if either
+side fails to resolve it returns `{ ok: false, … }` with the collected error diagnostics.
 
 ```ts
 import { diffPlans, type PlanDiff } from "@chanmeng666/archlang";
@@ -3026,11 +3028,13 @@ if (d.ok) for (const s of d.summary) console.log(s);
 
 The returned `PlanDiff` reports:
 
-- **`rooms`** — each room `added` / `removed` / `resized` / `relabeled` / `moved`, with
-  before/after area and, for a resize, the signed mm delta of each bbox edge
-  (`top`/`bottom`/`left`/`right`, after − before, in plan coordinates). A room whose shape is
-  unchanged but whose position moved is `moved`, with the `offset` (`dx`, `dy` in mm, +y down
-  the page) read off its own vertices (a circle: its centre), never `resized` by +0.0 m².
+- **`rooms`** — each room `added` / `removed` (with its area) / `resized` (area before and
+  after, and the signed mm delta of each bbox edge, `top`/`bottom`/`left`/`right`, after −
+  before, in plan coordinates) / `relabeled` / `moved`. A `moved` room has the same shape at
+  another position and carries only its `offset` (`dx`, `dy` in mm, +y down the page), no
+  area fields. The offset is the translation that carries the room's floor vertices onto the
+  new ones within 10 mm each, whatever vertex the ring is written from and whichever way it
+  winds (a circle: its centre); it is never read off the bbox.
 - **`openings`** — doors, windows, and openings `added` / `removed` / `resized` (before/after
   clear width in mm, and what they sit `between`), or `rehosted` when the width held but the
   host changed (the wall it stands in, or its `between A and B` / `on <room>.<edge>`
@@ -3064,7 +3068,9 @@ only, since neither says which room it was before; then every other room/opening
 paired by its resolved id; and a room still unmatched is rescued only when its label is
 unique among the unmatched rooms on both sides. A room paired across two different ids is
 reported under its **after** id (an id change alone is not a change). Circulation deltas follow the same room
-pairing. On a multi-storey plan `diffPlans` compares the **lowest storey only**, exactly as
+pairing, and so does the test of which spaces an opening joins. Walls pair by resolved id too:
+an authored wall by its `id=`, a derived wall by its rooms, and a wall with no `id=` by its
+positional auto id (e.g. `partition_3`), which shifts when a wall is inserted ahead of it. On a multi-storey plan `diffPlans` compares the **lowest storey only**, exactly as
 `describe()`'s top-level `rooms[]` does.
 
 **Noise thresholds** keep sub-perceptual jitter out of the diff: a room counts as *resized* only

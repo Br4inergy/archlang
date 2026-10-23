@@ -282,7 +282,37 @@ function roomOffset(a: RoomSummary, b: RoomSummary): { dx: number; dy: number } 
     if (!ca || !cb || Math.abs(cb.r - ca.r) > EDGE_EPS_MM) return null;
     return { dx: cb.cx - ca.cx, dy: cb.cy - ca.cy };
   }
-  return translationOf(a.floor_polygon, b.floor_polygon);
+  return ringTranslationOf(a.floor_polygon, b.floor_polygon);
+}
+
+/** Index of the lexicographically smallest vertex (x, then y): a start every rewriting of the
+ *  same ring agrees on, since a translation keeps the order of its vertices. */
+function lowestVertex(r: readonly Pt[]): number {
+  let k = 0;
+  for (let i = 1; i < r.length; i++) {
+    const p = r[i]!;
+    const q = r[k]!;
+    if (p.x < q.x || (p.x === q.x && p.y < q.y)) k = i;
+  }
+  return k;
+}
+
+/** `r` read from vertex `k`, forwards, or backwards (the other winding). */
+function startAt(r: readonly Pt[], k: number, reverse: boolean): Pt[] {
+  const n = r.length;
+  const out: Pt[] = [];
+  for (let i = 0; i < n; i++) out.push(r[(k + (reverse ? n - i : i)) % n]!);
+  return out;
+}
+
+/** {@link translationOf} for a closed ring, whatever vertex it is written from and whichever
+ *  way it winds: both rings are read from their lowest vertex, and `b` in both windings. Still
+ *  the shape's own vertices, never a bbox or a centroid. Linear in the vertex count. */
+function ringTranslationOf(a: readonly Pt[], b: readonly Pt[]): { dx: number; dy: number } | null {
+  if (a.length === 0 || a.length !== b.length) return null;
+  const ca = startAt(a, lowestVertex(a), false);
+  const kb = lowestVertex(b);
+  return translationOf(ca, startAt(b, kb, false)) ?? translationOf(ca, startAt(b, kb, true));
 }
 
 /** A wall's move: same closure, same arcs, same points translated. */
@@ -639,14 +669,15 @@ export function diffPlans(sourceA: string, sourceB: string, opts: DescribeOption
     }
   }
   for (const o of base.openings) {
-    if (o.change === "added") base.summary.push(`Added ${o.kind} ${o.id} (${mm(o.widthAfterMm!)})`);
-    else if (o.change === "removed") base.summary.push(`Removed ${o.kind} ${o.id}`);
+    // Named as written: a derived `open between` opening by its clause, never its internal id
+    // (`A|B:open`); every other opening by kind and id, as these sentences always did.
+    const side = o.change === "removed" ? fabricBefore : fabricAfter;
+    const who = side.hosts.get(o.id)?.name ?? `${o.kind} ${o.id}`;
+    if (o.change === "added") base.summary.push(`Added ${who} (${mm(o.widthAfterMm!)})`);
+    else if (o.change === "removed") base.summary.push(`Removed ${who}`);
     else {
-      if (o.change === "resized")
-        base.summary.push(`${o.kind} ${o.id} width ${mm(o.widthBeforeMm!)} → ${mm(o.widthAfterMm!)}`);
-      // Appended after the entry's own width line: its host and the spaces it joins, named as
-      // written (a derived `open between` opening by its clause, never its internal id).
-      const who = fabricAfter.hosts.get(o.id)?.name ?? `${o.kind} ${o.id}`;
+      if (o.change === "resized") base.summary.push(`${who} width ${mm(o.widthBeforeMm!)} → ${mm(o.widthAfterMm!)}`);
+      // Appended after the entry's own width line: its host and the spaces it joins.
       if (o.hostBefore !== undefined) {
         const was = o.relationBefore ?? o.hostBefore;
         const now = o.relationAfter ?? o.hostAfter!;
