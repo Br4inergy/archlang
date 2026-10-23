@@ -201,9 +201,10 @@ followed by a first-contact re-measure.** (2026-10-24, recorded after the fact; 
   (PR #232) then landed although they sat in no §7 row (PS3.5 sat in row 6); rows 4 and 5 were not
   started. PR #231 (PS0.19) fixed a pre-existing fuzz failure in the same stretch.
 - *Why:* PS3.7's priority was raised by the 2026-10-18 first-contact audit, where seat-facing defects
-  dominated its 57 defects; PS3.8 came from that audit's finding K1 (a fire exit's door swinging
-  inward); PS3.5 and PS3.9 close gaps PS3.0 and PS3.4 opened (segment selectors on derived rings;
-  Plan JSON for a placed component that derives its walls).
+  were the largest new class among its 57 defects (9 of 57); PS3.8 came from that audit's finding K1 (a fire exit's door swinging
+  inward); PS3.5 and PS3.9 both close gaps PS3.0 left (segment selectors on derived rings;
+  Plan JSON for a placed component that derives its walls, refused as E_JSON_DERIVED_IN_INSTANCE
+  since PR #223).
 - *Standing rule:* after a §7 row is met, re-measure first contact in a dated `audits/` file before
   the next row starts. The re-measure for row 3 is `audits/2026-10-24-first-contact-rerun.md`
   (PR #233).
