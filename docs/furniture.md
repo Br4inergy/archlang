@@ -27,6 +27,7 @@ non-absolute modes derive the piece's rotation for you.
 | **Absolute** | `furniture <kind> at (x,y) size <w>x<h> [rotate 0\|90\|180\|270] [in <room>]` | corner, footprint, optional quarter-turn | nothing — what you write is what's drawn |
 | **Against wall** | `furniture <kind> against wall <ref> [segment <n>] [offset <mm>] [side left\|right] [size <along>x<depth>] [in <room>]` | which wall, how far along, optionally a depth | the position **and** the rotation, from the wall — plus the **footprint**, if the kind has one and you omit `size` |
 | **In a room** | `furniture <kind> in <room> centered\|anchor <a> [flush] [inset <mm>] size <w>x<h> [rotate …]` | which room, which corner/edge, footprint | the position from the room's box (or, with `flush`, from the backing wall's face), and — for a kind whose facing means something — the rotation from the wall the anchor names |
+| **Against a room edge** | `furniture <kind> against <room>.<edge> [offset <mm>] [size <along>x<depth>]` | which room edge, how far along | the position and the rotation, from the wall standing on that edge (a derived wall too) or the edge line |
 
 ```arch static
 # Absolute: a bed in the top-left, turned a quarter turn so its head is on the left wall.
@@ -85,6 +86,36 @@ furniture wc in r_bath anchor bottom flush size 400x700
   square 600 × 600 counter in the same corner has two — so nothing is derived and
   [`W_FIXTURE_BACK_TO_ROOM`](error-codes.md) asks you to pick. An explicit `rotate`
   always wins.
+
+## Relations: `facing`, `against <room>.<edge>`, `clear`
+
+Placement says where a piece is; a relation says what it is for (ADR 0029). Each is declared by
+you, derived in closed form, reported by `describe()` only when written, and checked by lint.
+
+```arch static
+# The TV backs onto the living room's north edge; the sofa turns to face it.
+furniture id=tv tv_unit against living.top offset 2500
+furniture id=sofa sofa at (1400,2600) size 2200x900 facing tv
+
+# A chair turns to the table it is sat at; a wardrobe keeps 600 mm free in front.
+furniture id=t dining_table at (3800,1200) size 900x900
+furniture chair at (4050,2150) size 450x450 facing t
+furniture wardrobe against bed.right clear front 600
+```
+
+- **`facing <id>`** takes the quarter-turn whose front ray, from the middle of the front edge,
+  enters the target nearest. It refuses rather than guesses: no turn hits (`E_FACING_MISS`), two
+  hit equally near (`E_FACING_TIE`, the piece overlaps its target), the piece already states a
+  turn (`E_FACING_CONFLICT`), it has no front (`E_FACING_SYMMETRIC`), or the turn would put a
+  catalogued piece's back on its short side (`E_FACING_TRANSPOSED`, swap the `size`).
+- **`against <room>.<edge>`** backs the piece onto that edge: on the face of the one wall standing
+  on the line, or on the line itself. It is the way to reach a wall `walls from rooms` derived.
+- **`clear front|sides <mm>`** is a declaration, never a catalogue default: a wardrobe's front is
+  approached from the side or behind sliding doors often enough that a fixed number warned on
+  correct plans. Declared, it is measured against solid pieces, wall bodies and door swings (an
+  obstacle that only touches the zone at a point or along a line leaves it clear). A catalogued
+  clearance is a floor: a declared `clear front` shallower than it does not silence
+  `W_FURN_CLEARANCE`; both are measured.
 
 ## The symbol catalogue
 
@@ -592,6 +623,8 @@ furniture and fixture rules (each documented in the [error catalog](error-codes.
 | `W_FURN_CLEARANCE` | a fixture's frontal use-space blocked by free-standing furniture (an underlay never counts as the blocker) |
 | `W_ROOM_NO_FIXTURE` | a bath / WC / kitchen room with none of the relevant fixtures |
 | `W_SWING_OBSTRUCTED` | a door leaf or swing arc sweeping onto a fixture |
+| `W_FURN_CLEAR_FRONT` / `W_FURN_CLEAR_SIDES` | a declared `clear front` / `clear sides` depth with a solid piece, a wall body or a door swing inside it |
+| `W_SEAT_FACING_AWAY` | a chair, office chair or outdoor chair within 600 mm of a table or desk whose front faces away from every one of them (`seatTableReachMm`) |
 
 These are **advisory** — facts and warnings, never an auto-arranger (see
 [ADR 0005](adr/0005-no-invisible-architect.md)). See

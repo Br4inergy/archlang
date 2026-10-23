@@ -211,9 +211,19 @@ export function statementText(s: LeafStatement): Doc {
     case "opening":
       return `opening ${id}${openingLead(s)} width ${exprStr(s.width)}${s.wall ? ` wall ${s.wall}` : ""}${heightsStr(s)}`;
     case "furniture": {
-      const pos = s.against ? againstStr(s.against) : s.place ? placeStr(s.place, s.room!) : `at ${ptStr(s.at!)}`;
+      const pos = s.againstEdge
+        ? `against ${s.againstEdge.edge}${s.againstEdge.offset !== undefined ? ` offset ${exprStr(s.againstEdge.offset)}` : ""}`
+        : s.against
+          ? againstStr(s.against)
+          : s.place
+            ? placeStr(s.place, s.room!)
+            : `at ${ptStr(s.at!)}`;
       const roomTail = s.place ? "" : s.room ? ` in ${s.room}` : "";
-      return `furniture ${id}${s.category} ${pos}${s.size ? ` size ${sizeStr(s.size)}` : ""}${s.label ? ` label ${exprStr(s.label)}` : ""}${s.rotate ? ` rotate ${exprStr(s.rotate)}` : ""}${roomTail}`;
+      // ADR 0029: `rotate` before `facing` (the pair parses so that resolve can refuse it), then
+      // the `clear` zones in their canonical order, then the trailing `in`.
+      const facing = s.facing ? ` facing ${s.facing.target}` : "";
+      const clear = `${s.clear?.front !== undefined ? ` clear front ${exprStr(s.clear.front)}` : ""}${s.clear?.sides !== undefined ? ` clear sides ${exprStr(s.clear.sides)}` : ""}`;
+      return `furniture ${id}${s.category} ${pos}${s.size ? ` size ${sizeStr(s.size)}` : ""}${s.label ? ` label ${exprStr(s.label)}` : ""}${s.rotate ? ` rotate ${exprStr(s.rotate)}` : ""}${facing}${clear}${roomTail}`;
     }
     case "strip": {
       const horiz = s.dir === "right" || s.dir === "left";

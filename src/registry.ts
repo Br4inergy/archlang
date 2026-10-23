@@ -327,6 +327,15 @@ export interface ElementDef {
    */
   auditGroup?(resolved: ResolvedElement, own: readonly ResolvedElement[], diag: (d: Diagnostic) => void): void;
   /**
+   * Settle what this element derives from OTHER elements of its group once every kind has
+   * resolved (`furniture … facing <id>`, ADR 0029 §3, reads its target's rectangle, which may
+   * come later in source). Called for each element of the kind, in source order, with the
+   * group's own resolved elements (its own frame), after the last pass and before the group
+   * crosses its frame. It charges its own steps and may update `resolved` in place: it was
+   * made in this resolution. Its diagnostics are reported with this kind's own.
+   */
+  settle?(resolved: ResolvedElement, own: readonly ResolvedElement[], diag: (d: Diagnostic) => void): void;
+  /**
    * Wall ids a {@link ElementDef.yieldsWalls} kind gives its derived walls that an identifier
    * CAN spell (`exterior`). In a group that holds the kind, an authored wall with one of these
    * ids is refused (`E_WALL_ID_RESERVED`), so a wall id names one wall there.

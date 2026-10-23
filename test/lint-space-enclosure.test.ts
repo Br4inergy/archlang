@@ -281,11 +281,13 @@ describe("W_ROOM_OUTSIDE_SHELL", () => {
 });
 
 describe("the three rules' place in LINT_RULES", () => {
-  it("are appended last, in card order", () => {
-    expect(LINT_RULES.slice(-3).map((r) => r.name)).toEqual([
+  it("are appended in card order, followed only by the furniture-relation rules (ADR 0029)", () => {
+    expect(LINT_RULES.slice(-5).map((r) => r.name)).toEqual([
       "boundary-no-wall",
       "floor-unassigned",
       "room-outside-shell",
+      "furn-clear-declared",
+      "seat-facing-away",
     ]);
   });
 });

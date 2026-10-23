@@ -1705,6 +1705,8 @@ furniture <kind> [id=<id>] at (x,y) size <w>x<h> [label "<text>"] [rotate 0|90|1
 furniture <kind> [id=<id>] against wall <ref> [segment <n>] [offset <mm>] [side left|right] [size <along>x<depth>] [label "<text>"] [in <room>]
 furniture <kind> [id=<id>] in <room> centered [size <w>x<h>] [label …] [rotate …]
 furniture <kind> [id=<id>] in <room> anchor <a> [flush] [inset <mm>] [size <w>x<h>] [label …] [rotate …]
+furniture <kind> [id=<id>] against <room>.<edge> [offset <mm>] [size <along>x<depth>] [label …]
+… [rotate 0|90|180|270 | facing <id>] [clear front <mm>] [clear sides <mm>] [in <room>]
 ```
 
 A piece of furniture or a built-in fixture. Every **catalogued** kind draws a real
@@ -1723,6 +1725,34 @@ catalogued footprint placed `against wall` may **omit `size`** and take it (e.g.
 lands along the wall run; `at` and room-relative placement, and any kind with no
 catalogued footprint, still need an explicit `size`. `in <room>` records which room
 owns the piece (used by the lint rules).
+
+**Relations (ADR 0029).** Three clauses say what a piece is *for*, and the compiler derives or
+checks the rest in closed form; it never searches for a layout.
+
+- `against <room>.<edge> [offset <mm>]` backs the piece onto a room's own edge, which is how
+  furniture reaches a wall `walls from rooms` derived (that wall has no id). The back lies on the
+  room-side face of the one wall standing on that edge line, or on the edge line when none does;
+  `offset` runs from the edge's start corner (`top`/`bottom` from `left`, `left`/`right` from `top`)
+  to the piece's centre and defaults to the midpoint. The rotation is derived; `size` is
+  along × depth and may be omitted for a catalogued kind. A wall beside the line, a part-covered
+  span, two thicknesses or a run declared `open between` is [`E_FURN_AGAINST`](error-codes.md).
+- `facing <id>` derives the quarter-turn: of the four turns, the one whose **front ray** (from the
+  middle of the front edge, outward; `rotate 0` puts the back to the north) enters the target
+  nearest. The target is another piece, a rectangular room, or a door, window or opening of the
+  same plan or component, and may come later in the source. No hit is
+  [`E_FACING_MISS`](error-codes.md), two equally near is `E_FACING_TIE`, and `facing` beside
+  `rotate` or `against` is `E_FACING_CONFLICT`. A symmetric kind (a table) cannot face anything
+  (`E_FACING_SYMMETRIC`), and a turn that would put a catalogued piece's back on its short side is
+  `E_FACING_TRANSPOSED`. `facing` never moves the piece.
+- `clear front <mm>` and `clear sides <mm>` declare a depth to keep free in front, or along both
+  edges beside the back. They draw nothing; `describe()` reports the measured free depth and lint
+  warns when a solid piece, a wall body or a door swing stands inside it
+  (`W_FURN_CLEAR_FRONT`, `W_FURN_CLEAR_SIDES`). Nothing has a default, and a catalogued
+  clearance is a floor: a `clear front` shallower than it does not silence `W_FURN_CLEARANCE`.
+
+Each clause shows in `describe()` only when written (`relation`, `facing`, `clear`). Undeclared,
+lint still reports a chair at a table or desk in the same room drawn with its back to it
+([`W_SEAT_FACING_AWAY`](error-codes.md)).
 
 **Room-relative placement (v1.13).** `in <room> centered` centres the fixture in
 that room's box; `in <room> anchor <a> [inset <mm>]` snaps it to a corner or edge.

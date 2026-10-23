@@ -138,6 +138,10 @@ plan "Room graph" {
   snaps a piece to a room corner or edge — the anchor is one of `top-left`, `top`, `top-right`,
   `left`, `center`, `right`, `bottom-left`, `bottom`, `bottom-right`; `against wall <id>` backs
   plumbing/kitchen fixtures onto a real wall face. Both are closed-form and never float or penetrate.
+- **Say what a piece faces, not its `rotate`.** `furniture chair at (…) size 450x450 facing t` turns
+  the chair to table `t` (and a sofa to its TV); `against <room>.<edge>` backs a piece onto a derived
+  wall; `clear front 600` asks lint to keep that depth free. Lint flags a chair facing away from its
+  table (`W_SEAT_FACING_AWAY`).
 - **Add `flush` and never compute half a wall thickness.** A room's rectangle runs along wall
   *centerlines*, so a bare `anchor bottom` leaves the piece's back inside the solid
   (`W_FURNITURE_WALL_COLLISION`). `anchor bottom flush` measures from the backing wall's inner **face**

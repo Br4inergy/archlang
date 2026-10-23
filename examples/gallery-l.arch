@@ -51,5 +51,5 @@ plan "Gallery L" {
   furniture plant at (10500,6500)  size 700x700  in gallery
   furniture plant at (1000,12800)  size 700x700  in gallery
   furniture desk  at (2000,11000)  size 1800x800 label "Reception desk" in gallery
-  furniture chair at (4200,11500)  size 500x500  in gallery
+  furniture chair at (4200,11500)  size 500x500  rotate 90 in gallery
 }

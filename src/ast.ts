@@ -565,7 +565,38 @@ export interface FurnitureNode extends NodeBase {
   rotateSpan?: Span;
   /** Declared owning room id (`in <roomId>`) — the room this fixture belongs to. */
   room?: string;
+  /** `against <room>.<edge> [offset <mm>]` (ADR 0028 §5a, ADR 0029 §2): back the piece onto a
+   *  room's own edge. Exclusive with `at`/`against`/`place`. */
+  againstEdge?: FurnitureAgainstEdge;
+  /** `facing <id>` (ADR 0029 §3): the quarter-turn is derived from the target. */
+  facing?: { target: string; span: Span };
+  /** `clear front <mm>` / `clear sides <mm>` (ADR 0029 §4): declared free depths, read by lint
+   *  and `describe()` only. */
+  clear?: FurnitureClear;
 }
+
+/** `against <room>.<edge> [offset <mm>]`, as written. */
+export interface FurnitureAgainstEdge {
+  /** The dotted room-edge datum (`r_bed.left`), read through the group's datum reader. */
+  edge: string;
+  /** Along the edge, from its start corner to the piece's centre; default the midpoint. */
+  offset?: Expr;
+  span: Span;
+}
+
+/** The `clear` clauses of a furniture statement, as written. */
+export interface FurnitureClear {
+  front?: Expr;
+  frontSpan?: Span;
+  sides?: Expr;
+  sidesSpan?: Span;
+  /** The span of a repeated `clear front` or `clear sides` clause, refused at resolve. */
+  dupSpan?: Span;
+}
+
+/** The two `clear` zones, canonical order (`clear front <mm>`, `clear sides <mm>`). */
+export const CLEAR_ZONES = ["front", "sides"] as const;
+export type ClearZone = (typeof CLEAR_ZONES)[number];
 
 /** The two endpoint-reference words a `dim` may lead with, canonical order — one source
  *  for the `dim` parser and the spec's grammar line. */

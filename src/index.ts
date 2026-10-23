@@ -124,6 +124,7 @@ export type {
   OpeningSummary,
   HeightFacts,
   FurnitureSummary,
+  ClearFact,
   InstanceSummary,
   AccessGraph,
   AccessRoomNode,

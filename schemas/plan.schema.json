@@ -649,7 +649,7 @@
           },
           "offset": {
             "type": "number",
-            "description": "Distance (mm) along the segment (for against_wall)."
+            "description": "Distance (mm) along the segment (for against_wall) or the room edge (for against_edge)."
           },
           "side": {
             "enum": [
@@ -657,6 +657,24 @@
               "right"
             ],
             "description": "Which wall face to back onto (for against_wall)."
+          },
+          "against_edge": {
+            "type": "string",
+            "description": "Edge-anchored placement: back onto this room edge (`<room>.top|bottom|left|right`)."
+          },
+          "facing": {
+            "type": "string",
+            "description": "Id of the piece, rectangular room or opening this piece faces; its turn is derived."
+          },
+          "clear_front": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Declared clear depth (mm) in front."
+          },
+          "clear_sides": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Declared clear depth (mm) at each side."
           },
           "label": {
             "type": "string",

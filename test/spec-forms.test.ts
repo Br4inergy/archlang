@@ -331,6 +331,15 @@ const POSITIVE: Snippet[] = [
     note: "`flush` on an anchored edge measures from the wall's inner FACE",
     src: plan(`${BOX}\n${ROOM}\n  furniture id=f1 counter in r1 anchor bottom flush inset 100 size 1200x600`),
   },
+  {
+    keyword: "furniture",
+    note: "the relations (ADR 0029): `against <room>.<edge>`, `facing <id>`, `clear front|sides`",
+    src: plan(
+      `${BOX}\n  room id=r1 at (0,0) size 8000x5000 uses bedroom\n` +
+        `  furniture id=b bed against r1.top offset 2000 clear sides 500\n` +
+        `  furniture id=tv tv_unit at (1250,4500) size 1500x400 facing b clear front 600`,
+    ),
+  },
 
   // --- dim -------------------------------------------------------------------
   {
@@ -742,6 +751,20 @@ const NEGATIVE: Negative[] = [
     channel: "compile",
     note: "`flush` needs an anchored edge",
     src: plan(`${BOX}\n${ROOM}\n  furniture id=f1 sofa in r1 centered flush size 1000x600`),
+  },
+  {
+    code: "E_FACING_MISS",
+    channel: "compile",
+    note: "`facing` turns a piece only toward a target its front ray can enter",
+    src: plan(
+      `${BOX}\n  furniture id=t table at (500,500) size 800x800\n  furniture chair at (2000,2000) size 450x450 facing t`,
+    ),
+  },
+  {
+    code: "W_SEAT_FACING_AWAY",
+    channel: "lint",
+    note: "a chair at a table drawn with its back to it",
+    src: plan(`${BOX}\n  furniture table at (500,500) size 800x800\n  furniture chair at (675,1350) size 450x450`),
   },
   {
     code: "E_LEVEL_MIX",

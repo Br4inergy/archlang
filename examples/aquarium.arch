@@ -152,7 +152,7 @@ plan "Harbour Aquarium" {
   furniture bench at (34450,18450) size 1200x450 in rotunda_r
 
   furniture desk   at (22000,33000) size 1800x800 label "Ticket desk" in foyer
-  furniture chair  at (24200,33200) size 500x500  in foyer
+  furniture chair  at (24200,33200) size 500x500  rotate 90 in foyer
   furniture plant  at (37000,32000) size 700x700  in foyer
 
   furniture table at (43000,32000) size 1400x1400 label "Table" in cafe

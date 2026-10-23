@@ -1,20 +1,33 @@
 /** `furniture <category> [id=] at (x,y) size WxH [label "…"]` — outlined fill + label. */
 
-import type { FurnitureAnchor, FurnitureNode, FurniturePlace, Point } from "../ast.js";
+import type {
+  FurnitureAgainstEdge,
+  FurnitureAnchor,
+  FurnitureClear,
+  FurnitureNode,
+  FurniturePlace,
+  Point,
+} from "../ast.js";
 import { FURNITURE_ANCHORS } from "../ast.js";
-import type { Span } from "../diagnostics.js";
+import type { Diagnostic, Span } from "../diagnostics.js";
 import type { ElementDef, ParseCtx, RenderCtx, ResolveCtx, TransformCtx } from "../registry.js";
 import type { RenderSizes, SceneNode } from "../scene.js";
-import type { FurnitureAuthored, RFurniture, RRoom } from "../ir.js";
-import { rectCorners, segmentsOfWall, unit, normal, add, mul, sub, length } from "../geometry.js";
+import type { FurnitureAuthored, ResolvedElement, RFurniture, RRoom } from "../ir.js";
+import { rectCorners, segmentsOfWall, unit, normal, add, mul, sub, length, type WallSegment } from "../geometry.js";
+import type { BBox } from "../geometry/rect.js";
 import { pointInPolygon } from "../geometry/polygon.js";
 import { fixtureGlyph } from "./fixtures-glyphs.js";
 import { mirrorGlyph } from "./glyph-chirality.js";
 import { mapSceneNode } from "./glyph-lib.js";
-import { defaultFootprint, orientationMatters } from "../fixtures-catalog.js";
+import { defaultFootprint, fixtureSpec, orientationMatters } from "../fixtures-catalog.js";
+import { chargeSteps } from "../expr.js";
+import { COMPASS_DATUM_ALIASES, splitDatum } from "../room-datums.js";
+import { fmt3, MODEL_RANGE_MM } from "../num-format.js";
+import { facingTurn, openingBody, TURNS } from "../furniture-relation.js";
 import {
   ANCHOR_BACK_EDGES,
   backCandidateEdges,
+  backEdgeForRotate,
   backingWallForRoomEdge,
   FIXTURE_WALL_TOL_MM,
   innerFaceOfRoomEdge,
@@ -70,7 +83,19 @@ export const furniture: ElementDef = {
     let against: FurnitureNode["against"];
     let place: FurnitureNode["place"];
     let room: string | undefined;
-    if (ctx.isKeyword("against")) {
+    let againstEdge: FurnitureAgainstEdge | undefined;
+    if (ctx.isKeyword("against") && !ctx.isKeyword("wall", 1)) {
+      // `against <room>.<edge> [offset <mm>]` (ADR 0028 §5a, ADR 0029 §2): the edge is read
+      // through the group's datum reader at resolve, which refuses anything else.
+      const agTok = ctx.next();
+      const t = ctx.eatIdent();
+      againstEdge = { edge: t.value, span: { start: agTok.start, end: t.end } };
+      if (ctx.isKeyword("offset")) {
+        ctx.next();
+        againstEdge.offset = ctx.parseExpr();
+        againstEdge.span = { start: agTok.start, end: ctx.peek(-1).end };
+      }
+    } else if (ctx.isKeyword("against")) {
       ctx.next();
       ctx.eatKeyword("wall");
       const wall = ctx.eatIdent().value;
@@ -136,6 +161,7 @@ export const furniture: ElementDef = {
       category,
       ...(at ? { at } : {}),
       ...(against ? { against } : {}),
+      ...(againstEdge ? { againstEdge } : {}),
       ...(place ? { place } : {}),
       ...(room ? { room } : {}),
       ...(size ? { size } : {}),
@@ -150,12 +176,38 @@ export const furniture: ElementDef = {
     // before the trailing `in <room>` the grammar puts last) is recorded on the node
     // so an orientation fix can rewrite the clause; see FurnitureNode.rotateSpan.
     const rotateAt = ctx.peek(-1).end;
-    if (ctx.isKeyword("rotate")) {
-      const rotKw = ctx.next();
-      node.rotate = ctx.parseExpr();
-      node.rotateSpan = { start: rotKw.start, end: ctx.peek(-1).end };
-    } else {
-      node.rotateSpan = { start: rotateAt, end: rotateAt };
+    // `rotate` and `facing` (ADR 0029 §3) both state the turn. Either order parses, and the
+    // pair parses too, so resolve can refuse it with a span (`E_FACING_CONFLICT`).
+    for (let k = 0; k < 2; k++) {
+      if (node.rotate === undefined && ctx.isKeyword("rotate")) {
+        const rotKw = ctx.next();
+        node.rotate = ctx.parseExpr();
+        node.rotateSpan = { start: rotKw.start, end: ctx.peek(-1).end };
+      } else if (node.facing === undefined && ctx.isKeyword("facing")) {
+        const kw = ctx.next();
+        const t = ctx.eatIdent();
+        node.facing = { target: t.value, span: { start: kw.start, end: t.end } };
+      }
+    }
+    if (node.rotateSpan === undefined) node.rotateSpan = { start: rotateAt, end: rotateAt };
+    // `clear front <mm>` / `clear sides <mm>` (ADR 0029 §4): declarations, each at most once.
+    while (ctx.isKeyword("clear")) {
+      const kw = ctx.next();
+      const z = ctx.eatIdent();
+      if (z.value !== "front" && z.value !== "sides")
+        ctx.fail(`Expected \`front\` or \`sides\` after \`clear\` but found "${z.value}"`, z);
+      const v = ctx.parseExpr();
+      const span = { start: kw.start, end: ctx.peek(-1).end };
+      const c: FurnitureClear = node.clear ?? {};
+      if (c[z.value] !== undefined) c.dupSpan ??= span;
+      else if (z.value === "front") {
+        c.front = v;
+        c.frontSpan = span;
+      } else {
+        c.sides = v;
+        c.sidesSpan = span;
+      }
+      node.clear = c;
     }
     // Optional trailing `in <roomId>` — declare the owning room (for the absolute
     // `at`/`against` forms; the room-relative form already set it above).
@@ -180,7 +232,7 @@ export const furniture: ElementDef = {
       dw = ctx.snap(ctx.eval(n.size.w));
       dh = ctx.snap(ctx.eval(n.size.h));
     } else {
-      const fp = n.against ? defaultFootprint(n.category) : null;
+      const fp = n.against || n.againstEdge ? defaultFootprint(n.category) : null;
       if (!fp) {
         ctx.diag({
           severity: "error",
@@ -226,7 +278,54 @@ export const furniture: ElementDef = {
     // to. Only the absolute `at (x,y)` form leaves it absent, because there the
     // coordinate IS what the author wrote. See {@link FurnitureAuthored}.
     let authored: FurnitureAuthored | undefined;
-    if (n.against) {
+    // `facing` (ADR 0029 §3) is settled once the whole group has resolved (`settle` below);
+    // here it is only checked against the other ways of stating a turn.
+    let facing: string | undefined;
+    if (n.facing) {
+      const other =
+        n.rotate !== undefined
+          ? "`rotate`"
+          : n.against
+            ? "`against wall`"
+            : n.againstEdge
+              ? "`against <room>.<edge>`"
+              : undefined;
+      if (other) {
+        ctx.diag({
+          severity: "error",
+          message: `Furniture "${id}" states its turn twice, by \`facing\` and by ${other}; keep one`,
+          code: "E_FACING_CONFLICT",
+          span: n.facing.span,
+        });
+      } else if (fixtureSpec(n.category)?.symmetric === true) {
+        ctx.diag({
+          severity: "error",
+          message: `A ${n.category} has no front, so it cannot face anything; drop \`facing\``,
+          code: "E_FACING_SYMMETRIC",
+          span: n.facing.span,
+        });
+      } else facing = n.facing.target;
+    }
+    const clear = n.clear ? resolveClear(id, n.clear, ctx) : undefined;
+    if (n.againstEdge) {
+      if (rotate !== undefined) {
+        ctx.diag({
+          severity: "error",
+          message: `Furniture "${id}" rotation is derived from the room edge in \`against\` mode — drop \`rotate\``,
+          code: "E_FURN_AGAINST",
+          span: n.span,
+        });
+      }
+      const offset = n.againstEdge.offset !== undefined ? ctx.eval(n.againstEdge.offset) : undefined;
+      authored = { mode: "against-edge", edge: n.againstEdge.edge, ...(offset !== undefined ? { offset } : {}) };
+      const placed = placeAgainstEdge(id, n.againstEdge, offset, dw, dh, n.room, ctx);
+      at = placed ? placed.at : { x: 0, y: 0 };
+      if (placed) {
+        size = placed.size;
+        rotate = placed.rotate;
+        roomOut = placed.room;
+      }
+    } else if (n.against) {
       if (rotate !== undefined) {
         ctx.diag({
           severity: "error",
@@ -272,7 +371,7 @@ export const furniture: ElementDef = {
         dh,
         ctx,
         n.span,
-        rotate === undefined && orientationMatters(n.category),
+        rotate === undefined && facing === undefined && orientationMatters(n.category),
       );
       // NOT grid-snapped. A coordinate the RESOLVER derived from wall geometry is not a
       // number the author wrote, and the grid is a drafting aid for the numbers they do
@@ -301,8 +400,18 @@ export const furniture: ElementDef = {
       ...(roomOut ? { room: roomOut } : {}),
       ...(authored ? { _authored: authored } : {}),
       ...(n.rotateSpan ? { _rotateSpan: n.rotateSpan } : {}),
+      ...(n.againstEdge ? { _relation: againstText(n.againstEdge.edge, authored) } : {}),
+      ...(facing !== undefined ? { _facing: facing, _facingSpan: n.facing!.span } : {}),
+      ...(clear ? { _clear: clear } : {}),
       span: n.span,
     };
+  },
+
+  /** `facing <id>` (ADR 0029 §3), once every statement of the group has resolved. */
+  settle(resolved, own, diag): void {
+    const f = resolved as RFurniture;
+    if (f._facing === undefined) return;
+    settleFacing(f, own, diag);
   },
 
   bounds(resolved): Point[] {
@@ -419,6 +528,7 @@ export const furniture: ElementDef = {
     if (reflected !== (el._mirror === true)) out._mirror = true;
     else delete out._mirror;
     if (el.room !== undefined) out.room = t.nsId(el.room);
+    if (el._facing !== undefined) out._facing = t.nsId(el._facing);
     return out;
   },
 };
@@ -646,6 +756,228 @@ function placeInRoom(
     (e) => shape.includes(e) && backingWallForRoomEdge(roomRect, e, ctx.walls, FIXTURE_WALL_TOL_MM) !== null,
   );
   return backed.length === 1 ? { at, rotate: rotateForBackEdge(backed[0]!) } : { at };
+}
+
+/** `clear front|sides <mm>` evaluated (ADR 0029 §4): positive, finite, in range, each once. */
+function resolveClear(id: string, c: FurnitureClear, ctx: ResolveCtx): { front?: number; sides?: number } | undefined {
+  const refuse = (message: string, span: Span | undefined): void =>
+    ctx.diag({ severity: "error", code: "E_FURN_CLEAR", message: `Furniture "${id}" ${message}`, span });
+  if (c.dupSpan) refuse("writes the same `clear` zone twice; keep one", c.dupSpan);
+  const out: { front?: number; sides?: number } = {};
+  const take = (zone: "front" | "sides", e: FurnitureClear["front"], span: Span | undefined): void => {
+    if (e === undefined) return;
+    const v = ctx.eval(e);
+    if (!Number.isFinite(v) || v <= 0 || v > MODEL_RANGE_MM) {
+      refuse(`\`clear ${zone}\` needs a positive depth in mm, at most ${MODEL_RANGE_MM}`, span);
+      return;
+    }
+    out[zone] = v;
+  };
+  take("front", c.front, c.frontSpan);
+  take("sides", c.sides, c.sidesSpan);
+  return out.front !== undefined || out.sides !== undefined ? out : undefined;
+}
+
+/** `against <room>.<edge>[ offset <mm>]` as written, for `describe()`. */
+function againstText(edge: string, a: FurnitureAuthored | undefined): string {
+  const off = a?.mode === "against-edge" && a.offset !== undefined ? ` offset ${fmt3(a.offset)}` : "";
+  return `against ${edge}${off}`;
+}
+
+/**
+ * `against <room>.<edge> [offset <mm>]` (ADR 0028 §5a, ADR 0029 §2): back the piece onto a room's
+ * own edge. The back face is the edge line, or the room-side face of the one wall body that
+ * stands on the line over the piece's whole span; anything else is `E_FURN_AGAINST`. Closed
+ * form; every scan is charged before it runs.
+ */
+function placeAgainstEdge(
+  id: string,
+  ae: FurnitureAgainstEdge,
+  offset: number | undefined,
+  along: number,
+  depth: number,
+  inRoom: string | undefined,
+  ctx: ResolveCtx,
+): { at: Point; size: { w: number; h: number }; rotate: number; room: string } | null {
+  const span = ae.span;
+  const err = (message: string): null => {
+    ctx.diag({ severity: "error", message: `Furniture "${id}" ${message}`, code: "E_FURN_AGAINST", span });
+    return null;
+  };
+  chargeSteps(1);
+  const name = ae.edge;
+  const d = splitDatum(name);
+  const access = ctx.datums;
+  const v = d && access ? access.read(name, span) : undefined;
+  if (v === null) return null;
+  if (d === undefined || v === undefined || access === undefined)
+    return err(
+      `is placed \`against ${name}\`, which is not a room edge: write \`against <room>.top|bottom|left|right\` or \`against wall <id>\``,
+    );
+  const word = COMPASS_DATUM_ALIASES[d.word] ?? d.word;
+  if (word === "cx" || word === "cy")
+    return err(
+      `is placed \`against ${name}\`, a room's centre line, not an edge: back it onto \`${d.room}.top|bottom|left|right\``,
+    );
+  const edge = word as RectEdge;
+  if (inRoom !== undefined && inRoom !== d.room)
+    return err(
+      `is placed \`against ${name}\`, an edge of "${d.room}", but written \`in ${inRoom}\`: the edge already names the room`,
+    );
+  const r = access.table.rooms.get(d.room)!;
+  const horiz = edge === "top" || edge === "bottom";
+  const c = horiz ? (edge === "top" ? r.top : r.bottom) : edge === "left" ? r.left : r.right;
+  const lo = horiz ? r.left : r.top;
+  const len = (horiz ? r.right : r.bottom) - lo;
+  const off = offset ?? len / 2;
+  if (!(off >= 0 && off <= len)) return err(`offset ${fmt3(off)} is outside the edge \`${name}\` (0..${fmt3(len)})`);
+  const s0 = lo + off - along / 2;
+  const s1 = lo + off + along / 2;
+  // The walls near the edge line over the piece's span, derived or authored.
+  let points = 0;
+  for (const w of ctx.walls) points += w.points.length;
+  chargeSteps(ctx.walls.length + points + 1);
+  const near: { seg: WallSegment; open: boolean }[] = [];
+  for (const w of ctx.walls) {
+    for (const s of segmentsOfWall(w)) {
+      if (s.arc) continue;
+      const parallel = horiz ? s.a.y === s.b.y : s.a.x === s.b.x;
+      if (!parallel) continue;
+      const line = horiz ? s.a.y : s.a.x;
+      if (Math.abs(line - c) > FIXTURE_WALL_TOL_MM) continue;
+      const a = horiz ? Math.min(s.a.x, s.b.x) : Math.min(s.a.y, s.b.y);
+      const b = horiz ? Math.max(s.a.x, s.b.x) : Math.max(s.a.y, s.b.y);
+      if (Math.min(b, s1) - Math.max(a, s0) <= 0) continue;
+      near.push({ seg: s, open: w._derived?.open !== undefined });
+    }
+  }
+  let back = c;
+  if (near.length > 0) {
+    if (near.some((n) => (horiz ? n.seg.a.y : n.seg.a.x) !== c))
+      return err(`is placed \`against ${name}\`, but a wall stands beside that edge line, not on it`);
+    if (near.some((n) => n.open))
+      return err(`is placed \`against ${name}\`, a run declared \`open between\`: nothing stands there to back onto`);
+    const t = near[0]!.seg.thickness;
+    if (near.some((n) => n.seg.thickness !== t))
+      return err(`is placed \`against ${name}\`, where walls of two thicknesses stand on its span`);
+    const runs = near
+      .map(
+        (n) =>
+          (horiz
+            ? [Math.min(n.seg.a.x, n.seg.b.x), Math.max(n.seg.a.x, n.seg.b.x)]
+            : [Math.min(n.seg.a.y, n.seg.b.y), Math.max(n.seg.a.y, n.seg.b.y)]) as [number, number],
+      )
+      .sort((p, q) => p[0] - q[0]);
+    let reach = s0;
+    for (const [a, b] of runs) {
+      if (a > reach) break;
+      reach = Math.max(reach, b);
+    }
+    if (reach < s1)
+      return err(
+        `is placed \`against ${name}\`, where a wall covers only part of its span: move it along the edge or place it \`at (x,y)\``,
+      );
+    back = edge === "top" || edge === "left" ? c + t / 2 : c - t / 2;
+  }
+  const mid = lo + off;
+  const w = horiz ? along : depth;
+  const h = horiz ? depth : along;
+  let at: Point;
+  switch (edge) {
+    case "top":
+      at = { x: mid - along / 2, y: back };
+      break;
+    case "bottom":
+      at = { x: mid - along / 2, y: back - depth };
+      break;
+    case "left":
+      at = { x: back, y: mid - along / 2 };
+      break;
+    default:
+      at = { x: back - depth, y: mid - along / 2 };
+  }
+  return { at, size: { w, h }, rotate: rotateForBackEdge(edge), room: d.room };
+}
+
+/** What the rectangle of a `facing` target is, or why it has none (ADR 0029 §3). */
+function facingTarget(t: ResolvedElement): BBox | string {
+  switch (t.kind) {
+    case "furniture":
+      return { x: t.at.x, y: t.at.y, w: t.size.w, h: t.size.h };
+    case "room":
+      if (t._unplaced) return "could not be placed (see its own error)";
+      if (t.poly) return `is a ${t.circle ? "circle" : "polygon"} room; a room target must be a rectangle`;
+      return { x: t.at.x, y: t.at.y, w: t.size.w, h: t.size.h };
+    case "door":
+    case "window":
+    case "opening":
+      return openingBody(t) ?? "is not on a straight, axis-aligned wall, so it has no rectangle to face";
+    default:
+      return `is a ${t.kind}, not a piece, a room or an opening`;
+  }
+}
+
+/**
+ * Settle `facing <id>` (ADR 0029 §3): the quarter-turn whose front ray enters the target
+ * nearest. A miss, a tie and a transposed footprint are refused; the piece then keeps no turn.
+ * Charged before it reads anything: the target lookup and the four candidates.
+ */
+function settleFacing(f: RFurniture, own: readonly ResolvedElement[], diag: (d: Diagnostic) => void): void {
+  chargeSteps(1 + own.length + TURNS.length);
+  const target = f._facing!;
+  const span = f._facingSpan ?? f.span;
+  const t = own.find((e) => e.id === target);
+  const rect =
+    t === f ? "is the piece itself" : t === undefined ? "is not an element of this plan or component" : facingTarget(t);
+  if (typeof rect === "string") {
+    diag({
+      severity: "error",
+      code: "E_FACING_TARGET",
+      message: `Furniture "${f.id}" faces "${target}", which ${rect}`,
+      span,
+    });
+    return;
+  }
+  const self = { x: f.at.x, y: f.at.y, w: f.size.w, h: f.size.h };
+  const res = facingTurn(self, rect);
+  if (res.kind === "miss") {
+    const inLine =
+      (self.x < rect.x + rect.w && rect.x < self.x + self.w) || (self.y < rect.y + rect.h && rect.y < self.y + self.h);
+    diag({
+      severity: "error",
+      code: "E_FACING_MISS",
+      message: `No front of furniture "${f.id}" points at "${target}": its front ray misses it at every quarter-turn`,
+      span,
+      hints: [
+        inLine
+          ? `Move "${f.id}" so the middle of its front lines up with "${target}".`
+          : `"${f.id}" is diagonal to "${target}": move it so it lies in line with "${target}" across x or y.`,
+      ],
+    });
+    return;
+  }
+  if (res.kind === "tie") {
+    diag({
+      severity: "error",
+      code: "E_FACING_TIE",
+      message: `Furniture "${f.id}" overlaps "${target}", so ${res.turns.length} of its fronts point at it equally near; move it off its target`,
+      span,
+    });
+    return;
+  }
+  const fp = defaultFootprint(f.category);
+  const back = backEdgeForRotate(res.turn);
+  if (fp && !backCandidateEdges(f.size, fp).includes(back)) {
+    diag({
+      severity: "error",
+      code: "E_FACING_TRANSPOSED",
+      message: `Facing "${target}" puts the back of ${f.category} "${f.id}" on its short side; write \`size ${fmt3(f.size.h)}x${fmt3(f.size.w)}\``,
+      span,
+    });
+    return;
+  }
+  if (res.turn) f.rotate = res.turn;
+  else delete f.rotate;
 }
 
 /** Rotate a point a quarter-turn about centre `c` (screen y-down, clockwise) using

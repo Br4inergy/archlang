@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**124 errors** · **63 warnings**
+**131 errors** · **66 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -34,8 +34,15 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_DUP_ID`](#e_dup_id) | error | Duplicate element id. |
 | [`E_DUP_INSTANCE`](#e_dup_instance) | error | Duplicate `place … as <name>` instance name. |
 | [`E_ELEMENT_LIMIT`](#e_element_limit) | error | The plan expands to too many elements. |
+| [`E_FACING_CONFLICT`](#e_facing_conflict) | error | A piece states its turn twice. |
+| [`E_FACING_MISS`](#e_facing_miss) | error | No front of the piece points at its `facing` target. |
+| [`E_FACING_SYMMETRIC`](#e_facing_symmetric) | error | A piece with no front cannot face anything. |
+| [`E_FACING_TARGET`](#e_facing_target) | error | `facing` names no rectangle to face. |
+| [`E_FACING_TIE`](#e_facing_tie) | error | Two fronts of the piece point at its `facing` target equally near. |
+| [`E_FACING_TRANSPOSED`](#e_facing_transposed) | error | Facing the target would put the piece's back on its short side. |
 | [`E_FENCE_CURVED`](#e_fence_curved) | error | A fence cannot have a curved (`arc`) edge. |
-| [`E_FURN_AGAINST`](#e_furn_against) | error | Invalid `against wall` fixture placement. |
+| [`E_FURN_AGAINST`](#e_furn_against) | error | Invalid `against wall` or `against <room>.<edge>` fixture placement. |
+| [`E_FURN_CLEAR`](#e_furn_clear) | error | Invalid `clear` depth. |
 | [`E_FURN_FLUSH`](#e_furn_flush) | error | `flush` on a placement that touches no edge. |
 | [`E_FURN_ROOM`](#e_furn_room) | error | Furniture placed `in` an unknown room. |
 | [`E_FURN_ROTATE`](#e_furn_rotate) | error | Furniture rotation must be a quarter-turn. |
@@ -159,6 +166,8 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_FURNITURE_OVERLAP`](#w_furniture_overlap) | warning | Two pieces of furniture overlap. |
 | [`W_FURNITURE_WALL_COLLISION`](#w_furniture_wall_collision) | warning | Furniture penetrates a wall. |
 | [`W_FURN_CLEARANCE`](#w_furn_clearance) | warning | A fixture's use-space is blocked. |
+| [`W_FURN_CLEAR_FRONT`](#w_furn_clear_front) | warning | A declared `clear front` is not free. |
+| [`W_FURN_CLEAR_SIDES`](#w_furn_clear_sides) | warning | A declared `clear sides` is not free. |
 | [`W_GARAGE_TOO_NARROW`](#w_garage_too_narrow) | warning | A garage is too narrow to park in. |
 | [`W_GLYPH_UNSUPPORTED`](#w_glyph_unsupported) | warning | PDF/PNG text has characters no embedded font can draw. |
 | [`W_HABITABLE_NO_WINDOW`](#w_habitable_no_window) | warning | A living room, dining room or kitchen has no window. |
@@ -187,6 +196,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_ROOM_VIA_PRIVATE`](#w_room_via_private) | warning | Every route to a room passes through one particular bedroom, bathroom or WC. |
 | [`W_SANITIZED_CONFIG`](#w_sanitized_config) | warning | A disallowed config value was stripped. |
 | [`W_SCALE_OVERFLOW`](#w_scale_overflow) | warning | The drawing does not fit the declared paper at the declared scale. |
+| [`W_SEAT_FACING_AWAY`](#w_seat_facing_away) | warning | A chair at a table faces away from it. |
 | [`W_STAIR_UNMATCHED`](#w_stair_unmatched) | warning | A run of vertical circulation appears on only one storey. |
 | [`W_SWING_OBSTRUCTED`](#w_swing_obstructed) | warning | Door swing is obstructed. |
 | [`W_SWING_ROOM_NOT_ADJACENT`](#w_swing_room_not_adjacent) | warning | `swing into <room>` names a room the door does not border. |
@@ -507,6 +517,83 @@ place wing() as west at (9000,0)   # error: instance "west" already used
 for i in 0..6000 { column at (i,0) size 1x1 }   # error: more than 5,000 elements
 ```
 
+## E_FACING_CONFLICT
+
+*error* — A piece states its turn twice.
+
+**Cause.** `facing <id>` derives the quarter-turn, so it cannot be written beside `rotate`, `against wall …` or `against <room>.<edge>`, which each state or derive the turn too (ADR 0029 §3). One source of truth for the turn.
+
+**Fix.** Keep `facing` and drop `rotate` (or place the piece with `at` or `in <room> …`), or keep the other clause and drop `facing`.
+
+```arch static
+furniture id=t table at (0,0) size 800x800
+furniture chair at (175,850) size 450x450 rotate 180 facing t   # error: two turns
+```
+
+## E_FACING_MISS
+
+*error* — No front of the piece points at its `facing` target.
+
+**Cause.** `facing` takes the quarter-turn whose front ray, from the middle of the piece's front edge, first enters the target (ADR 0029 §3). When the piece is diagonal to the target, or its front's middle is not in line with it, no turn's ray enters it, and the compiler will not turn the piece toward a target it does not face.
+
+**Fix.** Move the piece so the middle of its front lines up with the target across x or y, or name a target in line with it.
+
+```arch static
+furniture id=t table at (0,0) size 800x800
+furniture chair at (2000,2000) size 450x450 facing t   # error: the chair is diagonal to the table
+```
+
+## E_FACING_SYMMETRIC
+
+*error* — A piece with no front cannot face anything.
+
+**Cause.** The catalogue marks a category `symmetric` when its symbol has no front or back (a table, a stool, a rug), so a derived turn would change nothing anyone could see (ADR 0029 §3).
+
+**Fix.** Drop `facing` from the symmetric piece; put `facing` on the pieces that face it instead.
+
+```arch static
+furniture id=c chair at (0,0) size 450x450
+furniture table at (0,900) size 800x800 facing c   # error: a table has no front
+```
+
+## E_FACING_TARGET
+
+*error* — `facing` names no rectangle to face.
+
+**Cause.** `facing <id>` derives a piece's quarter-turn from a target in its own plan or component (ADR 0029 §3): another piece of furniture, a rectangular room, or a door, window or opening on a straight axis-aligned wall. An unknown id, the piece itself, a wall, a polygon or circle room, an element that could not be placed, or an element of another component is refused.
+
+**Fix.** Name a furniture piece, a rectangular room or an opening of the same plan or component, or turn the piece with `rotate`.
+
+```arch static
+furniture chair at (0,0) size 450x450 facing nowhere   # error: no element has that id
+```
+
+## E_FACING_TIE
+
+*error* — Two fronts of the piece point at its `facing` target equally near.
+
+**Cause.** Two pieces whose footprints do not overlap can have at most one turn whose front ray enters the other, so a tie means the piece overlaps its target (ADR 0029 §3). The compiler will not choose between the turns.
+
+**Fix.** Move the piece off its target so that one side faces it.
+
+```arch static
+furniture id=t table at (0,0) size 800x800
+furniture chair at (175,175) size 450x450 facing t   # error: the chair stands inside the table
+```
+
+## E_FACING_TRANSPOSED
+
+*error* — Facing the target would put the piece's back on its short side.
+
+**Cause.** A catalogued piece with a non-square footprint has a back on a long side (a wardrobe is 1800 along x 600 deep). When the turn that faces the target would put the back on a short side, the `size` was written the wrong way round, and the symbol would be drawn stretched (ADR 0029 §3).
+
+**Fix.** Swap the `size` (the message gives it), so that the footprint's long side runs across the direction the piece faces.
+
+```arch static
+furniture id=b bed at (0,0) size 1500x2000
+furniture tv_unit at (2500,800) size 1500x450 facing b   # error: write size 450x1500
+```
+
 ## E_FENCE_CURVED
 
 *error* — A fence cannot have a curved (`arc`) edge.
@@ -521,14 +608,26 @@ fence picket { (0,0) arc (3000,3000) radius 3000 }   # error: curved edge
 
 ## E_FURN_AGAINST
 
-*error* — Invalid `against wall` fixture placement.
+*error* — Invalid `against wall` or `against <room>.<edge>` fixture placement.
 
-**Cause.** A wall-anchored fixture references an unknown wall, omits `segment` on a multi-segment wall, omits `side`, sits on a non-axis-aligned segment, has an out-of-range offset, or also sets `rotate`. The compiler will not guess which wall/side/segment was meant. A `wall … between`/`wall … around` the rooms refused (its own error, ADR 0028 §4) has no body, so naming it raises this code too, saying the wall "could not be placed (see its own error)": fix that error first.
+**Cause.** A wall-anchored fixture references an unknown wall, omits `segment` on a multi-segment wall, omits `side`, sits on a non-axis-aligned segment, has an out-of-range offset, or also sets `rotate`. The compiler will not guess which wall/side/segment was meant. A `wall … between`/`wall … around` the rooms refused (its own error, ADR 0028 §4) has no body, so naming it raises this code too, saying the wall "could not be placed (see its own error)": fix that error first. `against <room>.<edge>` (ADR 0029 §2) raises it when the name is not a room edge, the offset is off the edge, `in <room>` names another room, or the wall on the edge is not one body on the line across the piece's whole span (a wall beside the line, a part-covered span, two thicknesses, or a run declared `open between`).
 
-**Fix.** Name an existing wall id, add `segment <n>` for multi-segment walls, give `side left|right`, keep the segment axis-aligned, and drop any explicit `rotate`.
+**Fix.** Name an existing wall id, add `segment <n>` for multi-segment walls, give `side left|right`, keep the segment axis-aligned, and drop any explicit `rotate`. With `against <room>.<edge>`, keep the offset on the edge and move the piece to a span one wall covers, or place it `at (x,y)`.
 
 ```arch static
 furniture wc against wall w1 side left size 400x700   # error if w1 is unknown or multi-segment
+```
+
+## E_FURN_CLEAR
+
+*error* — Invalid `clear` depth.
+
+**Cause.** `clear front <mm>` and `clear sides <mm>` declare a depth the piece needs kept free (ADR 0029 §4). The depth must be a positive number of millimetres within the modelling range, and each zone is written at most once on a piece.
+
+**Fix.** Write one positive depth per zone, e.g. `clear front 600`, or drop the clause.
+
+```arch static
+furniture wardrobe at (0,0) size 1800x600 clear front 0   # error: a clear depth must be positive
 ```
 
 ## E_FURN_FLUSH
@@ -2105,6 +2204,32 @@ furniture stove at (0,0) size 600x600
 furniture sofa at (0,650) size 2000x900   # lint: sofa blocks the stove front
 ```
 
+## W_FURN_CLEAR_FRONT
+
+*warning* — A declared `clear front` is not free.
+
+**Cause.** The piece declares `clear front <mm>` (ADR 0029 §4) and something stands inside that depth in front of it: a solid piece of furniture, a wall body, or a hinged door's swing. The warning states the declared depth, the depth measured free and what stands there. Only a piece that declares the zone is judged, never by a catalogue default. An obstacle that only touches the zone at a point or along a line leaves it clear. A catalogued clearance is a floor: a shallower declared `clear front` does not silence `W_FURN_CLEARANCE`, and both are measured.
+
+**Fix.** Move the obstruction or the piece apart by the shortfall the warning quotes, or lower the declared depth if less will do.
+
+```arch static
+furniture wardrobe at (0,0) size 1800x600 clear front 600
+furniture bed at (0,900) size 1500x2000   # lint: the bed leaves 300 mm
+```
+
+## W_FURN_CLEAR_SIDES
+
+*warning* — A declared `clear sides` is not free.
+
+**Cause.** The piece declares `clear sides <mm>` (ADR 0029 §4): that depth must be free along both edges beside its back (a bed's long sides). A solid piece, a wall body or a door swing stands inside it on at least one side. The warning names the narrower side's free depth.
+
+**Fix.** Move the obstruction or the piece apart by the shortfall, or declare only the zones the piece needs.
+
+```arch static
+furniture bed at (0,0) size 1500x2000 clear sides 500
+furniture wardrobe at (1700,0) size 600x1800   # lint: 200 mm on the right side
+```
+
 ## W_GARAGE_TOO_NARROW
 
 *warning* — A garage is too narrow to park in.
@@ -2467,6 +2592,19 @@ theme { wall: "<script>" }   # warning: stripped
 ```arch static
 paper A4 landscape
 scale 1:50   # warning on a 20 m building: 1:100 or `paper A2` fits, or omit `scale` to auto-fit
+```
+
+## W_SEAT_FACING_AWAY
+
+*warning* — A chair at a table faces away from it.
+
+**Cause.** A chair, office chair or outdoor chair stands within reach of a table or desk in the same room (600 mm on both axes, `seatTableReachMm`), but its front ray, from the middle of its front edge, enters no such table within that reach: it is drawn with its back to the table it is sat at. At `rotate 0` a symbol's back is to the north. A chair that declares `facing` is not judged.
+
+**Fix.** Add `facing <table id>` to the chair (the hint names the nearest table and the turn it derives), or give it the `rotate` that turns its front to the table.
+
+```arch static
+furniture table at (0,0) size 800x800
+furniture chair at (175,850) size 450x450   # lint: south of the table, facing south
 ```
 
 ## W_STAIR_UNMATCHED

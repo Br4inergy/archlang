@@ -504,7 +504,7 @@ function rules(): [string, string][] {
      * `in` is a parse error, not a redundant repeat.
      */
     ["furniture-stmt", `"furniture" rws id-opt ident rws ( furn-placed | furn-roomed )`],
-    ["furn-placed", `( furn-at | furn-against ) furn-tail ( ws "in" rws ref )?`],
+    ["furn-placed", `( furn-at | furn-against | furn-against-edge ) furn-tail ( ws "in" rws ref )?`],
     ["furn-roomed", `"in" rws ref rws in-place furn-tail`],
     ["furn-at", `"at" ws point`],
     // `segment`, `offset`, `side` — read once each, in this order (a fixed run of
@@ -513,10 +513,17 @@ function rules(): [string, string][] {
       "furn-against",
       `"against" rws "wall" rws ref ( ws "segment" ws expr )? ( ws "offset" ws expr )? ( ws "side" rws ident )?`,
     ],
+    // `against <room>.<edge> [offset <mm>]` (ADR 0029 §2): the room edge the piece backs onto.
+    ["furn-against-edge", `"against" rws edge-ref ( ws "offset" ws expr )?`],
     ["in-place", `"centered" | "anchor" rws anchor ( ws "flush" )? ( ws "inset" ws expr )?`],
     ["anchor", anchor],
-    // `size`, `label`, `rotate` — the shared tail, in the parser's order.
-    ["furn-tail", `( ws "size" ws dims )? ( ws "label" ws string )? ( ws "rotate" ws expr )?`],
+    // `size`, `label`, then ONE way of stating the turn (`rotate` or `facing`, ADR 0029 §3: the
+    // parser reads both so that resolve can refuse the pair, and a grammar emits only legal
+    // text), then the two `clear` zones — the shared tail, in the parser's order.
+    [
+      "furn-tail",
+      `( ws "size" ws dims )? ( ws "label" ws string )? ( ws "rotate" ws expr | ws "facing" rws ref )? ( ws "clear" rws "front" ws expr )? ( ws "clear" rws "sides" ws expr )?`,
+    ],
     [
       "dim-stmt",
       `"dim" ( ( rws dim-ref )? ws point ws "->" ws point | rws dim-curve ) ( ws "offset" ws expr )? ( ws "text" ws string )?`,
