@@ -232,6 +232,18 @@ recorded 2026-10-24.)
 - *Reverse if:* D5 is reversed, or a re-run shows authors failing on the tiling preconditions more
   often than they omitted walls under the pairwise form.
 
+**D10. The D7 first-contact re-measure after §7 row 4 is waived; the row-3 re-measure
+(`audits/2026-10-24-first-contact-rerun.md`, PR #233) stays the baseline for row 5.** (2026-10-24)
+- Row 4 (PS0.4 PR #238, PS4.1 PR #239, PS4.2 PR #240, merged 2026-10-24) added analysis tooling only
+  (`diffPlans` fixes, `describe --facts depends`, `arch impact`); it changed no language form, no
+  lint rule, no example and no teaching text (`spec.llm.md` gained one generated CLI-list line), so
+  a cold re-authoring would measure the same spec as #233 did hours earlier.
+- *Why:* a re-measure costs a full six-brief authoring run and would return noise, not evidence;
+  D7's purpose is to catch drift in what authors are taught, and nothing taught changed.
+- *Reverse if:* any row-4 follow-up card (PS4.5–4.7) or a later discovery shows the row changed
+  authoring-facing output; and in any case the re-measure is mandatory after row 5, which changes
+  lint (PS2.10–2.12), before row 6 starts.
+
 ## 4. Principles: what "professional rules and taste" means here
 
 **Four layers, treated differently:**
@@ -303,7 +315,7 @@ A done row's "record" is `research/2026-10-24-ps0-ps2-as-built.md`.
 |---|---|---|
 | PS0.2 | `compile -f json` (Plan JSON) drops arc segments; a round trip loses a bay and floats its window (`audits/archcanvas-public-examples.md` G2) | todo |
 | PS0.3 | Multi-storey `describe`: upper-storey rooms report `reachable:false` though a stair reaches them; an exterior door on an upper storey counts as an entrance (`audits/showcase-and-examples.md` §5.10) | todo |
-| PS0.4 | `diffPlans`: pure moves, re-hosted openings, a wall section | done (PR #238, pending) |
+| PS0.4 | `diffPlans`: pure moves, re-hosted openings, a wall section | done (PR #238, 78b507c5) |
 | PS0.5 | `furniture … against wall … in <relational room>` failed with `E_FURN_AGAINST`. As built: record § PS0.5 | done (PR #220, 6c6179c7) |
 | PS0.6 | `suggest` connects an unreachable room to *any* reachable neighbour, a bedroom included (`src/suggest.ts` ~364-395), against `skills/archlang/SKILL.md`'s own advice. Rank by neighbour use (hall/circulation/living first, bedroom and bath last) | todo |
 | PS0.8 | `W_PATH_TOO_NARROW` measures pinches on the 100 mm grid and missed a 500 mm diagonal between a bench and a jamb (`repro/gallery-bench-pinch.arch`, `audits/archcanvas-public-examples.md` GW3). Re-measure the case first: the repro lints with the warning in isolation | todo |
@@ -451,9 +463,9 @@ into PS3.12)
 
 ### PS4 · The change model: what follows, what stays, what breaks
 
-**PS4.1 · `describe --facts depends` (opt-in).** `done` (PR #239, pending)
+**PS4.1 · `describe --facts depends` (opt-in).** `done` (PR #239, 29ec0662)
 
-**PS4.2 · `arch impact`.** `done` (PR #240, pending)
+**PS4.2 · `arch impact`.** `done` (PR #240, 7954f252)
 
 **PS4.3 · `keep` invariants (checked, never solved, by `compile()`).** `todo` (needs an ADR addendum)
 - Vocabulary: `keep align …`, `keep equal …`, `keep offset <x> from <y> <mm>`, `keep min clear <room> <mm>`,
@@ -565,8 +577,8 @@ into PS3.12)
 | 2 | PS2.1–PS2.9, PS2.13 | Defect-corpus catch rate ≥ 90 % for classes 1, 2, 3, 4 and 6, with no false positive on the clean twins; every corpus `lint()` movement is explained (two-bed is expected to start warning: fix the example, see PS3.6). *Corrected 2026-10-19:* class 5 (clearances) belongs to PS2.11 in row 5, so it was removed from this row's acceptance. *Status:* met 2026-10-20 (PRs #214, #216, #217; 46/68 on `main@06c6b56`); dated status history verbatim: `research/2026-10-24-ps0-ps2-as-built.md` § §7 row 2 |
 | 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. *Status:* met 2026-10-23 by PS3.6 (PR #227), every bullet; catch rate then 46/68; dated status history verbatim: `research/2026-10-24-ps3-as-built.md` § §7 row 3 |
 | 3a | PS3.7, PS3.8, PS3.5, PS3.9 (and PS0.19) | Unplanned: done after row 3 was met, before row 4 (D7): PRs #228, #229, #230, #232; PS0.19 #231. First-contact re-run, PR #233 (`audits/2026-10-24-first-contact-rerun.md`): old six plans 17/57 caught (6 partially; 14/57 counting halves); cold re-authoring 6/6 rooms-first; defects 57 → 48, blockers 4 → 2; corpus catch rate 46/68 → 47/70 |
-| 4 | PS0.4, PS4.1, PS4.2 | **Current.** The widening drill's `impact` names every moved, held and broken item correctly. *Status:* met in part 2026-10-24 by PS4.2 (PR #240): every moved and broken item of the drill is named correctly; `held` is empty because the drill's walls are fixed coordinates and depend on nothing (PS4.5). Pending merge |
-| 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically |
+| 4 | PS0.4, PS4.1, PS4.2 | The widening drill's `impact` names every moved, held and broken item correctly. *Status:* met in part 2026-10-24 by PS4.2 (PR #240): every moved and broken item of the drill is named correctly; `held` is empty because the drill's walls are fixed coordinates and depend on nothing (PS4.5). Merged 2026-10-24 (7954f252) |
+| 5 | PS5.1–PS5.3, PS2.10–PS2.12 | **Next.** The taste score separates the corpus's known-bad from known-good plans monotonically. D10: the row-3 first-contact figures are the baseline; re-measure after this row. |
 | 6 | PS4.3, PS4.4, PS3.5, PS3.6, PS5.4, PS7.x | — (PS3.6 landed in row 3, PS3.5 in row 3a) |
 | 7 | PS6.1 | — |
 
