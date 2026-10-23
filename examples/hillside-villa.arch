@@ -148,7 +148,7 @@ plan "Hillside Villa" {
 
     # ---- furniture ----------------------------------------------------------------------
     furniture desk         at (600,2700)  size 1600x700 in r_office
-    furniture office_chair at (2300,2900) size 600x600  in r_office
+    furniture office_chair at (2300,2900) size 600x600  rotate 90 in r_office
     furniture bookshelf    at (200,3700)  size 1600x300 in r_office
 
     furniture rug          at (600,5000)  size 3000x2400 in r_living
@@ -281,7 +281,7 @@ plan "Hillside Villa" {
     furniture armchair   at (5100,9000) size 900x850   in r_master
     # A reading nook in the otherwise-bare east corner of the L, south of the ensuite.
     furniture desk         at (10200,7100) size 1200x700 in r_master
-    furniture office_chair at (10500,7900) size 600x600  in r_master
+    furniture office_chair at (10500,7900) size 600x600  rotate 180 in r_master
 
     # The gallery railing looks down into the double-height living room below — a `void`
     # does not reduce this room's own area (`describe --json` reports it under `voids[]`).

@@ -142,7 +142,7 @@ plan "City Museum" {
 
   # ---- reception ------------------------------------------------------------
   furniture desk  at (33000,38000) size 1800x800 label "Reception desk" in hall
-  furniture chair at (35200,39200) size 500x500 in hall
+  furniture chair at (34300,39200) size 500x500 rotate 180 in hall
   furniture chair at (33000,40500) size 500x500 in hall
   furniture plant at (44000,55000) size 700x700 in hall
 

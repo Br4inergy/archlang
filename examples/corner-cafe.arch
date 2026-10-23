@@ -75,7 +75,7 @@ plan "Corner Cafe" {
     for j in 0..3 {
       furniture table at (1800 + i * 2400, 1400 + j * 2200) size 800x800 label "T{i * 3 + j + 1}"
       furniture chair at (1950 + i * 2400, 700 + j * 2200) size 450x450
-      furniture chair at (1950 + i * 2400, 2250 + j * 2200) size 450x450
+      furniture chair at (1950 + i * 2400, 2250 + j * 2200) size 450x450 rotate 180
     }
   }
   furniture bench in r_dining anchor left inset 100 size 500x2400 label "Bench"

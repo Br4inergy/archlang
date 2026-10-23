@@ -226,12 +226,15 @@ turn does uniquely, and the `facing <id>` clause naming the nearest table; no ma
 fix in this card.
 
 Measured on the six first-contact plans: 51 seats are at a table and 26 warn (the audit counted 27
-by eye; the difference is a café chair whose front ray meets the next table within 600 mm). On
-`examples/` it warned 16 times on 9 plans (`corner-cafe` 9, and one office or desk chair each on
-`aquarium`, `furnished-flat`, `gallery-l`, `hillside-villa`, `materials`, `museum`, `themed`),
-each a chair drawn facing away from its table: real defects in the corpus. The rule ships **on**
-(`seatTableReachMm: 600` in `DEFAULT_RULESET`, so every profile inherits it), and the same PR fixes
-those chairs, each by the one clause that says what it is for. The byte-identity law protects plans
+by eye; the difference is café `chair_29`, south of its table and facing south, whose front ray
+enters the next table 550 mm away). On `examples/` it warned 17 times on 8 plans (`corner-cafe` 9,
+`hillside-villa` 2, and one office or desk chair each on `aquarium`, `furnished-flat`, `gallery-l`,
+`materials`, `museum`, `themed`), each a chair drawn facing away from its table: real defects in
+the corpus. The rule ships **on** (`seatTableReachMm: 600` in `DEFAULT_RULESET`, so every profile
+inherits it), and the same PR fixes those chairs, each by one clause: `facing` where the desk
+already had an id, the `rotate` it derives where it had none (naming the desk would renumber every
+later auto id), and on `furnished-flat` and `museum` a move into line with the desk first, since
+those chairs stood diagonally off its corner. The byte-identity law protects plans
 that use no new *form*; a new undeclared rule may move `lint()` on the corpus when every moved row
 is explained one by one and a real defect is fixed, never blessed.
 

@@ -88,16 +88,16 @@
 <line x1="14920" y1="1052" x2="15320" y2="1052" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
 <line x1="14920" y1="1244" x2="15320" y2="1244" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
 <path d="M 14155.6,852 L 14564.4,852 A 19.6 19.6 0 0 1 14584,871.6 L 14584,888.4 A 19.6 19.6 0 0 1 14564.4,908 L 14155.6,908 A 19.6 19.6 0 0 1 14136,888.4 L 14136,871.6 A 19.6 19.6 0 0 1 14155.6,852 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="6.5"/>
-<path d="M 14775,1850 L 14925,1850 A 70 70 0 0 1 14995,1920 L 14995,2050 A 70 70 0 0 1 14925,2120 L 14775,2120 A 70 70 0 0 1 14705,2050 L 14705,1920 A 70 70 0 0 1 14775,1850 Z" fill="#ffffff" stroke="#6c6864" stroke-width="9"/>
-<path d="M 14695,1890 A 170.13 170.13 0 0 1 14850,1790 A 170.13 170.13 0 0 1 15005,1890 A 245.91 245.91 0 0 0 14695,1890 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
-<path d="M 14662.5,1940 A 22.5 22.5 0 0 1 14685,1962.5 L 14685,2067.5 A 22.5 22.5 0 0 1 14662.5,2090 A 22.5 22.5 0 0 1 14640,2067.5 L 14640,1962.5 A 22.5 22.5 0 0 1 14662.5,1940 Z" fill="#f4f2ee" stroke="#a8a29a" stroke-width="6.5"/>
-<path d="M 15037.5,1940 A 22.5 22.5 0 0 1 15060,1962.5 L 15060,2067.5 A 22.5 22.5 0 0 1 15037.5,2090 A 22.5 22.5 0 0 1 15015,2067.5 L 15015,1962.5 A 22.5 22.5 0 0 1 15037.5,1940 Z" fill="#f4f2ee" stroke="#a8a29a" stroke-width="6.5"/>
-<line x1="14850" y1="1985" x2="14850" y2="2110" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
-<line x1="14850" y1="1985" x2="14968.88" y2="2023.63" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
-<line x1="14850" y1="1985" x2="14731.12" y2="2023.63" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
-<line x1="14850" y1="1985" x2="14923.47" y2="1883.87" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
-<line x1="14850" y1="1985" x2="14776.53" y2="1883.87" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
-<circle cx="14850" cy="1985" r="17.5" fill="#a8a29a" stroke="#a8a29a" stroke-width="6.5"/>
+<path d="M 14925,2050 L 14775,2050 A 70 70 0 0 1 14705,1980 L 14705,1850 A 70 70 0 0 1 14775,1780 L 14925,1780 A 70 70 0 0 1 14995,1850 L 14995,1980 A 70 70 0 0 1 14925,2050 Z" fill="#ffffff" stroke="#6c6864" stroke-width="9"/>
+<path d="M 15005,2010 A 170.13 170.13 0 0 1 14850,2110 A 170.13 170.13 0 0 1 14695,2010 A 245.91 245.91 0 0 0 15005,2010 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
+<path d="M 15037.5,1960 A 22.5 22.5 0 0 1 15015,1937.5 L 15015,1832.5 A 22.5 22.5 0 0 1 15037.5,1810 A 22.5 22.5 0 0 1 15060,1832.5 L 15060,1937.5 A 22.5 22.5 0 0 1 15037.5,1960 Z" fill="#f4f2ee" stroke="#a8a29a" stroke-width="6.5"/>
+<path d="M 14662.5,1960 A 22.5 22.5 0 0 1 14640,1937.5 L 14640,1832.5 A 22.5 22.5 0 0 1 14662.5,1810 A 22.5 22.5 0 0 1 14685,1832.5 L 14685,1937.5 A 22.5 22.5 0 0 1 14662.5,1960 Z" fill="#f4f2ee" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="14850" y1="1915" x2="14850" y2="1790" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
+<line x1="14850" y1="1915" x2="14731.12" y2="1876.37" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
+<line x1="14850" y1="1915" x2="14968.88" y2="1876.37" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
+<line x1="14850" y1="1915" x2="14776.53" y2="2016.13" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
+<line x1="14850" y1="1915" x2="14923.47" y2="2016.13" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
+<circle cx="14850" cy="1915" r="17.5" fill="#a8a29a" stroke="#a8a29a" stroke-width="6.5"/>
 <polygon points="12300,3300 15700,3300 15700,3900 12300,3900" fill="#f4f2ee" stroke="#a8a29a" stroke-width="9"/>
 <text x="14000" y="3600" font-size="100" fill="#9a948c" text-anchor="middle" dominant-baseline="central">Racking</text>
 <path d="M 15831.48,7850 L 15538.52,7850 A 23.52 23.52 0 0 1 15515,7826.48 L 15515,7705.52 A 23.52 23.52 0 0 1 15538.52,7682 L 15831.48,7682 A 23.52 23.52 0 0 1 15855,7705.52 L 15855,7826.48 A 23.52 23.52 0 0 1 15831.48,7850 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
