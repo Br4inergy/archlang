@@ -20,6 +20,12 @@
       "Bash(git log:*)",
       "Bash(git show:*)"
     ],
-    "ask": ["Bash(npm publish:*)", "Bash(git push:*)"]
+    "ask": [
+      "Bash(npm publish:*)",
+      "Bash(git push origin v*)",
+      "Bash(git push --tags*)",
+      "Bash(git push origin --tags*)",
+      "Bash(git push origin refs/tags/*)"
+    ]
   }
 }
