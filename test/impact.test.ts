@@ -640,6 +640,39 @@ suite("PS4.2 — a wider door does not change its wall (red team B1)", () => {
     });
   });
 
+  it("a `place` argument reaches only the elements that read its parameter (red team B2)", () => {
+    // terrace-row.arch: `place unit(W1, DEPTH, 1) as u1 …`, four times. DEPTH is the `d`
+    // argument. Inside `unit`, the shell, the front door, the living-side windows and `FRONT`
+    // (`d - BACK - HALLD`, read by the living room) read `d`; `room id=bed at (0,0) size BEDW x
+    // BACK` reads only BEDW (`w - BATHW`) and BACK (4000), neither of which reads d, so the bed
+    // room does not depend on DEPTH and must not be held by it.
+    const r = setImpact(read("examples/terrace-row.arch"), "DEPTH", "9900");
+    expect(r.held).toHaveLength(30);
+    expect(r.held.map((h) => h.name)).not.toContain("u1.bed");
+    expect(changed(r, "u1.bed")).toBeUndefined();
+    expect(r.changed.filter((c) => c.root === "unexplained")).toEqual([]);
+  });
+
+  it("two instances of one component: an argument reaches only its own instance (red team B2)", () => {
+    // p's `w` is A, q's is B. Setting A moves p.r and leaves q.r alone: q.r reads `w`, but its
+    // `w` is B, which did not change, so it is neither changed nor held.
+    const src = plan(`  let A = 3000
+  let B = 3000
+  component unit(w) {
+    room id=r at (0,0) size w x 3000 label "R"
+  }
+  place unit(A) as p at (0, 0)
+  place unit(B) as q at (10000, 0)`);
+    const r = setImpact(src, "A", "3500");
+    expect(changed(r, "p.r")).toMatchObject({
+      change: "resized",
+      why: [{ via: "param", name: "A", change: "3000 → 3500" }],
+      root: "let",
+    });
+    expect(changed(r, "q.r")).toBeUndefined();
+    expect(r.held).toEqual([]);
+  });
+
   it("a loop-local `let` reading the changed one explains what reads it (red team N1)", () => {
     // parametric.arch: `for i in 0..COUNT { let x = i * W … furniture bed at (x + 300, 300) … }`.
     const r = setImpact(read("examples/parametric.arch"), "W", "4500");

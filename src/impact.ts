@@ -209,14 +209,20 @@ interface Side {
   /** The statement each element came from, span-blind. */
   stmt: Map<string, string>;
   lets: Map<string, LetFact>;
-  /** The names each `place` reads, by instance path. */
-  places: Map<string, Set<string>>;
+  /** Each `place`, by instance path: the names its `at` reads, and per component parameter
+   *  the names its argument reads. */
+  places: Map<string, PlaceReads>;
   /** Each element's instance path. */
   instance: Map<string, string>;
   axes: Map<string, string>;
   /** Openings' resolved `at` and furniture's `at`/`size`, for move/resize phrases. */
   at: Map<string, { x: number; y: number }>;
   size: Map<string, { w: number; h: number }>;
+}
+
+interface PlaceReads {
+  at: Set<string>;
+  args: Map<string, Set<string>>;
 }
 
 const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -261,8 +267,10 @@ function letText(source: string, s: LetNode): string {
  * the binding, is what changes (PS4.7). `text` is the expression of the first top-level `let`
  * of that name in the compiled source, else of the first `let` there; empty otherwise.
  *
- * Also the names each `place … as <alias> at (x, y)` reads in its `at` and arguments, by
- * instance path (`west`, `west.inner`), which move every element of that instance.
+ * Also, by instance path (`west`, `west.inner`), what each `place … as <alias> at (x, y)`
+ * reads: the names in its `at`, which move every element of the instance, and per component
+ * parameter the names its argument reads, which reach only the elements that read that
+ * parameter (resolved per instance in `edges`, so two instances' arguments stay apart there).
  *
  * Linear in the statements and their expressions; each component body is walked once for its
  * bindings, and once per instance path for its places (a component on the current path is not
@@ -271,9 +279,9 @@ function letText(source: string, s: LetNode): string {
 function bindingsOf(
   source: string,
   plan: PlanNode | undefined,
-): { lets: Map<string, LetFact>; places: Map<string, Set<string>> } {
+): { lets: Map<string, LetFact>; places: Map<string, PlaceReads> } {
   const lets = new Map<string, LetFact>();
-  const places = new Map<string, Set<string>>();
+  const places = new Map<string, PlaceReads>();
   if (!plan) return { lets, places };
   const comps = new Map<string, ComponentDef>();
   const seen = new Set<ComponentDef>();
@@ -322,12 +330,18 @@ function bindingsOf(
     for (const s of body) {
       if (s.kind === "place") {
         const path = prefix ? `${prefix}.${s.alias}` : s.alias;
-        const reads = new Set<string>();
-        exprReads(s.at.x, reads);
-        exprReads(s.at.y, reads);
-        for (const a of s.args) exprReads(a, reads);
-        places.set(path, reads);
+        const at = new Set<string>();
+        exprReads(s.at.x, at);
+        exprReads(s.at.y, at);
         const def = comps.get(s.name);
+        const args = new Map<string, Set<string>>();
+        def?.params.forEach((p, k) => {
+          const reads = new Set<string>();
+          const a = s.args[k];
+          if (a) exprReads(a, reads);
+          args.set(p, reads);
+        });
+        places.set(path, { at, args });
         if (def && !stack.has(s.name)) walkPlaces(def.body, path, new Set([...stack, s.name]));
       }
       for (const b of statementBodies(s)) walkPlaces(b, prefix, stack);
@@ -346,6 +360,12 @@ function nameOf(e: ResolvedElement): { name: string; derived: boolean } {
   }
   return { name: e.id, derived: false };
 }
+
+/** `west.inner` → `west`; `west` → `` (the root). */
+const parentPath = (path: string): string => {
+  const k = path.lastIndexOf(".");
+  return k < 0 ? "" : path.slice(0, k);
+};
 
 /** A wall as `diffPlans` names it (its `DiffWallFact.name`). */
 function wallName(w: RWall): string {
@@ -617,6 +637,7 @@ function buildChanges(A: Side, B: Side, diff: PlanDiff, report: ImpactReport): v
     if (key.startsWith("axis\u0000")) return `axis ${key.slice(5)}`;
     return nameOfId(key);
   };
+  const placeOf = (path: string): PlaceReads | undefined => B.places.get(path) ?? A.places.get(path);
   /** A node's dependency edges in a fixed order: on, host, axes, params, joins. */
   const edges = (key: string): Array<{ via: ImpactStep["via"]; key: string }> => {
     const out: Array<{ via: ImpactStep["via"]; key: string }> = [];
@@ -630,16 +651,25 @@ function buildChanges(A: Side, B: Side, diff: PlanDiff, report: ImpactReport): v
     for (const id of row?.on ?? drow?.on ?? []) if (id !== row?.hostWallId) out.push({ via: "on", key: id });
     if (row?.hostWallId !== undefined) out.push({ via: "host", key: row.hostWallId });
     for (const a of row?.axes ?? []) out.push({ via: "axis", key: `axis\u0000${a}` });
-    const params = new Set(row?.params ?? drow?.params ?? []);
-    // The `place`s it was instantiated by (outermost first): their `at` and arguments.
+    // Inside a placed instance, a name that is a component parameter of an enclosing instance
+    // stands for what THAT instance's argument reads (resolved outwards, one instance level
+    // per step, so bounded by the path's depth); any other name is the plan-wide binding. The
+    // instance's own `place … at` (and each enclosing one's) moves every element in it.
     const inst = B.instance.get(key) ?? A.instance.get(key);
-    if (inst !== undefined) {
-      const parts = inst.split(".");
-      for (let i = 1; i <= parts.length; i++) {
-        const path = parts.slice(0, i).join(".");
-        for (const r of B.places.get(path) ?? A.places.get(path) ?? []) params.add(r);
+    const params = new Set<string>();
+    const resolve = (name: string, path: string): void => {
+      for (let cur = path; cur !== ""; cur = parentPath(cur)) {
+        const arg = placeOf(cur)?.args.get(name);
+        if (arg) {
+          for (const r of arg) resolve(r, parentPath(cur));
+          return;
+        }
       }
-    }
+      params.add(name);
+    };
+    for (const p of row?.params ?? drow?.params ?? []) resolve(p, inst ?? "");
+    for (let cur = inst ?? ""; cur !== ""; cur = parentPath(cur))
+      for (const r of placeOf(cur)?.at ?? []) resolve(r, parentPath(cur));
     for (const p of [...params].sort(cmp)) if (lets.has(p)) out.push({ via: "param", key: `let\u0000${p}` });
     const kind = B.kind.get(key) ?? A.kind.get(key);
     const o = kind ? openingById.get(`${kind}\u0000${key}`) : undefined;

@@ -1061,8 +1061,11 @@ What it cannot tell you:
   positional ids (`door_2`) shifts them, as in `diffPlans`.
 - **The lowest storey's elements** are compared, as `describe()`'s top-level facts are;
   diagnostics cover every storey.
-- **A bound name is one entry** however many places bind it: a component parameter, a loop
-  variable and a `let` of the same name are not told apart (PS4.7).
+- **A bound name is one entry** however many places bind it: a component-local `let`, a loop
+  variable and a top-level `let` of the same name are not told apart, and a name that reads a
+  changed one counts as changed even when its value did not (PS4.7). A component parameter an
+  element reads directly is the exception: it is resolved per `place` instance, so an argument
+  reaches only its own instance's elements that read it.
 - **`unexplained`** remains where a position is found by search rather than read from a name:
   a piece placed `flush` measures from the wall behind it, so a thicker wall moves it with no
   recorded dependency (6 of the 26 single-number overrides of the examples' top-level lets,

@@ -488,10 +488,20 @@ into PS3.12)
 - An unresolved side keys its errors to the statement. Every storey's elements are compared, not
   only the lowest storey's. Found in PR #240.
 
-**PS4.7 · Impact resolves `let` bindings.** `todo`
-- A name read in an element's expressions counts as a changed `let` by name alone, so a component
-  parameter or loop variable with the same name shadows it.
-- *Acceptance:* resolve the binding, not the name. Found in PR #240.
+**PS4.7 · Impact resolves bindings, not names.** `todo`
+- `arch impact` keeps one entry per bound name, so a name stands for every place that binds it.
+  The red team on PR #240 measured three consequences:
+  - (a) arguments of different `place` instances are merged. An element that reads a component
+    parameter directly is resolved per instance since round 2 (`place unit(A) as p`,
+    `place unit(B) as q`, `--set A=…`: `q.r` is neither changed nor held). A component-local
+    `let` that reads a parameter (`let BEDW = w - BATHW`) is still one entry for every instance;
+  - (b) a block-level `let W = K` merges with a top-level `W`: with `--set K=2000`, the
+    top-level reader `a` is held via `reads W (reads K)`, and the lets section prints `W` with
+    before "3000", after "3000" and `reads K`;
+  - (c) a changed name spreads to every name that reads it even when the value did not change
+    (`bed_1` with `x = 0·W`; a loop's elements at `i = 0`).
+- *Acceptance:* resolve bindings per instance and per scope, and compare values, not names.
+  Found in PR #240.
 
 ### PS5 · The taste layer and the review sheet (D2)
 
