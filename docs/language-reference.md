@@ -1439,7 +1439,9 @@ dim diameter <roomId> [offset <mm>] [text "<text>"]
 draws a `φ<d>` call-out across a circular room. Both **derive** their geometry and their
 text from the element they name, so the number can never disagree with the drawing. Name a
 wall with several arcs and you must add `segment <n>`; anything unresolvable is
-[`E_DIM_CURVE_REF`](error-codes.md) rather than a guess.
+[`E_DIM_CURVE_REF`](error-codes.md) rather than a guess. A segment selector (`segment north`,
+`segment containing <room>.<edge>`) only ever picks a straight segment, so here it is refused
+with [`E_SEGMENT_SELECT`](error-codes.md).
 
 `dims auto` synthesizes one `R` leader per distinct arc (deduplicated by centre and radius,
 so a circle written as two semicircles gets one call-out) and one `φ` per circular room,
@@ -1723,7 +1725,7 @@ opening on w_part at 50% width 900                            # centred on the p
 
 ```
 furniture <kind> [id=<id>] at (x,y) size <w>x<h> [label "<text>"] [rotate 0|90|180|270] [in <room>]
-furniture <kind> [id=<id>] against wall <ref> [segment <n>] [offset <mm>] [side left|right] [size <along>x<depth>] [label "<text>"] [in <room>]
+furniture <kind> [id=<id>] against wall <ref> [segment <n>|<selector>] [offset <mm>] [side left|right] [size <along>x<depth>] [label "<text>"] [in <room>]
 furniture <kind> [id=<id>] in <room> centered [size <w>x<h>] [label …] [rotate …]
 furniture <kind> [id=<id>] in <room> anchor <a> [flush] [inset <mm>] [size <w>x<h>] [label …] [rotate …]
 furniture <kind> [id=<id>] against <room>.<edge> [offset <mm>] [size <along>x<depth>] [label …]
@@ -1746,6 +1748,29 @@ catalogued footprint placed `against wall` may **omit `size`** and take it (e.g.
 lands along the wall run; `at` and room-relative placement, and any kind with no
 catalogued footprint, still need an explicit `size`. `in <room>` records which room
 owns the piece (used by the lint rules).
+
+**Segment selectors.** On a wall of several segments, `segment <n>` (0-based, in the wall's
+direction) says which one the piece backs onto. A selector can stand in its place and resolves to
+exactly that number, so the plan draws, describes and lints as if the number were written:
+
+- `segment north|south|east|west` picks the straight segment of a **closed** wall whose outward
+  face, the side away from the floor the ring encloses, looks that way (north is up the page).
+  On a courtyard ring that `walls from rooms` derived, the floor is outside the ring, so its
+  outward faces look into the court. An authored closed wall is read the same way as any other
+  closed wall: its floor is the side it encloses, even when it was drawn round a courtyard. An
+  open wall has no floor side, so a compass word on it is refused. As with datums, the words
+  are legal only in the root of a plan whose `north` is `up`; inside a placed component, or
+  under any other `north`, they are [`E_DATUM_COMPASS`](error-codes.md).
+- `segment containing <room>.<edge>` picks the straight segment whose centreline lies on that
+  room edge's line and overlaps the edge. It works on open walls and inside components (in the
+  component's own words). The edge is read as a datum, so a polygon, circle or unplaced room is
+  refused as a datum is.
+
+A selector that matches no segment, or several, is [`E_SEGMENT_SELECT`](error-codes.md), and the
+message lists the candidate numbers. A derived wall is reached only the way `segment <n>` reaches
+it, through its category (`against wall exterior` when the outer ring is the only exterior
+wall). After `segment`, a bare compass word is always the selector; to use a variable with that
+name as the number, write it in parentheses: `segment (east)`.
 
 **Relations (ADR 0029).** Three clauses say what a piece is *for*, and the compiler derives or
 checks the rest in closed form; it never searches for a layout.

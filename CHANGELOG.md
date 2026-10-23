@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Segment selectors (plan card PS3.5). `segment north|south|east|west` and `segment containing
+  <room>.<edge>` can be written wherever `segment <n>` is, and resolve to that number:
+  `against wall … segment`, and `dim radius … segment`, where a selector is refused because it
+  picks a straight segment. A selector that matches no segment, or several, is the new
+  `E_SEGMENT_SELECT`. Plan JSON gains an additive `segment_select` field.
+
+### Changed
+
+- After `segment`, a bare `north|south|east|west` is now the selector. A plan that binds a
+  variable with one of those names and uses it bare as a segment number now reads the selector;
+  write the variable as `segment (east)` instead. No example or corpus plan does this (checked
+  by grepping `examples/` and the test corpus). `containing` is a selector only when a dotted
+  `<room>.<edge>` follows it, which never parsed before, so a variable named `containing` reads
+  as it did.
+
 ## [1.43.1] - 2026-10-17
 
 ### Changed

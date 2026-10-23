@@ -588,9 +588,45 @@ original brief follows.
   - **Tests.** Every refusal is spanned and tested in `test/openings-between.test.ts`, together
     with the twins, the instance frames (rotate 90, mirror x and both) and the widening drill.
 
-**PS3.5 · Semantic selectors.** `todo`
+**PS3.5 · Semantic selectors.** `done` (PR #230)
 - `segment north|south|east|west`, or `segment containing <room>.<edge>`, aliasing `segment <n>`.
 - Refuse unless exactly one segment matches.
+- *As built* (`src/segment-select.ts`):
+  - **Where.** Wherever `segment <n>` is accepted: `against wall … segment` and `dim radius …
+    segment`. `dim radius` measures an arc and a selector picks only straight segments, so
+    there it is always refused (`E_SEGMENT_SELECT`) rather than being a parse error.
+  - **Compass.** Picks the straight, axis-aligned segment of a CLOSED wall whose outward face,
+    the side away from the floor, looks that way.
+    - The floor is the side the ring encloses, from the exact shoelace orientation. It flips
+      on a derived courtyard ring (`_derived.ring === "inner"`).
+    - An open wall, a derived partition included, has no floor side and is refused; `side` is
+      not read. Arcs and diagonals face nothing.
+    - Caveat: an authored closed ring drawn round a courtyard still counts its enclosed side
+      as the floor.
+    - Legal only where datum compass words are (a north-up root), otherwise `E_DATUM_COMPASS`.
+      The flag reaches the selector through `DatumAccess.compass`.
+  - **Containing.** The edge is read through `ctx.datums.read`, so every datum refusal holds. A
+    match is a straight segment exactly on the edge line with a positive overlap. Open walls
+    and components work, the latter in local words.
+  - **Refusal.** `E_SEGMENT_SELECT`, spanned on the selector, gives the match count and the
+    candidate `segment <n>` numbers; for a compass word it also says which way each faces. A
+    refused piece raises no follow-on `E_FURN_AGAINST`.
+  - **Derived walls.** Reached only by category, as `segment <n>` is: `against wall exterior`
+    with one ring, and `against wall partition` with one partition.
+  - **Parse.** A bare compass word after `segment` is the selector, and a variable of that name
+    is written `segment (east)`. The printer parenthesises it, and this is noted in the
+    CHANGELOG. `containing` is a selector only before a dotted name, so it breaks nothing.
+  - **Facts.** `_authored.segment` holds the resolved index, plus the internal
+    `segmentSelect` text. `describe()` shows nothing new. Plan JSON has an additive
+    `segment_select`, validated by `SEGMENT_SELECT_RE` and re-emitted in place of the number.
+  - **Steps.** The compass scan charges one step per vertex, one per segment and one more;
+    `containing` charges one for the read, one per segment and one more. Both are charged
+    before they run.
+  - **Tests.** `test/segment-select.test.ts` has the twins (padded so the spans match) on an
+    authored ring, an open polyline, a derived ring and partition, and a component under all
+    eight frames, plus a control that tells a selector from a different number. It also covers
+    the refusals, the parse, the format and Plan JSON round trips, and the budget. The digest
+    table is `test/segment-select-digests.test.ts`.
 
 **PS3.6 · Teach it.** `done` (PR #227)
 - `spec.llm.md` and `skills/archlang/SKILL.md` lead with a minimal room-graph example (rooms, then
