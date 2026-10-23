@@ -14,8 +14,16 @@ import type { DoorSwing, WallSegment } from "../geometry.js";
 import { weightWidth } from "../scene.js";
 import { add, doorSwing, mul, nearestWallNote, normal, segmentDirAt, sub, unit, wallFaceProbes } from "../geometry.js";
 import { pointInPolygon, pointOnPolygonEdge } from "../geometry/polygon.js";
-import type { DoorClauseName, DoorKind } from "../grammar/tokens.js";
-import { DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KIND_CLAUSES, DOOR_KINDS, enumList } from "../grammar/tokens.js";
+import type { DoorClauseName, DoorKind, DoorSwingDir } from "../grammar/tokens.js";
+import type { DoorSwingBuilding } from "../grammar/tokens.js";
+import {
+  DOOR_ENUMS,
+  DOOR_HINGE_NEAR,
+  DOOR_KIND_CLAUSES,
+  DOOR_KINDS,
+  DOOR_SWING_BUILDING,
+  enumList,
+} from "../grammar/tokens.js";
 import { parseAttachTarget, resolveOpeningLead } from "../attach.js";
 import {
   doorKindClauseFix,
@@ -35,9 +43,10 @@ import { DOOR_HEAD, parseOpeningHeights, resolveOpeningHeights } from "../datum.
  * and the diagnostic name another. `ctx.fail` returns `never`, which narrows the
  * result to the member type.
  */
-function eatEnumValue<T extends string>(ctx: ParseCtx, allowed: readonly T[], what: string): T {
+function eatEnumValue<T extends string>(ctx: ParseCtx, allowed: readonly T[], what: string, orForm?: string): T {
   const v = ctx.eatIdent().value;
-  if (!(allowed as readonly string[]).includes(v)) ctx.fail(`Expected ${what} ${enumList(allowed)} but found "${v}"`);
+  if (!(allowed as readonly string[]).includes(v))
+    ctx.fail(`Expected ${what} ${enumList(allowed)}${orForm ? ` or ${orForm}` : ""} but found "${v}"`);
   return v as T;
 }
 
@@ -145,7 +154,22 @@ function swingInto(
  * rooms on neither side, and one in a party wall has them on both.
  */
 function roomSideOf(at: Point, host: WallSegment | null, rooms: readonly RRoom[]): "in" | "out" | undefined {
-  if (!host) return undefined;
+  const side = floorSides(at, host, rooms);
+  return side === "in" || side === "out" ? side : undefined;
+}
+
+/**
+ * {@link roomSideOf}'s probe with its two `undefined` answers told apart: `"both"` when floor
+ * lies on both faces (a wall between two rooms, or one free-standing inside a room), `"none"`
+ * when on neither (a garden wall), `"nohost"` when there is no wall at all. `swing
+ * inward|outward` needs the difference for its message.
+ */
+function floorSides(
+  at: Point,
+  host: WallSegment | null,
+  rooms: readonly RRoom[],
+): "in" | "out" | "both" | "none" | "nohost" {
+  if (!host) return "nohost";
   // The tangent's normal, as in `swingInto`'s ring path: `in` is the face `doorSwing` uses.
   const { plus, minus } = wallFaceProbes(host, at, Math.max(host.thickness, 1));
   const onFloor = ({ x: px, y: py }: Point): boolean =>
@@ -156,8 +180,56 @@ function roomSideOf(at: Point, host: WallSegment | null, rooms: readonly RRoom[]
     });
   const pos = onFloor(plus);
   const neg = onFloor(minus);
-  if (pos === neg) return undefined;
+  if (pos && neg) return "both";
+  if (!pos && !neg) return "none";
   return pos ? "in" : "out";
+}
+
+/**
+ * Choose the internal `in|out` value for `swing inward|outward`: `inward` is the face of the host
+ * wall that has floor ({@link floorSides}, the probe a `garage` door's side comes from),
+ * `outward` the other. The result is exactly the wall-relative word an author who knew the
+ * wall's drawn direction would have written, so everything downstream (the drawing,
+ * `describe()`, `lint()`, a `place` frame's reflection) sees that twin and nothing else.
+ *
+ * A host with floor on both faces or on neither has no building side, and guessing one would
+ * put a leaf where the author did not mean it: `E_SWING_SIDE` on the word's own span, and the
+ * caller falls back to the default swing (the error is what tells the author).
+ */
+function swingBuilding(
+  word: DoorSwingBuilding,
+  at: Point,
+  host: WallSegment | null,
+  rooms: readonly RRoom[],
+  ctx: ResolveCtx,
+  id: string,
+  span: Span | undefined,
+): "in" | "out" | undefined {
+  const side = floorSides(at, host, rooms);
+  if (side === "in" || side === "out") {
+    if (word === "inward") return side;
+    return side === "in" ? "out" : "in";
+  }
+  const why =
+    side === "both"
+      ? "its wall has floor on both faces"
+      : side === "none"
+        ? "its wall has floor on neither face (no room borders the doorway)"
+        : "it has no host wall";
+  ctx.diag({
+    severity: "error",
+    message: `Door "${id}" swings ${word}, but ${why}, so there is no inside to swing ${word === "inward" ? "towards" : "away from"}`,
+    code: "E_SWING_SIDE",
+    span,
+    hints: [
+      side === "both"
+        ? "Name the room the leaf opens into: `swing into <room>`."
+        : side === "nohost"
+          ? "Put the door on a wall (`on <wall> at <pos>`, or `at (x,y)` on one), then name its side."
+          : `Use \`swing into <room>\` with a room that borders this wall, or the wall-relative \`swing ${DOOR_ENUMS.swing.join("|")}\`.`,
+    ],
+  });
+  return undefined;
 }
 
 /** `open` when the author writes none — the drawn rest position of a sliding-family panel. */
@@ -281,12 +353,21 @@ export const door: ElementDef = {
     }
     if (ctx.isKeyword("swing")) {
       ctx.next();
-      // `swing into <room>` picks in/out toward that room; `swing in|out` is explicit.
+      // `swing into <room>` picks in/out toward that room; `swing inward|outward` toward or
+      // away from the building's floor; `swing in|out` is explicit, relative to the wall.
       if (ctx.isKeyword("into")) {
         ctx.next();
         node.swingInto = ctx.eatIdent().value;
       } else {
-        node.swing = eatEnumValue(ctx, DOOR_ENUMS.swing, "swing");
+        // One read and one message for every bare word, so the refusal names all four.
+        const word = ctx.peek();
+        const v = eatEnumValue(ctx, [...DOOR_ENUMS.swing, ...DOOR_SWING_BUILDING], "swing", "`into <room>`");
+        if ((DOOR_SWING_BUILDING as readonly string[]).includes(v)) {
+          node.swingBuilding = v as DoorSwingBuilding;
+          node.swingBuildingSpan = { start: word.start, end: word.end };
+        } else {
+          node.swing = v as DoorSwingDir;
+        }
       }
     }
     // `slide left|right` — which way the panel travels. Its byte span (or the
@@ -364,7 +445,7 @@ export const door: ElementDef = {
     const allowed = DOOR_KIND_CLAUSES[named];
     const written: ReadonlyArray<readonly [DoorClauseName, boolean]> = [
       ["hinge", n.hinge !== undefined || n.hingeNear !== undefined],
-      ["swing", n.swing !== undefined || n.swingInto !== undefined],
+      ["swing", n.swing !== undefined || n.swingInto !== undefined || n.swingBuilding !== undefined],
       ["slide", n.slide !== undefined],
       ["open", n.open !== undefined],
     ];
@@ -425,6 +506,13 @@ export const door: ElementDef = {
     const hingeNear = n.hingeNear ? (n.hingeNear === "start" ? "left" : "right") : undefined;
     const hinge = n.hinge ?? hingeNear ?? enumDefault(ctx.defaults, "hinge", DOOR_ENUMS.hinge) ?? "left";
     const intoSwing = n.swingInto ? swingInto(n.swingInto, at, host, ctx.rooms, ctx, id, n.span) : undefined;
+    // `swing inward|outward` sits at the same derived tier as `swing into`: a measurement of where
+    // the floor is, resolved to the wall-relative word it means. Not on a kind that takes no
+    // `swing` (that is `E_DOOR_KIND_CLAUSE` above, and a second error would only repeat it).
+    const buildingSwing =
+      n.swingBuilding && allowed.swing
+        ? swingBuilding(n.swingBuilding, at, host, ctx.rooms, ctx, id, n.swingBuildingSpan ?? n.span)
+        : undefined;
     // A `garage` panel projects overhead into the BUILDING, so its face is derived from the
     // plan rather than written: the author has no `swing` clause for this kind (it would be a
     // choice about a fact), and the probe is the same one `swing into <room>` makes. It sits
@@ -433,7 +521,13 @@ export const door: ElementDef = {
     // side is a room — a garage door in a garden wall — the chain falls through as it always
     // did and the panel projects to the wall's `+normal` side.
     const garageSide = named === "garage" ? roomSideOf(at, host, ctx.rooms) : undefined;
-    const swing = n.swing ?? intoSwing ?? garageSide ?? enumDefault(ctx.defaults, "swing", DOOR_ENUMS.swing) ?? "in";
+    const swing =
+      n.swing ??
+      intoSwing ??
+      buildingSwing ??
+      garageSide ??
+      enumDefault(ctx.defaults, "swing", DOOR_ENUMS.swing) ??
+      "in";
     // Pre-emit the hinge-flipped statement for `W_SWING_OBSTRUCTED`'s fix: lint sees
     // only the IR, and re-emitting here keeps the authored placement/width expressions
     // (rather than baking in resolved numbers). Internal field — no Scene, no bytes.
@@ -452,6 +546,7 @@ export const door: ElementDef = {
       head,
       span: n.span,
       ...(flipText ? { _flipHingeText: flipText } : {}),
+      ...(n.swingBuilding && allowed.swing ? { _swingBuilding: n.swingBuilding } : {}),
       ...(lead?.relation ? { _placement: "relational" as const, _relation: lead.relation } : {}),
       // Everything below is present ONLY on a non-hinged door, so a plan that names
       // no kind produces exactly the IR (and therefore exactly the bytes, exactly the

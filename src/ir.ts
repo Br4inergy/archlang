@@ -34,7 +34,7 @@ import type {
   VerticalDir,
   WindowNode,
 } from "./ast.js";
-import type { DoorHinge, DoorKind, DoorSlideDir, DoorSwingDir } from "./grammar/tokens.js";
+import type { DoorHinge, DoorKind, DoorSlideDir, DoorSwingBuilding, DoorSwingDir } from "./grammar/tokens.js";
 import { moduleBindings } from "./import.js";
 import { placeRelational } from "./layout.js";
 import {
@@ -433,6 +433,13 @@ export interface RDoor extends RBase {
    * the traversal) does not. Internal; never reaches `describe()` or Plan JSON.
    */
   _mirror?: true;
+  /**
+   * `swing inward|outward` as written, present only when written on a kind that takes `swing`.
+   * `swing` above is already the wall-relative word it resolved to, which is all the drawing,
+   * `describe()` and `lint()` read; this is kept only so Plan JSON can export the word as written
+   * (`swing_building`). Frame-invariant, so a `place` frame carries it unchanged.
+   */
+  _swingBuilding?: DoorSwingBuilding;
   /** Byte span of the authored `slide` clause, or the zero-width insertion point —
    *  see {@link import("./ast.js").DoorNode.slideSpan}. Internal: never in the Scene. */
   _slideSpan?: Span;

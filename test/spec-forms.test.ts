@@ -727,6 +727,14 @@ const NEGATIVE: Negative[] = [
     ),
   },
   {
+    code: "E_SWING_SIDE",
+    channel: "compile",
+    note: "`swing inward` on a wall with floor on both faces has no inside",
+    src: plan(
+      `  room id=a at (0,0) size 4000x5000\n  room id=b at (4000,0) size 4000x5000\n  walls from rooms exterior 200 partition 100\n  door between a and b at center width 800 swing inward`,
+    ),
+  },
+  {
     code: "E_DOOR_KIND_CURVED",
     channel: "compile",
     note: "a non-hinged kind on an `arc` wall",

@@ -4,7 +4,15 @@
  * it and produces a separate IR — nothing here is mutated after parse.
  */
 
-import type { DoorHinge, DoorHingeNear, DoorKind, DoorSlideDir, DoorSwingDir, TitleField } from "./grammar/tokens.js";
+import type {
+  DoorHinge,
+  DoorHingeNear,
+  DoorKind,
+  DoorSlideDir,
+  DoorSwingBuilding,
+  DoorSwingDir,
+  TitleField,
+} from "./grammar/tokens.js";
 import type { Span } from "./diagnostics.js";
 import type { Comment } from "./lexer.js";
 import type { Expr } from "./expr.js";
@@ -405,6 +413,11 @@ export interface DoorNode extends NodeBase {
   /** `swing into <room>` — resolve chooses in/out so the leaf opens toward that
    *  room's side of the host wall. Exclusive with `swing`. */
   swingInto?: string;
+  /** `swing inward|outward` — resolve chooses in/out so the leaf opens toward (`inward`) or
+   *  away from (`outward`) the one face of the host wall that has floor. Exclusive with
+   *  `swing` and `swingInto`; `swingBuildingSpan` is the value word's bytes (`E_SWING_SIDE`). */
+  swingBuilding?: DoorSwingBuilding;
+  swingBuildingSpan?: Span;
   /** `hinge near start|end` — hinge at the door-segment end nearer the wall's
    *  start/end point, independent of traversal wording. Exclusive with `hinge`. */
   hingeNear?: DoorHingeNear;

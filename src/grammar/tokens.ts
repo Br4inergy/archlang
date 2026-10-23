@@ -177,6 +177,9 @@ export const KEYWORDS = {
     "right",
     "in",
     "out",
+    // `swing inward|outward` (DOOR_SWING_BUILDING): the building-relative swing values.
+    "inward",
+    "outward",
     "mm",
     "true",
     "false",
@@ -317,6 +320,16 @@ export const DOOR_ENUMS = {
 export const DOOR_HINGE_NEAR = ["start", "end"] as const;
 
 /**
+ * `swing inward|outward` — the same clause addressed by the BUILDING instead of by the
+ * wall's drawn direction: `inward` opens toward the one face of the host wall that has floor,
+ * `outward` away from it. A second spelling of `swing` (the {@link DOOR_HINGE_NEAR} shape), so
+ * it lives beside {@link DOOR_ENUMS} rather than as a key of it, and the resolver turns it into
+ * the same internal `in|out` the wall-relative word would have named. A host with floor on both
+ * faces (a partition) or on neither (a garden wall) has no building side: `E_SWING_SIDE`.
+ */
+export const DOOR_SWING_BUILDING = ["inward", "outward"] as const;
+
+/**
  * The door KINDS — the bare word that may lead a `door` statement
  * (`door pocket on w1 at 40% width 900 slide left`).
  *
@@ -387,6 +400,8 @@ export type DoorHinge = (typeof DOOR_ENUMS.hinge)[number];
 export type DoorSwingDir = (typeof DOOR_ENUMS.swing)[number];
 /** `slide left|right`, relative to the host wall's traversal direction (like `hinge`). */
 export type DoorSlideDir = (typeof DOOR_ENUMS.slide)[number];
+/** `swing inward|outward`, relative to the face of the host wall that has floor. */
+export type DoorSwingBuilding = (typeof DOOR_SWING_BUILDING)[number];
 /** `hinge near start|end`. */
 export type DoorHingeNear = (typeof DOOR_HINGE_NEAR)[number];
 /** The leading kind word of a `door` statement; `hinged` is the default. */

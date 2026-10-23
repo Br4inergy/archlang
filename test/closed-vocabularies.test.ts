@@ -32,7 +32,7 @@
 
 import { describe, expect, it } from "vitest";
 import * as ast from "../src/ast.js";
-import { DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KINDS, KEYWORDS } from "../src/grammar/tokens.js";
+import { DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KINDS, DOOR_SWING_BUILDING, KEYWORDS } from "../src/grammar/tokens.js";
 import * as sheet from "../src/sheet.js";
 
 /** Every word `KEYWORDS` can highlight, in any category. */
@@ -75,6 +75,7 @@ const SETS: Array<[string, readonly string[]]> = [
   // The door tables sit beside KEYWORDS rather than in ast.ts (see their doc comment).
   ["tokens.DOOR_KINDS", DOOR_KINDS],
   ["tokens.DOOR_HINGE_NEAR", DOOR_HINGE_NEAR],
+  ["tokens.DOOR_SWING_BUILDING", DOOR_SWING_BUILDING],
   ...Object.entries(DOOR_ENUMS).map(([k, v]) => [`tokens.DOOR_ENUMS.${k}`, v] as [string, readonly string[]]),
 ];
 

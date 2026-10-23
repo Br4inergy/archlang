@@ -33,6 +33,7 @@ import {
   DOOR_HINGE_NEAR,
   DOOR_KIND_CLAUSES,
   DOOR_KINDS,
+  DOOR_SWING_BUILDING,
   KEYWORDS,
   enumList,
 } from "../src/grammar/tokens.js";
@@ -65,7 +66,7 @@ const FILES = [
  * furniture `side` and a `north` bearing, and those legitimately keep their own lists.
  */
 function copyLines(text: string): string[] {
-  const sets = [...Object.values(DOOR_ENUMS), DOOR_HINGE_NEAR, DOOR_KINDS].map((v) => [...v]);
+  const sets = [...Object.values(DOOR_ENUMS), DOOR_HINGE_NEAR, DOOR_KINDS, DOOR_SWING_BUILDING].map((v) => [...v]);
   const patterns = sets.map((v) => new RegExp(`"${v.join('"\\s*[|,]\\s*"')}"|\\b${v.join("\\|")}\\b`));
   return (
     text
@@ -117,7 +118,7 @@ suite("door enums — the generators fail loudly, not silently", () => {
       `( ws "hinge" rws hinge-val )? ( ws "swing" rws swing-val )? ( ws "slide" rws slide-val )? ( ws "open" ws expr )?`,
     ],
     ["hinge-val", `"near" rws ( "start" | "end" ) | "left" | "right"`],
-    ["swing-val", `"into" rws ref | "in" | "out"`],
+    ["swing-val", `"into" rws ref | "inward" | "outward" | "in" | "out"`],
     ["slide-val", `"left" | "right"`],
   ];
 
@@ -127,7 +128,7 @@ suite("door enums — the generators fail loudly, not silently", () => {
     // The productions really are derived — the committed grammar carries them.
     const g = renderGbnf();
     expect(g).toContain(`hinge-val ::= "near" rws ( "start" | "end" ) | "left" | "right"`);
-    expect(g).toContain(`swing-val ::= "into" rws ref | "in" | "out"`);
+    expect(g).toContain(`swing-val ::= "into" rws ref | "inward" | "outward" | "in" | "out"`);
     expect(g).toContain(`slide-val ::= "left" | "right"`);
     expect(g).toContain(`door-kind ::= "hinged" | "sliding" | "barn" | "bifold" | "pocket" | "garage"`);
     expect(g).toContain(
@@ -137,6 +138,12 @@ suite("door enums — the generators fail loudly, not silently", () => {
     // separate `door-kind` arm of the guard necessary at all.
     expect(g).toContain(
       `door-stmt ::= "door" rws id-opt ( door-kind rws )? ( opening-placement | opening-between ) door-clauses`,
+    );
+  });
+
+  it("gen-gbnf throws when `swing-val` stops rendering the building-relative words", () => {
+    expect(() => assertDoorVocab(body(), DOOR_ENUMS, DOOR_KINDS, [...DOOR_SWING_BUILDING, "upward"])).toThrow(
+      /does not render the building-relative words/,
     );
   });
 
@@ -189,7 +196,7 @@ suite("door enums — the generators fail loudly, not silently", () => {
 
   it("gen-llm-spec throws when the door line stops rendering a clause", () => {
     const line =
-      "door … [hinged|sliding|barn|bifold|pocket|garage] [hinge left|right|near start|near end] [swing in|out|into <roomId>] [slide left|right]";
+      "door … [hinged|sliding|barn|bifold|pocket|garage] [hinge left|right|near start|near end] [swing in|out|inward|outward|into <roomId>] [slide left|right]";
     expect(() => assertDoorEnumsRendered(line, DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KINDS)).not.toThrow();
     expect(() =>
       assertDoorEnumsRendered(line, { ...DOOR_ENUMS, latch: ["left", "right"] }, DOOR_HINGE_NEAR, DOOR_KINDS),
@@ -203,6 +210,9 @@ suite("door enums — the generators fail loudly, not silently", () => {
     expect(() => assertDoorEnumsRendered(line, DOOR_ENUMS, DOOR_HINGE_NEAR, [...DOOR_KINDS, "dutch"])).toThrow(
       /does not render the door KIND alternation/,
     );
+    expect(() =>
+      assertDoorEnumsRendered(line, DOOR_ENUMS, DOOR_HINGE_NEAR, DOOR_KINDS, [...DOOR_SWING_BUILDING, "upward"]),
+    ).toThrow(/building-relative `swing` form/);
   });
 });
 
@@ -211,7 +221,7 @@ suite("door enums — the weld to the highlighting bucket", () => {
     // DOOR_ENUMS sits BESIDE `KEYWORDS.enum` (the flat, cross-element highlighting bag)
     // rather than deriving from it — but nothing may be in one and not the other, or a
     // value would ship without editor colour.
-    for (const v of [...Object.values(DOOR_ENUMS).flat(), ...DOOR_HINGE_NEAR, ...DOOR_KINDS]) {
+    for (const v of [...Object.values(DOOR_ENUMS).flat(), ...DOOR_HINGE_NEAR, ...DOOR_KINDS, ...DOOR_SWING_BUILDING]) {
       expect(KEYWORDS.enum, v).toContain(v);
     }
   });
@@ -256,6 +266,10 @@ suite("door enums — the behaviour the table drives", () => {
   it("accepts every value in the table, in both clauses", () => {
     for (const h of DOOR_ENUMS.hinge) expect(compile(plan(`hinge ${h}`)).errors).toEqual([]);
     for (const s of DOOR_ENUMS.swing) expect(compile(plan(`swing ${s}`)).errors).toEqual([]);
+    // The building-relative words need a building: a room on one face of the host.
+    const housed = (clause: string): string =>
+      plan(clause).replace("  door ", "  room at (0,0) size 4000x3000\n  door ");
+    for (const s of DOOR_SWING_BUILDING) expect(compile(housed(`swing ${s}`)).errors, s).toEqual([]);
     for (const n of DOOR_HINGE_NEAR) expect(compile(plan(`hinge near ${n}`)).errors).toEqual([]);
   });
 
@@ -275,7 +289,9 @@ suite("door enums — the behaviour the table drives", () => {
       `Expected hinge ${enumList(DOOR_ENUMS.hinge)} but found "sideways"`,
     );
     expect(compile(plan("swing sideways")).errors[0]?.message).toBe(
-      `Expected swing ${enumList(DOOR_ENUMS.swing)} but found "sideways"`,
+      // Every bare word `swing` takes, then the `into` form: a refusal that left out a legal
+      // word would teach the author a smaller language than the parser speaks.
+      `Expected swing ${enumList([...DOOR_ENUMS.swing, ...DOOR_SWING_BUILDING])} or \`into <room>\` but found "sideways"`,
     );
     expect(compile(plan("hinge near middle")).errors[0]?.message).toBe(
       `Expected hinge near ${enumList(DOOR_HINGE_NEAR)} but found "middle"`,

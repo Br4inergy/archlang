@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**131 errors** · **66 warnings**
+**132 errors** · **66 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -123,6 +123,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_STEP_LIMIT`](#e_step_limit) | error | Evaluation did more work than any plan needs. |
 | [`E_STRIP_NEST`](#e_strip_nest) | error | Illegal `strip` nesting. |
 | [`E_STRIP_SIZE`](#e_strip_size) | error | Room in a `strip` is missing a size. |
+| [`E_SWING_SIDE`](#e_swing_side) | error | `swing inward` or `swing outward` on a wall with no single inside. |
 | [`E_TYPE`](#e_type) | error | Type mismatch. |
 | [`E_UNKNOWN_COMPONENT`](#e_unknown_component) | error | Unknown component. |
 | [`E_UNKNOWN_FN`](#e_unknown_fn) | error | Unknown function. |
@@ -1643,6 +1644,21 @@ component c() { strip right at (0,0) gap 0 { … } }   # error: nested strip
 
 ```arch static
 strip right at (0,0) gap 100 { room size }   # error: no extent
+```
+
+## E_SWING_SIDE
+
+*error* — `swing inward` or `swing outward` on a wall with no single inside.
+
+**Cause.** `swing inward|outward` is relative to the building: `inward` opens the leaf towards the one face of the host wall that has floor (probed one wall thickness off each face, against every room's own shape), `outward` away from it. A wall between two rooms (or one free-standing inside a room) has floor on both faces, a garden wall has it on neither, and a door with no host wall has no faces at all, so neither word picks a side, and guessing one would put the leaf where the author did not mean it. The door falls back to its default swing.
+
+**Fix.** Name the room the leaf opens into with `swing into <room>`, or write the wall-relative `swing in|out` (`in` is the right-hand side of the wall's drawn direction on the page, `out` the left).
+
+```arch static
+wall id=w1 partition thickness 100 { (3000,0) (3000,3000) }
+room id=a at (0,0) size 3000x3000
+room id=b at (3000,0) size 3000x3000
+door on w1 at 50% width 800 swing inward   # error: floor on both faces
 ```
 
 ## E_TYPE

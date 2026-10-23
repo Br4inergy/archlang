@@ -108,6 +108,8 @@ function applyEmitOpts(node: OpeningLikeNode, opts: EmitOpts): OpeningLikeNode {
     if (opts.drop?.includes("swing")) {
       delete d.swing;
       delete d.swingInto;
+      delete d.swingBuilding;
+      delete d.swingBuildingSpan;
     }
     if (opts.drop?.includes("slide")) delete d.slide;
     if (opts.drop?.includes("open")) {

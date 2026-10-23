@@ -129,7 +129,9 @@ plan "Room graph" {
   not in a `let` or a room's own `at`/`size` (`E_DATUM_BEFORE_ROOMS`).
 - **Attach openings to a wall by position, not `at (x,y)`.** `door on <wall> at <pos> …` /
   `window on <wall> at <pos> …` / `opening on <wall> at <pos> …`, where `<pos>` is millimetres along
-  the wall or a percentage (`50%`). `swing into <room>` picks the swing direction toward a named room;
+  the wall or a percentage (`50%`). `swing into <room>` picks the swing direction toward a named room,
+  `swing inward|outward` towards/away from the building's floor (`in|out` follow the wall's drawn
+  direction: `in` = right of travel on the page, so they flip on a wall drawn the other way);
   `hinge near start|end` hinges at the segment end nearer a wall end. (Off-wall/ambiguous →
   `E_ATTACH_WALL_REF`; past the wall → `E_ATTACH_POS_RANGE`.)
 - **Lay rooms with `strip`.** `strip right at (0,0) gap 0 height 4000 { room … room … }` places a row
