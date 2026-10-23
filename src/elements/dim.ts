@@ -2,7 +2,7 @@
  *  or `dim radius <wallId> [segment <n>]` / `dim diameter <roomId>` — a GB/T curve call-out
  *  whose geometry and text are DERIVED from the referenced element. */
 
-import type { DimNode, DimRef, ExprPoint, Point } from "../ast.js";
+import type { DimNode, DimRef, ExprPoint, Point, SegmentSelect } from "../ast.js";
 import { DIM_REFS } from "../ast.js";
 import type { Expr } from "../expr.js";
 import type { ElementDef, ParseCtx, RenderCtx, ResolveCtx, TransformCtx } from "../registry.js";
@@ -13,6 +13,7 @@ import { arcPointAt, diameterText, radiusText } from "../geometry/arc.js";
 import { printDoc } from "../doc.js";
 import { statementText } from "../statement-print.js";
 import { fmt2 } from "../num-format.js";
+import { parseSegmentSelect, segmentSelectText } from "../segment-select.js";
 import { DIM_TEXT_GAP, textWidth } from "../text-metrics.js";
 
 /**
@@ -148,9 +149,11 @@ export const dim: ElementDef = {
       const what = whatTok.value as "radius" | "diameter";
       const target = ctx.eatIdent().value;
       let segment: Expr | undefined;
+      let segmentSelect: SegmentSelect | undefined;
       if (what === "radius" && ctx.isKeyword("segment")) {
         ctx.next();
-        segment = ctx.parseExpr();
+        segmentSelect = parseSegmentSelect(ctx);
+        if (!segmentSelect) segment = ctx.parseExpr();
       }
       const zero: ExprPoint = { x: { t: "num", value: 0 }, y: { t: "num", value: 0 } };
       const node: DimNode = {
@@ -163,6 +166,7 @@ export const dim: ElementDef = {
           what,
           ref: target,
           ...(segment ? { segment } : {}),
+          ...(segmentSelect ? { segmentSelect } : {}),
           span: { start: whatTok.start, end: ctx.peek(-1).end },
         },
         line: kw.line,
@@ -424,6 +428,18 @@ function measureCurve(n: DimNode, ctx: ResolveCtx): { from: Point; to: Point; te
     );
   }
   if (walls.length > 1) return err(`matches ${walls.length} walls — reference a unique wall id`);
+  // A selector picks a STRAIGHT segment (`src/segment-select.ts`) and this measures an arc, so
+  // no selector can ever name what `dim radius` needs: refused at the selector, never guessed.
+  if (c.segmentSelect) {
+    const written = `segment ${segmentSelectText(c.segmentSelect)}`;
+    ctx.diag({
+      severity: "error",
+      message: `\`dim radius ${c.ref} ${written}\`: a segment selector picks a straight segment, and \`dim radius\` measures an arc edge; write \`segment <n>\``,
+      code: "E_SEGMENT_SELECT",
+      span: c.segmentSelect.span,
+    });
+    return null;
+  }
   const segs = segmentsOfWall(walls[0]!);
   const arcSegs = segs.filter((s) => s.arc);
   if (arcSegs.length === 0) return err("names a wall with no `arc` edge to measure");

@@ -178,6 +178,13 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "Name an existing wall id, add `segment <n>` for multi-segment walls, give `side left|right`, keep the segment axis-aligned, and drop any explicit `rotate`. With `against <room>.<edge>`, keep the offset on the edge and move the piece to a span one wall covers, or place it `at (x,y)`.",
     "furniture wc against wall w1 side left size 400x700   # error if w1 is unknown or multi-segment",
   ),
+  E_SEGMENT_SELECT: E(
+    "E_SEGMENT_SELECT",
+    "A segment selector (`segment north`, `segment containing <room>.<edge>`) does not name exactly one segment.",
+    "A selector stands for the `segment <n>` it resolves to, so it must pick exactly one segment. `segment north|south|east|west` picks the straight segment of a CLOSED wall whose outward face (the side away from the floor the ring encloses) looks that way; an open wall has no floor side, so it is refused. `segment containing <room>.<edge>` picks the straight segment lying on that room edge's line with a positive overlap; a centre line (`cx`, `cy`) or a name that is not a room edge is refused. No match, or several, is refused rather than guessed. `dim radius` measures an arc, which no selector picks, so a selector there is refused too.",
+    "Type one of the `segment <n>` numbers the message lists, or name a different edge or direction.",
+    "wall id=w exterior thickness 200 { (0,0) (3000,0) (3000,1000) (6000,1000) (6000,4000) (0,4000) close }\nfurniture wardrobe against wall w segment north side right   # error: segments 0 and 2 both face north",
+  ),
   E_FURN_FLUSH: E(
     "E_FURN_FLUSH",
     "`flush` on a placement that touches no edge.",

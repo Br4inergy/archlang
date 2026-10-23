@@ -22,6 +22,7 @@ import { mapSceneNode } from "./glyph-lib.js";
 import { defaultFootprint, fixtureSpec, orientationMatters } from "../fixtures-catalog.js";
 import { chargeSteps } from "../expr.js";
 import { COMPASS_DATUM_ALIASES, splitDatum } from "../room-datums.js";
+import { parseSegmentSelect, segmentSelectText, selectSegment } from "../segment-select.js";
 import { fmt3, MODEL_RANGE_MM } from "../num-format.js";
 import { facingTurn, openingBody, TURNS } from "../furniture-relation.js";
 import {
@@ -102,7 +103,9 @@ export const furniture: ElementDef = {
       const a: NonNullable<FurnitureNode["against"]> = { wall };
       if (ctx.isKeyword("segment")) {
         ctx.next();
-        a.segment = ctx.parseExpr();
+        const sel = parseSegmentSelect(ctx);
+        if (sel) a.segmentSelect = sel;
+        else a.segment = ctx.parseExpr();
       }
       if (ctx.isKeyword("offset")) {
         ctx.next();
@@ -334,6 +337,10 @@ export const furniture: ElementDef = {
           span: n.span,
         });
       }
+      // A selector resolves inside the placement (it needs the wall); the clause then carries
+      // the index it aliases, exactly as its numeric twin's does, plus the words as written.
+      const picked: { segment?: number } = {};
+      const sel = n.against.segmentSelect;
       authored = {
         mode: "against",
         wall: n.against.wall,
@@ -342,7 +349,17 @@ export const furniture: ElementDef = {
         ...(n.against.side !== undefined ? { side: n.against.side } : {}),
       };
       // NOT grid-snapped — see the note on the `place` branch below.
-      const placed = placeAgainst(id, n.against, dw, dh, n.room, ctx, n.span);
+      const placed = placeAgainst(id, n.against, dw, dh, n.room, ctx, n.span, picked);
+      if (sel && authored.mode === "against") {
+        const { mode, wall, ...rest } = authored;
+        authored = {
+          mode,
+          wall,
+          ...(picked.segment !== undefined ? { segment: picked.segment } : {}),
+          ...rest,
+          segmentSelect: segmentSelectText(sel),
+        };
+      }
       at = placed ? placed.at : { x: 0, y: 0 };
       if (placed) {
         size = placed.size;
@@ -547,6 +564,7 @@ function placeAgainst(
   roomId: string | undefined,
   ctx: ResolveCtx,
   span: Span | undefined,
+  picked: { segment?: number },
 ): { at: Point; size: { w: number; h: number }; rotate: number } | null {
   const err = (message: string): null => {
     ctx.diag({ severity: "error", message: `Furniture "${id}" ${message}`, code: "E_FURN_AGAINST", span });
@@ -565,7 +583,11 @@ function placeAgainst(
   const wall = matches[0]!;
   const segs = segmentsOfWall(wall);
   let segIdx: number;
-  if (ag.segment !== undefined) segIdx = Math.floor(ctx.eval(ag.segment));
+  if (ag.segmentSelect !== undefined) {
+    const k = selectSegment(ag.segmentSelect, wall, ag.wall, ctx);
+    if (k === null) return null;
+    segIdx = picked.segment = k;
+  } else if (ag.segment !== undefined) segIdx = Math.floor(ctx.eval(ag.segment));
   else if (segs.length === 1) segIdx = 0;
   else return err(`wall "${ag.wall}" has ${segs.length} segments — add \`segment <n>\``);
   if (segIdx < 0 || segIdx >= segs.length) return err(`segment ${segIdx} is out of range (0..${segs.length - 1})`);

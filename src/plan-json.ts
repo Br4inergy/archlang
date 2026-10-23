@@ -87,6 +87,7 @@ import {
   type AnalyzeOptions,
 } from "./analyze.js";
 import { verticalConnections } from "./vertical.js";
+import { SEGMENT_SELECT_RE } from "./segment-select.js";
 import { DEFAULT_MATERIAL } from "./hatches.js";
 
 // ---------------------------------------------------------------------------
@@ -395,6 +396,9 @@ export interface FurnitureJson {
   /** Wall-anchored placement: back the fixture onto a wall by id/category. */
   against_wall?: string;
   segment?: number;
+  /** A segment selector as written (`north`, `containing r.left`, PS3.5); `segment` is then
+   *  the index it resolved to. Re-emitted in place of the number, so the source round-trips. */
+  segment_select?: string;
   offset?: number;
   side?: "left" | "right";
   /** Edge-anchored placement (`against <room>.<edge>`, ADR 0029 §2): the dotted room edge.
@@ -705,6 +709,7 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
         ? {
             against_wall: a.wall,
             ...(a.segment !== undefined ? { segment: a.segment } : {}),
+            ...(a.segmentSelect !== undefined ? { segment_select: a.segmentSelect } : {}),
             ...(a.offset !== undefined ? { offset: a.offset } : {}),
             ...(a.side !== undefined ? { side: a.side } : {}),
           }
@@ -1210,6 +1215,11 @@ function validateFurniture(f: unknown, path: string, val: Validator): void {
   if (!hasAt && !hasAgainst && !hasInPlace)
     val.err(path, "needs a placement: `x`/`y`, `against_wall`, `against_edge`, or (`centered`/`anchor` with `room`)");
   if (f.against_edge !== undefined && !isStr(f.against_edge)) val.err(`${path}/against_edge`, "expected a string");
+  // Re-emitted verbatim after `segment`, so it must be a selector and nothing else.
+  if (f.segment_select !== undefined && !(isStr(f.segment_select) && SEGMENT_SELECT_RE.test(f.segment_select)))
+    val.err(`${path}/segment_select`, "expected `north|south|east|west` or `containing <room>.<edge>`");
+  if (f.segment_select !== undefined && !isStr(f.against_wall))
+    val.err(`${path}/segment_select`, "needs `against_wall`");
   if (f.facing !== undefined && !isStr(f.facing)) val.err(`${path}/facing`, "expected a string");
   for (const k of ["clear_front", "clear_sides"] as const)
     if (f[k] !== undefined && !(isNum(f[k]) && (f[k] as number) > 0))
@@ -1438,7 +1448,8 @@ function emitFurniture(f: FurnitureJson): string {
     placedIn = true;
   } else if (f.against_wall) {
     line += ` against wall ${f.against_wall}`;
-    if (typeof f.segment === "number") line += ` segment ${num(f.segment)}`;
+    if (typeof f.segment_select === "string") line += ` segment ${f.segment_select}`;
+    else if (typeof f.segment === "number") line += ` segment ${num(f.segment)}`;
     if (typeof f.offset === "number") line += ` offset ${num(f.offset)}`;
     if (f.side) line += ` side ${f.side}`;
   } else if (f.centered && f.room) {
@@ -2009,6 +2020,12 @@ export const PLAN_JSON_SCHEMA = {
           },
           against_wall: { type: "string", description: "Wall-anchored placement: back onto this wall id/category." },
           segment: { type: "number", description: "Which segment of a multi-segment wall (for against_wall)." },
+          segment_select: {
+            type: "string",
+            pattern: SEGMENT_SELECT_RE.source,
+            description:
+              "A segment selector as written (for against_wall): `north|south|east|west` or `containing <room>.<edge>`; re-emitted in place of `segment`.",
+          },
           offset: {
             type: "number",
             description: "Distance (mm) along the segment (for against_wall) or the room edge (for against_edge).",

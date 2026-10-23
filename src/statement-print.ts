@@ -27,6 +27,7 @@ import type { Expr } from "./expr.js";
 import { concat, type Doc, group, hardline, indent, join, line } from "./doc.js";
 /** Deterministic number → string (trim to 3 dp, non-finite → "0"). */
 import { fmtSource as numStr } from "./num-format.js";
+import { segmentExprText, segmentSelectText } from "./segment-select.js";
 // Expression re-emission lives in one place (shared with the fix producers) so
 // the formatter and `arch fix` render an expression byte-identically.
 import { exprToSource as exprStr } from "./expr-source.js";
@@ -53,7 +54,8 @@ function sizeStr(size: { w: Expr; h: Expr }): string {
 /** A fixture's wall-anchored clause: `against wall <id> [segment n] [offset d] [side l|r]`. */
 function againstStr(ag: NonNullable<FurnitureNode["against"]>): string {
   let out = `against wall ${ag.wall}`;
-  if (ag.segment !== undefined) out += ` segment ${exprStr(ag.segment)}`;
+  if (ag.segmentSelect !== undefined) out += ` segment ${segmentSelectText(ag.segmentSelect)}`;
+  else if (ag.segment !== undefined) out += ` segment ${segmentExprText(exprStr(ag.segment))}`;
   if (ag.offset !== undefined) out += ` offset ${exprStr(ag.offset)}`;
   if (ag.side) out += ` side ${ag.side}`;
   return out;
@@ -243,7 +245,12 @@ export function statementText(s: LeafStatement): Doc {
       const text = s.text ? ` text ${exprStr(s.text)}` : "";
       // A curve call-out has no written points to re-emit — only its reference.
       if (s.curve) {
-        const seg = s.curve.segment !== undefined ? ` segment ${exprStr(s.curve.segment)}` : "";
+        const seg =
+          s.curve.segmentSelect !== undefined
+            ? ` segment ${segmentSelectText(s.curve.segmentSelect)}`
+            : s.curve.segment !== undefined
+              ? ` segment ${segmentExprText(exprStr(s.curve.segment))}`
+              : "";
         return `dim ${s.curve.what} ${s.curve.ref}${seg} offset ${exprStr(s.offset)}${text}`;
       }
       return `dim ${s.ref ? `${s.ref} ` : ""}${ptStr(s.from)}->${ptStr(s.to)} offset ${exprStr(s.offset)}${text}`;

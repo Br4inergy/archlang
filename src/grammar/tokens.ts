@@ -168,6 +168,9 @@ export const KEYWORDS = {
     "around",
     // `furniture … facing <id>` (ADR 0029 §3): the quarter-turn is derived from the target.
     "facing",
+    // `segment containing <room>.<edge>` (plan card PS3.5): a segment selector. The compass
+    // selector words (`segment north`) are already here or in `enum`.
+    "containing",
   ],
   /** Enum value keywords → `constant.language`, CM `atom`. */
   enum: [

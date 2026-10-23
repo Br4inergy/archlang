@@ -755,6 +755,14 @@ const NEGATIVE: Negative[] = [
     src: plan(`${BOX}\n  furniture id=f1 wc against wall w1 size 400x600 rotate 90`),
   },
   {
+    code: "E_SEGMENT_SELECT",
+    channel: "compile",
+    note: "a selector must name exactly one segment: an open wall has no outward face",
+    src: plan(
+      `  wall id=w2 exterior thickness 200 { (0,0) (4000,0) (4000,3000) }\n  furniture id=f1 wardrobe against wall w2 segment north side right`,
+    ),
+  },
+  {
     code: "E_FURN_FLUSH",
     channel: "compile",
     note: "`flush` needs an anchored edge",

@@ -350,7 +350,16 @@ export type FurniturePlacement = "anchored" | "against-wall" | "absolute" | "rel
 export type FurnitureAuthored =
   | { mode: "centered" }
   | { mode: "anchor"; anchor: FurnitureAnchor; inset?: number }
-  | { mode: "against"; wall: string; segment?: number; offset?: number; side?: "left" | "right" }
+  | {
+      mode: "against";
+      wall: string;
+      segment?: number;
+      offset?: number;
+      side?: "left" | "right";
+      /** A segment selector as written (`north`, `containing r.left`); `segment` is then the
+       *  index it resolved to (PS3.5), absent when it resolved to none. */
+      segmentSelect?: string;
+    }
   | { mode: "against-edge"; edge: string; offset?: number };
 
 export interface RRoom extends RBase {
@@ -2764,10 +2773,12 @@ function resolveBody(
       });
       const frozen = buildDatumTable(grpRooms, axes);
       table = frozen;
-      const reader = tableReader(frozen, datumOpts(grp));
+      const opts = datumOpts(grp);
+      const reader = tableReader(frozen, opts);
       // A relational opening reads the same table through the same reader (ADR 0028 §5).
       ctx.datums = {
         table: frozen,
+        compass: { aliases: opts.compassAliases, why: opts.compassWhy },
         read: (name, span) => {
           let refused = false;
           const v = reader(name, span, (d) => {

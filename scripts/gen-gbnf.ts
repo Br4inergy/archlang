@@ -70,6 +70,7 @@ import {
 } from "../src/ast.js";
 import { PAPER_ORIENTATIONS, PAPER_SIZES } from "../src/sheet.js";
 import { EDGE_WORDS } from "../src/room-datums.js";
+import { SEGMENT_COMPASS_WORDS } from "../src/segment-select.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..");
@@ -529,8 +530,10 @@ function rules(): [string, string][] {
     // `if`s, like every other element's clause list).
     [
       "furn-against",
-      `"against" rws "wall" rws ref ( ws "segment" ws expr )? ( ws "offset" ws expr )? ( ws "side" rws ident )?`,
+      `"against" rws "wall" rws ref ( ws "segment" ws segment-sel )? ( ws "offset" ws expr )? ( ws "side" rws ident )?`,
     ],
+    // `segment <n>`, or a selector aliasing it (PS3.5): a compass word or `containing <room>.<edge>`.
+    ["segment-sel", `${litAlt(SEGMENT_COMPASS_WORDS)} | "containing" rws edge-ref | expr`],
     // `against <room>.<edge> [offset <mm>]` (ADR 0029 §2): the room edge the piece backs onto.
     ["furn-against-edge", `"against" rws edge-ref ( ws "offset" ws expr )?`],
     ["in-place", `"centered" | "anchor" rws anchor ( ws "flush" )? ( ws "inset" ws expr )?`],
@@ -546,7 +549,7 @@ function rules(): [string, string][] {
       "dim-stmt",
       `"dim" ( ( rws dim-ref )? ws point ws "->" ws point | rws dim-curve ) ( ws "offset" ws expr )? ( ws "text" ws string )?`,
     ],
-    ["dim-curve", `"radius" rws ref ( rws "segment" ws expr )? | "diameter" rws ref`],
+    ["dim-curve", `"radius" rws ref ( rws "segment" ws segment-sel )? | "diameter" rws ref`],
     ["dim-ref", `"faces" | "clear"`],
     ["column-stmt", `"column" rws id-opt "at" ws point ws "size" ws dims`],
     ["stair-stmt", `"stair" rws id-opt "at" ws point ws "size" ws dims ws "dir" rws vert-dir ( ws "width" ws expr )?`],
