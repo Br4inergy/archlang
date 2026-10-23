@@ -97,6 +97,9 @@ export const furnClearance: LintRule = {
   check({ furniture, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const f of furniture) {
+      // A declared `clear front` replaces the catalogue's number (ADR 0029 §4): that piece is
+      // judged by `W_FURN_CLEAR_FRONT` instead.
+      if (f._clear?.front !== undefined) continue;
       const clear = frontClearanceMm(f.category);
       if (clear <= 0) continue;
       const zone = frontClearanceRect(f, clear);
@@ -240,7 +243,10 @@ export const fixtureBackToRoom: LintRule = {
       // own source, which for a placed component is its local frame: pull it back through
       // g⁻¹ (the identity at root, which returns `facing` unchanged).
       const g = frameOf(f);
-      const unique = facing !== null && g !== null ? actOnQuarterTurn(inverse(g), facing) : null;
+      // A piece whose turn is stated by `facing` (ADR 0029 §3) takes no `rotate` fix: adding
+      // one would state the turn twice (`E_FACING_CONFLICT`). The warning and its hint stay.
+      const unique =
+        facing !== null && g !== null && f._facing === undefined ? actOnQuarterTurn(inverse(g), facing) : null;
       out.push({
         severity: "warning",
         code: "W_FIXTURE_BACK_TO_ROOM",

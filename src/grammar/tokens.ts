@@ -166,6 +166,8 @@ export const KEYWORDS = {
     "axis",
     // `wall … around [<A> <B> …]` (ADR 0028 §4): the wall is the outline of the listed rooms.
     "around",
+    // `furniture … facing <id>` (ADR 0029 §3): the quarter-turn is derived from the target.
+    "facing",
   ],
   /** Enum value keywords → `constant.language`, CM `atom`. */
   enum: [
@@ -248,6 +250,9 @@ export const KEYWORDS = {
     // this file's standing rule is that a word appears in exactly one category once.
     // `none` earns its place twice over: it is also the `wall … material none` value.
     "none",
+    // `furniture … clear front|sides <mm>` (ADR 0029 §4): the two zones `clear` names.
+    "front",
+    "sides",
     "lawn",
     "planting",
     "paving",

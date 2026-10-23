@@ -375,6 +375,15 @@ export interface FurnitureJson {
   segment?: number;
   offset?: number;
   side?: "left" | "right";
+  /** Edge-anchored placement (`against <room>.<edge>`, ADR 0029 §2): the dotted room edge.
+   *  `offset` above is its offset; `width`/`height` stay plan-axis, as for `against_wall`. */
+  against_edge?: string;
+  /** `facing <id>` (ADR 0029 §3): re-emitted instead of the resolved `rotate`. Exported for a
+   *  piece of the root plan only; a placed instance's piece exports its `rotate`. */
+  facing?: string;
+  /** `clear front <mm>` / `clear sides <mm>` (ADR 0029 §4), as declared. */
+  clear_front?: number;
+  clear_sides?: number;
   label?: string;
 }
 
@@ -677,6 +686,12 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
             ...(a.side !== undefined ? { side: a.side } : {}),
           }
         : {}),
+      ...(a?.mode === "against-edge"
+        ? { against_edge: a.edge, ...(a.offset !== undefined ? { offset: a.offset } : {}) }
+        : {}),
+      ...(f._facing !== undefined && f._instance === undefined ? { facing: f._facing } : {}),
+      ...(f._clear?.front !== undefined ? { clear_front: f._clear.front } : {}),
+      ...(f._clear?.sides !== undefined ? { clear_sides: f._clear.sides } : {}),
       ...(f.label !== undefined ? { label: f.label } : {}),
     };
   });
@@ -1158,10 +1173,15 @@ function validateFurniture(f: unknown, path: string, val: Validator): void {
   }
   if (!isStr(f.category)) val.err(`${path}/category`, "expected a string");
   const hasAt = isNum(f.x) && isNum(f.y);
-  const hasAgainst = isStr(f.against_wall);
+  const hasAgainst = isStr(f.against_wall) || isStr(f.against_edge);
   const hasInPlace = (f.centered === true || isStr(f.anchor)) && isStr(f.room);
   if (!hasAt && !hasAgainst && !hasInPlace)
-    val.err(path, "needs a placement: `x`/`y`, `against_wall`, or (`centered`/`anchor` with `room`)");
+    val.err(path, "needs a placement: `x`/`y`, `against_wall`, `against_edge`, or (`centered`/`anchor` with `room`)");
+  if (f.against_edge !== undefined && !isStr(f.against_edge)) val.err(`${path}/against_edge`, "expected a string");
+  if (f.facing !== undefined && !isStr(f.facing)) val.err(`${path}/facing`, "expected a string");
+  for (const k of ["clear_front", "clear_sides"] as const)
+    if (f[k] !== undefined && !(isNum(f[k]) && (f[k] as number) > 0))
+      val.err(`${path}/${k}`, "expected a positive number");
   if (f.rotate !== undefined && !isNum(f.rotate)) val.err(`${path}/rotate`, "expected a number");
   // A handed symbol would draw unmirrored if the flag were dropped: refused, not dropped.
   refuseMirror(f.mirror, path, "a fixture reflected by a `place` frame", "per-furniture", val);
@@ -1374,11 +1394,16 @@ function emitFurniture(f: FurnitureJson): string {
   // so this reads exactly as it always did.
   let sizeW = f.width;
   let sizeH = f.height;
-  if (f.against_wall && (f.rotate === 90 || f.rotate === 270)) {
+  if ((f.against_wall || f.against_edge) && (f.rotate === 90 || f.rotate === 270)) {
     sizeW = f.height;
     sizeH = f.width;
   }
-  if (f.against_wall) {
+  if (f.against_edge) {
+    // The edge names the room, so no trailing `in` (ADR 0029 §2).
+    line += ` against ${f.against_edge}`;
+    if (typeof f.offset === "number") line += ` offset ${num(f.offset)}`;
+    placedIn = true;
+  } else if (f.against_wall) {
     line += ` against wall ${f.against_wall}`;
     if (typeof f.segment === "number") line += ` segment ${num(f.segment)}`;
     if (typeof f.offset === "number") line += ` offset ${num(f.offset)}`;
@@ -1398,7 +1423,10 @@ function emitFurniture(f: FurnitureJson): string {
   }
   if (typeof sizeW === "number" && typeof sizeH === "number") line += ` size ${num(sizeW)}x${num(sizeH)}`;
   if (f.label !== undefined) line += ` label ${q(f.label)}`;
-  if (typeof f.rotate === "number" && !f.against_wall) line += ` rotate ${num(f.rotate)}`;
+  if (typeof f.facing === "string") line += ` facing ${f.facing}`;
+  else if (typeof f.rotate === "number" && !f.against_wall && !f.against_edge) line += ` rotate ${num(f.rotate)}`;
+  if (typeof f.clear_front === "number") line += ` clear front ${num(f.clear_front)}`;
+  if (typeof f.clear_sides === "number") line += ` clear sides ${num(f.clear_sides)}`;
   // The trailing `in <room>` is what an `against wall` piece with no explicit `side`
   // infers its wall FACE from, so it has to survive — it used to be suppressed here,
   // which was invisible only because nothing ever emitted `against_wall` alongside it.
@@ -1944,8 +1972,21 @@ export const PLAN_JSON_SCHEMA = {
           },
           against_wall: { type: "string", description: "Wall-anchored placement: back onto this wall id/category." },
           segment: { type: "number", description: "Which segment of a multi-segment wall (for against_wall)." },
-          offset: { type: "number", description: "Distance (mm) along the segment (for against_wall)." },
+          offset: {
+            type: "number",
+            description: "Distance (mm) along the segment (for against_wall) or the room edge (for against_edge).",
+          },
           side: { enum: ["left", "right"], description: "Which wall face to back onto (for against_wall)." },
+          against_edge: {
+            type: "string",
+            description: "Edge-anchored placement: back onto this room edge (`<room>.top|bottom|left|right`).",
+          },
+          facing: {
+            type: "string",
+            description: "Id of the piece, rectangular room or opening this piece faces; its turn is derived.",
+          },
+          clear_front: { type: "number", exclusiveMinimum: 0, description: "Declared clear depth (mm) in front." },
+          clear_sides: { type: "number", exclusiveMinimum: 0, description: "Declared clear depth (mm) at each side." },
           label: { type: "string", description: "Label for the generic rectangle fallback." },
         },
       },

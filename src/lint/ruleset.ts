@@ -240,6 +240,12 @@ export interface LintRuleset {
    * every plan, as `residential-basic` asserts by its name.
    */
   assumeDwelling: boolean;
+  /**
+   * How near (mm, on both axes) a table or desk must be for a chair to count as sitting at it,
+   * and how far the chair's front ray may run before it enters one (`W_SEAT_FACING_AWAY`,
+   * plan-soundness PS2.11, ADR 0029 §6). Default 600. `null` turns the rule off.
+   */
+  seatTableReachMm: number | null;
 }
 
 export const DEFAULT_RULESET: LintRuleset = {
@@ -275,6 +281,7 @@ export const DEFAULT_RULESET: LintRuleset = {
   }),
   roomAreaFloorMode: "by-use",
   assumeDwelling: false,
+  seatTableReachMm: 600,
 };
 
 /**

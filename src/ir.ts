@@ -331,7 +331,7 @@ export interface OpeningRelation {
   edge?: string;
   at?: string;
 }
-export type FurniturePlacement = "anchored" | "against-wall" | "absolute";
+export type FurniturePlacement = "anchored" | "against-wall" | "absolute" | "relational";
 
 /**
  * The furniture placement an author actually WROTE, with every expression already
@@ -350,7 +350,8 @@ export type FurniturePlacement = "anchored" | "against-wall" | "absolute";
 export type FurnitureAuthored =
   | { mode: "centered" }
   | { mode: "anchor"; anchor: FurnitureAnchor; inset?: number }
-  | { mode: "against"; wall: string; segment?: number; offset?: number; side?: "left" | "right" };
+  | { mode: "against"; wall: string; segment?: number; offset?: number; side?: "left" | "right" }
+  | { mode: "against-edge"; edge: string; offset?: number };
 
 export interface RRoom extends RBase {
   kind: "room";
@@ -536,6 +537,16 @@ export interface RFurniture extends RBase {
    * (see `elements/glyph-chirality.ts`). Internal; never reaches `describe()` or Plan JSON.
    */
   _mirror?: true;
+  /** `against <room>.<edge>` as written (`against r_bed.left offset 1500`, ADR 0029 §2), for
+   *  `describe()`'s `relation`. Present only on that form. */
+  _relation?: string;
+  /** `facing <id>` (ADR 0029 §3): the target's id, namespaced by a `place` frame as the piece's
+   *  own id is. The derived turn is {@link RFurniture.rotate}. Present only when declared. */
+  _facing?: string;
+  /** The `facing` clause's byte span, for the settle pass's refusals. */
+  _facingSpan?: Span;
+  /** `clear front|sides <mm>` (ADR 0029 §4), evaluated. Present only when declared. */
+  _clear?: { front?: number; sides?: number };
 }
 export interface RDim extends RBase {
   kind: "dim";
@@ -2697,6 +2708,27 @@ function resolveBody(
         activeEntry = undefined;
       }
     };
+    /** After every pass: let each kind that reads its group settle (`ElementDef.settle`, ADR
+     *  0029 §3). It charges its own steps, and only for an element that needs it, so a group
+     *  with nothing to settle meters exactly what it did before. */
+    const settleKinds = (): void => {
+      let own: ResolvedElement[] | undefined;
+      for (let i = 0; i < order.length; i++) {
+        const def = order[i]!;
+        if (!def.settle) continue;
+        for (const e of grp.entries) {
+          if (e.node.kind !== def.kind || !e.resolved) continue;
+          if (own === undefined) {
+            own = [];
+            for (const x of grp.entries) if (x.resolved !== undefined) own.push(x.resolved);
+          }
+          diagSink = byKind[i]!;
+          activeEntry = e;
+          def.settle(e.resolved, own, pushDiag);
+        }
+        activeEntry = undefined;
+      }
+    };
     /** After the derivers: let each early kind refresh what it read off the walls. */
     const rewall = (): void => {
       for (const j of early) {
@@ -2740,6 +2772,7 @@ function resolveBody(
           if (i === derivers[derivers.length - 1]) rewall();
         }
         auditDerivers();
+        settleKinds();
       });
     } finally {
       diagSink = sink;
@@ -3531,7 +3564,14 @@ function markPlacement(r: ResolvedElement, node: AstElement, fromStrip: boolean)
       return;
     case "furniture": {
       const fn = node as FurnitureNode;
-      r._placement = fn.against !== undefined ? "against-wall" : fn.place !== undefined ? "anchored" : "absolute";
+      r._placement =
+        fn.againstEdge !== undefined
+          ? "relational"
+          : fn.against !== undefined
+            ? "against-wall"
+            : fn.place !== undefined
+              ? "anchored"
+              : "absolute";
       return;
     }
   }

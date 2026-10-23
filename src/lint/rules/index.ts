@@ -20,6 +20,7 @@ import {
   furnitureWallCollision,
 } from "./furniture.js";
 import { boundaryNoWall, floorUnassigned, roomOutsideShell } from "./enclosure.js";
+import { furnClearDeclared, seatFacingAway } from "./furniture-relations.js";
 import { connectorAmbiguous, openingAtJunction, openingOverlap } from "./openings.js";
 import { perRoomRules } from "./per-room.js";
 import { entranceIntoPrivate, roomViaPrivate, wetRoomDoor } from "./privacy.js";
@@ -111,6 +112,11 @@ export const LINT_RULES: readonly LintRule[] = [
   boundaryNoWall,
   floorUnassigned,
   roomOutsideShell,
+  // Furniture relations (ADR 0029 §6): a declared `clear front|sides` measured short, and the
+  // undeclared PS2.11 seat check (a chair at a table facing away from it). Appended LAST, in
+  // this order, so no existing diagnostic moves within the array.
+  furnClearDeclared,
+  seatFacingAway,
 ];
 
 export type { LintContext, LintRule } from "../context.js";

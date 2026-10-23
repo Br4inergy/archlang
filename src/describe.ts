@@ -84,6 +84,7 @@ import {
 } from "./vertical.js";
 import { fmt2 } from "./num-format.js";
 import { type D4, fromSpelling, northQuarterTurns } from "./algebra/d4.js";
+import { type ClearWorld, clearWorldOf, measureClear } from "./furniture-relation.js";
 
 export type { ScheduleRow } from "./sheet-tables.js";
 
@@ -357,6 +358,21 @@ export interface FurnitureSummary {
   instance?: string;
   /** The component {@link FurnitureSummary.instance} was made from. */
   component?: string;
+  /** `against <room>.<edge>[ offset <mm>]` as written (ADR 0029 §2); present only on that form. */
+  relation?: string;
+  /** The `facing <id>` target (ADR 0029 §3); the derived turn is {@link FurnitureSummary.rotate}.
+   *  Present only when declared. */
+  facing?: string;
+  /** The declared `clear front|sides` depths and the depth measured free (ADR 0029 §4), the
+   *  smaller side for `sides`. Present only when declared. */
+  clear?: { front?: ClearFact; sides?: ClearFact };
+}
+
+/** One declared clear zone: the depth the author asked for and the depth measured free (capped
+ *  at the declared depth). */
+export interface ClearFact {
+  declared: number;
+  measured: number;
 }
 
 /**
@@ -509,7 +525,9 @@ export interface FreedomReport {
   /** `relational` (`between A and B`, `on <room>.<edge>`, ADR 0028 §6) is present only when
    *  the storey has such an opening, so every other report is byte-identical. */
   openings: { total: number; attached: number; absolute: number; relational?: number };
-  furniture: { total: number; anchored: number; againstWall: number; absolute: number };
+  /** `relational` (`against <room>.<edge>`, ADR 0029 §2) is present only when the storey has
+   *  such a piece, so every other report is byte-identical. */
+  furniture: { total: number; anchored: number; againstWall: number; absolute: number; relational?: number };
   elements: FreedomElement[];
   /** The walls: how many were derived by `walls from rooms` (ADR 0028 §6), how many were
    *  typed as points, and (`relational`, present only when there is one) how many authored
@@ -1003,7 +1021,8 @@ function buildFreedom(
   for (const fu of furniture) {
     const placement = fu._placement ?? "absolute";
     f.furniture.total++;
-    f.furniture[placement === "against-wall" ? "againstWall" : placement]++;
+    if (placement === "relational") f.furniture.relational = (f.furniture.relational ?? 0) + 1;
+    else f.furniture[placement === "against-wall" ? "againstWall" : placement]++;
     elements.push({ id: fu.id, kind: "furniture", placement, ...inst(fu._instance) });
   }
 
@@ -1318,6 +1337,9 @@ function summarize(
     };
   });
 
+  // The `clear` measure's obstacle world, built only when a piece declares a zone, so a plan
+  // without one does no new work.
+  const clearWorld = furnEls.some((f) => f._clear) ? clearWorldOf(furnEls, ir.walls, doorEls) : undefined;
   const furniture: FurnitureSummary[] = furnEls.map((f) => ({
     id: f.id,
     category: f.category,
@@ -1325,6 +1347,9 @@ function summarize(
     ...(f.room !== undefined ? { room: f.room } : {}),
     ...(f.rotate ? { rotate: f.rotate } : {}),
     ...instanceOf(f),
+    ...(f._relation !== undefined ? { relation: f._relation } : {}),
+    ...(f._facing !== undefined ? { facing: f._facing } : {}),
+    ...(f._clear && clearWorld ? { clear: clearFacts(f, f._clear, clearWorld) } : {}),
   }));
 
   const verticals: VerticalSummary[] = verticalEls.map((v) => ({
@@ -1734,5 +1759,19 @@ export function describeLevel(summary: SceneSummary, level: number): SceneSummar
   for (const k of PER_STOREY_OPTIONAL_KEYS) {
     if (facts[k] === undefined) delete out[k];
   }
+  return out;
+}
+
+/** The declared clear zones of one piece, each with its measured free depth (ADR 0029 §4). */
+function clearFacts(
+  f: RFurniture,
+  c: { front?: number; sides?: number },
+  world: ClearWorld,
+): { front?: ClearFact; sides?: ClearFact } {
+  const out: { front?: ClearFact; sides?: ClearFact } = {};
+  if (c.front !== undefined)
+    out.front = { declared: c.front, measured: measureClear(f, "front", c.front, world).measured };
+  if (c.sides !== undefined)
+    out.sides = { declared: c.sides, measured: measureClear(f, "sides", c.sides, world).measured };
   return out;
 }
