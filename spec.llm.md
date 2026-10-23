@@ -139,6 +139,7 @@ arch repair  # explicit source-to-source corrector (furniture out of walls) + ch
 arch fix  # apply the machine-applicable fix suggestions on a plan's diagnostics (bounded fixpoint)
 arch finish  # furnish the rooms that hold no furniture, then add the sheet statements a plan lacks (paper, scale, dims auto, title, schedule rooms, legend); deletes nothing
 arch reroll  # offer a proven-equivalent `for` loop for a repeated statement run
+arch impact  # change one number: what moved and why, what held, what broke
 arch suggest  # advisory topology suggestions as data (door/window statements that resolve reachability/window faults)
 arch manifest  # this document: the whole CLI API as structured data
 arch spec  # print the one-prompt language spec (spec.llm.md)

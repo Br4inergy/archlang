@@ -117,6 +117,10 @@ export interface Args {
   code?: string;
   /** `--severity <error|warning>`: (lint/validate) DISPLAY-filter diagnostics — never gating. */
   severity?: string;
+  /** `--set NAME=value`: (impact) override a top-level `let` and compare before/after. */
+  set?: string;
+  /** `--against <old.arch>`: (impact) compare the input against this older file. */
+  against?: string;
   /** `--section <spec|workflow|cli|errors>`: (context) print one section of the bundle, not all of it. */
   section?: string;
   /** `--level <n>`: (compile/watch/preview/describe) narrow a multi-storey plan to one storey. */
@@ -172,6 +176,8 @@ export const FLAG_KEYS: Record<string, FlagSpec> = {
   "--code": { key: "code", kind: "string" },
   "--severity": { key: "severity", kind: "string" },
   "--section": { key: "section", kind: "string" },
+  "--set": { key: "set", kind: "string" },
+  "--against": { key: "against", kind: "string" },
   "--view": { key: "view", kind: "string" },
   "--graph": { key: "graph", kind: "string" },
   "--intent": { key: "intent", kind: "string" },

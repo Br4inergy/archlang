@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**133 errors** · **66 warnings**
+**134 errors** · **66 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -115,6 +115,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_ROOM_SIZE`](#e_room_size) | error | Room must have a positive size. |
 | [`E_RUN_TOO_LONG`](#e_run_too_long) | error | A stair or escalator run is longer than any run the plan draws. |
 | [`E_SEGMENT_SELECT`](#e_segment_select) | error | A segment selector (`segment north`, `segment containing <room>.<edge>`) does not name exactly one segment. |
+| [`E_SET_OVERRIDE`](#e_set_override) | error | `arch impact --set NAME=value` cannot override that name with that value. |
 | [`E_SILL_ABOVE_HEAD`](#e_sill_above_head) | error | A window's sill sits at or above its head. |
 | [`E_SITE_BOUNDARY_DEGENERATE`](#e_site_boundary_degenerate) | error | The site `boundary` encloses no lot. |
 | [`E_SITE_BOUNDARY_SELF_INTERSECT`](#e_site_boundary_self_intersect) | error | The site `boundary` crosses itself. |
@@ -1542,6 +1543,19 @@ escalator id=e at (0,0) size 400000x1200 dir up   # error: a 400 m run
 ```arch static
 wall id=w exterior thickness 200 { (0,0) (3000,0) (3000,1000) (6000,1000) (6000,4000) (0,4000) close }
 furniture wardrobe against wall w segment north side right   # error: segments 0 and 2 both face north
+```
+
+## E_SET_OVERRIDE
+
+*error* — `arch impact --set NAME=value` cannot override that name with that value.
+
+**Cause.** `--set NAME=value` replaces the expression of the root plan's one top-level `let NAME = …` with a numeric literal and compares the plan before and after. It is refused, and nothing is compared, when NAME is not exactly one top-level `let` (absent, bound only inside a block, a component or a `level`, a value-function `let f(x) = …`, declared twice, or reassigned with `NAME = …`), or when the value is not one number as the language writes it (`4500`, `4.5m`, `45cm`, `-200`). Raised by `applyLetOverride()`, never by `compile()`.
+
+**Fix.** Name a top-level `let` the message lists, give a plain number, or compare two whole files with `arch impact plan.arch --against old.arch`.
+
+```arch static
+let W = 4000
+room id=a at (0,0) size W x 3000   # arch impact plan.arch --set D=4500: error, D is not a top-level let
 ```
 
 ## E_SILL_ABOVE_HEAD

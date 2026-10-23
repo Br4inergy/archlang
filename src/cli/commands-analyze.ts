@@ -20,6 +20,8 @@ import {
   validateIntent,
   intentFromJson,
   feedbackForResult,
+  impact,
+  applyLetOverride,
 } from "../index.js";
 import type {
   DescribeFact,
@@ -51,7 +53,9 @@ import {
   ioError,
   isRecord,
   makeNodeWorld,
+  readInput,
   usageError,
+  usageErrorFor,
   withSource,
 } from "./io.js";
 
@@ -741,5 +745,60 @@ export function cmdLint(args: Args): number {
     // One run of the rules gives the diagnostics `lint()` returns and the coverage report.
     const linted = lintWithCoverage(source, { world, profile: args.profile });
     return report(source, linted.diagnostics, args, filter, linted.coverage ?? undefined);
+  });
+}
+
+/**
+ * `arch impact <plan.arch> (--set NAME=value | --against old.arch)` (plan-soundness PS4.2):
+ * the {@link impact} report between the plan and its twin. With `--set` the twin is the
+ * plan with one top-level `let` overridden (`applyLetOverride`); with `--against` the plan is
+ * the after side and the named file the before side. Exactly one is required (exit 3).
+ *
+ * A report is a measurement, so it exits 0 whatever broke (like `score`); a refused `--set`
+ * is a deterministic user error (exit 2, `E_SET_OVERRIDE`); an unreadable file exits 1.
+ */
+export function cmdImpact(args: Args): number {
+  const hasSet = args.set !== undefined;
+  const hasAgainst = args.against !== undefined;
+  if (hasSet === hasAgainst)
+    return usageErrorFor("impact", "impact needs exactly one of --set NAME=value and --against <old.arch>");
+  let setName = "";
+  let setValue = "";
+  if (hasSet) {
+    const eq = args.set!.indexOf("=");
+    setName = eq > 0 ? args.set!.slice(0, eq).trim() : "";
+    setValue = eq > 0 ? args.set!.slice(eq + 1).trim() : "";
+    if (setName === "" || setValue === "")
+      return usageErrorFor("impact", `--set takes NAME=value (e.g. --set W=4500), got "${args.set}"`);
+  }
+  return withSource(args, (source, input) => {
+    const world = makeNodeWorld(baseDirOf(input));
+    let before = source;
+    let after = source;
+    let set: { name: string; before: string; after: string } | undefined;
+    if (hasSet) {
+      const o = applyLetOverride(source, setName, setValue);
+      if (!o.ok) {
+        if (args.json) emitJson({ ok: false, diagnostics: o.diagnostics.map((d) => diagnosticToJson(source, d)) });
+        else emitDiagnosticsHuman(source, o.diagnostics, args.quiet);
+        return EXIT.USER;
+      }
+      after = o.source;
+      set = { name: o.name, before: o.before, after: o.after };
+    } else {
+      try {
+        before = readInput(args.against!);
+      } catch {
+        return ioError(`cannot read ${args.against}`, args.json);
+      }
+    }
+    const report = impact(before, after, { world });
+    const { ok, ...rest } = report;
+    if (args.json) emitJson({ ok, ...(set ? { set } : {}), ...rest });
+    else if (!args.quiet) {
+      const head = set ? `${set.name}: ${set.before} → ${set.after}` : `${args.against} → ${input}`;
+      process.stdout.write(`${[head, ...report.summary].join("\n")}\n`);
+    }
+    return EXIT.OK;
   });
 }

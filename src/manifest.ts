@@ -860,6 +860,39 @@ const COMMANDS: ManifestCommand[] = [
     ],
   },
   {
+    name: "impact",
+    summary: "change one number: what moved and why, what held, what broke",
+    flags: [
+      {
+        flag: "--set",
+        arg: "<NAME=value>",
+        description:
+          "override the root plan's top-level `let NAME` with a numeric literal (`4500`, `4.5m`) and compare the plan before and after; refused with E_SET_OVERRIDE when NAME is not exactly one top-level let",
+      },
+      {
+        flag: "--against",
+        arg: "<old.arch>",
+        description:
+          "compare the input (the new version) against this older file instead; exactly one of --set and --against",
+      },
+      JSON_FLAG,
+      QUIET_FLAG,
+    ],
+    input: "<file.arch|->",
+    output:
+      "{ ok, set?, lets, changed[] (each with its `why` dependency chain and `root`), held[], diagnostics: { broke, healed, unchanged_count }, summary } (exit 0 on a report, 2 on a refused --set)",
+    examples: [
+      {
+        cmd: "archlang impact plan.arch --set W=4500 --json",
+        note: "widen by one number: every moved/resized/re-hosted element with the chain that moved it, what held, what broke",
+      },
+      {
+        cmd: "archlang impact plan.arch --against old.arch",
+        note: "the same report between two versions of a plan (old.arch before, plan.arch after)",
+      },
+    ],
+  },
+  {
     name: "suggest",
     summary: "advisory topology suggestions as data (door/window statements that resolve reachability/window faults)",
     flags: [JSON_FLAG, QUIET_FLAG],

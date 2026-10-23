@@ -24,6 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never named in `on`: an element hosted on or backed onto one names it as `hostWallId`, and its
   rooms are listed once, in its own row (ADR 0028 §3, amended). A summary that does not ask for
   it, `lint()`, the SVG and Plan JSON are unchanged.
+- `arch impact` and `impact(before, after)` (plan card PS4.2). `archlang impact plan.arch --set
+  W=4500` (or `--against old.arch`) compiles both versions and reports the top-level `let`s that
+  changed, every element that moved, resized or was re-hosted with its `why` (the `depends` chain
+  back to the `let` or the edited statement that moved it), the elements `held` in place although
+  something they depend on changed, and the diagnostics that `broke` or `healed`, keyed by code
+  and element. Derived walls are named by their rooms. `--set` overrides only a single top-level
+  `let`, with a numeric literal; anything else is refused with the new `E_SET_OVERRIDE`.
+  `applyLetOverride()` is exported beside `impact()`. `compile()`, `describe()`, `lint()`, the SVG
+  and Plan JSON are unchanged.
 
 ### Changed
 

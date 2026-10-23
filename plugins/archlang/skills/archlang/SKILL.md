@@ -336,6 +336,7 @@ archlang fix plan.arch --dry-run --json    # preview the machine-applicable fixe
 archlang suggest plan.arch --json          # advisory door/window statements: unreachable room / no entrance / bath-via-bedroom / windowless bedroom
 archlang describe plan.arch --json         # semantic facts: rooms, areas, adjacency, door connections, circulation
 archlang describe plan.arch --select rooms,totals --room kitchen --json   # narrow the facts to what you actually need
+archlang impact plan.arch --set W=4500 --json   # change one let: what moved and why, what held, what broke or healed
 archlang lint plan.arch --json             # architectural soundness warnings
 archlang lint plan.arch --code W_NO_ENTRANCE --json   # display filter only — never changes `ok` or the exit code
 archlang validate plan.arch --strict --json           # parse + resolve + lint; --strict fails on warnings (the ship gate)

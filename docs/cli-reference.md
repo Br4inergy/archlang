@@ -552,6 +552,29 @@ $ archlang reroll plan.arch --json
 $ archlang reroll plan.arch --write --json
 ```
 
+### `archlang impact`
+
+change one number: what moved and why, what held, what broke
+
+**Input:** `<file.arch|->` · **Output:** { ok, set?, lets, changed[] (each with its `why` dependency chain and `root`), held[], diagnostics: { broke, healed, unchanged_count }, summary } (exit 0 on a report, 2 on a refused --set)
+
+| Flag | Does |
+| --- | --- |
+| `--set <NAME=value>` | override the root plan's top-level `let NAME` with a numeric literal (`4500`, `4.5m`) and compare the plan before and after; refused with E_SET_OVERRIDE when NAME is not exactly one top-level let |
+| `--against <old.arch>` | compare the input (the new version) against this older file instead; exactly one of --set and --against |
+| `--json` | structured result on stdout, messages on stderr |
+| `--quiet, -q` | suppress human messages on stderr |
+
+**Examples**
+
+```bash
+# widen by one number: every moved/resized/re-hosted element with the chain that moved it, what held, what broke
+$ archlang impact plan.arch --set W=4500 --json
+
+# the same report between two versions of a plan (old.arch before, plan.arch after)
+$ archlang impact plan.arch --against old.arch
+```
+
 ### `archlang suggest`
 
 advisory topology suggestions as data (door/window statements that resolve reachability/window faults)
@@ -612,7 +635,7 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 
 | Flag | Does |
 | --- | --- |
-| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 131 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 50 KB) |
+| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 132 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 23 KB; errors = the diagnostic catalog, 50 KB) |
 | `--json` | structured result on stdout, messages on stderr |
 
 **Examples**
@@ -621,7 +644,7 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 # the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 $ archlang context
 
-# just the diagnostic catalog (50 KB) — read one section instead of paying for the whole 131 KB bundle
+# just the diagnostic catalog (50 KB) — read one section instead of paying for the whole 132 KB bundle
 $ archlang context --section errors
 ```
 

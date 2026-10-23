@@ -1002,6 +1002,71 @@ Without `--json` the human summary gains one line, e.g.
 `depends: 22 of 24 element(s) depend on another id, a name, an axis or a host wall; 7 derived wall(s) (--json for the lists)`
 (the two that do not: the living room, placed `at (0,0)`, and the `dim`, whose points are numbers).
 
+## Impact — change one number, see what follows
+
+`impact(before, after)` — `archlang impact plan.arch --set W=4500` or
+`archlang impact plan.arch --against old.arch`, `--json` for the object — compiles two versions
+of a plan through the one pipeline and answers "change one number: what changes, what must
+not". `--set NAME=value` makes the second version from the first by replacing the expression of
+the root plan's top-level `let NAME` with a numeric literal (`4500`, `4.5m`); any other name, a
+value-function, a `let` declared twice or reassigned, or a value that is not one number is
+refused with `E_SET_OVERRIDE` (exit 2). `--against` compares the input (the new version) with an
+older file. The report is a measurement: it exits 0 whatever broke.
+
+It is built on two existing facts: `diffPlans`' room, opening and wall deltas, and the `depends`
+rows above. It has four parts:
+
+| Part | Meaning |
+|------|---------|
+| `lets` | the top-level `let`s whose expression changed, and those that read one (`reads`) |
+| `changed[]` | every element that changed: rooms, openings and walls as `diffPlans` classifies them (`moved`, `resized`, `rehosted`, `rethickened`, `relabeled`, `added`, `removed`); other kinds, and a door that slid along a wall that did not move, from their resolved position (`moved`, `resized`, `changed`) |
+| `changed[].why` | the chain from the element back to what changed first: each step names the dependency it followed (`on`, `host`, `axis`, `param`, and `joins` for a re-hosted opening only: a room whose change moved the spaces it joins) and how that dependency changed. `root` says how the chain ends: `let` (a `let`'s text changed), `edited` (that element's own statement changed), `axis`, or `unexplained` (no dependency it records changed) |
+| `held[]` | elements that did not change although a dependency did (`because`): the "should it have followed?" signal. A relabel never makes a dependant held |
+| `diagnostics` | `broke` (only after), `healed` (only before) and `unchanged_count`, matched by code, element and storey over the compile and lint diagnostics of both sides |
+
+Every element is named as `describe()` names it; a wall `walls from rooms` derived is named by its
+rooms (`the partition between "a" and "b"`), an `open between` opening by its clause, never by an
+internal name. Chains stop at 32 steps (`truncated: true`) and never revisit a node.
+
+For the widening drill (`docs/plans/plan-soundness/repro/widen-before.arch`, `let AW` 4000 → 4500):
+
+```text
+AW: 4000 → 4500
+Lets (1):
+  AW: 4000 → 4500
+Changed (3):
+  room a resized (20 m² → 22.5 m²; right edge +500 mm)
+    why: reads AW (4000 → 4500)
+  room b moved 500 mm right
+    why: on a (resized) ← reads AW (4000 → 4500)
+  door door_2 re-hosted: joins a and b → nothing
+    why: joins a (resized) ← reads AW (4000 → 4500)
+Held (0): none
+Broke (3):
+  W_BOUNDARY_NO_WALL on b: "Living" and "Bed" have no wall between them: …
+  W_ROOM_DISCONNECTED on b: Room "Bed" has no door or opening — it can't be entered.
+  W_ROOM_OUTSIDE_SHELL on b: Room "Bed" has 2 m² of its floor outside the building's walls, …
+Healed (0): none
+Unchanged diagnostics: 1
+```
+
+What it cannot tell you:
+
+- **A wall written in numbers depends on nothing**, so it can never be `held`: in the drill the
+  shell and the partition should have followed the rooms, and the report names what that broke
+  (`W_ROOM_OUTSIDE_SHELL`, `W_BOUNDARY_NO_WALL`), not the walls. Derive walls from rooms
+  (`walls from rooms`) and they follow instead.
+- **Elements pair by id.** Under `--against`, a statement inserted ahead of elements with
+  positional ids (`door_2`) shifts them, as in `diffPlans`.
+- **The lowest storey's elements** are compared, as `describe()`'s top-level facts are;
+  diagnostics cover every storey.
+- **A name in `params`** counts as a changed `let` only when a top-level `let` of that name
+  changed; a component parameter or loop variable of the same name is not told apart.
+- **A diagnostic is keyed by the element whose statement contains it**; one raised on a different
+  element after the change (a whole-plan figure such as `W_FLOOR_UNASSIGNED` attached to its
+  nearest room) reads as one broke and one healed. A side that does not resolve keys its errors
+  by no element.
+
 ## `lint` — architectural soundness
 
 `archlang lint plan.arch --json` returns advisory `W_*` diagnostics, each with a byte

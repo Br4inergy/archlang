@@ -248,6 +248,20 @@ export type { PlanDiff, RoomChange, OpeningChange, FurnitureChange, CirculationC
 // preview (`--dry-run`) exactly which bytes a fix pass would rewrite, and what the
 // dataset generator records as each repair trajectory's patch.
 export { unifiedDiff } from "./unified-diff.js";
+// Change impact (plan-soundness PS4.2): twin-compile two sources (or one with a `let`
+// overridden) and report what changed and why (the `depends` chain), what held although a
+// dependency changed, and the diagnostics that broke or healed. `arch impact` prints it.
+export { impact, applyLetOverride, MAX_WHY_DEPTH } from "./impact.js";
+export type {
+  ImpactChange,
+  ImpactDiagnostic,
+  ImpactHeld,
+  ImpactLet,
+  ImpactOptions,
+  ImpactReport,
+  ImpactStep,
+  LetOverride,
+} from "./impact.js";
 // Architectural lint: habitability rules as `W_*` diagnostics — every room
 // enterable, bedrooms have a window, doors wide enough, the building has an entrance.
 // Pure; the ruleset is data. Surfaced as `arch lint`.
