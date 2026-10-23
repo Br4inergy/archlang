@@ -303,7 +303,7 @@ A done row's "record" is `research/2026-10-24-ps0-ps2-as-built.md`.
 |---|---|---|
 | PS0.2 | `compile -f json` (Plan JSON) drops arc segments; a round trip loses a bay and floats its window (`audits/archcanvas-public-examples.md` G2) | todo |
 | PS0.3 | Multi-storey `describe`: upper-storey rooms report `reachable:false` though a stair reaches them; an exterior door on an upper storey counts as an entrance (`audits/showcase-and-examples.md` §5.10) | todo |
-| PS0.4 | `diffPlans`: pure moves, re-hosted openings, a wall section | done (PR #n, pending) |
+| PS0.4 | `diffPlans`: pure moves, re-hosted openings, a wall section | done (PR #238, pending) |
 | PS0.5 | `furniture … against wall … in <relational room>` failed with `E_FURN_AGAINST`. As built: record § PS0.5 | done (PR #220, 6c6179c7) |
 | PS0.6 | `suggest` connects an unreachable room to *any* reachable neighbour, a bedroom included (`src/suggest.ts` ~364-395), against `skills/archlang/SKILL.md`'s own advice. Rank by neighbour use (hall/circulation/living first, bedroom and bath last) | todo |
 | PS0.8 | `W_PATH_TOO_NARROW` measures pinches on the 100 mm grid and missed a 500 mm diagonal between a bench and a jamb (`repro/gallery-bench-pinch.arch`, `audits/archcanvas-public-examples.md` GW3). Re-measure the case first: the repro lints with the warning in isolation | todo |
