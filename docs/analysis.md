@@ -958,7 +958,7 @@ Opt-in like `symmetry`; without `--facts` the key is absent.
 | Field | Meaning |
 |-------|---------|
 | `id`, `kind` | the element, as in the rest of the summary |
-| `on` | the ids it derives from, sorted: a relational room's reference room; the two rooms of `between A and B`; the room of `on <room>.<edge>`, `against <room>.<edge>` and `segment containing <room>.<edge>`; a `facing` target; the room of `in <room> anchor` or `centered` (and of `in <room>` on an `against wall` piece with no `side`, which picks the face from it); `swing into <room>`; a pairwise wall's rooms; the element `dim radius` or `diameter` measures; every room whose datum (`r.top`, `r.cx`, a compass alias, `from r.left`) it reads; and its host wall, or the wall it backs onto, when that wall is authored |
+| `on` | the ids it derives from, sorted: a relational room's reference room; the two rooms of `between A and B`; the room of `on <room>.<edge>`, `against <room>.<edge>` and `segment containing <room>.<edge>`; a `facing` target; the room of `in <room> anchor` or `centered` (and of `in <room>` on an `against wall` piece with no `side`, which picks the face from it); `swing into <room>`; a pairwise wall's rooms; the element `dim radius` or `diameter` measures; every room whose datum (`r.top`, `r.cx`, a compass alias, `from r.left`) it reads; and its host wall, or the wall it backs onto, when that wall is authored — so a roof following an authored ring (`roof overhang 500 wall ring`) lists `ring` here, while one following a derived ring names it only as `hostWallId` |
 | `params` | the bound names its own expressions read, sorted: a `let`, a module `let`, a component or function parameter, a `for` variable, and the user functions it calls (never a built-in) |
 | `axes` | the positioning-axis labels it is placed at (`at axis 3`, `at axis B`), sorted. Always present, like `on` and `params`, and empty when it reads none |
 | `hostWallId` | the wall it is hosted on or backed onto, authored or derived: a door's, window's or cased opening's host (as in `access.edges[]`), an `against wall` piece's wall, the ring a `roof … overhang` follows. Absent when there is none |
@@ -999,7 +999,7 @@ For `examples/relational.arch`, where only the living room is placed by number:
 
 and among the derived walls, `{ "name": "hall|bed", "on": ["bed", "hall"], "params": [] }`.
 Without `--json` the human summary gains one line, e.g.
-`depends: 22 of 24 element(s) derive from another id or a name; 7 derived wall(s) (--json for the lists)`
+`depends: 22 of 24 element(s) depend on another id, a name, an axis or a host wall; 7 derived wall(s) (--json for the lists)`
 (the two that do not: the living room, placed `at (0,0)`, and the `dim`, whose points are numbers).
 
 ## `lint` — architectural soundness

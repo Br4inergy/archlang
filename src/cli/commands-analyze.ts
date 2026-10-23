@@ -393,7 +393,7 @@ function factLines(s: SceneSummary): string[] {
       (e) => e.on.length > 0 || e.params.length > 0 || e.axes.length > 0 || e.hostWallId !== undefined,
     ).length;
     out.push(
-      `depends: ${linked} of ${s.depends.elements.length} element(s) derive from another id or a name; ${s.depends.derived_walls.length} derived wall(s) (--json for the lists)`,
+      `depends: ${linked} of ${s.depends.elements.length} element(s) depend on another id, a name, an axis or a host wall; ${s.depends.derived_walls.length} derived wall(s) (--json for the lists)`,
     );
   }
   return out;
