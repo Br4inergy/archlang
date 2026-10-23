@@ -12,7 +12,8 @@
  *    diagnostics naming the offending JSON path) and build the equivalent
  *    {@link PlanNode}. It works by emitting canonical `.arch` text and running the
  *    real parser, so every parse-time check is reused. **Not supported** (by design):
- *    scripting (`let`/`for`/`if`/`component`) and `import` — author those in `.arch`.
+ *    scripting (`let`/`for`/`if`/`component`) and `import` — author those in `.arch`; the
+ *    exception is a placed component that derives its walls (`components`/`instances`, PS3.9).
  *  - {@link planToJson} — parse + resolve a `.arch` source and project it OUT to the
  *    same shape, enriched with output-only facts (`area`, `floor_polygon`,
  *    `room_count`, `total_area`, `room_types`, `edges`, `input_graph`). Round-trip
@@ -55,7 +56,9 @@ import type {
   RWall,
   RWallsFromRooms,
   ResolvedPlan,
+  ResolvedElement,
 } from "./ir.js";
+import { instanceBodiesOf } from "./ir.js";
 import type { Diagnostic } from "./diagnostics.js";
 import type {
   DoorEnumClause,
@@ -226,7 +229,18 @@ export interface PointJson {
   y: number;
 }
 
-export interface RoomJson {
+/**
+ * The marker on a FLATTENED row of a payload that carries `components`/`instances` (PS3.9):
+ * the `place`d instance the row was born inside. Such a row is the instance's element in plan
+ * coordinates under its dotted id, for a reader that only wants geometry; on input it is
+ * skipped, because the `place` the instance prints re-creates it. Absent on every other row,
+ * and on every row of a payload without `instances`.
+ */
+export interface InstanceMark {
+  instance?: string;
+}
+
+export interface RoomJson extends InstanceMark {
   id?: string;
   label?: string;
   room_type: RoomType;
@@ -260,7 +274,7 @@ export interface WallsFromRoomsJson {
   between?: Array<{ between: [string, string]; thickness: number }>;
 }
 
-export interface WallJson {
+export interface WallJson extends InstanceMark {
   id?: string;
   /** Free-form category (e.g. `exterior`, `partition`); also a door/window host ref. */
   category?: string;
@@ -300,7 +314,7 @@ export interface OpeningRelationJson {
   at?: string;
 }
 
-export interface OpeningJson {
+export interface OpeningJson extends InstanceMark {
   kind: "door" | "window" | "opening";
   id?: string;
   x?: number;
@@ -370,7 +384,7 @@ export interface OpeningJson {
  * carries the derived quarter-turn, so the emitter un-turns them; a hand-written
  * payload that gives `against_wall` without `rotate` is read exactly as before.
  */
-export interface FurnitureJson {
+export interface FurnitureJson extends InstanceMark {
   category: string;
   id?: string;
   room?: string;
@@ -413,7 +427,7 @@ export interface FurnitureJson {
   label?: string;
 }
 
-export interface DimJson {
+export interface DimJson extends InstanceMark {
   from: PointJson;
   to: PointJson;
   offset?: number;
@@ -424,7 +438,7 @@ export interface DimJson {
   mirror?: boolean;
 }
 
-export interface ColumnJson {
+export interface ColumnJson extends InstanceMark {
   id?: string;
   x: number;
   y: number;
@@ -442,6 +456,35 @@ export interface EdgeJson {
   via: "door" | "opening";
   /** `front` when it connects the exterior (an entrance); else `interior`. */
   type: "interior" | "front";
+}
+
+/** A component's body as one instance resolved it: the root's row arrays, in LOCAL names
+ *  and coordinates (PS3.9). */
+export interface PlanBodyJson {
+  rooms: RoomJson[];
+  walls: WallJson[];
+  walls_from_rooms?: WallsFromRoomsJson;
+  openings: OpeningJson[];
+  furniture: FurnitureJson[];
+  dims?: DimJson[];
+  columns?: ColumnJson[];
+}
+
+/** `component <name>() { … }`, carried as its resolved body (no parameters: the arguments are
+ *  already applied, and every instance of it resolved to this one body). */
+export interface ComponentJson {
+  name: string;
+  body: PlanBodyJson;
+}
+
+/** `place <component>() as <name> at (x,y) [rotate r] [mirror m]`; the fields of
+ *  `describe().instances`. */
+export interface InstanceJson {
+  name: string;
+  component: string;
+  at: PointJson;
+  rotate?: 90 | 180 | 270;
+  mirror?: "x" | "y";
 }
 
 export interface PlanJson {
@@ -496,6 +539,15 @@ export interface PlanJson {
   furniture: FurnitureJson[];
   dims?: DimJson[];
   columns?: ColumnJson[];
+  /**
+   * The components the plan's `place`d instances were made from, each as its resolved body
+   * (PS3.9). Emitted, with {@link PlanJson.instances} and the rows' `instance` markers, only on
+   * a storey where a placed instance derives its walls (`walls from rooms`), so every other
+   * payload is unchanged; on input each prints as a `component` and each instance as a `place`.
+   */
+  components?: ComponentJson[];
+  /** The `place`d instances, in source order; present exactly when `components` is. */
+  instances?: InstanceJson[];
   title?: TitleJson;
   /** Output-only: connector edges from the access graph. */
   edges?: EdgeJson[];
@@ -570,7 +622,11 @@ function buildEdges(access: AccessGraph): EdgeJson[] {
  * Project a resolved plan to {@link PlanJson}. Exposed so `describe()`-style callers
  * that already hold IR can reuse it; {@link planToJson} is the source-string entry.
  */
-export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): PlanJson {
+export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL, carried?: CarriedInstances): PlanJson {
+  // A row born in a `place`d instance names it, but only in a payload that carries the
+  // instances (PS3.9): everywhere else the key is absent, so those payloads are unchanged.
+  const mark = (e: { _instance?: string }): InstanceMark =>
+    carried && e._instance !== undefined ? { instance: e._instance } : {};
   const roomEls = ir.elements.filter((e): e is RRoom => e.kind === "room");
   const doorEls = ir.elements.filter((e): e is RDoor => e.kind === "door");
   const windowEls = ir.elements.filter((e): e is RWindow => e.kind === "window");
@@ -598,6 +654,7 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
       floor_polygon: r.poly
         ? r.poly.map((pt) => ({ x: pt.x, y: pt.y }))
         : rectPolygon(r.at.x, r.at.y, r.size.w, r.size.h),
+      ...mark(r),
     };
   });
 
@@ -618,6 +675,7 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
       ...(w.material !== DEFAULT_MATERIAL ? { material: w.material } : {}),
       ...(w.material !== DEFAULT_MATERIAL && w.hatchScale !== 1 ? { material_scale: w.hatchScale } : {}),
       ...(w.material !== DEFAULT_MATERIAL && w.hatchAngle !== 0 ? { material_angle: w.hatchAngle } : {}),
+      ...mark(w),
     }));
 
   const stmt = ir.elements.find((e): e is RWallsFromRooms => e.kind === "walls" && e._instance === undefined);
@@ -672,7 +730,7 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
         if (e.kind === "window") base.sill = e.sill;
         base.head = e.head;
       }
-      return base;
+      return { ...base, ...mark(e) };
     });
 
   // The resolved footprint, PLUS the placement clause the author wrote when there was
@@ -721,6 +779,7 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
       ...(f._clear?.front !== undefined ? { clear_front: f._clear.front } : {}),
       ...(f._clear?.sides !== undefined ? { clear_sides: f._clear.sides } : {}),
       ...(f.label !== undefined ? { label: f.label } : {}),
+      ...mark(f),
     };
   });
 
@@ -732,6 +791,7 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
     // The reflecting `place` frame this dimension crossed (`_mirror`); `offset` above is
     // already the reflected one.
     ...(d._mirror ? { mirror: true } : {}),
+    ...mark(d),
   }));
 
   const columns: ColumnJson[] = columnEls.map((c) => ({
@@ -740,6 +800,7 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
     y: c.at.y,
     width: c.size.w,
     height: c.size.h,
+    ...mark(c),
   }));
 
   const roomTypes: RoomType[] = [];
@@ -773,6 +834,7 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
     furniture,
     ...(dims.length > 0 ? { dims } : {}),
     ...(columns.length > 0 ? { columns } : {}),
+    ...(carried ? { components: carried.components, instances: carried.instances } : {}),
     ...(ir.title ? { title: titleToJson(ir.title) } : {}),
     edges: buildEdges(access),
     input_graph: buildInputGraph(roomEls, doorEls, openingEls, tol, access),
@@ -820,38 +882,107 @@ export function planToJson(
 ): { json?: PlanJson; pages?: PlanJsonPage[]; diagnostics: Diagnostic[] } {
   const { ir, diagnostics, levels } = resolvePlan(source, opts);
   if (!ir) return { diagnostics };
-  // Plan JSON has no per-component record, so the walls a `place`d component's
-  // `walls from rooms` derives could only be dropped (they are never `walls[]` rows) or
-  // flattened into authored rows the payload could not round-trip. Neither may be silent:
-  // the projection is refused, naming the instance (ADR 0028 §3).
-  const storeys = levels.length > 0 ? levels.map((l) => l.ir) : [ir];
-  const statements = storeys.flatMap((x) => x.elements.filter((e) => e.kind === "walls" && e._instance !== undefined));
-  const deriving = [...new Set(statements.map((e) => e._instance!))];
-  if (deriving.length > 0) {
-    // Spanned on the first offending statement itself (inside the component body, and in
-    // the file that body was written in), the line the author would have to change.
-    const first = statements[0]!;
-    const named = deriving.map((i) => `"${i}"`).join(", ");
-    return {
-      diagnostics: [
-        ...diagnostics,
-        {
-          severity: "error",
-          message: `Plan JSON cannot carry the walls \`walls from rooms\` derives inside the placed instance${deriving.length > 1 ? "s" : ""} ${named}: the payload has no per-component record, so the projection is refused rather than drop them`,
-          code: "E_JSON_DERIVED_IN_INSTANCE",
-          ...(first.span ? { span: first.span } : {}),
-          ...(first._file !== undefined ? { file: first._file } : {}),
-        },
-      ],
-    };
+  // A storey whose `place`d component derives its walls carries its components and instances
+  // (PS3.9): the statement sits in the component's body, never the walls it derives (ADR 0028
+  // §3). What that record cannot carry is refused, naming the instance, never dropped.
+  const carriedOf = new Map<ResolvedPlan, CarriedInstances | undefined>();
+  for (const s of levels.length > 0 ? [ir, ...levels.map((l) => l.ir)] : [ir]) {
+    if (carriedOf.has(s)) continue;
+    const c = carryInstances(s);
+    if (c && "refusal" in c) return { diagnostics: [...diagnostics, c.refusal] };
+    carriedOf.set(s, c);
   }
-  if (levels.length === 0) return { json: resolvedToJson(ir), diagnostics };
+  const project = (s: ResolvedPlan): PlanJson => resolvedToJson(s, DEFAULT_TOL, carriedOf.get(s));
+  if (levels.length === 0) return { json: project(ir), diagnostics };
   const pages = levels.map((l) => ({
     level: l.level,
     ...(l.name !== undefined ? { name: l.name } : {}),
-    json: resolvedToJson(l.ir),
+    json: project(l.ir),
   }));
-  return { json: resolvedToJson(ir), pages, diagnostics };
+  return { json: project(ir), pages, diagnostics };
+}
+
+/** {@link PlanJson.components} and {@link PlanJson.instances}, as one storey carries them. */
+export interface CarriedInstances {
+  components: ComponentJson[];
+  instances: InstanceJson[];
+}
+
+/**
+ * The components and instances of a storey on which a `place`d instance derives its walls
+ * (the gate: nothing for any other storey, so its payload is unchanged), or the refusal of
+ * what the record cannot carry. Each body is the instance's own resolution in its LOCAL frame
+ * ({@link instanceBodiesOf}), projected by the very code that projects the root.
+ */
+function carryInstances(ir: ResolvedPlan): CarriedInstances | { refusal: Diagnostic } | undefined {
+  const statements = ir.elements.filter((e) => e.kind === "walls" && e._instance !== undefined);
+  if (statements.length === 0) return undefined;
+  const deriving = [...new Set(statements.map((e) => e._instance!))];
+  // Spanned on the first deriving statement itself (inside the component body, and in the
+  // file that body was written in), the line the author would have to change.
+  const first = statements[0]!;
+  const refuse = (why: string): { refusal: Diagnostic } => ({
+    refusal: {
+      severity: "error",
+      message: `Plan JSON cannot carry the walls \`walls from rooms\` derives inside the placed instance${
+        deriving.length > 1 ? "s" : ""
+      } ${deriving.map((i) => `"${i}"`).join(", ")}: ${why}, so the projection is refused rather than drop them`,
+      code: "E_JSON_DERIVED_IN_INSTANCE",
+      ...(first.span ? { span: first.span } : {}),
+      ...(first._file !== undefined ? { file: first._file } : {}),
+    },
+  });
+  const placed = ir.instances ?? [];
+  const nested = placed.find((p) => p.name.includes("."));
+  if (nested)
+    return refuse(
+      `the plan nests a \`place\` ("${nested.name}"), and Plan JSON's component record holds one level of instances`,
+    );
+  const bodies = instanceBodiesOf(ir);
+  const components: ComponentJson[] = [];
+  const firstOf = new Map<string, { instance: string; key: string }>();
+  for (const p of placed) {
+    const own = bodies.get(p.name);
+    if (!own) return refuse(`instance "${p.name}" was not resolved`);
+    if (own.imported)
+      return refuse(
+        `component "${p.component}" comes in through an \`import\`, and Plan JSON carries only a component written in the compiled file`,
+      );
+    const body = bodyJson(ir, own.local);
+    const key = JSON.stringify(body);
+    const seen = firstOf.get(p.component);
+    if (seen === undefined) {
+      firstOf.set(p.component, { instance: p.name, key });
+      components.push({ name: p.component, body });
+    } else if (seen.key !== key)
+      return refuse(
+        `instances "${seen.instance}" and "${p.name}" of component "${p.component}" resolve to different bodies (different arguments), and Plan JSON carries one body per component`,
+      );
+  }
+  const instances: InstanceJson[] = placed.map((p) => ({
+    name: p.name,
+    component: p.component,
+    at: { x: p.at.x, y: p.at.y },
+    ...(p.rotate !== 0 ? { rotate: p.rotate } : {}),
+    ...(p.mirror ? { mirror: p.mirror } : {}),
+  }));
+  return { components, instances };
+}
+
+/** One instance's LOCAL elements as a {@link PlanBodyJson}: projected exactly as the root is
+ *  (they carry no `_instance`, so their relational clauses are kept as written). */
+function bodyJson(ir: ResolvedPlan, local: readonly ResolvedElement[]): PlanBodyJson {
+  const walls = local.filter((e): e is RWall => e.kind === "wall" && e.points.length > 0);
+  const j = resolvedToJson({ ...ir, elements: [...local], walls, instances: undefined });
+  return {
+    rooms: j.rooms,
+    walls: j.walls,
+    ...(j.walls_from_rooms ? { walls_from_rooms: j.walls_from_rooms } : {}),
+    openings: j.openings,
+    furniture: j.furniture,
+    ...(j.dims ? { dims: j.dims } : {}),
+    ...(j.columns ? { columns: j.columns } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -915,7 +1046,8 @@ function validatePlanJson(json: unknown, val: Validator): PlanJson | null {
     return null;
   }
   // Guard against scripting/import keys that this form cannot represent.
-  for (const k of ["components", "imports", "let", "for", "if", "component"]) {
+  // `components` is the PS3.9 record (validated below); the rest stay `.arch`-only.
+  for (const k of ["imports", "let", "for", "if", "component"]) {
     if (k in json)
       val.err(`/${k}`, "scripting and imports are not supported in the JSON form — author them in .arch source");
   }
@@ -940,35 +1072,109 @@ function validatePlanJson(json: unknown, val: Validator): PlanJson | null {
   if (json.storey_height !== undefined && !(isNum(json.storey_height) && isDrawableHeight(json.storey_height)))
     val.err("/storey_height", `expected a number greater than 0 and no more than ${MAX_HEIGHT}`);
 
-  const rooms = json.rooms;
-  if (rooms !== undefined && !Array.isArray(rooms)) val.err("/rooms", "expected an array");
-  if (Array.isArray(rooms)) rooms.forEach((r, i) => void validateRoom(r, `/rooms/${i}`, val));
-
-  const walls = json.walls;
-  if (walls !== undefined && !Array.isArray(walls)) val.err("/walls", "expected an array");
-  if (Array.isArray(walls)) walls.forEach((w, i) => void validateWall(w, `/walls/${i}`, val));
-
-  const wfr = json.walls_from_rooms;
-  if (wfr !== undefined) validateWallsFromRooms(wfr, "/walls_from_rooms", val);
-
-  const openings = json.openings;
-  if (openings !== undefined && !Array.isArray(openings)) val.err("/openings", "expected an array");
-  if (Array.isArray(openings)) openings.forEach((o, i) => void validateOpening(o, `/openings/${i}`, val));
-
-  const furniture = json.furniture;
-  if (furniture !== undefined && !Array.isArray(furniture)) val.err("/furniture", "expected an array");
-  if (Array.isArray(furniture)) furniture.forEach((f, i) => void validateFurniture(f, `/furniture/${i}`, val));
-
-  const dims = json.dims;
-  if (dims !== undefined && !Array.isArray(dims)) val.err("/dims", "expected an array");
-  if (Array.isArray(dims)) dims.forEach((d, i) => void validateDim(d, `/dims/${i}`, val));
-
-  const columns = json.columns;
-  if (columns !== undefined && !Array.isArray(columns)) val.err("/columns", "expected an array");
-  if (Array.isArray(columns)) columns.forEach((c, i) => void validateColumn(c, `/columns/${i}`, val));
+  const names = validateInstances(json, val);
+  validateRows(json, "", names, val);
 
   if (val.hasError()) return null;
   return json as unknown as PlanJson;
+}
+
+const IDENT = /^[A-Za-z_][\w-]*$/;
+
+/**
+ * `components` and `instances` (PS3.9): each component a name and a body of root-shaped rows,
+ * each instance a name, a declared component, an `at` point and the frame `place` accepts.
+ * Returns the instance names a flattened row's `instance` may name (empty when there are none).
+ */
+function validateInstances(json: Record<string, unknown>, val: Validator): ReadonlySet<string> {
+  const declared = new Set<string>();
+  const names = new Set<string>();
+  const { components, instances } = json;
+  if ((components === undefined) !== (instances === undefined))
+    val.err(components === undefined ? "/instances" : "/components", "`components` and `instances` come together");
+  if (components !== undefined && !Array.isArray(components)) val.err("/components", "expected an array");
+  if (Array.isArray(components))
+    components.forEach((c, i) => {
+      const at = `/components/${i}`;
+      if (!isObj(c)) {
+        val.err(at, "expected an object");
+        return;
+      }
+      if (!(isStr(c.name) && IDENT.test(c.name))) val.err(`${at}/name`, "expected a component name");
+      else if (declared.has(c.name)) val.err(`${at}/name`, `component "${c.name}" is declared twice`);
+      else declared.add(c.name);
+      if (!isObj(c.body)) {
+        val.err(`${at}/body`, "expected an object");
+        return;
+      }
+      validateRows(c.body, `${at}/body`, null, val);
+      if (c.body.walls_from_rooms !== undefined)
+        validateWallsFromRooms(c.body.walls_from_rooms, `${at}/body/walls_from_rooms`, val);
+    });
+  if (instances !== undefined && !Array.isArray(instances)) val.err("/instances", "expected an array");
+  if (Array.isArray(instances))
+    instances.forEach((p, i) => {
+      const at = `/instances/${i}`;
+      if (!isObj(p)) {
+        val.err(at, "expected an object");
+        return;
+      }
+      // One level of instances: a dotted name is a nested `place`, which the record cannot hold.
+      if (!(isStr(p.name) && IDENT.test(p.name))) val.err(`${at}/name`, "expected an instance name");
+      else if (names.has(p.name)) val.err(`${at}/name`, `instance "${p.name}" is placed twice`);
+      else names.add(p.name);
+      if (!(isStr(p.component) && declared.has(p.component)))
+        val.err(`${at}/component`, "expected the name of a component in `components`");
+      reqPoint(p.at, `${at}/at`, val);
+      if (p.rotate !== undefined && !(p.rotate === 0 || p.rotate === 90 || p.rotate === 180 || p.rotate === 270))
+        val.err(`${at}/rotate`, "expected 0, 90, 180 or 270");
+      if (p.mirror !== undefined && p.mirror !== "x" && p.mirror !== "y")
+        val.err(`${at}/mirror`, 'expected "x" or "y"');
+    });
+  return names;
+}
+
+/**
+ * The row arrays of the root (`base` "") or of a component body. A root row that carries
+ * `instance` is a flattened instance row: output-only, so it is checked only for naming a
+ * declared instance and is otherwise skipped (its `mirror` is the frame's, which the `place`
+ * prints). A body row (`instances` null) never carries one.
+ */
+function validateRows(
+  o: Record<string, unknown>,
+  base: string,
+  instances: ReadonlySet<string> | null,
+  val: Validator,
+): void {
+  const rows = (
+    key: "rooms" | "walls" | "openings" | "furniture" | "dims" | "columns",
+    check: (r: unknown, path: string, val: Validator) => void,
+  ): void => {
+    const list = o[key];
+    if (list === undefined) return;
+    if (!Array.isArray(list)) {
+      val.err(`${base}/${key}`, "expected an array");
+      return;
+    }
+    list.forEach((r, i) => {
+      const path = `${base}/${key}/${i}`;
+      if (isObj(r) && r.instance !== undefined) {
+        if (instances === null) val.err(`${path}/instance`, "a component body row belongs to no instance");
+        else if (!(isStr(r.instance) && instances.has(r.instance)))
+          val.err(`${path}/instance`, "expected the name of an instance in `instances`");
+        return;
+      }
+      check(r, path, val);
+    });
+  };
+  rows("rooms", validateRoom);
+  rows("walls", validateWall);
+  if (base === "" && o.walls_from_rooms !== undefined)
+    validateWallsFromRooms(o.walls_from_rooms, "/walls_from_rooms", val);
+  rows("openings", validateOpening);
+  rows("furniture", validateFurniture);
+  rows("dims", validateDim);
+  rows("columns", validateColumn);
 }
 
 /** `site` — a required `street` word and an optional `hemisphere`, both from the closed
@@ -1316,7 +1522,43 @@ function emitArch(p: PlanJson): string {
   // a 3000 one with no diagnostic — the `dims auto` failure above, one layer down.
   if (p.storey_height !== undefined) L.push(`  height ${num(p.storey_height)}`);
 
-  for (const w of p.walls ?? []) {
+  emitRows(p, L);
+  // PS3.9: each component as its resolved body, then each instance as its `place`, after the
+  // root rows, so the round-trip law holds for a plan whose `place`s follow its root statements.
+  if (p.components && p.instances) {
+    for (const c of p.components) {
+      L.push(`  component ${c.name}() {`);
+      const body: string[] = [];
+      emitRows(c.body, body);
+      for (const line of body) L.push(`  ${line}`);
+      L.push(`  }`);
+    }
+    for (const i of p.instances) {
+      const frame = `${i.rotate ? ` rotate ${i.rotate}` : ""}${i.mirror ? ` mirror ${i.mirror}` : ""}`;
+      L.push(`  place ${i.component}() as ${i.name} at (${num(i.at.x)},${num(i.at.y)})${frame}`);
+    }
+  }
+
+  if (p.title) {
+    L.push(`  title {`);
+    for (const word of TITLE_FIELDS) {
+      const v = p.title[word];
+      if (v !== undefined) L.push(`    ${word} ${q(v)}`);
+    }
+    L.push(`  }`);
+  }
+
+  L.push(`}`);
+  L.push("");
+  return L.join("\n");
+}
+
+/** A row the source states itself: not a flattened instance row, which its `place` re-creates. */
+const own = (r: InstanceMark): boolean => r.instance === undefined;
+
+/** The root's (or a component body's) rows as `.arch` statements, one line each. */
+function emitRows(p: PlanBodyJson, L: string[]): void {
+  for (const w of (p.walls ?? []).filter(own)) {
     const parts = [
       `  wall`,
       `${idAttr(w.id)}${w.category ?? "partition"}`.trim(),
@@ -1350,7 +1592,7 @@ function emitArch(p: PlanJson): string {
     L.push(`  walls from rooms exterior ${num(s.exterior)} partition ${num(s.partition)}${ex}`);
   }
 
-  for (const r of p.rooms ?? []) {
+  for (const r of (p.rooms ?? []).filter(own)) {
     // A polygon room round-trips through its RING, never its bounding box — emitting
     // `at`+`size` for it would quietly turn an L-shaped gallery back into a rectangle.
     const shape =
@@ -1364,32 +1606,19 @@ function emitArch(p: PlanJson): string {
     L.push(line);
   }
 
-  for (const o of p.openings ?? []) L.push(emitOpening(o));
+  for (const o of (p.openings ?? []).filter(own)) L.push(emitOpening(o));
 
-  for (const f of p.furniture ?? []) L.push(emitFurniture(f));
+  for (const f of (p.furniture ?? []).filter(own)) L.push(emitFurniture(f));
 
-  for (const c of p.columns ?? [])
+  for (const c of (p.columns ?? []).filter(own))
     L.push(`  column ${idAttr(c.id)}at (${num(c.x)},${num(c.y)}) size ${num(c.width)}x${num(c.height)}`);
 
-  for (const d of p.dims ?? []) {
+  for (const d of (p.dims ?? []).filter(own)) {
     let line = `  dim (${num(d.from.x)},${num(d.from.y)})->(${num(d.to.x)},${num(d.to.y)})`;
     if (typeof d.offset === "number") line += ` offset ${num(d.offset)}`;
     if (d.text !== undefined) line += ` text ${q(d.text)}`;
     L.push(line);
   }
-
-  if (p.title) {
-    L.push(`  title {`);
-    for (const word of TITLE_FIELDS) {
-      const v = p.title[word];
-      if (v !== undefined) L.push(`    ${word} ${q(v)}`);
-    }
-    L.push(`  }`);
-  }
-
-  L.push(`}`);
-  L.push("");
-  return L.join("\n");
 }
 
 /** The `uses` tags to emit for a room: explicit `uses` win; else derive from `room_type`. */
@@ -1497,7 +1726,8 @@ export function planJsonToArch(json: unknown): { source?: string; diagnostics: D
  * canonical `.arch` text and runs the real parser (reusing every parse-time check),
  * and also returns that `source` for callers that want to compile it.
  *
- * Not supported (documented): scripting (`let`/`for`/`if`/`component`) and `import`; and a
+ * Not supported (documented): scripting (`let`/`for`/`if`/`component`) and `import`, but for a
+ * placed component that derives its walls (`components`/`instances`); and a
  * `mirror: true` fixture, which only a `place` frame can state (`E_JSON_MIRROR`).
  */
 export function planFromJson(json: unknown): { ast?: PlanNode; source?: string; diagnostics: Diagnostic[] } {
@@ -1700,6 +1930,13 @@ const POINT_SCHEMA = {
   },
 } as const;
 
+/** {@link InstanceMark}: the `instance` key every row schema accepts. */
+const INSTANCE_MARKER = {
+  type: "string",
+  description:
+    "Output-only, and present only when the payload carries `instances`: the placed instance this row was born inside. The row is that instance's element in plan coordinates under its dotted id (`west.kit`), kept for a reader that only wants geometry; planFromJson skips it, because the instance's `place` re-creates it. Never present on a row inside `components[].body`.",
+} as const;
+
 /**
  * The JSON Schema (2020-12) for {@link PlanJson}, description-rich for LLM consumption.
  * This object is the single source of truth: `scripts/gen-plan-schema.ts` writes it to
@@ -1710,7 +1947,7 @@ export const PLAN_JSON_SCHEMA = {
   $id: "https://archlang.uk/plan.schema.json",
   title: "ArchLang Plan",
   description:
-    "A floor plan as structured JSON (RPLAN / DStruct2Design convention). Coordinates are millimetres; the origin is top-left with +x right and +y DOWN. Fields marked output-only are produced by planToJson and ignored on input. Scripting (let/for/if/component) and import are not representable — author those in .arch source. Vertical circulation (stair/escalator/elevator) is not projected: Plan JSON has no member for it.",
+    "A floor plan as structured JSON (RPLAN / DStruct2Design convention). Coordinates are millimetres; the origin is top-left with +x right and +y DOWN. Fields marked output-only are produced by planToJson and ignored on input. Scripting (let/for/if/component) and import are not representable — author those in .arch source; the one exception is a placed component that derives its walls, carried by `components`/`instances`. Vertical circulation (stair/escalator/elevator) is not projected: Plan JSON has no member for it.",
   type: "object",
   required: ["plan", "rooms", "walls", "openings", "furniture"],
   additionalProperties: false,
@@ -1770,6 +2007,7 @@ export const PLAN_JSON_SCHEMA = {
         additionalProperties: false,
         anyOf: [{ required: ["x", "y", "width", "height"] }, { required: ["polygon"] }],
         properties: {
+          instance: INSTANCE_MARKER,
           id: { type: "string", description: "Unique room id (referenced by furniture/openings)." },
           label: { type: "string", description: "Human-readable room label drawn in the room." },
           room_type: {
@@ -1869,6 +2107,7 @@ export const PLAN_JSON_SCHEMA = {
         additionalProperties: false,
         required: ["points"],
         properties: {
+          instance: INSTANCE_MARKER,
           id: { type: "string", description: "Unique wall id." },
           category: {
             type: "string",
@@ -1901,6 +2140,7 @@ export const PLAN_JSON_SCHEMA = {
         additionalProperties: false,
         required: ["kind", "width"],
         properties: {
+          instance: INSTANCE_MARKER,
           kind: { enum: ["door", "window", "opening"], description: "Opening kind." },
           id: { type: "string", description: "Unique opening id." },
           x: { type: "number", description: "Center X in millimetres (on the wall centerline)." },
@@ -1994,6 +2234,7 @@ export const PLAN_JSON_SCHEMA = {
         additionalProperties: false,
         required: ["category"],
         properties: {
+          instance: INSTANCE_MARKER,
           category: { type: "string", description: "Furniture category, e.g. bed, sofa, wc, basin, stove." },
           id: { type: "string", description: "Unique furniture id." },
           room: { type: "string", description: "Owning room id (`in <room>`)." },
@@ -2053,6 +2294,7 @@ export const PLAN_JSON_SCHEMA = {
         additionalProperties: false,
         required: ["from", "to"],
         properties: {
+          instance: INSTANCE_MARKER,
           from: { ...POINT_SCHEMA, description: "Start point." },
           to: { ...POINT_SCHEMA, description: "End point." },
           offset: { type: "number", description: "Perpendicular offset of the dimension line in millimetres." },
@@ -2073,11 +2315,57 @@ export const PLAN_JSON_SCHEMA = {
         additionalProperties: false,
         required: ["x", "y", "width", "height"],
         properties: {
+          instance: INSTANCE_MARKER,
           id: { type: "string", description: "Unique column id." },
           x: { type: "number", description: "Top-left corner X in millimetres." },
           y: { type: "number", description: "Top-left corner Y in millimetres." },
           width: { type: "number", description: "Width in millimetres." },
           height: { type: "number", description: "Height in millimetres." },
+        },
+      },
+    },
+    components: {
+      type: "array",
+      description:
+        "The components the plan's placed instances were made from. Present (with `instances`, and with `instance` on every flattened instance row) ONLY on a storey where a placed component derives its walls with `walls from rooms`; every other payload has neither key, and a placed plan without that statement is exported flattened. Each body is what one instance resolved to in the component's own frame and names (`liv`, not `west.liv`), with the same row shapes as the root: the `walls from rooms` statement as written, never the walls it derives. A component that took parameters is carried parameterless, its arguments already applied. planFromJson prints each as `component <name>() { … }`. Not representable (planToJson refuses, E_JSON_DERIVED_IN_INSTANCE): a nested `place`, two instances of one component with different bodies, an imported component.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["name", "body"],
+        properties: {
+          name: { type: "string", description: "The component name, as `place` names it." },
+          body: {
+            type: "object",
+            additionalProperties: false,
+            required: ["rooms", "walls", "openings", "furniture"],
+            description: "The component's statements in its LOCAL frame and names; the root row shapes.",
+            properties: {
+              rooms: { $ref: "#/properties/rooms" },
+              walls: { $ref: "#/properties/walls" },
+              walls_from_rooms: { $ref: "#/properties/walls_from_rooms" },
+              openings: { $ref: "#/properties/openings" },
+              furniture: { $ref: "#/properties/furniture" },
+              dims: { $ref: "#/properties/dims" },
+              columns: { $ref: "#/properties/columns" },
+            },
+          },
+        },
+      },
+    },
+    instances: {
+      type: "array",
+      description:
+        "The placed instances, in source order, as `describe().instances` lists them; present exactly when `components` is. planFromJson prints each as `place <component>() as <name> at (x,y) [rotate r] [mirror m]`, after the root statements: the round trip is byte-identical for a plan whose `place`s follow its root statements (one that places first comes back in that grouped order).",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["name", "component", "at"],
+        properties: {
+          name: { type: "string", description: "The `as <name>` instance name; one level, so never dotted." },
+          component: { type: "string", description: "A `components[].name`." },
+          at: { ...POINT_SCHEMA, description: "Where the component's local (0,0) lands, in plan coordinates." },
+          rotate: { enum: [0, 90, 180, 270], description: "Quarter-turn of the instance (omitted when 0)." },
+          mirror: { enum: ["x", "y"], description: "Axis reflection of the instance, applied before the rotation." },
         },
       },
     },

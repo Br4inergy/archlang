@@ -2262,6 +2262,29 @@ export function datumTablesOf(ir: ResolvedPlan): ReadonlyMap<string, DatumTable>
   return datumTablesOfIr.get(ir) ?? new Map();
 }
 
+/** One `place`d instance's body as its own group resolved it, before its frame carried it. */
+export interface InstanceBody {
+  /** The instance's own elements in its LOCAL frame and LOCAL names (no `<prefix>.`), in
+   *  entry order; the ones the frame could not carry are left out, as they are from the plan. */
+  local: readonly ResolvedElement[];
+  /** True when the component body came in through an `import` (some entry's `file` is set). */
+  imported: boolean;
+}
+
+/** Each resolved storey's instance bodies, by instance prefix, in commit order. */
+const instanceBodiesOfIr = new WeakMap<ResolvedPlan, ReadonlyMap<string, InstanceBody>>();
+
+/**
+ * The bodies of one storey's `place`d instances, keyed by prefix (`west`, `west.inner`) in the
+ * order `ir.instances` lists them: each is what the component compiled as a plan resolves to
+ * (an instance never reaches out, ADR 0016 §3). Empty for a plan with no instance or one not
+ * resolved here. Internal: Plan JSON reads it to carry a component's statement as written
+ * (PS3.9); it never reaches the Scene, `describe()` or `lint()`.
+ */
+export function instanceBodiesOf(ir: ResolvedPlan): ReadonlyMap<string, InstanceBody> {
+  return instanceBodiesOfIr.get(ir) ?? new Map();
+}
+
 /**
  * What one resolution spent of the evaluation-step budget (`MAX_EVAL_STEPS`, `src/expr.ts`),
  * counted from the steps the storeys below it spent; `exhausted` when it crossed the budget
@@ -2899,10 +2922,15 @@ function resolveBody(
 
   // 3(ii). Commit the instance groups in the original order, then resolve the root plan
   //        against the plan-wide arrays, which by then carry every instance.
+  const instanceBodies = new Map<string, InstanceBody>();
   for (const grp of groups) {
     const done = placed.get(grp);
     if (!done) continue;
     for (const d of done.diagnostics) diagnostics.push(d);
+    instanceBodies.set(grp.frame!.prefix, {
+      local: grp.entries.flatMap((e, i) => (dropped.has(e) ? [] : [done.local[i]!])),
+      imported: grp.entries.some((e) => e.file !== undefined),
+    });
     instances.push({
       name: grp.frame!.prefix,
       component: grp.frame!.component,
@@ -3151,6 +3179,7 @@ function resolveBody(
     ...(instances.length > 0 ? { instances } : {}),
   };
   datumTablesOfIr.set(ir, datumTables);
+  if (instanceBodies.size > 0) instanceBodiesOfIr.set(ir, instanceBodies);
   return { ir, diagnostics };
 }
 

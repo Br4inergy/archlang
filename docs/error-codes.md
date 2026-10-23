@@ -66,7 +66,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_INTENT_ROOM_MISSING`](#e_intent_room_missing) | error | A room the brief names is absent from the plan. |
 | [`E_INTENT_TOTAL_AREA`](#e_intent_total_area) | error | The plan's total floor area is outside the brief's band. |
 | [`E_INTENT_UNREACHABLE`](#e_intent_unreachable) | error | A room cannot be reached from the entrance through modeled doors. |
-| [`E_JSON_DERIVED_IN_INSTANCE`](#e_json_derived_in_instance) | error | Plan JSON cannot project a plan whose `place`d component derives its walls. |
+| [`E_JSON_DERIVED_IN_INSTANCE`](#e_json_derived_in_instance) | error | Plan JSON cannot carry a `place`d component that derives its walls in this plan. |
 | [`E_JSON_KIND`](#e_json_kind) | error | Unknown element kind in plan JSON. |
 | [`E_JSON_MIRROR`](#e_json_mirror) | error | Plan JSON furniture, door or dimension is `mirror: true`, which `.arch` source cannot state. |
 | [`E_JSON_SCHEMA`](#e_json_schema) | error | Plan JSON does not match the schema. |
@@ -915,16 +915,17 @@ door on wall_hall_store width 800   # connect the isolated room
 
 ## E_JSON_DERIVED_IN_INSTANCE
 
-*error* — Plan JSON cannot project a plan whose `place`d component derives its walls.
+*error* — Plan JSON cannot carry a `place`d component that derives its walls in this plan.
 
-**Cause.** Plan JSON carries `walls from rooms` as the statement, never the walls it derives, and it has no per-component record to put a component's statement in. The walls a placed instance derives would therefore vanish from the payload, so `planToJson` (`compile -f json`) refuses the projection and names the instance instead (ADR 0028 §3).
+**Cause.** Plan JSON carries `walls from rooms` as the statement, never the walls it derives (ADR 0028 §3). A placed component's statement goes in the payload's `components` record, one resolved body per component with one level of `instances`. Three plans do not fit that record, and `planToJson` (`compile -f json`) refuses them, naming the instance, rather than drop the walls: (a) the plan nests a `place`; (b) two instances of one component resolve to different bodies (different arguments); (c) the component comes in through an `import`.
 
-**Fix.** Keep the plan in `.arch` source, or write that component's walls by hand to export it as Plan JSON.
+**Fix.** Keep the plan in `.arch` source; or flatten the nesting, give each differing instance its own component, or copy the imported component into the file; or write that component's walls by hand.
 
 ```arch static
-component unit() { room id=a at (0,0) size 4000x3000
+component inner() { room id=a at (0,0) size 4000x3000
   walls from rooms exterior 200 partition 100 }
-place unit() as west at (0,0)   # compile -f json: error, instance "west"
+component outer() { place inner() as i at (0,0) }
+place outer() as o at (0,0)   # compile -f json: error, instance "o.i" (nested)
 ```
 
 ## E_JSON_KIND

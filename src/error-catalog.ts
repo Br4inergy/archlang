@@ -700,10 +700,10 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   ),
   E_JSON_DERIVED_IN_INSTANCE: E(
     "E_JSON_DERIVED_IN_INSTANCE",
-    "Plan JSON cannot project a plan whose `place`d component derives its walls.",
-    "Plan JSON carries `walls from rooms` as the statement, never the walls it derives, and it has no per-component record to put a component's statement in. The walls a placed instance derives would therefore vanish from the payload, so `planToJson` (`compile -f json`) refuses the projection and names the instance instead (ADR 0028 §3).",
-    "Keep the plan in `.arch` source, or write that component's walls by hand to export it as Plan JSON.",
-    'component unit() { room id=a at (0,0) size 4000x3000\n  walls from rooms exterior 200 partition 100 }\nplace unit() as west at (0,0)   # compile -f json: error, instance "west"',
+    "Plan JSON cannot carry a `place`d component that derives its walls in this plan.",
+    "Plan JSON carries `walls from rooms` as the statement, never the walls it derives (ADR 0028 §3). A placed component's statement goes in the payload's `components` record, one resolved body per component with one level of `instances`. Three plans do not fit that record, and `planToJson` (`compile -f json`) refuses them, naming the instance, rather than drop the walls: (a) the plan nests a `place`; (b) two instances of one component resolve to different bodies (different arguments); (c) the component comes in through an `import`.",
+    "Keep the plan in `.arch` source; or flatten the nesting, give each differing instance its own component, or copy the imported component into the file; or write that component's walls by hand.",
+    'component inner() { room id=a at (0,0) size 4000x3000\n  walls from rooms exterior 200 partition 100 }\ncomponent outer() { place inner() as i at (0,0) }\nplace outer() as o at (0,0)   # compile -f json: error, instance "o.i" (nested)',
   ),
   E_JSON_MIRROR: E(
     "E_JSON_MIRROR",
