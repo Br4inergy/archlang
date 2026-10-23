@@ -54,12 +54,14 @@ import { type PlanSpec, planSpec, withInstance } from "./arbitrary-plan.js";
 import {
   D4_ELEMENTS,
   D4_TEST_ELEMENTS,
+  elementNamed,
   explain,
   type GroupElement,
   type InstanceRender,
   instanceCase,
   stable,
   translationFor,
+  windowOnTie,
 } from "./d4-oracle.js";
 import { KNOWN_CLASSES } from "./equivariance-known.js";
 
@@ -213,6 +215,53 @@ describe("pinned fuzz counterexamples", () => {
       expect(
         vs.map((v) => v.key),
         `${g.name}:\n${explain(vs, 4)}`,
+      ).toEqual([]);
+    }
+  }, 60_000);
+
+  /**
+   * PS0.19 (fast-check seed 1736625303, path "29:2:2:2:10:10:10:10:10:10:11:11:20:20:20:20:
+   * 20:20:20:20:20:20:20:20", g = t): `windows[g.o0].facing` read E on P₀ and S translated.
+   * `at 55%` resolved to y = (55 / 100) · 6000 = 3300.0000000000005, an ulp off the room
+   * corner (2000,3300), so P₀ had no tie; 20 m out the ulp rounded away, the window sat on
+   * the corner and the N/S-first `facing-tie` convention answered S. `percentOf`
+   * (`src/attach.ts`) now resolves it to 3300 exactly in both.
+   */
+  const ps019 = (g: GroupElement | null): string => `plan "P" {
+  units mm
+  component body() {
+    wall id=w_shell exterior thickness 100 { (0,0) (6000,0) (6000,6000) (0,6000) close }
+    wall id=w_v1 partition thickness 80 { (2000,0) (2000,6000) }
+    wall id=w_v2 partition thickness 80 { (4000,0) (4000,6000) }
+    wall id=w_h1 partition thickness 80 { (0,3300) (6000,3300) }
+    room id=r0 at (0,0) size 2000x3300
+    room id=r1 at (2000,0) size 2000x3300
+    room id=r2 at (4000,0) size 2000x3300
+    room id=r3 at (0,3300) size 2000x2700
+    room id=r4 at (2000,3300) size 2000x2700
+    room id=r5 at (4000,3300) size 2000x2700
+    window id=o0 on w_v1 at 55% width 600
+  }
+  place body() as g at (${g?.translate ? translationFor(0) : 0},${g?.translate ? translationFor(0) : 0}) rotate ${g?.rotate ?? 0}${g?.mirror ? " mirror x" : ""}
+}`;
+
+  it("PS0.19: a window `at 55%` on a room corner faces the same way translated", () => {
+    const { vs, ctx } = instanceCase((h) => ps019(h), elementNamed("t"), 0, "up");
+    expect(
+      vs.map((v) => v.key),
+      `t:\n${explain(vs, 4)}`,
+    ).toEqual([]);
+    // Not vacuous: P₀ resolves the window ON the corner, so it is a tie read N/S-first.
+    expect(windowOnTie(ctx.obs0, "g.o0")).toBe(true);
+  });
+
+  it("PS0.19: every element's violations of the witness are accounted for by a pinned class", () => {
+    for (const g of D4_TEST_ELEMENTS.filter((e) => e.name !== "e")) {
+      const { vs, ctx } = instanceCase((h) => ps019(h), g, 0, "up");
+      const uncovered = vs.filter((v) => !Object.values(KNOWN_CLASSES).some((c) => c.covers(v, ctx)));
+      expect(
+        uncovered.map((v) => v.key),
+        `${g.name}:\n${explain(uncovered, 4)}`,
       ).toEqual([]);
     }
   }, 60_000);
