@@ -96,6 +96,21 @@ blender -b --factory-startup --python-exit-code 1 -P src/render_glb.py -- out/la
 
 要点（详见 research）：IFC 批处理用空虚拟世界，故 `imports`、`museum-wings` 未含（43 = 34 − 2 + 11）；`h1_wall_ownership.mts` 的虚拟世界没有放进 `museum-wing.arch`，故 `museum-wings` 报 `no-ir`，`h1_prism_check.mts` 用含全部示例的虚拟世界；`ifc_probe_minimal_writer.mts` 的外扩默认值是 20 mm，设 `IFC_OPENING_MARGIN_MM=0` 可复现 IfcOpenShell 对弧墙共面切口的静默失败。
 
+## v0.6 新增脚本（核心契约与 Plan JSON 缺口复核；TypeScript/Node，在已检出并 `npm ci` 的核心仓库里运行）
+
+在 `main@1a1efd9` 与 `main@98a4156` 两个检出上各跑一遍，对比结果在 `results/`（文件名带短哈希）。只**新增**文件，没有改动上面任何既有脚本与结果。脚本符合核心的 Biome 配置（双引号、分号、尾逗号、行宽 120、无 `noAssignInExpressions`、`forEach` 回调不返回值），已用核心的 `biome check` 通过。
+
+| 脚本 | 回答的问题 | 结果文件 |
+|---|---|---|
+| `src/export_surface.mjs <core-root> [out.json]` | 根入口的全部导出名；`resolvePlan`、`AnalyzeOptions`、`joinWallSet`、`loopsToPolygons`、`doorSwing`、`DoorLike`、`DoorSwing`、`JoinerySplit`、`JoinedWallSet`、`JoinedCut` 的声明文件、行号、种类与文本。在两个检出上各跑一次再 `diff` | `results/export_surface_98a4156.json`、`export_surface_1a1efd9.json` |
+| `src/export_closure_refs.mjs <core-root> [out.json]` | C1 候选的类型闭包，**与核心 `test/public-surface.test.ts` 同法**：广度优先走类型引用节点（含 `import("…").X` 类型）、只走签名（类型参数、参数、返回类型，不走函数体）、跟随泛型约束与类型别名；给出两种范围——"full"（不在已导出名处停；对 `resolvePlan` 得 139 个自有类型、40 个未导出）与"frontier"（遇到根入口已有的名字就停；共缺 14 个名字）；并自检"假设 26 个名字已导出后是否还缺、有无重名"。取代 `export_closure.mjs`（后者不跟随泛型约束与别名，少算 `JoinableWall`、`Edge`）| `results/export_closure_refs_98a4156.json`、`export_closure_refs_1a1efd9.json` |
+| `src/planjson_gap.mts <core-root> [out.json]` | 对 34 个示例（含全部示例与 `lib/` 的虚拟 `World`）：IR 里"超出 Plan JSON 的信息"（弧墙、派生墙、多层、楼梯/电梯/自动扶梯/洞口/屋檐/室外面/栏栅）与 `planToJson` 结果的指纹。在 `98a4156` 上重现 v0.4 的 13/32，并在 `1a1efd9` 上复测 | `results/planjson_gap_98a4156.json`、`planjson_gap_1a1efd9.json`（两者逐字节相同）|
+| `src/planjson_instance_probe.mts <core-root>` | PS3.9（#232）的新路径：合成"两个 `place` 同一个推导墙的组件"的平面，`planToJson` 的行为、键与计数 | `results/planjson_instance_probe_98a4156.txt`（拒绝 `E_JSON_DERIVED_IN_INSTANCE`）、`planjson_instance_probe_1a1efd9.txt`（成功；`components` 1、`instances` 2、`walls` 1，而 IR 有 7 面墙、6 面派生）|
+| `src/resolveplan_levels_probe.mts <core-root>` | `resolvePlan` 的 `levels` 形状：`ir.level`、`levels[]` 的键与层名（`one-room`、`two-storey`、`townhouse`、`hillside-villa`、`garden-house`）| `results/resolveplan_levels_probe_1a1efd9.json` |
+| `src/resolveplan_import_probe.mts <core-root>` | 带 `import` 的平面：`resolvePlan(source, { world })` 与 `compile().ast` → `resolveAll` 的元素数，对照 `describe()` 的房间/家具数（核心 PR 的行为用例的依据）| `results/resolveplan_import_probe_98a4156.json`、`resolveplan_import_probe_1a1efd9.json` |
+
+**同步到核心的 `spike/` 时：**`spike/src/` 下上面 6 个脚本与 `spike/results/` 下对应结果是**新增**文件，可直接加入；既有的 `.mts`/`.mjs`/`.json` 不要被本目录的旧版覆盖。`results/*.json` 已按 Biome 格式化。
+
 ## 局限
 
 - 上面「实测结果」表只覆盖 Plan JSON 通道（Python）；库 API 通道的 TypeScript 实验见「v0.4 深挖实验」一节（仍是一次性实验，不是 M0 的 S1–S3 的生产实现）。

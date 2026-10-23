@@ -3,6 +3,7 @@
 > 状态：已深挖（实测）· 日期：2026-10-23（v0.5：Q19 已决定）· [`00-deep-dive-ranking.md`](00-deep-dive-ranking.md) 的第 2 位 · 上游：主文档 [§4.1](../development-plan.md)（墙体）、R3、附录 H 第 5 项
 >
 > 脚本：[`h1_wall_ownership.mts`](../spike/src/h1_wall_ownership.mts)、[`h1_prism_check.mts`](../spike/src/h1_prism_check.mts)；合成压力平面 [`../spike/stress/`](../spike/stress)（11 个）；结果 `../spike/results/h1_*.json`。除特别标注外全部是 **[实测]**（`main@98a4156`，库通道）。
+> **v0.6 复跑（2026-10-24，`main@1a1efd9`，即 #228–#233 全部合入后）：** 两个脚本各跑一次——所有权 34 行、棱柱检查 45 个平面——除耗时外与本文引用的存档结果相同；H1 成立与混合高度的数字不变。`museum-wings` 仍因该脚本的虚拟世界没有放进 `museum-wing.arch` 而报 `no-ir`（已在 v0.4 说明）。#232（PS3.9）只改 Plan JSON 通道，不改库通道的墙。
 
 ## 1. 问题定义
 
