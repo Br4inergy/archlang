@@ -773,7 +773,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 
 **`archlang context`** — print the full bundled agent context (spec + workflow + CLI + errors)
   - input: none → output: the full agent context (llms-full.txt), or one --section of it
-  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 130 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 49 KB) · `--json` structured result on stdout, messages on stderr
+  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 130 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 50 KB) · `--json` structured result on stdout, messages on stderr
   - example: `archlang context` — the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 
 **`archlang new`** (aliases: `init`) — scaffold a starter .arch
@@ -791,7 +791,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 ## 4. Diagnostic catalog
 
 Every diagnostic carries a stable code and a `fix`. Look one up with `archlang explain <CODE>`.
-**132 errors** (abort rendering) · **66 warnings** (advisory; `validate --strict` fails on them too).
+**133 errors** (abort rendering) · **66 warnings** (advisory; `validate --strict` fails on them too).
 
 ### Errors
 

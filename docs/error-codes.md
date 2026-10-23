@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**132 errors** · **66 warnings**
+**133 errors** · **66 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
