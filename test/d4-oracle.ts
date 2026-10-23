@@ -889,7 +889,7 @@ export interface CaseContext {
   /**
    * P₀ carries geometry a translation re-rounds: a circle room or an arc edge (whose
    * tessellation and tangents are irrational), or a resolved coordinate `x` with
-   * `(x + T) − T ≠ x` — an `at 55%` position that resolved an ulp off its integer.
+   * `(x + T) − T ≠ x` — an `at 12000 * 0.55` position that resolved an ulp off its integer.
    */
   floatSensitive: boolean;
 }

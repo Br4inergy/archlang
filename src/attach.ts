@@ -150,6 +150,23 @@ export function parseAttachTarget(
 }
 
 /**
+ * `pct` % of `len`, exact wherever the true product is a double. `(pct / 100) * len` rounds
+ * twice — 0.55 is not a double, so 55 % of 6000 came out 3300.0000000000005, an ulp off a
+ * room corner that a translated copy of the same plan then landed on exactly. Here the
+ * percentage is read as the decimal it was written as, `n / 10^k` with the fewest digits
+ * that reads back as `pct` (k ≤ 6), and the length is multiplied by the integer `n` before
+ * the one division: an integer run within `MODEL_RANGE_MM` times `n ≤ 10^8` stays below
+ * 2^53, so the only rounding is the division's, and a representable result is exact.
+ */
+export function percentOf(len: number, pct: number): number {
+  for (let k = 0, s = 1; k <= 6; k++, s *= 10) {
+    const n = Math.round(pct * s);
+    if (n / s === pct) return (len * n) / (100 * s);
+  }
+  return (len * pct) / 100;
+}
+
+/**
  * Resolve an attachment against the (already-resolved) walls. Returns the
  * absolute (snapped) point and the host segment, or `null` after pushing a
  * catalogued diagnostic:
@@ -261,7 +278,7 @@ export function resolveAttachment(
       });
       return null;
     }
-    dist = (pct / 100) * total;
+    dist = percentOf(total, pct);
   } else {
     const mm = raw;
     if (mm < 0 || mm > total) {

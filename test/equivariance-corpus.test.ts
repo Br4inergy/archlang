@@ -298,12 +298,14 @@ const WITNESSES: Record<ClassName, [string, () => void][]> = {
     [
       "STILL flips a pocket door's fix when 20 m of offset rounds its ulp away",
       () => {
-        // `at 55%` resolves an ulp short of x = 1400 at the origin (grid 0 snaps nothing),
-        // so the reversed run measures 949.999…, a hair under the 950 it needs; translated,
-        // the ulp rounds away and the reverse-slide fix appears.
+        // `at 12000 * 0.55` (0.55 is no double) resolves an ulp short of x = 1400 at the
+        // origin (grid 0 snaps nothing), so the reversed run measures 949.999…, a hair under
+        // the 950 it needs; translated, the ulp rounds away and the reverse-slide fix appears.
+        // (It was `at 55%` until PS0.19 made a percentage exact; a computed mm position
+        // still carries the ulp.)
         const body = `    wall id=shell exterior thickness 300 { (0,0) (2000,0) (2000,4000) (0,4000) close }
     room id=r at (0,0) size 2000x4000 uses utility
-    door id=p pocket on shell at 55% width 900 slide left`;
+    door id=p pocket on shell at 12000 * 0.55 width 900 slide left`;
         const v = reproduce("float-translation", body, "t", "lint.pocket-run.fixes", { grid: 0 });
         expect(v.expected).toBe("[[]]");
         expect(v.actual).toContain("slide right");

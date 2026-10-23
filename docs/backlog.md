@@ -438,8 +438,8 @@ P₀ values to their translation-invariant readings (the baseline header names t
 The raster classes that shared this oracle closed with circulation v2 (E.6–E.10), so the class
 now covers only lint outputs of float-sensitive geometry.
 
-**Still open for lint:** an `on <wall> at 55%` position that resolved an ulp off its integer rounds
-back 20 m away and flips `W_POCKET_RUN`'s `>= need`, making its reverse-slide fix appear. Close by
+**Still open for lint:** a computed position that resolved an ulp off its integer (`at 12000 * 0.55`;
+`at 55%` itself is exact since PS0.19) rounds back 20 m away and flips `W_POCKET_RUN`'s `>= need`, making its reverse-slide fix appear. Close by
 snapping resolved positions (or comparing through the same snapped frame).
 
 ### E.12 · `slide-track` — a mirrored sliding door swaps its panels' tracks — closed by W5b

@@ -80,7 +80,7 @@ export const KNOWN_CLASSES: Readonly<Record<ClassName, KnownClass>> = {
     law: "equivariance",
     site: "src/lint/rules/doors.ts:180-185 (pocketRunMm `>=` / `<= 0`), and every exact comparison lint makes on a resolved coordinate",
     summary:
-      "lint compares resolved coordinates in ABSOLUTE floats, and P₀ carries geometry a translation re-rounds — an `at 55%` position resolved an ulp off its integer that 20 m of offset rounds back — so an exact threshold flips under a pure translation: a pocket door's `>= need`. (The circulation half is CLOSED: the nav grid samples in its extent's own frame, snapped to a dyadic lattice — see the closed-classes law.)",
+      "lint compares resolved coordinates in ABSOLUTE floats, and P₀ carries geometry a translation re-rounds — an `at 12000 * 0.55` position resolved an ulp off its integer that 20 m of offset rounds back — so an exact threshold flips under a pure translation: a pocket door's `>= need`. (The circulation half is CLOSED: the nav grid samples in its extent's own frame, snapped to a dyadic lattice — see the closed-classes law.)",
     // No circulation fact moves under a translation: a raster change under `t` is NEW. Only
     // lint outputs of float-sensitive geometry remain.
     covers: (v, c) => c.g.translate === true && c.floatSensitive && v.path.startsWith("lint."),

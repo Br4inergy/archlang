@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { compile, format } from "../src/index.js";
 import { parse } from "../src/parser.js";
+import { percentOf } from "../src/attach.js";
 import { resolve } from "../src/ir.js";
 import type { RDoor, ROpening, RWindow } from "../src/ir.js";
 
@@ -261,5 +262,54 @@ describe("S.2 — every refusal in the slot is coded", () => {
       expect(svg).not.toContain("NaN");
       expect(svg).not.toContain("Infinity");
     }
+  });
+});
+
+describe("PS0.19 — `at <pct>%` is exact wherever the true length is a double", () => {
+  // Each of these came out an ulp off as `(pct / 100) * len`: 0.55, 0.123, 0.333 and 0.07
+  // are not doubles.
+  const INEXACT_BEFORE: readonly [pct: number, len: number, mm: number][] = [
+    [55, 6000, 3300],
+    [55, 12000, 6600],
+    [12.3, 6000, 738],
+    [33.3, 9000, 2997],
+    [7, 300, 21],
+  ];
+
+  it("lands on the integer the old form missed by an ulp", () => {
+    for (const [pct, len, mm] of INEXACT_BEFORE) {
+      expect((pct / 100) * len, `${pct}% of ${len} was inexact`).not.toBe(mm);
+      expect(percentOf(len, pct), `${pct}% of ${len}`).toBe(mm);
+    }
+    // ...and the ones the old form already got right stay right.
+    expect(percentOf(3000, 10)).toBe(300);
+    expect(percentOf(5000, 70)).toBe(3500);
+    expect(percentOf(6000, 100)).toBe(6000);
+    expect(percentOf(6000, 0)).toBe(0);
+  });
+
+  it("every one-decimal percentage of an integer run is exact when the product is an integer", () => {
+    let wasInexact = 0;
+    for (const len of [300, 1000, 2400, 3000, 5000, 6000, 7777, 12000, 33_554_432]) {
+      for (let n = 0; n <= 1000; n++) {
+        if ((len * n) % 1000 !== 0) continue;
+        const pct = n / 10;
+        const mm = (len * n) / 1000;
+        if ((pct / 100) * len !== mm) wasInexact++;
+        expect(percentOf(len, pct), `${pct}% of ${len}`).toBe(mm);
+      }
+    }
+    // The table is not vacuous: the old arithmetic missed many of these.
+    expect(wasInexact).toBeGreaterThan(100);
+  });
+
+  it("the shrunk fuzz witness: a window `at 55%` of a 6000 run sits exactly on y = 3300", () => {
+    const src = `plan "P" {
+  units mm
+  wall id=w_v1 partition thickness 80 { (2000,0) (2000,6000) }
+  window id=o0 on w_v1 at 55% width 600
+}`;
+    const w = resolve(parse(src).plan!).ir.elements.find((e): e is RWindow => e.kind === "window")!;
+    expect(w.at).toEqual({ x: 2000, y: 3300 });
   });
 });
