@@ -654,6 +654,11 @@
             "type": "number",
             "description": "Which segment of a multi-segment wall (for against_wall)."
           },
+          "segment_select": {
+            "type": "string",
+            "pattern": "^(?:north|south|east|west|containing [A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)+)$",
+            "description": "A segment selector as written (for against_wall): `north|south|east|west` or `containing <room>.<edge>`; re-emitted in place of `segment`."
+          },
           "offset": {
             "type": "number",
             "description": "Distance (mm) along the segment (for against_wall) or the room edge (for against_edge)."

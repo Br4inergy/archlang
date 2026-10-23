@@ -114,6 +114,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_ROOM_RADIUS`](#e_room_radius) | error | Circular room needs a positive radius. |
 | [`E_ROOM_SIZE`](#e_room_size) | error | Room must have a positive size. |
 | [`E_RUN_TOO_LONG`](#e_run_too_long) | error | A stair or escalator run is longer than any run the plan draws. |
+| [`E_SEGMENT_SELECT`](#e_segment_select) | error | A segment selector (`segment north`, `segment containing <room>.<edge>`) does not name exactly one segment. |
 | [`E_SILL_ABOVE_HEAD`](#e_sill_above_head) | error | A window's sill sits at or above its head. |
 | [`E_SITE_BOUNDARY_DEGENERATE`](#e_site_boundary_degenerate) | error | The site `boundary` encloses no lot. |
 | [`E_SITE_BOUNDARY_SELF_INTERSECT`](#e_site_boundary_self_intersect) | error | The site `boundary` crosses itself. |
@@ -1527,6 +1528,19 @@ room at (0,0) size 0x4000   # error: width is 0
 
 ```arch static
 escalator id=e at (0,0) size 400000x1200 dir up   # error: a 400 m run
+```
+
+## E_SEGMENT_SELECT
+
+*error* — A segment selector (`segment north`, `segment containing <room>.<edge>`) does not name exactly one segment.
+
+**Cause.** A selector stands for the `segment <n>` it resolves to, so it must pick exactly one segment. `segment north|south|east|west` picks the straight segment of a CLOSED wall whose outward face (the side away from the floor the ring encloses) looks that way; an open wall has no floor side, so it is refused. `segment containing <room>.<edge>` picks the straight segment lying on that room edge's line with a positive overlap; a centre line (`cx`, `cy`) or a name that is not a room edge is refused. No match, or several, is refused rather than guessed. `dim radius` measures an arc, which no selector picks, so a selector there is refused too.
+
+**Fix.** Type one of the `segment <n>` numbers the message lists, or name a different edge or direction.
+
+```arch static
+wall id=w exterior thickness 200 { (0,0) (3000,0) (3000,1000) (6000,1000) (6000,4000) (0,4000) close }
+furniture wardrobe against wall w segment north side right   # error: segments 0 and 2 both face north
 ```
 
 ## E_SILL_ABOVE_HEAD
