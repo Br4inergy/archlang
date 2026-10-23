@@ -239,7 +239,7 @@ export type { Concept } from "./intent-concepts.js";
 // bbox edge deltas, circulation deltas, and frozen human-readable summary sentences —
 // the channel ArchCanvas uses to narrate an iteration without re-rendering.
 export { diffPlans } from "./diff.js";
-export type { PlanDiff, RoomChange, OpeningChange, FurnitureChange, CirculationChange } from "./diff.js";
+export type { PlanDiff, RoomChange, OpeningChange, FurnitureChange, CirculationChange, WallChange } from "./diff.js";
 // Textual diff: a zero-dep line-based unified diff between two sources. The *syntactic*
 // counterpart to `diffPlans`'s semantic delta — what `arch fix` prints so an agent can
 // preview (`--dry-run`) exactly which bytes a fix pass would rewrite, and what the

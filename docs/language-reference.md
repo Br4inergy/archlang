@@ -3014,9 +3014,11 @@ topped up.
 ### Comparing two plans — `diffPlans`
 
 Where `describe(source)` turns **one** plan into facts, `diffPlans(sourceA, sourceB, opts?)`
-turns **two** into the *delta* between them. It runs entirely on top of `describe()` — no
-geometry of its own — so it is equally pure, deterministic, and never throws: if either side
-fails to resolve it returns `{ ok: false, … }` with the collected error diagnostics.
+turns **two** into the *delta* between them. It reads each side's `describe()` summary plus the
+walls and opening hosts of that same resolve (which `describe()` does not report), and does a
+little geometry of its own: a vertex-by-vertex translation test to tell a move from a resize,
+and wall centreline lengths. It is equally pure, deterministic, and never throws: if either
+side fails to resolve it returns `{ ok: false, … }` with the collected error diagnostics.
 
 ```ts
 import { diffPlans, type PlanDiff } from "@chanmeng666/archlang";
@@ -3026,16 +3028,35 @@ if (d.ok) for (const s of d.summary) console.log(s);
 
 The returned `PlanDiff` reports:
 
-- **`rooms`** — each room `added` / `removed` / `resized` / `relabeled`, with before/after
-  area and, for a resize, the signed mm delta of each bbox edge (`top`/`bottom`/`left`/`right`,
-  after − before, in plan coordinates).
+- **`rooms`** — each room `added` / `removed` (with its area) / `resized` (area before and
+  after, and the signed mm delta of each bbox edge, `top`/`bottom`/`left`/`right`, after −
+  before, in plan coordinates) / `relabeled` / `moved`. A `moved` room has the same shape at
+  another position and carries only its `offset` (`dx`, `dy` in mm, +y down the page), no
+  area fields. The offset is the translation that carries the room's floor vertices onto the
+  new ones within 10 mm each, also when the ring is written from another vertex or in the
+  other direction (a circle: its centre); it is never read off the bbox.
 - **`openings`** — doors, windows, and openings `added` / `removed` / `resized` (before/after
-  clear width in mm, and what they sit `between`).
+  clear width in mm, and what they sit `between`), or `rehosted` when the width held but the
+  host changed (the wall it stands in, or its `between A and B` / `on <room>.<edge>`
+  placement) or the spaces it joins changed. `hostBefore`/`hostAfter` name the wall as a
+  person would (`wall "p"`, `the partition between "a" and "b"`,
+  `the exterior wall derived from the rooms`, `no wall`), `relationBefore`/`relationAfter`
+  quote a relational placement as written, and `betweenBefore` gives the spaces before.
+- **`walls`** — every wall, authored or derived by `walls from rooms`, `added` / `removed` /
+  `moved` (with its `offset`) / `resized` (centreline length before and after) /
+  `rethickened` (thickness before and after; a moved or resized wall carries these too when
+  its thickness also changed). An authored wall carries its `id`; a derived one has no id an
+  author can type, so it is named by its rooms (`name`, `derived: true`). A wall placed by
+  relation (derived, or `wall … between`/`around`) that moved or resized while its rooms did
+  lists those rooms in `follows`; a derived exterior ring follows every room that changed.
 - **`furniture`** — fixtures `added` / `removed`, by category.
 - **`circulation`** — per-room walk-distance and bottleneck (pinch) deltas, from the
   [circulation](#circulation) model.
 - **`totals`** — floor area and room count before and after.
-- **`summary`** — human-readable one-line sentences describing each change above.
+- **`summary`** — human-readable one-line sentences describing each change above: rooms,
+  then openings (a re-hosted opening's `… re-hosted: …` and `… joins … → …` lines follow its
+  own entry), then furniture, then walls (`Moved the partition between "a" and "b" 500 mm
+  right, following Bed`), then the trailing `Walk to …` block.
 
 **Matching** is by **id**, with two label rules for rooms. An `id` here is the element's
 **resolved id** — the explicit `id=` if you wrote one, otherwise the deterministic auto id
@@ -3047,7 +3068,9 @@ only, since neither says which room it was before; then every other room/opening
 paired by its resolved id; and a room still unmatched is rescued only when its label is
 unique among the unmatched rooms on both sides. A room paired across two different ids is
 reported under its **after** id (an id change alone is not a change). Circulation deltas follow the same room
-pairing. On a multi-storey plan `diffPlans` compares the **lowest storey only**, exactly as
+pairing, and so does the test of which spaces an opening joins. Walls pair by resolved id too:
+an authored wall by its `id=`, a derived wall by its rooms, and a wall with no `id=` by its
+positional auto id (e.g. `partition_3`), which shifts when a wall is inserted ahead of it. On a multi-storey plan `diffPlans` compares the **lowest storey only**, exactly as
 `describe()`'s top-level `rooms[]` does.
 
 **Noise thresholds** keep sub-perceptual jitter out of the diff: a room counts as *resized* only

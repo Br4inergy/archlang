@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `at <pct>%` resolves to the exact length (55 % of 6000 = 3300, not 3300.0000000000005); a window or door an ulp off a corner or threshold now lands on it.
+- `diffPlans` (plan card PS0.4) reports three changes it missed or misnamed, additively. A room that only changed position is `moved`, with an `offset` read off its own shape (`Moved Bed 500 mm right`), where it read `resized` with `+0.0 m²`. A door, window or opening whose host wall, `between`/`on` placement or joined spaces changed is `rehosted`, naming each host by its id as written or its automatic id, or by its rooms (`door door_2 joins a and b → nothing`), where it was not reported. A new `walls` section lists authored and `walls from rooms` walls added, removed, moved, resized or re-thickened; a derived wall that moved with its rooms names them in `follows`. Existing fields and sentences keep their meaning and order; the new sentences come before the trailing `Walk to` block. Plan JSON, SVG, `describe()` and `lint()` are unchanged. For consumers with an exhaustive `switch`: two unions widen, `RoomChange.change` gains `"moved"` and `OpeningChange.change` gains `"rehosted"`.
 
 ## [1.43.1] - 2026-10-17
 
