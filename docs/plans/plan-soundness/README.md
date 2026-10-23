@@ -161,26 +161,9 @@ pair.** (2026-10-18, amends D1; does not reverse it.)
 - *Reverse if:* the PS3.1 ADR finds that the exception list (`open between …`, thickness per edge,
   a load-bearing line) grows past three clauses, or the tiling preconditions reject more than a
   quarter of the corpus. Then the pairwise forms stay the headline and this one is dropped.
-- *Measured* (2026-10-21, measured by PR #222, `scripts/probe-rooms-tiling.ts`): the four
-  clause-free preconditions of ADR 0028 §3 were decided exactly, per storey and per group, over
-  every directory of `.arch` plans except the agent gallery, which stays out of every pinned corpus.
-  The 4 `test/resolve-order` plans that diagnose on purpose are skipped and listed.
-  - (a) with no exclusions: 15 of 279 storeys refused (5.4 %).
-  - (b) with the reviewed except list: also 15 of 279. So (b) is under the quarter.
-  - *2026-10-24:* 283 storeys, after four defect-corpus plans (PS1.2), none refused. That gives 15/283 (5.3 %) for both, and 16/283 on the literal reading.
-  - All 15 refusals are `E_ROOM_NOT_RECTANGLE`. No decidable storey overlaps, fails to tile or has
-    a run under the partition.
-  - 13 of the 15 are undecided on tiling, because a non-rectilinear polygon or a circle room covers
-    no cell of the grid exactly. The other 2 (`courtyard-house`, `hillside-villa` level 2) are
-    rectilinear polygons that otherwise tile.
-  - Except list: 70 of the corpus's 71 no-use rooms are enclosed floor, so "no use kind means
-    outdoor" was applied per plan, not automatically. The list holds one room, the
-    `hillside-villa` level 1 terrace. It changes no share, because that storey is refused for
-    `r_office` anyway.
-  - Literal reading (all 71 no-use rooms excepted): 16 of 279 refused (5.7 %): 15
-    `E_ROOM_NOT_RECTANGLE` and 1 `E_ROOMS_NOT_TILING`. D5 holds under either reading.
-  - Outside the headline, the first-contact plans refuse 4 of 7 storeys, all on a polygon room.
-    Three of the four are rectilinear L-shapes that otherwise tile (§8 question 4).
+- *Measured* (PR #222, PS3.0 part A): 15 of 279 storeys refused (5.4 %), all `E_ROOM_NOT_RECTANGLE`,
+  with or without the reviewed except list; 15/283 on 2026-10-24. Under the quarter: D5 holds.
+  Detail verbatim: `research/2026-10-24-ps3-as-built.md` § D5 measured.
 
 **D6. The default profile keeps the dwelling-reading rules on; a plan opts out by reading as
 non-residential, not by choosing a profile.** (2026-10-20, amends PS2.18's card; does not touch D3.)
@@ -211,6 +194,42 @@ non-residential, not by choosing a profile.** (2026-10-20, amends PS2.18's card;
 - *Reverse if:* PS2.14's dwelling declaration lands (the declaration then decides and the word list
   is retired), or the word list misreads a residential plan in the corpus or the fuzz, or a third
   rule needs the reading (then it belongs in a declaration, not a heuristic).
+
+**D7. After §7 row 3, four PS3 cards outside any row ran before rows 4 and 5; and a met row is
+followed by a first-contact re-measure.** (2026-10-24, recorded after the fact; amends §7's order.)
+- Row 3 was met by PR #227 (PS3.6). PS3.7 (PR #228), PS3.8 (PR #229), PS3.5 (PR #230) and PS3.9
+  (PR #232) then landed although they sat in no §7 row (PS3.5 sat in row 6); rows 4 and 5 were not
+  started. PR #231 (PS0.19) fixed a pre-existing fuzz failure in the same stretch.
+- *Why:* PS3.7's priority was raised by the 2026-10-18 first-contact audit, where seat-facing defects
+  dominated its 57 defects; PS3.8 came from that audit's finding K1 (a fire exit's door swinging
+  inward); PS3.5 and PS3.9 close gaps PS3.0 and PS3.4 opened (segment selectors on derived rings;
+  Plan JSON for a placed component that derives its walls).
+- *Standing rule:* after a §7 row is met, re-measure first contact in a dated `audits/` file before
+  the next row starts. The re-measure for row 3 is `audits/2026-10-24-first-contact-rerun.md`
+  (PR #233).
+- *Reverse if:* a later first-contact re-run shows that rows 4 and 5, done in their place, would have
+  caught more of the surviving defects than PS3.5/3.7/3.8/3.9 did.
+
+**D8. The `open between` derived opening reports `placement: "absolute"`.** (Decided in PS3.0
+part C, PR #224; kept in PS3.4, PR #225; recorded 2026-10-24.)
+- `describe().freedom` lists the derived opening as `absolute`, not `relational` or `derived`, while
+  PS3.4's `door|opening between` forms report `relational`.
+- *Why:* any other word moves the four pinned PS3.0 part C digest rows (SVG + `describe()` +
+  `lint()`), a re-pin that ADR 0028 §6 does not require, and the hand-placed twin stays
+  byte-identical.
+- *Reverse if:* a consumer of `freedom` needs to tell a derived opening from a typed one, or PS3.10
+  moves those digest rows anyway; then change the word in the same PR and explain the rows.
+
+**D9. The LLM spec's lead example uses `walls from rooms`, not `wall between`.** (PS3.6, PR #227;
+recorded 2026-10-24.)
+- PS3.6's card asked for "rooms, then `wall between`, then `door between`"; the shipped
+  `LEAD_EXAMPLE` derives every wall with `walls from rooms … { open between … }`.
+- *Why:* D5 makes the whole-tiling form the one an author reaches for first; the pairwise forms are
+  the mixed-authoring forms, and ADR 0028 §7 (teaching order) already names `walls from rooms`;
+  the card's wording predated the ADR. The re-run then measured 6/6 cold authors writing rooms-first, with 0
+  `wall` statements.
+- *Reverse if:* D5 is reversed, or a re-run shows authors failing on the tiling preconditions more
+  often than they omitted walls under the pairwise form.
 
 ## 4. Principles: what "professional rules and taste" means here
 
@@ -269,81 +288,42 @@ non-residential, not by choosing a profile.** (2026-10-20, amends PS2.18's card;
 
 ## 6. Workstreams and cards
 
-Status words: `todo`, `doing`, `done` (delete the card once landed), `parked`.
+Status words: `todo`, `doing`, `done` (at most three lines: id, title, status, PR, commit), `parked`.
 Dependencies are by card id. Each card's gate is the backlog floor gate plus what it lists.
 
 ### PS0 · Bugs found by the audit (independent; file and fix first)
 
-Landed: PS0.1 (`between` from wall-face probes at centre and jambs, additive `straddles`; PR #196),
-PS0.7 (the label classifier emits `living`/`dining`; a living alias yields to any other kind
-but dining; PR #197), and in PR #211: PS0.11 (`W_ROOM_TOO_SMALL` reads the room's use: WC 1.1 m²,
-bath 2.0 m², store/utility/hall/circulation/entry exempt, knob `minRoomAreaByUseM2` merged per use;
-a profile that sets the generic floor, `accessibility-advisory`'s 5 m², holds every room to it, since
-no researched accessible per-use table exists yet), PS0.12 (a window on an arc edge is attributed
-from the shape: face probes, else through the arc's chord; PS2.8's `arc-window-unattributed` skip
-kept only where that fails) and PS0.10 (`describe().access.mainEntrance` and
-`depthFromMainEntrance`; width never decides: no door into a bedroom, bath or WC is a candidate,
-and the basis is `entry-room` (the one door into an entry, hall or circulation room, only when every
-other door opens into a service room), `street` (the one hinged door facing `site.street`) or `sole`;
-the fact refuses with `tie`, `no-candidate` or `upper-storey` (a storey a shaft arrives on, PS0.3's
-question), declared to the coverage report as `no-main-entrance`. `W_PATH_TOO_NARROW`,
-`W_ROOM_VIA_PRIVATE` and `W_WET_ROOM_DOOR` judge a route from the main entrance; garage doors and
-doors into rooms it cannot reach from inside stay ways in; a room with its own door from outside is
-judged by that door, and reported in its own words when the main entrance cannot reach it).
+Landed: PS0.1 (PR #196, da9b47b5), PS0.7 (PR #197, 1d92656f), PS0.10–PS0.12 (PR #211, fcb30748),
+PS0.13–PS0.14 (PR #214, e736146f). Landing notes verbatim: `research/2026-10-24-ps0-ps2-as-built.md` § PS0.
 
-Landed 2026-10-20 in PR #214 (… aac48b2; one red-team round, no blocker): PS0.13 (the occupancy
-grid seeds a doorway that sits exactly on a cell line from both cells, so `W_ROOM_NO_CLEAR_PATH`
-reads the same under every D4 placement; corpus `lint()` byte-identical over 272 files) and PS0.14
-(`describe()`'s net-area walk is charged to a count, `MAX_NET_PROBE_WORK` = 20,000,000, before it
-runs; a room past it omits `net_area_m2` as ADR 0027's third named case, and the 125 × 300 comb
-that took 52–97 s now returns in milliseconds). The red team measured that the cap is per room:
-200 distinct comb rooms each just under it still cost `describe()` 172.6 s, three times faster than
-before but unbounded per plan, since `describe()` draws nothing and so never meets the drawing
-budget (ADR 0022 §4). That is PS0.15.
+A done row's "record" is `research/2026-10-24-ps0-ps2-as-built.md`.
 
 | Card | Bug (re-measure first; the evidence is in the cited file) | Status |
 |---|---|---|
 | PS0.2 | `compile -f json` (Plan JSON) drops arc segments; a round trip loses a bay and floats its window (`audits/archcanvas-public-examples.md` G2) | todo |
 | PS0.3 | Multi-storey `describe`: upper-storey rooms report `reachable:false` though a stair reaches them; an exterior door on an upper storey counts as an entrance (`audits/showcase-and-examples.md` §5.10) | todo |
 | PS0.4 | `diffPlans` reports a pure move as "resized +0.0 m²", ignores an opening whose `between` changed, and has no wall section (`research/associativity.md` §1.2). Extend additively | todo |
-| PS0.5 | `furniture … against wall … in <relational room>` fails with `E_FURN_AGAINST` because relational placement resolves after furniture (`src/ir.ts` ~2488). May fall out of PS3.2's reorder. *As built (PR #220):* relational rooms are now placed before every reader, so the readers (furniture side inference and `in <room>`, a door's `swing into`, a garage door's floor probe, lint's fixture paste) read `_unplaced` instead of `_rel`: a placed relational room works and draws byte for byte as its absolute twin, and a room that could not be placed, including an instance's room read from the root, is refused naming its placement error | done |
+| PS0.5 | `furniture … against wall … in <relational room>` failed with `E_FURN_AGAINST`. As built: record § PS0.5 | done (PR #220, 6c6179c7) |
 | PS0.6 | `suggest` connects an unreachable room to *any* reachable neighbour, a bedroom included (`src/suggest.ts` ~364-395), against `skills/archlang/SKILL.md`'s own advice. Rank by neighbour use (hall/circulation/living first, bedroom and bath last) | todo |
 | PS0.8 | `W_PATH_TOO_NARROW` measures pinches on the 100 mm grid and missed a 500 mm diagonal between a bench and a jamb (`repro/gallery-bench-pinch.arch`, `audits/archcanvas-public-examples.md` GW3). Re-measure the case first: the repro lints with the warning in isolation | todo |
 | PS0.9 | `describe` assigns a window between an enclosed room and a covered loggia to the loggia, so lint and describe disagree on bedroom windows (`audits/showcase-and-examples.md` villa-rotonda) | todo |
-| PS0.13 | `W_ROOM_NO_CLEAR_PATH` is not equivariant under mirror x. Found 2026-10-19 by `test/equivariance-fuzz.test.ts` (unseeded) on a PR unrelated to circulation and reproduced on `main@6b6a42c`: a 2 × 2 m room with a 700 mm door at 5 % and two WCs at (0,51) 400×300 and (357,0) 300×300 raises the code only when placed with `mirror x`. The fuzz test fails whenever its random draw hits the class, so any PR's CI can go red on it. Either fix the walk (`src/lint/rules/circulation.ts`) or pin the class in the oracle with its witness; the plan is in the owner's scratch note (`plan-soundness-impl/fuzz-mx/`) until fixed. *As built (PR #214):* the walk was right; the seed was wrong. A doorway centre on a cell line was seeded into one cell chosen by the sign of the coordinate, so `mirror x` moved the seed. Both cells are seeded now (`src/analyze/occupancy.ts`). The witness is pinned in `test/d4-oracle.ts`; the red team's aimed fuzz (3 seeds, 2,200 cases) found 0 non-equivariant cases on the branch against 7 of 600 on main. A doorway authored 1e-6 mm off a line still reads differently under D4 (any absolute tolerance has that edge; the nav grid snaps exactly), noted, not fixed | done |
-| PS0.14 | `describe()`'s net-area integral is super-linear on a room polygon with hundreds of vertices whose edges cross hundreds of free-standing walls: 52–97 s on `main@90ae6bf` for a 125-partition × 300-tooth comb room (the inside test walks every ring vertex per boundary piece, pieces ≈ 4·S·T). No shipped plan is near it (corpus max 56 vertices), but `compile()` is bounded by law and `describe()` runs in the playground thread. Charge pieces × ring vertices to a count before the integral, or bin the ring for the inside test; PS2.4's `FaceBudget` already refuses the lint side (PR #204 round 3). *As built (PR #214):* `MAX_NET_PROBE_WORK` (20,000,000) is charged after the split and before the walk as 2 × pieces × (nearby band boxes and edges + the fullest y-band of the ring); the inside test bins the ring by y. A room past it omits `net_area_m2` (ADR 0027, third case, `too-much-work`); no shipped room is charged more than 175,000. Per room only; the per-plan total is PS0.15 | done |
+| PS0.13 | `W_ROOM_NO_CLEAR_PATH` was not equivariant under mirror x. As built: record § PS0.13 | done (PR #214, e736146f) |
+| PS0.14 | `describe()`'s net-area integral was super-linear on a comb room. As built: record § PS0.14 | done (PR #214, e736146f) |
 | PS0.15 | `describe()`'s net-area work has a cap per room but no total per plan. Measured by PR #214's red team on `aac48b2`: 200 distinct 45-wall × 60-tooth comb rooms, each under `MAX_NET_PROBE_WORK`, cost `describe()` 172.6 s (50 rooms 19.7 s; main 60.3 s for the same 50). `compile()` meets the drawing budget only when a schedule is drawn; `describe()` draws nothing (ADR 0022 §4), so the step budget is its only bound and the playground thread is still exposed. Add a per-call total (a count, charged before each room's walk; rooms past it omit the figure for the same reason) or make the per-room charge count against one plan-level meter. No shipped plan is near it | todo |
 | PS0.16 | `set` value parsing: `parseSetValue` reads a bare identifier before `,`/`)` as a word (like `swing: out`), so `set door(width: W)` and `set door(width: hall.cx)` silently become the string "W"/"hall.cx" and have no effect, with no diagnostic (predates PR #221, found in its review; a door's explicit `width` overrides `set`, so the effect was never visible). Decide: a bound name or a dotted datum name as a `set` value is an expression; a bare word stays a word only for word-valued keys. Also: `set door(swing: inward\|outward)` is silently ignored like any unknown enum word there (PS3.8); fix it with this card | todo |
 | PS0.20 | Plan JSON: a door carrying both `swing` and `swing_building` that contradict each other (e.g. `swing: "out"` with `swing_building: "outward"` where outward resolves to `in`) is accepted silently; `swing_building` wins on input and the `swing` value is never read (found in PR #229's review). Consider a warning on import, or document `swing` as informational there | todo |
 | PS0.17 | `describe` keys: `outdoor` and `fences` are missing from `PER_STOREY_OPTIONAL_KEYS` (`src/describe.ts`), so `describe --level N` can leave another storey's surfaces standing, and from `DESCRIBE_KEYS` (`src/cli/commands-analyze.ts`), so `--select outdoor` is refused (found in PR #223, which added `derived_walls` to both; not fixed there) | todo |
-| PS0.19 | A window's `facing` fact was not equivariant under a pure translation. Found on 2026-10-23 by `test/equivariance-fuzz.test.ts` on PR #230's CI (fast-check seed 1736625303, path "29:2:2:2:10:10:10:10:10:10:11:11:20:20:20:20:20:20:20:20:20:20:20:20", `g = t`); it reproduced on `main` too. The shrunk plan is a 6 × 6 m shell with partitions at x 2000 and 4000 and at y 3300, six rooms in a 3 × 2 grid, and `window id=o0 on w_v1 at 55% width 600`, placed 20 m out. `(55 / 100) × 6000` is 3300.0000000000005, an ulp off the room corner (2000,3300), so P₀ had no tie and read `E`; translated, the ulp rounded away, the window sat on the corner, and the `facing-tie` convention (N/S first) read `S`. **As built:** `percentOf` (`src/attach.ts`) reads the percentage as the decimal it was written as (`n / 10^k`, k ≤ 6), multiplies the run by the integer `n` and divides once, so a percentage whose true length is a double resolves to it exactly. `resolveAttachment` is the only place a percent position becomes a length (furniture, dims and hosted datums take no percentage; datum hosts refuse one). Measured over `examples/` and `test/`: 5 positions change by an ulp (`hexagon-pavilion.arch` p_ne, p_nw, p_se; `museum-wing.arch` o1; `test/fixtures/schedule-sheet.arch` door_1, 3400.0000000000005 → 3400), every one snapped or printed to the same output, so no digest, golden or snapshot row moved. The `float-translation` class's witness was this same ulp, so it now spells the position `at 12000 * 0.55`, a computed mm position that still carries the ulp (the class stays open for lint). The shrunk plan is pinned in the fuzz suite's counterexamples, with a unit table in `test/attach.test.ts` | done |
+| PS0.19 | A window's `facing` fact was not equivariant under a pure translation. As built: record § PS0.19 | done (PR #231, 6fde1d7f) |
 | PS0.18 | Plan JSON round trip turns a label-only "Hall" into `uses entry`: the room classifies `uses hall`, `room_type` `Entrance`, and the projection maps `Entrance` back to `entry` (`src/plan-json.ts`), so the compiled-back plan's `describe()` differs. Found in PR #227, where `examples/relational.arch`'s new hall authors `uses hall` to round-trip. Decide the honest mapping (carry the classified `uses`, or map `Entrance` to the use that produced it). It applies inside a PS3.9 component body too, whose rooms go through the same projection (found by PR #232's red team) | todo |
 | PS0.21 | Plan JSON has no member for `outdoor`, so a plan whose rooms tile only with an `outdoor` surface (a courtyard) loses it on the way out and comes back refused with `E_ROOMS_NOT_TILING`, at the root and inside a PS3.9 component body alike (found by PR #232's red team). Carry `outdoor` additively, or refuse the projection with a named code rather than emit a payload that cannot compile | todo |
 
 ### PS1 · The defect corpus (do this before PS2; it is the yardstick)
 
-**PS1.1 · `test/defect-corpus/`** landed 2026-10-18 (PR #195, commit df00ab5): 53 defect cases with
-clean twins across all eight classes, headers parsed by `test/defect-corpus.test.ts`, catch rate
-printed per class (7/53 at landing, all from existing rules). A `todo` case is also asserted NOT to
-fire, so a PS2 rule that starts catching one turns the test red until its header says `done`.
-Proposed code names for PS2.4/PS2.11/PS2.12 live in the folder README and are the names PS2 uses.
+**PS1.1 · `test/defect-corpus/`.** `done` (PR #195, 3d255044)
+- As built: record § PS1.1.
 
-**PS1.2 · Fold the first-contact instances into the corpus.** Landed 2026-10-19 (PR #203,
-84df654 … fdf8231): 14 new cases with clean twins (corpus 53 → 67), four `done` at landing (C1, C2,
-C5, C8), two new proposed codes in the folder README (`W_LEAF_ACROSS_DOORWAY`,
-`W_FOOTPRINT_TRANSPOSED`). Instances outside the eight classes were listed in the PR body by the
-audit's proposed class, not turned into cases. The S1 case (bath off an open-plan kitchen/living) is
-the stronger variant: the audit's own studio measures 2025 mm door-to-sink and lies beyond PS2.6's
-1500 mm default, a taste question (R2).
-- Reduce the `audits/2026-10-18-first-contact.md` defects into cases: a seat facing away from its
-  table, a transposed directional footprint, door–door interference, the masked route behind a
-  patio door (PS0.10), the tee-crossed WC window, the stair foot under a door swing, the fire door
-  swinging inward, a kitchen with no worktop. Same header scheme, clean twins, and the new codes
-  added to the folder README's proposed list.
-- *2026-10-24 (`audits/2026-10-24-first-contact-rerun.md`):* two more cases with twins.
-  - `clearances/seat-facing-away` is `done` (`W_SEAT_FACING_AWAY`; its twin uses `facing`).
-  - `circulation-privacy/fire-door-inward` is K1 reduced. Lint is silent, so it is `todo` with the proposed `W_EXIT_SWINGS_INWARD` (PS2.16); its twin uses `swing outward`.
-  - The corpus is now 70 cases and the catch rate 47/70.
+**PS1.2 · Fold the first-contact instances into the corpus.** `done` (PR #203, 90ae6bfd; two more cases in PR #233, 1a1efd9e)
+- As built: record § PS1.2. The corpus is now 70 cases and the catch rate 47/70.
 - *Open (carried from PS1.1):* should the corpus also feed `eval:ci` as a non-gating metric? Read
   `.claude/rules/eval-dataset.md` first: the holdout rules apply.
 
@@ -353,52 +333,32 @@ Each is an advisory `W_*` appended to `LINT_RULES`, with catalogue entry, `expla
 (§4 format) and a defect-corpus case. Prototype checkers that found these defects exist in the
 owner's audit scratch. Re-derive them from this text rather than asking for them.
 
-Landed 2026-10-19 (wave 1): PS2.5–PS2.7 in PR #199 (e54f586, a512a72); PS2.1–PS2.3 in PR #201
-(990bd75 … 3445cac); PS2.8–PS2.9 in PR #200 (4a32ce1 … 88c8dfe). Corpus catch rate on
-`main@cc165f4`: 33/53 (openings 14/14, circulation 8/8, defining 3/4, daylight 4/4; space 1/6,
-clearances 3/10, stair 0/3, annotation 0/4 untouched). Corpus `lint()` movement, explained per
-rule in each PR: 71 corpus files moved on lint only; 7 examples were edited so the new rules
-report nothing on them (accessible, relational, hillside-villa, practice-office, two-storey,
-corner-cafe, terrace-row, plus courtyard-house, furnished-flat, library and garden-house in the
-earlier PRs); `examples/two-bed.arch` is left warning (3 × `W_ROOM_VIA_PRIVATE`) for PS3.6 (fixed there, PR #227). The
-reconstructed `repro/family-apartment.arch` went from no architectural warning to 13 (5 at
-junctions, 2 overlaps, 1 ambiguous connector, 1 route through a private room, 1 wet-room door,
-3 missing defining pieces). Follow-ups from the reviews are cards PS2.17–PS2.20 and the notes on
-the landed rows.
+Landed in three waves, 2026-10-19 to 2026-10-20 (landing notes verbatim: `research/2026-10-24-ps0-ps2-as-built.md` § PS2). Corpus catch
+rate now 47/70 (`audits/2026-10-24-first-contact-rerun.md`).
 
-Landed 2026-10-19 (wave 2): PS2.13 in PR #203 (76d62a1 … e3bb959; with PS1.2 and a revision of
-PS2.6, see its row); PS2.4 in PR #204 (6354d78 … ae84ec3, three red-team rounds). Corpus catch rate
-on `main@600eaaf`: 43/67 (openings 16/16, space 6/6, circulation 10/10, daylight 4/4, defining 4/5;
-clearances 3/17, stair 0/4, annotation 0/5 untouched). `repro/family-apartment.arch` now also reports
-2 × `W_BOUNDARY_NO_WALL` (evidence.md §1 defect 2, the missing living/bedroom wall) and
-`repro/widen-after.arch` reports `W_ROOM_OUTSIDE_SHELL` (the widening drill). Example edits with
-reasons in PR #204: aquarium's two galleries extended to the north wall (121 m² each was in no room)
-and its concourse polygon widened around the drum; courtyard-house's courtyard drawn as an `outdoor`
-surface; relational keeps its deliberate warnings. PS0.10–PS0.12 are PR #211 (see PS0).
-
-Landed 2026-10-20 (wave 3): PS2.19 and PS2.17 in PR #216 (ef7dc46 … acc619f; six review rounds, the last three on the quoted-hint verification, after which the owner capped the loop at two rounds per PR); PS2.18 in PR #217 (d35dabb … 2483e16, D6; two rounds). Corpus catch rate on `main@06c6b56`: 46/68 (openings 16/16, space 6/6, circulation 11/11, defining 5/5, daylight 4/4; clearances 4/17, stair 0/4, annotation 0/5 untouched; the +1 case is the café pair `wc-off-servery`). Lint moved only where the rows say: eleven examples, the gallery two-bed and the overview fence gained a `counter` (PS2.17); the two café plans and four eval office goldens lost their dwelling-only warnings (PS2.18, `lintWarnings` 4→3, 2→1, 7→6, 7→6 in `eval/judge-fixture.json`); `coverage.unclassifiedRooms` shrank on 37 plans (PS2.19). No digest was re-pinned except `two-bed-min-area.laundered` (e621f33b→f34b4450, the corner counter now quoted with `rotate 180`). PS0.13 and PS0.14 are PR #214 (see PS0).
+A done row's "record" is `research/2026-10-24-ps0-ps2-as-built.md`.
 
 | Card | Rule | Test (on the resolved plan) | Status |
 |---|---|---|---|
-| PS2.1 | `W_OPENING_AT_JUNCTION` | For every opening kind (door, window, cased opening): another wall's body intersects the opening's clear span on the host run, or either jamb's nib to a meeting wall face is under max(`minJunctionNibMm` 100 mm, host thickness × `junctionNibThicknessRatio` 0.5), measured at the face, configurable by profile. *As built (PR #201):* a new rule beside `W_DOOR_NEAR_CORNER`, which keeps its output byte-for-byte; the corner check runs for doors only where that rule is silent; a cased opening flush with a meeting wall is exempt. *Known gap:* two collinear walls meeting end to end never pair, so an opening across their joint is not reported | done |
-| PS2.2 | `W_OPENING_OVERLAP` | Two openings on one host run whose along-run spans intersect, or whose separating pier is thinner than a mullion (`minMullionMm` 100). *As built (PR #201):* the two leaves of a double door are exempt and move as a pair under `fix`. *Known gap:* the check is per pair of openings on a host, quadratic in openings per wall; fine at corpus sizes, revisit if a wall ever carries hundreds | done |
-| PS2.3 | `W_CONNECTOR_AMBIGUOUS` | An access edge with `ambiguous: true`, or one whose clear span covers more than one room on a face (`describe()` reports this as the additive `straddles` list since PS0.1 landed; the edge stays in the graph with a measured `between`). The message names the rooms on each side. *As built (PR #201):* a straddled room counts only when the clear span covers ≥ `minStraddleCoverMm` (100) of it, net of the meeting wall's body, so a 1 mm overrun is not reported | done |
-| PS2.4 | `W_BOUNDARY_NO_WALL` | Two rooms share an edge run longer than a doorway with no wall or opening on it, unless both rooms' authored `uses` form an open-plan pair (kitchen/dining/living) or a fixed counter stands in the gap (a café servery is a deliberate boundary, `audits/2026-10-18-first-contact.md` C-plan). Plus its dual: a walled face with no room covering ≥ 95 % (unassigned floor), and rooms outside the closed exterior ring (`W_ROOM_OUTSIDE_SHELL`). Generalises `largestPerimeterGap` beyond wet rooms. After it lands, a test pins that circulation-reachable implies access-reachable. *As built (PR #204):* three codes. `W_BOUNDARY_NO_WALL` (`maxBoundaryGapMm` 900): collinear runs merged before the gap is taken; a wall counts as cover by its body (± half thickness + 50 mm), a perpendicular wall body crossing the line splits the run; a counter counts only where it straddles the line and closes the stretch only if what it leaves open totals ≤ a doorway (wall stubs are judged by the largest contiguous stretch, decided). `W_FLOOR_UNASSIGNED` (95 % cover, ≥ 0.5 m²): closed faces from the joined wall bodies with a loop nesting tree; a sealed face (no door, no window, no bordering room) is not reported (library's drum spandrels). `W_ROOM_OUTSIDE_SHELL` (0.1 m²): judged only when ≥ 50 % of the room's floor lies inside walled faces, otherwise silent (ADR 0005). All face work is charged to a `FaceBudget` before it runs (wall contacts 1600, faces 400, loops per grid cell 64, Σ face curves 20 000, face × room pairs 10 000, point tests 2e8); a refused storey files the coverage skip `enclosure-budget` naming the cap. No corpus storey is refused (max 31 faces, 64 contacts). "Circulation-reachable implies access-reachable" does not hold yet on three plans (relational's open-plan join, two `W_BOUNDARY_NO_WALL` cases); pinned as known counterexamples. `bath-open-side` raises both `W_ROOM_NOT_ENCLOSED` and this code (decided: different facts). Follow-ups: PS2.21 | done |
-| PS2.5 | `W_ROOM_VIA_PRIVATE` | Remove a bedroom or bath/WC from the access graph: does any other room (not its own ensuite, wardrobe, storage or balcony) become unreachable? Generalises `W_BATH_VIA_BEDROOM` (keep that code; this is the general case). ResPlan: 0.03–0.06 % of real dwellings do this, so a warning is safe. *As built (PR #199):* seeded from every door to the ground but balcony doors, so a patio door could still mask the route; seeded from the main entrance only since PS0.10 (PR #211), with garage doors and doors into rooms the main entrance cannot reach from inside kept as ways in, and a room with its own door to the ground never reported; a stair landing inside a bedroom is not a cut point; one warning per cut room, not one per room behind it. *Known gap:* a room reachable through either of two parallel private rooms (bedroom A or bedroom B, never a public route) is not reported, because removing one leaves the other | done |
-| PS2.6 | `W_WET_ROOM_DOOR` | A bath/WC whose only connector is a leaf-less opening to a habitable room; a bath/WC door onto a kitchen or dining room (GB 50096 5.4.3); a bath with two or more connectors acting as a passage (the PS2.5 test covers part of this). *Revised in PR #203 (decided 2026-10-19):* a bath door onto a room that is a kitchen AND the living room counts only where the door really opens onto the kitchen zone: a kitchen fixture (sink, hob, oven, fridge, worktop, island, dishwasher; not a microwave) nearer than `wetDoorKitchenProximityMm` (1500, GB 50096 5.3.5's single-row kitchen width) from the doorway's room-side face, compared in whole mm. Such a room with no kitchen fixture files the coverage skip `no-kitchen-fixtures`. A kitchen alone, a dining room alone and a kitchen+dining room (no living) warn unconditionally as before; living or dining without kitchen stays exempt (taste layer). The earlier blanket exemption of any kitchen that was also living/dining went beyond the clause; a use-flag narrowing was tried first and made five eval goldens and laneway-house warn (door 2.7–4.6 m from the kitchen), which is what the proximity test fixes. The GB 50096-2011 5.4.3 wording is unverified online; `research/design-taste.md` and `research/prior-art.md` read it differently Since PS2.18 the dining, leaf-less and passage arms decline on a plan that reads as non-residential; the kitchen arm does not | done (PR #199, #203) |
-| PS2.7 | `W_ENTRANCE_INTO_PRIVATE` | The exterior door's room is a bedroom or bath (ResPlan: never). Kitchen entry is advice-level under profiles only. `examples/garden-house.arch` moved its garage door to swing into the kitchen so the rule reports nothing there. Since PS2.18 it declines on a plan that reads as non-residential (it never fired on one) | done (PR #199) |
-| PS2.8 | `W_HABITABLE_NO_WINDOW` | Extend the bedroom rule to living, dining and kitchen (needs PS0.7). *As built (PR #200):* a room with a window whose host is an arc segment is skipped, not judged, until PS0.12 attributes it (`hillside-villa`'s bay was glazed and dimensioned instead). *Resolved by PS2.18:* the kitchen arm declines on a plan that reads as non-residential (an office kitchenette has no daylight duty), with a `non-dwelling` skip | done |
-| PS2.9 | `W_ROOM_MISSING_DEFINING` | A furnished room missing its defining piece: bedroom without a bed, bath without a shower or tub, kitchen without a sink, hob or worktop. Reuse `FURNISH_TABLE`'s required marks, so the rule and furnish can never contradict (furnish's never-worse gate re-lints its own output). *Decided 2026-10-18:* the defining set is exactly the row's required marks (kitchen = sink + hob, and since PS2.17 a worktop); `finish` stays fill-only (M.22 unchanged). *As built (PR #200):* defining sets come from `FURNISH_TABLE`'s required marks via `src/lint/defining.ts` (table moved to `src/furnish-table.ts`); `W_ROOM_NO_FIXTURE`'s hint quotes the defining set. `furnish` judges each use on its finished pieces and tries the lint's own placement search before giving a use up; a use it cannot complete is left out whole, so `finish` never writes a use the rule would then report (fuzz counterexample pinned in `test/lint-room-contents.test.ts`). Fuzz against the previous main, 1,600 random plans: 34 baths gained a tub or shower, 44 baths that used to get a WC and basin are now left empty (PS2.20), kitchens unchanged. The worktop follow-up is PS2.17 | done |
+| PS2.1 | `W_OPENING_AT_JUNCTION` | As built: record § PS2.1 | done (PR #201, cefe7e9f) |
+| PS2.2 | `W_OPENING_OVERLAP` | As built: record § PS2.2 | done (PR #201, cefe7e9f) |
+| PS2.3 | `W_CONNECTOR_AMBIGUOUS` | As built: record § PS2.3 | done (PR #201, cefe7e9f) |
+| PS2.4 | `W_BOUNDARY_NO_WALL` | As built: record § PS2.4 | done (PR #204, 600eaaf6) |
+| PS2.5 | `W_ROOM_VIA_PRIVATE` | As built: record § PS2.5 | done (PR #199, a7a1ac34) |
+| PS2.6 | `W_WET_ROOM_DOOR` | As built: record § PS2.6 | done (PR #199, a7a1ac34; PR #203, 90ae6bfd) |
+| PS2.7 | `W_ENTRANCE_INTO_PRIVATE` | As built: record § PS2.7 | done (PR #199, a7a1ac34) |
+| PS2.8 | `W_HABITABLE_NO_WINDOW` | As built: record § PS2.8 | done (PR #200, cc165f4c) |
+| PS2.9 | `W_ROOM_MISSING_DEFINING` | As built: record § PS2.9 | done (PR #200, cc165f4c) |
 | PS2.10 | `W_DIM_TEXT_MISMATCH` | A hand `dim … text "<number>"` whose number differs from the measured span beyond rounding. Non-numeric text is exempt | todo |
-| PS2.11 | Clearance family | WC centreline to side obstacle (default 400, `us` 381, accessible 450–500); front of a wardrobe ≥ 600; hob-to-fridge gap; tall unit (fridge, wardrobe, bookcase) covering a window; a door swing over a stair footprint or its landing; a void at a stair's arrival; stair pitch versus storey height; `W_DOORWAY_BLOCKED` extended to leaf-less openings; a single hinged leaf over 1200 mm (and a double-leaf `door` kind, since authors fake one with two leaves that clash); door–door interference (an open leaf parked across another doorway's approach, which `W_SWING_OBSTRUCTED` does not compare); a transposed footprint on a directional piece (`size WxH` with the depth on the long axis instead of a `rotate`, drawn turned and stretched). Each is a separate code; split into cards as they start. Wardrobe front and bed sides are declarations or profile values, never defaults (PS3.7). Fresh instances: `audits/2026-10-18-first-contact.md` T1, T3, H2, C4, A1, K4. *As built (PR #228, with PS3.7):* the seat check `W_SEAT_FACING_AWAY` (a chair, office chair or outdoor chair within `seatTableReachMm` 600 of a table or desk in the same room whose front ray enters none of them within that reach; on by default, every profile inherits it; hint names the nearest table and `facing <id>`, no fix). First-contact plans: 51 seats at a table, 26 warn; the audit's 27th is café `chair_29`, south of its table and facing south, whose ray enters the next table 550 mm away. It found 17 chairs on 8 examples, all fixed in that PR. "Front of a wardrobe ≥ 600" is met by the `clear front` declaration: re-measured, a 600 default would warn on 3 of the 11 example wardrobes (`garden-loft` 100, `tiny-house` 300, `furnished-flat` 450 mm). The other bullets stay open | todo |
+| PS2.11 | Clearance family | WC centreline to side obstacle (default 400, `us` 381, accessible 450–500); front of a wardrobe ≥ 600; hob-to-fridge gap; tall unit (fridge, wardrobe, bookcase) covering a window; a door swing over a stair footprint or its landing; a void at a stair's arrival; stair pitch versus storey height; `W_DOORWAY_BLOCKED` extended to leaf-less openings; a single hinged leaf over 1200 mm (and a double-leaf `door` kind, since authors fake one with two leaves that clash); door–door interference (an open leaf parked across another doorway's approach, which `W_SWING_OBSTRUCTED` does not compare); a transposed footprint on a directional piece (`size WxH` with the depth on the long axis instead of a `rotate`, drawn turned and stretched). Each is a separate code; split into cards as they start. Wardrobe front and bed sides are declarations or profile values, never defaults (PS3.7). Fresh instances: `audits/2026-10-18-first-contact.md` T1, T3, H2, C4, A1, K4. *Part landed:* `W_SEAT_FACING_AWAY` (PR #228, 0d2dbc04); as built: `research/2026-10-24-ps0-ps2-as-built.md` § PS2.11. The other bullets stay open | todo |
 | PS2.12 | Annotation collisions | Auto-dimension text inside a room floor, over a symbol or over a label; title-block text wider than its row. Extend `W_DIM_INSIDE` to `dims auto`; drafting only, never `describe()` | todo |
-| PS2.13 | Lint coverage report | `lint --json` gains an appended `coverage` block: rule families run, skipped (with why: no `uses`, no brief, no `site`, no multi-storey, no dwelling declared, no operable-window data) and unclassified rooms. Human output prints one line when something was skipped. Purely additive JSON. *As built (PR #203):* `lintWithCoverage()` runs the rules once and returns `{diagnostics, coverage}`; `lint()` is its `diagnostics`, byte-identical (812 hashes, 0 moved). Every rule declares a `family`; a rule declines through `ctx.skip(reason, room?)`, typed reasons in `src/lint/coverage.ts` (`no-uses`, `no-site`, `single-storey`, `arc-window-unattributed`, `non-rectangular-room`, `no-entrance`, `balcony-only-entrance`, `unsupported-host-geometry`, `no-kitchen-fixtures`, `enclosure-budget`, `no-main-entrance`, since PS2.18 `non-dwelling` and since PS2.17 `hint-budget`; reserved `no-brief`, `no-dwelling`, `no-operable-window-data`). `lint --json` appends `coverage` after `diagnostics`; the human line goes to stderr, never under `--quiet`, and `no-site` is filed only when a habitable room has a window (126 of 171 corpus files print a line, was 167). `describe()` reads none of it. *Open:* the MCP server and VS Code extension do not surface `coverage` yet (version bump); a degenerate nav grid is still a silent decline (TODO at the seam). `coverage.unclassifiedRooms` lists the rooms the vocabulary cannot read (PS2.19 narrowed the list) | done |
+| PS2.13 | Lint coverage report | As built: record § PS2.13 | done (PR #203, 90ae6bfd) |
 | PS2.14 | Dwelling declaration | A zone-level marker that groups rooms into a dwelling, `describe().dwellings`, common area, and the derived party wall (the ladder rung). Needs an ADR. Unblocks the across-dwellings rule (GB 50096 5.4.4 / GB 55038-2025 4.1.7: a WC over another household's bedroom, living, kitchen or dining) and the shared-corridor checks. Corrects `research/design-taste.md` R19's default of "one level = one dwelling": that fires inside a single house and misses flats, so R19 runs only where dwellings are declared and otherwise reports a coverage skip (`research/2026-10-18-furniture-and-multistorey.md` B1, B9, B12) | todo |
 | PS2.15 | `W_SHAFT_FOOTPRINT_MISMATCH` | Same-id stair/lift runs on adjacent storeys whose footprints do not overlap. The facts exist already; ship with PS2.11's arrival-void check (`…multistorey.md` B4) | todo |
 | PS2.16 | Egress necessary-condition checks | `uk-residential-advisory`: `W_INNER_ROOM` (ADB 2.11/2.12, 3.7/3.8: a habitable room whose only route to the exit passes through another room, with its exemptions). `us-residential-advisory`: bedroom escape-window failures provable from gross sizes (IRC R310: width < 508 mm, sill > 1118 mm, area < 0.33 m²); never a pass claim without an `openable` window fact (`…multistorey.md` B10–B11). A non-residential advisory profile for the same family: escape-door swing in the direction of travel and leaf type, exits on separate sides, public/staff zoning, accessible WC pan offset and basin reach (first-contact café and clinic, K1, K9, K10, C6, K8). Blocked on facts, not rules, and listed as such: wet-stack risers, fire ratings, protected-stair enclosure, sprinkler-dependent limits | todo |
-| PS2.17 | Kitchen worktop | The corpus case `missing-defining-contents/kitchen-no-worktop` is still `todo` after PS2.9 because the defining set is the row's required marks and `counter` is optional. Decide between making `counter` a required kitchen mark (every furnished kitchen then gains or loses a counter: run the fuzz comparison of PS2.9 and explain the moved rows) and a profile rule `W_KITCHEN_NO_WORKTOP` that reads the same table (no furnish movement). Default to the profile rule unless the fuzz shows furnish already places a counter in nearly every kitchen. *Decided 2026-10-20:* the kitchen row requires a `counter` (or `worktop`), from the fuzz: the row had no counter item and 0 of 738 fuzzed kitchens got one, and a separate `W_KITCHEN_NO_WORKTOP` could not avoid moving `finish` (its never-worse gate counts every gained code). *As built (PR #216):* `finish` tries the worktop's 600 mm module beside the hob, then against any wall, then the 400 mm module beside the hob, then against any wall, and never moves the sink and stove; the lint hints' placement search tries the same two sizes (review round 1 caught it trying only 600); 21 of 738 fuzzed kitchens (2.85 %, all ≤ 1.95 m wide) are left out whole, never written without one; in 146 the counter takes the fridge's place and 30 living+kitchen rooms lose the living use whole. Eleven examples, the gallery two-bed and the overview fence gained a counter; the first-contact plans are left reporting it. *Review rounds 2–3:* a quoted set is re-linted with its pieces standing before it is quoted, against only the rules a pasted set was measured to move (`readsFurniture` on `fixture-back-to-room`, `wet-room-door` when the room is or opens onto a bath or WC, `path-too-narrow` only when a piece stands within the minimum walk width of a doorway, the wall across or another piece; `test/fixtures/hint-paste-gained-codes.json` pins the list), and a set that would gain a finding is not quoted; a 400 mm counter in a bottom corner is quoted with `rotate 180`. The re-lint is counted, never timed: `MAX_HINT_VERIFICATIONS` (64 passes) and `MAX_HINT_WALK_ROOMS` (128 rooms walked) per lint run, charged before the work; past either the hint says the placement was unverified and the run files one `hint-budget` coverage skip (corpus maximum 4 passes, 80 rooms; 50 empty kitchens lint at 2.1× main, was 147× before the gating). *Review round 4:* the walk gate also reads the obstacles the nav grid blocks on inside the room (wall stubs, stairs, lifts, voids, from the grid's own inputs), and `circuitous-path` is flagged too: on multi-room fuzz a quoted kitchen set closed the way through a room and sent the walk round (6 of 2,318 sets). Findings are compared by full message, so a set that worsens an existing squeeze or detour ratio is declined like one that creates it; no corpus row moved. *Review round 5 (last by the capped loop):* the gate measures the gap to another piece as a rectangle gap (edges in line or a corner touch count, touching is the narrowest), reads a corner pocket for any doorway opening into it, pads the gap to a piece or obstacle by one nav cell and every threshold by the grid's growth past 2500 m² (read from the grid's own cell functions), and tests the pass budget before any geometry. Residue accepted as nits: a pasted set that only changes an existing squeeze's door-attribution clause at the same width is not a gain; the hint's promise holds on the corpus and fuzz, with constructed geometry residue to be filed as cards, not rounds | done |
-| PS2.18 | Profile scoping of dwelling-reading rules | PS2.8's kitchen arm, PS2.6 and PS2.7 assume a dwelling. An office kitchenette, a café kitchen or a clinic WC off a waiting room is not the defect those rules describe (first-contact café and clinic plans). Until PS2.14 declares dwellings, scope those arms to the residential advisory profiles and have the default profile report a PS2.13 skip ("no dwelling declared") rather than a warning. *Decided 2026-10-20 (D6):* the inverse: the default profile judges every plan as a dwelling unless it reads as non-residential. *As built (PR #217):* `dwellingReading` (`src/analyze/dwelling.ts`) marks a plan non-residential when it has an office use and no bedroom or living room, or a label carrying a café, shop, clinic, school or office word (`src/vocabulary.ts`); otherwise it is a dwelling. On a non-residential plan, under the default ruleset and `accessibility-advisory`, `W_HABITABLE_NO_WINDOW`'s kitchen arm, `W_WET_ROOM_DOOR`'s dining, leaf-less and passage arms and `W_ENTRANCE_INTO_PRIVATE` decline with a `non-dwelling` coverage skip; `W_WET_ROOM_DOOR`'s kitchen arm judges every plan (food hygiene). `residential-basic` sets `assumeDwelling` and judges every plan; the playground defaults to the default ruleset. Measured: 37 of 341 corpus plans read non-residential, none with a bedroom; lint moved only on the two café plans (the WC onto the seating) and four eval office goldens (a kitchenette's daylight); corpus case `wc-off-dining` re-cast as a dwelling, new café pair `wc-off-servery` pins the arm that stays (46/68). *Open:* the kitchen-arm message still cites GB 50096 5.4.3 on a café; a shop with a flat above reads non-residential as a whole and a hotel floor (guest rooms are bedrooms) reads as a dwelling; all wait on PS2.14 | done |
-| PS2.19 | Vocabulary gaps | In the first-contact plans, labels `Wardrobe`, `Closet`, `Dressing`, `Nursery`, `Study`, `Store`, `Office` and `Balcony` classify to no use at all, so every use-reading rule is blind on them and PS2.5's exemption for a bedroom's own wardrobe or balcony cannot see the room it exempts. Extend `roomUses`/`classifyLabelUses` with those kinds (each a byte-identity re-measure with the swap-back proof, as PS0.7 was) and report unclassified rooms in PS2.13's coverage block. *Corrected 2026-10-20:* the premise does not hold as written; every first-contact room authors `uses`, so none was unclassified, and the listed words are furniture labels or not rooms there. *As built (PR #216):* a fallback vocabulary read only when the primary one leaves a label empty, so every label that classified before keeps its answer (pinned against the verbatim previous classifier): storage (store, closet, wardrobe, pantry, larder; aliases dressing, linen, cellar), office (office, study; consulting), utility (utility, laundry; plant, boiler), nursery → bedroom ("day nursery", a childcare room, stays unclassified) and water closet → WC; extended in PR #217 after a "Great room / Master / Study" house read as an office: great room, reception room, drawing room (and aliases snug, den) → living, read last and only when no other fallback word matched; guest room, kids room, children's room, master suite → bedroom, and the alias master unless the label also names a store, office or utility room. Balcony, terrace, studio, gallery, meeting and staff room stay unclassified and show in the coverage block. Two corpus rows moved in `describe()` only (furnished-flat's Utility, the eval office's Open Office, which `finish` now gives a desk); the 1 m² "Closet" catalogue example became "Nook" | done |
+| PS2.17 | Kitchen worktop | As built: record § PS2.17 | done (PR #216, 8bbdd699) |
+| PS2.18 | Profile scoping of dwelling-reading rules | As built: record § PS2.18 | done (PR #217, 06c6b563) |
+| PS2.19 | Vocabulary gaps | As built: record § PS2.19 | done (PR #216, 8bbdd699) |
 | PS2.20 | Furnish: shower and tub placement | After PS2.9, 44 of 1,600 fuzzed baths are left empty because neither the stage's candidates nor the lint's placement search finds a tub or shower position, where the previous main wrote a WC and basin. Measure what those rooms have in common (size, door and window positions) and extend the candidate set (a shower in the corner the door does not swing into; a tub along the long wall with the door at its foot) before anyone concludes the rooms are too small | todo |
 | PS2.21 | Enclosure budget follow-ups | From PR #204's final red-team: (1) the point-test charge assumes every curve crosses every other (`piecesBound ≈ 2c²` × ring vertices), so a plain round room drawn with ≥ 300 vertices is refused on `point-tests` although it crosses nothing; count only curve pairs whose boxes meet so finely drawn curved rooms stay measured (corpus max today is 56 vertices, aquarium's concourse). (2) The slowest admitted shape, a 50-partition × 30-tooth comb room, lints in ~1.6 s vs 0.44 s on main: bounded, not a hang, but twice the figure the PR body quotes. (3) `W_BOUNDARY_NO_WALL` sits outside the `FaceBudget` (ring × ring per room pair plus runs × wall segments), the same class as the ring-pair analyses `describe()` already pays; two interlocking 2000-tooth combs go 23 s → 35 s. Give it a count bound beside the existing ring-pair cost | todo |
 | PS2.22 | `W_ALIAS_MATCH` quotes a room id | For a room with no label the alias rule classifies the id and then writes it into the message ('Room "r_carport" reads as a garage only from the indirect term "carport"'), the one lint message that names an id; PS2.19's fallback words widen it (`r_plant`, `r_boiler`, `r_cellar`, `r_linen`, `r_nursery`; found by PR #216's red team). Word the unlabelled case without the id (the room's storey and position, or "an unlabelled room") and pin that no lint message over the corpus contains a room id | todo |
@@ -408,267 +368,39 @@ Landed 2026-10-20 (wave 3): PS2.19 and PS2.17 in PR #216 (ef7dc46 … acc619f; s
 | PS2.26 | `W_SWING_OBSTRUCTED` at exactly 0 mm short | Under `accessibility-advisory` the rule fires on `examples/two-bed.arch` with a swing that needs 1050 mm of clear radius and measures 1050 mm ("0 mm short", found by PR #227's red team). The boundary should be `<`, not `≤`: decide, fix, and explain the corpus movement in that PR | todo |
 | PS2.27 | `W_FACING_BLOCKED` | A declared `facing` whose front ray crosses a wall body before it reaches its target (a TV facing a sofa through a partition). Walls only: a coffee table between a sofa and its TV is the arrangement. Deferred from PS3.7 (ADR 0029) | todo |
 | PS2.28 | Undeclared sofa → TV check | A sofa or loveseat in a room with a `tv`/`tv_unit` whose front ray misses it (the audit's A3, H2, T3: 3 of 3 sofas). Out of PS3.7's scope, which judges only seats at tables; measure the corpus first, and decide what a sofa facing a view instead means | todo |
+| PS2.29 | Id-free lint messages | Iron law: a lint `message` never quotes an element id (ids go in `hint`). The 2026-10-23 drift audit found three codes that do: `W_OPENING_NOT_DIMENSIONED` (the opening's id), `W_POCKET_RUN` and `W_DOOR_NEAR_CORNER` (the host via `wallPhraseOf`, `src/wall-ref.ts`: `wall "<id>"`, or a derived partition by its room ids). A grep of `src/lint` adds, to confirm first: `ctx.labelOf` falls back to the room id for an unlabelled room, as do `circulation-facts.ts`'s connector and route phrases; `W_CIRCUITOUS_PATH` (entrance door id); `W_OUTDOOR_OVERLAPS_ROOM` and `W_BALCONY_NO_DOOR` (surface id); `W_ALIAS_MATCH` is PS2.22 (fold in). *Acceptance:* `test/lint-fix-texts.test.ts` asserts that no internal id appears in any `message` over the corpus: element ids, room ids of unlabelled rooms, and the derived names `A\|B`, `A\|B:open`, `exterior` and `exterior#n`. Every moved corpus `lint()` row explained | todo |
+| PS2.30 | Room use inferred from contents | A room holding a kitchen sink, stove or fridge but not typed `kitchen` (or untyped) gets `W_ROOM_USE_MISSING`, or the kitchen rules run on the inferred use. NA1, NS1, NC1. NC1 shows that deleting the type is the cheapest way to silence `W_ROOM_MISSING_DEFINING`. **Acceptance test: the exact laundering.** The final café (`first-contact-plans/2026-10-24-rerun/4-cafe.arch`) has `service` untyped, and lint reports only `W_WET_ROOM_DOOR`. Restoring `uses kitchen` on `service` brings back `W_ROOM_MISSING_DEFINING`: "Counter" is furnished (bar counter) but has no kitchen sink, no stove and no counter or worktop. The card is done when the untyped room gets the same finding. `bar_counter` does not count as the worktop in that message, and the card should keep it that way. Source: `audits/2026-10-24-first-contact-rerun.md` | todo |
+| PS2.31 | A table or desk with no seat | A dining table or desk with no chair within `seatTableReachMm`. NA4, NT8, NK1. Also a waiting room's seat count, as a profile value. Source: `audits/2026-10-24-first-contact-rerun.md` | todo |
+| PS2.32 | A seat or sofa facing a wall | A sofa or seat whose front ray meets a wall face within 600 mm: NS4, NK5, NH2's front. A sibling of PS2.28. Also make `in <room> anchor <edge> flush` turn a sofa's back to the anchored wall as it does a bed's head, or say in `spec.llm.md` that it does not. Source: `audits/2026-10-24-first-contact-rerun.md` | todo |
+| PS2.33 | An open leaf across a corridor | An open leaf in a circulation room that leaves under 700 mm past it: NH3. A sibling of `W_LEAF_ACROSS_DOORWAY`. Source: `audits/2026-10-24-first-contact-rerun.md` | todo |
+| PS2.34 | Stair foot and head landings, and side entry | A landing shallower than the flight width at the foot or head, and a door or opening onto a flight's flank (NT1, NT2; T1). Extends PS2.11's stair bullets, which today name only the swing and the void. Source: `audits/2026-10-24-first-contact-rerun.md` | todo |
+| PS2.35 | A wet-room door onto a food store | `W_WET_ROOM_DOOR` reaches `kitchen` and `dining` only. A WC opening onto a store in a plan with a kitchen should count (NC3). Source: `audits/2026-10-24-first-contact-rerun.md` | todo |
+| PS2.36 | Accessible WC door swing | An accessible WC whose hinged door opens inward (NC4, NK2). Fold it into PS2.16 with the pan offset and basin reach. Source: `audits/2026-10-24-first-contact-rerun.md` | todo |
+| PS2.37 | `W_WET_ROOM_DOOR` on non-residential plans | NC6 cites GB 50096 (residential) on a café's public WC, and the author kept it as wrong for the building type. Decide whether the rule should defer to a non-residential profile. Source: `audits/2026-10-24-first-contact-rerun.md` | todo |
 
 ### PS3 · Relation-first authoring (D1 + D5; needs an ADR)
 
 **PS3.1 · ADR: rooms may be primary; walls and openings may be derived from room relations.**
-Drafted 2026-10-20 as `docs/adr/0028-rooms-primary-derived-walls.md` (status Proposed until the
-first derived form lands with its byte-identity law). Settled there: datums are frame words
-(`top|bottom|left|right`, `cx|cy`; compass aliases only on north-up plans, `E_DATUM_COMPASS`
-otherwise, and only in the root frame); polygon/circle rooms expose no datum
-(`E_ROOM_NOT_RECTANGLE`); snapping stays "snap the evaluated value" (ADR 0004); `walls from rooms`
-has exactly three clauses (`open between A and B [width]` which always derives an opening,
-`between A and B thickness t`, `except R …`), holes legal only under exact `outdoor`/`void` cover,
-preconditions decided exactly with no tolerance row; derived walls have NO author-facing id and are
-addressed by relation (`between A and B`, `on A.top`, PS3.5's `containing`, and PS3.7's
-`against <room>.<edge>` pulled forward so furniture can back onto a derived partition); a canonical
-direction rule for derived walls (inner courtyard rings run counter-clockwise so `swing in` keeps
-its meaning); `open` spans the clear span between meeting wall faces; a `void` hole derives no wall; an authored wall exactly on a derived line wins over the shared span and the
-drop is reported in `describe().derived_walls[]`; relational openings refuse a short nib
-(`E_OPENING_NIB`, same measure as `W_OPENING_AT_JUNCTION`) instead of sliding and a door's position
-is required; the resolve-order byte-identity sweep, diagnostics order included, is PS3.2's gate. The
-original brief follows.
-- Settle: grammar; datum names (`north/south/east/west` plus aliases, `cx/cy`, `axis n`);
-  refusal codes (`E_WALL_BETWEEN_NOT_ADJACENT`, `E_WALL_BETWEEN_AMBIGUOUS`, polygon/circle rooms
-  refused like relational placement); `place`-frame semantics; grid snapping; how `around` treats
-  holes and multiple components (refuse).
-- D5's whole-tiling form: its grammar, its exception clauses (`open between A and B` at least;
-  decide whether a per-edge thickness or a `bearing` line is worth a clause), its refusal codes
-  (`E_ROOMS_OVERLAP`, `E_ROOMS_NOT_TILING` for a hole or a second component, non-rectilinear room,
-  unsnapped edge), and how a hand-written wall coexists with the derived set (proposal: a derived
-  partition that coincides with an authored wall is dropped, an authored wall elsewhere is kept;
-  pin both by test).
-- Design input: `research/associativity.md` §4 P1/P6/P7; `research/2026-10-18-room-tiling.md`.
+`done`: ADR 0028, drafted in PR #215 (9d05af4f), Accepted in PR #224 (ac1ad21d)
+- As built: `research/2026-10-24-ps3-as-built.md` § PS3.1.
 
-**PS3.0 · `walls from rooms` (D5).** `done` (parts A–C: PRs #222, #223, #224)
-- Closed-form: rectilinear union outline for the exterior ring; every shared edge run of two rooms
-  becomes one partition segment unless an `open between` clause names the pair. Steps charged per
-  room pair and per sweep before allocating.
-- Derived walls carry ids an opening can host on (`partition between A and B` as the hint name;
-  settle the scheme in PS3.1 so `door between A and B` and `on <wall>` both work).
-- Acceptance: the defect-corpus cases of class 2 (space not enclosed/assigned) are unwritable in
-  this form (a test tries each and gets the refusal or a wall); the widening drill moves every wall
-  and door with the room; byte identity for plans not using the form.
-- *Probe (part A):* `scripts/probe-rooms-tiling.ts` with its reviewed list
-  `scripts/probe-rooms-tiling.except.json` (PR #222) measures the four clause-free preconditions
-  per storey and per group (root and each `place`d instance), on a cell grid charged to the step
-  meter. It uses the group's most frequent `partition` thickness, or 100 mm when there is none.
-  Result: (a) 15/279, (b) 15/279, all `E_ROOM_NOT_RECTANGLE` (13 of them undecided on tiling); the
-  literal no-use reading gives 16/279. On the 264 passing storeys the form would derive at most 59
-  partition runs (median 1) and 36 ring vertices (median 4), and 262 of them already have an
-  authored wall collinear with a derived segment. The agent gallery is left out, because
-  `test/agent-gallery.test.ts` keeps its plans outside every pinned corpus. `test/rooms-tiling-probe.test.ts` plants each
-  refusal and pins the shares, the literal reading and the per-directory counts.
-- *As built, part B (PR #223):* `walls from rooms exterior <t> partition <t> [{ except … }]` is one
-  element (`src/elements/walls-from-rooms.ts`) over the pure derivation `src/room-tiling.ts`; a
-  group holding it resolves rooms, the hole covers, the authored walls, then the statement, then
-  the openings (`ElementDef.yieldsWalls`/`dependsOn`/`rewall`). Derived walls are `ir.walls`,
-  never elements, carry `_derived`, and are named only by relation in every hint and fix
-  (`src/wall-ref.ts`). `test/walls-from-rooms.test.ts` pins probe agreement (the 15 refusals,
-  codes and rooms), the twins of `studio.arch`/`two-bed.arch` (SVG and lint byte-identical;
-  the `describe()` differences listed in the PR), the widening drill and the class-2 corpus (5
-  gain their walls, the round snug refuses); `test/walls-from-rooms-digests.test.ts` the digest
-  table. Not yet: `open between` and `between … thickness` (they fail to parse by name), and the
-  relational openings of PS3.4.
-- *As built, part C (PR #224):* the two pair clauses. `between A and B thickness t` sets that
-  partition's thickness. `open [id=] between A and B [width]` keeps the pair's partition derived
-  as a host and derives a leaf-less opening across its clear span: the run less, at each end, half
-  the thickest wall perpendicular to it through that end (with `width`, centred on that span).
-  The opening is an ordinary `ROpening` that enters `ir.elements` after the statement
-  (`ElementDef.yieldsElements`). Its id is `A|B:open` unless the clause gives one, it carries
-  `_derived`, and its span is the clause's. Refusals, each on the clause:
-  - `E_WALL_BETWEEN_NOT_ADJACENT`;
-  - `E_WALL_BETWEEN_ROOM` (also polygon, circle or excepted rooms);
-  - `E_WALL_BETWEEN_OPEN` (an authored wall on the run, or an authored door/window/opening hosted
-    on it, through `ElementDef.auditGroup`);
-  - `E_WALL_BETWEEN_WIDTH`;
-  - `E_WALL_BETWEEN_DUP`.
-  Plan JSON carries `walls_from_rooms.open[]`/`between[]`. The twins (a hand-placed opening, an
-  authored partition taking over) are pinned in `test/walls-from-rooms-clauses.test.ts`, and the
-  clause plans are pinned in the digest table. ADR 0028 is Accepted. Red-team round 1:
-  - `W_OPENING_AT_JUNCTION` excuses a derived opening's jamb on the thickest meeting wall's face;
-    the thinner wall's pier beside it is not a nib.
-  - `E_WALL_BETWEEN_OPEN` for a position-hosted opening fires only on overlap with the voided
-    span.
+**PS3.0 · `walls from rooms` (D5).** `done` (parts A–C: PR #222, c95bd8a1; PR #223, c97c226c; PR #224, ac1ad21d)
+- As built: `research/2026-10-24-ps3-as-built.md` § PS3.0.
 
-**PS3.2 · Resolve order and room-edge datums.** `done` (PRs #220, #221)
-- Resolve rooms and relational placement before walls, then freeze a datum table.
-- Ids are assigned before resolve, so the registry order can stay.
-- Proof: the byte-identity sweep including `compile().diagnostics`.
-- *As built, part A (PR #220):* `resolveGroup` (`src/ir.ts`) resolves each group (root or `place`d instance) as rooms, relational placement, a frozen datum table (`src/room-datums.ts`: each rectangular room's edges and centre, the root's axes; internal only, read through `datumTablesOf`), walls, then openings and the rest in registry order. Diagnostics are buffered per kind and flushed in registry order, then placement's, and the `axes` block's are held to their old step, so a resolution that completes reports exactly what it did. The table charges one step per room the group sees (descendants again in each ancestor) and per axis. `test/resolve-order-byte-identity.test.ts` pins a diagnosing corpus with `compile().diagnostics` and its order, measured on `main` before the reorder; the 470-row per-payload sweep moved nothing under the reorder commit; the PS0.5 commit and the `E_PLACE_REF` message moved 7 rows, listed in PR #220. A resolution stopped by `E_STEP_LIMIT` reports, deterministically, the diagnostics raised before the crossing in the new order, and that set may differ from the old walls-first pass (ADR 0028 §1).
-- *As built, part B (PR #221):* a dotted name whose last segment is `top|bottom|left|right|cx|cy` (or a compass alias) is read from the group's frozen table by every statement after the rooms (`src/room-datums.ts` `tableReader`, installed by `resolveGroup` through `withDatumReader` in `src/expr.ts`); before the table (expansion, `let`, plan settings, the room pass) it is `E_DATUM_BEFORE_ROOMS`. Refusals: `E_DATUM_COMPASS`, `E_DATUM_NAME`, `E_ROOM_NOT_RECTANGLE`, `E_DATUM_UNPLACED`, `E_UNKNOWN_REF` for an unknown room. A read costs the one step of the name; the first read in a group under `place` also builds its instance-id set, one step per element. `test/room-edge-datums.test.ts` pins the swap-back law (datum plan == literal twin, every storey, diagnostics included) and a digest table; every existing digest suite is unchanged.
+**PS3.2 · Resolve order and room-edge datums.** `done` (PR #220, 6c6179c7; PR #221, 9fb79494)
+- As built: `research/2026-10-24-ps3-as-built.md` § PS3.2.
 
-**PS3.3 · `wall … between A and B` and `wall … around [ids]`.** `done` (PR #226)
-- Closed-form interval intersection and rectilinear union outline.
-- Steps are charged per read and per sweep.
-- *As built (PR #226), with these lead rulings:*
-  - **Grammar.** `wall [id=] <category> thickness <t> [material …] [height <h>] between <A>
-    and <B> | around [<A> …]`, written in place of the point body.
-  - **Geometry.** It is the `walls from rooms` derivation, shared rather than copied:
-    `src/room-tiling.ts` exports `sweepRooms` (non-rectangle, overlap, edge sweep) and
-    `linkRings` (rings, pinch, components, holes), and adds `deriveBetween` and
-    `deriveAround`. `between` runs from the run's smaller-y-then-x end. `around` is closed
-    and clockwise from its smallest-y-then-x vertex.
-  - **Rooms** are read from the group's frozen datum table (`ResolveCtx.datums`, through
-    `src/wall-relation.ts`). Walls already resolve after the rooms (PS3.2 part A), so the
-    resolve order is unchanged.
-  - **Refusals**, each tested on its span:
-    - `E_ROOMS_OVERLAP` (also a room listed twice, on the name);
-    - `E_WALL_BETWEEN_NOT_ADJACENT` (also one room twice);
-    - `E_ROOM_NOT_RECTANGLE`, `E_DATUM_UNPLACED` and `E_UNKNOWN_REF`, on the name;
-    - `E_PARTITION_TOO_SHORT` (the run shorter than the wall's thickness);
-    - `E_ROOMS_NOT_TILING`;
-    - `E_WALL_BETWEEN_OPEN` (the #224 audit, unchanged: such a wall is an authored wall).
-    The catalogue entries name the forms, each with an executed pairwise line.
-  - **Holes.** `around` refuses every hole, even one exactly covered. One wall is one ring,
-    so a courtyard needs `walls from rooms`. The covers also resolve after authored walls in a
-    group without that statement, and honouring a `void` there would change the resolve
-    order per node.
-  - **A refused wall** has no points and joins no wall list. Its id is recorded
-    (`ResolveCtx.unplacedWall`), so an opening `on` it, furniture `against wall` it or a
-    `dim radius` of it says it "could not be placed (see its own error)"
-    (`E_ATTACH_WALL_REF`, `E_FURN_AGAINST`, `E_DIM_CURVE_REF`; red team round 1). ADR 0028 §4
-    and §6 carry dated amendments for the hole rule and the row shape.
-  - **Afterwards** it is an ordinary authored wall. It keeps the author's id, category,
-    thickness, material and height, and its hosting, lint, heights and coexistence are a
-    typed wall's. It carries only `_relation`.
-  - **Facts.** `describe()` gains `derived_walls[]` rows `{from: "between"|"around", name: <id>,
-    between|around}` and `freedom.walls.relational`, both present only when such a wall
-    exists. The rows follow source order with the statement's own rows.
-  - **Plan JSON** exports the wall by its resolved points: the round trip keeps the geometry
-    and drops the relation, as for an opening placed `at axis`.
-  - **Bounds.** An `around` wall counts `4n` toward `MAX_ELEMENTS` at expansion
-    (`ElementDef.expansionCharge`), and the sweep charges `n log n + 3n` before it runs.
-  - **Proof.** `test/wall-between-around.test.ts` holds:
-    - the twins: SVG and lint byte-identical, describe apart from the pairwise facts;
-    - the twins beside `walls from rooms` (takeover with the drop reported);
-    - a `door between` hosted on the wall;
-    - all eight frames;
-    - the widening drill.
-    Every existing digest suite is unchanged, and `test/wall-between-around-digests.test.ts`
-    pins the new rows.
+**PS3.3 · `wall … between A and B` and `wall … around [ids]`.** `done` (PR #226, 1235529c)
+- As built: `research/2026-10-24-ps3-as-built.md` § PS3.3.
 
-**PS3.4 · `door|opening between A and B [at <pos>]`, `… on <room>.<edge>`.** `done` (PR #225)
-- Resolve to the shared wall. Enforce the nib (refuse, do not slide).
-- `window on <room>.<edge> [at …]` picks the exterior wall segment on that edge.
-- Hosted offsets on existing forms: `on <wall> at 150 from end`, `on <wall> at 150 from <room>.<edge>`,
-  `on <wall> at axis 3`.
-- *Corrected 2026-10-22:* the title's `at <t>` is dropped. ADR 0028 §5's position words are the
-  whole set: `center`, `<mm> from start|end|<room>.<edge>`, `axis <label>`. A plain `at <mm>`
-  or `at <pct>%` on a relational form is refused (`E_OPENING_DATUM`).
-- *As built (PR #225), with these lead rulings:*
-  - **Grammar.** `door|opening … between <A> and <B> [at <pos>]` and `door|window|opening … on
-    <room>.<edge> [at <pos>]`. `window … between` is a parse error.
-  - **Position.** Every offset is to the opening's **centre**, as `on <wall> at <mm>` always
-    was. It is measured along the shared run or the edge, from its smaller-x/y end. A door or a
-    cased opening must write a position; §5 is silent on the cased opening, so it is refused,
-    not defaulted. A window on an edge defaults to `center`, as §5 says.
-  - **Host.** The host is the one straight wall body on the run, derived or authored.
-    - None: `E_OPENING_NO_SHARED_WALL`. On an edge, a partition there also counts as none.
-    - More than one: `E_OPENING_HOST_AMBIGUOUS`. A coexistence `~n` piece is never chosen, so
-      an authored span beside a derived remainder refuses.
-    - No shared run: the reused `E_WALL_BETWEEN_NOT_ADJACENT`.
-    - A pair declared `open`: `E_WALL_BETWEEN_OPEN`, spanned on the door's clause, with the
-      `open` clause as a related span. The derived partition carries `_derived.open`.
-  - **Nib.** `src/opening-junctions.ts` now holds the junction measure, moved there verbatim
-    from `W_OPENING_AT_JUNCTION`. Lint and the resolver share it, together with the default nib
-    values (`DEFAULT_RULESET` reads them from there).
-    - `E_OPENING_NIB` also covers a meeting wall inside the span, and a span past the run or
-      its host.
-    - The hint names the nearest legal position, grid-snapped and checked, in the author's own
-      words (`at 600 from end`).
-    - The hosted-datum forms (`on <wall> at … from …`, `axis`) are NOT refused: they warn
-      exactly as their `on <wall> at <x>` twins do, and are byte-identical to them.
-  - **Datums.** A room edge is read through the group's own datum reader (`ResolveCtx.datums`),
-    so `E_DATUM_COMPASS`, `E_ROOM_NOT_RECTANGLE` and `E_UNKNOWN_REF` hold there. On a hosted
-    wall a datum line must cross its straight run at exactly one point.
-  - **Facts.** `describe()` gains a `relation` (as written) on the opening's row and a
-    `freedom.openings.relational` count, both present only when such an opening exists. The
-    `open between` derived opening keeps `placement: "absolute"`, as decided in PS3.0 part C:
-    changing it would move the pinned PS3.0 digest rows, and §6 does not require it.
-  - **Lint.** Move hints quote `between A and B at <n> from <anchor>` (or the `on <room>.<edge>`
-    form), keeping the anchor the author wrote (`end`, or an edge through an end of the run),
-    else `start`. So the swap-back law lints byte for byte only when no move hint fires.
-  - **Plan JSON.** A root-level relational opening carries `relation {between|edge, at?}`
-    beside its resolved `x`/`y`, round-tripped. One placed `at axis <label>` is exported by its
-    `x`/`y` alone: Plan JSON carries no axes, so the relation would not re-import.
-  - **Tests.** Every refusal is spanned and tested in `test/openings-between.test.ts`, together
-    with the twins, the instance frames (rotate 90, mirror x and both) and the widening drill.
+**PS3.4 · `door|opening between A and B [at <pos>]`, `… on <room>.<edge>`.** `done` (PR #225, 852df5ec)
+- As built: `research/2026-10-24-ps3-as-built.md` § PS3.4. Ruling D8 (§3) records its `placement` decision.
 
-**PS3.5 · Semantic selectors.** `done` (PR #230)
-- `segment north|south|east|west`, or `segment containing <room>.<edge>`, aliasing `segment <n>`.
-- Refuse unless exactly one segment matches.
-- *As built* (`src/segment-select.ts`):
-  - **Where.** Wherever `segment <n>` is accepted: `against wall … segment` and `dim radius …
-    segment`. `dim radius` measures an arc and a selector picks only straight segments, so
-    there it is always refused (`E_SEGMENT_SELECT`) rather than being a parse error.
-  - **Compass.** Picks the straight, axis-aligned segment of a CLOSED wall whose outward face,
-    the side away from the floor, looks that way.
-    - The floor is the side the ring encloses, from the exact shoelace orientation. It flips
-      on a derived courtyard ring (`_derived.ring === "inner"`).
-    - An open wall, a derived partition included, has no floor side and is refused; `side` is
-      not read. Arcs and diagonals face nothing.
-    - Caveat: an authored closed ring drawn round a courtyard still counts its enclosed side
-      as the floor.
-    - Legal only where datum compass words are (a north-up root), otherwise `E_DATUM_COMPASS`.
-      The flag reaches the selector through `DatumAccess.compass`.
-  - **Containing.** The edge is read through `ctx.datums.read`, so every datum refusal holds. A
-    match is a straight segment exactly on the edge line with a positive overlap. Open walls
-    and components work, the latter in local words.
-  - **Refusal.** `E_SEGMENT_SELECT`, spanned on the selector, gives the match count and the
-    candidate `segment <n>` numbers; for a compass word it also says which way each faces. A
-    refused piece raises no follow-on `E_FURN_AGAINST`.
-  - **Derived walls.** Reached only by category, as `segment <n>` is: `against wall exterior`
-    with one ring, and `against wall partition` with one partition.
-  - **Parse.** A bare compass word after `segment` is the selector, and a variable of that name
-    is written `segment (east)`. The printer parenthesises it, and this is noted in the
-    CHANGELOG. `containing` is a selector only before a dotted name, so it breaks nothing.
-  - **Facts.** `_authored.segment` holds the resolved index, plus the internal
-    `segmentSelect` text. `describe()` shows nothing new. Plan JSON has an additive
-    `segment_select`, validated by `SEGMENT_SELECT_RE` and re-emitted in place of the number.
-  - **Steps.** The compass scan charges one step per vertex, one per segment and one more;
-    `containing` charges one for the read, one per segment and one more. Both are charged
-    before they run.
-  - **Tests.** `test/segment-select.test.ts` has the twins (padded so the spans match) on an
-    authored ring, an open polyline, a derived ring and partition, and a component under all
-    eight frames, plus a control that tells a selector from a different number. It also covers
-    the refusals, the parse, the format and Plan JSON round trips, and the budget. The digest
-    table is `test/segment-select-digests.test.ts`.
+**PS3.5 · Semantic selectors.** `done` (PR #230, 401c0795)
+- As built: `research/2026-10-24-ps3-as-built.md` § PS3.5.
 
-**PS3.6 · Teach it.** `done` (PR #227)
-- `spec.llm.md` and `skills/archlang/SKILL.md` lead with a minimal room-graph example (rooms, then
-  `wall between`, then `door between`). Prior art: a minimal task-scoped grammar helps; the full
-  grammar does not.
-- Rewrite `examples/two-bed.arch` (after PS2.5 flags it) and `examples/relational.arch` (G.12's live
-  repro) in the new forms.
-- Respect the `spec.llm.md` size cap rules (trim duplication first).
-- *As built (PR #227):*
-  - **Lead example.** `LEAD_EXAMPLE` in `scripts/gen-llm-spec.ts`, under "Start here: rooms first"
-    right after the seven rules: three rooms (`living` at the origin, `hall` and `bedroom`
-    `right-of`), `walls from rooms … { open between living and hall }`, a front door
-    `on hall.bottom at center`, `door between hall and bedroom at 800 from start`, two windows
-    `on <room>.<edge>` and one furniture piece. 0 compile diagnostics and 0 lint warnings, pinned in
-    `test/spec-forms.test.ts`, which also compiles every `arch` fence of the page. It replaces the
-    embedded `examples/attached.arch`, so the spec went down from 29,965 to 28,910 characters. The
-    umbrella skill carries the same text verbatim. `test/task-skills.test.ts` allows that one
-    fence and no other.
-  - **`two-bed`'s geometry.** Old: kitchen/living (0,0) 4000×5000, master (4000,0) 6000×5000,
-    bedroom 2 (0,5000) 4000×3000, bath (4000,5000) 3000×3000, hall (7000,5000) 3000×3000, so
-    the access graph was a chain. New, in the same 10000×8000 shell: kitchen/living (0,0)
-    4000×8000, master (4000,0) 6000×3600, hall (4000,3600) 6000×1400 (the corridor; front door
-    at its east end), bath (4000,5000) 2400×3000, bedroom 2 `right-of` the bath 3600×3000. Every
-    room is at access depth 2, through the hall. The hall opens to the living room by
-    `open between`. 0 warnings (it had 3 × `W_ROOM_VIA_PRIVATE`). `accessibility-advisory` reports 6:
-    `W_SWING_OBSTRUCTED`, `W_DOOR_CLEARANCE` and 4 × `W_PATH_TOO_NARROW`, all from the profile's
-    wider door and path minimums (the old plan had 3 of the same kind beside its 3
-    `W_ROOM_VIA_PRIVATE`).
-  - **`relational`.** It had 7 warnings: 3 × `W_ROOM_DISCONNECTED`, `W_ROOM_NOT_ENCLOSED` and
-    3 × `W_BOUNDARY_NO_WALL`. All 7 came from the missing derived walls, and none was kept. It
-    gained a hall room (8000×1200) between the day rooms and bed/bath, so the bath is not reached
-    through the bedroom. Its walls and openings are derived. It has 0 warnings.
-  - **Swap-back.** `test/walls-from-rooms/two-bed.arch` and `relational.arch` are now the
-    hand-typed twins: walls as points, openings `on <wall> at <mm>`. They are SVG- and
-    `lint()`-identical to the examples. The relational twin uses `grid 25` (see PS3.10).
+**PS3.6 · Teach it.** `done` (PR #227, 2316f7d5)
+- As built: `research/2026-10-24-ps3-as-built.md` § PS3.6. Ruling D9 (§3) records its lead-example form.
 
 **PS3.10 · Snap a derived open-pair opening to the grid?** `todo`
 - `open between`'s derived opening centres on the clear span exactly. That can be a half-grid
@@ -679,43 +411,8 @@ original brief follows.
   rows, so it needs its own PR with the rows explained.
 
 **PS3.7 · Furniture relations: `facing <id>`, `against <wall|room.edge>`, `clear front|sides <mm>`.**
-`done` (PR #228; ADR 0029, with an ADR 0017 amendment)
-- Declared by the author, derived in closed form, reported as facts, checked by lint, never solved.
-  `facing` takes the quarter-turn whose front ray first enters the target rectangle; no hit or a
-  tie is refused. `facing` excludes `rotate`/`against wall` on the same piece. `clear front|sides`
-  are opt-in declarations measured against solid pieces, wall faces and swings; never a catalogue
-  default (a 550 mm wardrobe default once warned on `examples/garden-loft.arch`, so PS2.11's
-  "front of a wardrobe ≥ 600" becomes a declaration or profile value, re-measured first).
-- Facts appear in `describe()` only when declared (byte identity). Output set is D4 turns only, so
-  no glyph gains handedness; add a mirror-equivariance test.
-- Design: `research/2026-10-18-furniture-and-multistorey.md` §A.4.
-- *Priority raised 2026-10-18:* the first-contact audit found 0 `rotate` clauses in six plans, 27 of
-  51 chairs at a table facing away, 3 of 3 sofas missing their TV and a reception desk facing away
-  from the door. Pair the form with an undeclared check in PS2.11: a seat whose front ray misses
-  every table or desk within 600 mm. `facing` also refuses a transposed footprint.
-- *As built (PR #228):*
-  - **Forms.** `against <room>.<edge> [offset <mm>]` (ADR 0028 §5a: the back on the room-side face of
-    the one wall on the edge line, or on the line; refusals reuse `E_FURN_AGAINST`, a run declared
-    `open between` included); `[rotate … | facing <id>]`; `clear front <mm>`, `clear sides <mm>`.
-  - **`facing`.** Of the four turns, the one whose front ray (front-edge midpoint, outward) enters
-    the target nearest; targets are furniture, rectangular rooms and openings of the piece's own
-    group, in any source order. It is settled in one pass after the group resolves
-    (`ElementDef.settle`), charged `1 + |group| + 4` steps, and never moves a footprint, so mutual
-    facing needs no cycle rule. Refusals: `E_FACING_TARGET`, `E_FACING_MISS`, `E_FACING_TIE`,
-    `E_FACING_CONFLICT`, `E_FACING_SYMMETRIC`, `E_FACING_TRANSPOSED` (catalogued footprints only;
-    sofas wait for PS3.11).
-  - **`clear`.** A declaration only, measured in closed form against solid pieces, straight wall
-    bodies and hinged swings; `W_FURN_CLEAR_FRONT`, `W_FURN_CLEAR_SIDES`; a declared `clear front`
-    replaces the catalogue's `W_FURN_CLEARANCE` for that piece only when at least as deep (the
-    catalogue's clearance is a floor; red team round 1). An obstacle must overlap a zone with
-    positive area.
-  - **Facts and identity.** `describe()` gains `relation`, `facing` and `clear {declared, measured}`
-    on a furniture row, and `freedom.furniture.relational`, each only when written; Plan JSON gains
-    `against_edge`, `facing`, `clear_front`, `clear_sides`. With the seat rule off, every corpus
-    digest suite was unchanged by the forms. Twins, all eight frames, every refusal and the budget
-    are pinned in `test/furniture-relations.test.ts`; a digest table in
-    `test/furniture-relations-digests.test.ts`.
-  - **The undeclared check** is PS2.11's `W_SEAT_FACING_AWAY` (as-built note there).
+`done` (PR #228, 0d2dbc04; ADR 0029, Accepted, with an ADR 0017 amendment)
+- As built: `research/2026-10-24-ps3-as-built.md` § PS3.7.
 
 **PS3.11 · Sofa and couch footprints.** `todo` (after a corpus sweep)
 - `sofa`/`couch` carry no catalogued footprint, so `E_FACING_TRANSPOSED` cannot see the audit's
@@ -723,44 +420,11 @@ original brief follows.
   2000-2200 along x 900 deep) once a sweep shows which corpus rows move (`finish`, the LSP hover,
   the fixture paste and the defining-piece rule read it), and explain each.
 
-**PS3.8 · Building-relative swing and offset wording.** `done` (PR #229; as built below)
-- **As built.** `swing inward|outward` resolves to `in|out` from the one face of the host that has
-  floor (the `garage` probe); floor on both faces or neither is `E_SWING_SIDE` on the word, and the
-  door keeps its default swing. `in` is the right of the wall's drawn direction on the page.
-  `spec.llm.md` says so with the K1 example. Plan JSON adds `swing_building` beside the resolved
-  `swing`. The unknown-word parse error lists all four words. Twins (both directions, loop, ring,
-  barn), all eight frames with a plan-space oracle, refusals and round trips are in
-  `test/swing-building.test.ts`; a digest table is in `test/swing-building-digests.test.ts`. Every
-  existing digest suite was unchanged. `set door(swing: inward)` waits for PS0.16.
-- `swing in|out` and `at <pos>` are relative to the wall's drawn direction; an author who drew a
-  wall right-to-left put a fire exit's `swing out` opening inward and a living window in the
-  laundry (`audits/2026-10-18-first-contact.md` K1 and the v1 apartment). Add `swing inward|outward`
-  (relative to the building: towards or away from the room floor on the host) and define `in`/`out`
-  in `spec.llm.md` with a one-line example. PS3.4's `from <room.edge>` offsets fix the `at` half.
-- A plain lint for an exterior door on a public building whose leaf swings into the floor belongs
-  to PS2.16's non-residential profile, not here.
+**PS3.8 · Building-relative swing and offset wording.** `done` (PR #229, 98a41560)
+- As built: `research/2026-10-24-ps3-as-built.md` § PS3.8.
 
-**PS3.9 · Plan JSON for a component that derives its walls.** `done` (PR #232; as built below)
-- Plan JSON had no per-component record, so a plan whose `place`d component holds `walls from rooms`
-  was refused at projection (`E_JSON_DERIVED_IN_INSTANCE`, PR #223) rather than lose the derived
-  walls. Design an additive per-instance (or per-component) record that carries the statement as
-  written, with a round-trip law, and retire the refusal.
-- *As built (PR #232):* on a storey where a placed instance derives its walls, and only there,
-  the payload gains `components: [{name, body}]` and `instances: [{name, component, at, rotate?,
-  mirror?}]`, and every flattened instance row gains `instance`. A body is the instance's own
-  resolution in its local frame and names (`instanceBodiesOf`, a side table in `src/ir.ts`),
-  projected by the root's row code, so `relation`, `facing`, `swing_building`, `against_edge` and
-  `walls_from_rooms` are carried as written. The way back prints the root rows, a parameterless
-  `component` per body and a `place` per instance, skipping the marked rows. The law, pinned in
-  `test/plan-json-instances.test.ts`: for a plan whose `place`s follow its root statements, SVG and
-  `describe()` are byte-identical, `lint()` is identical once spans, fixes and related spans are
-  stripped, and JSON → arch → JSON is stable; a plan that places first comes back in the grouped
-  order (pinned as a limit, PS3.13). A marked row is regenerated on input and edits to it are
-  ignored; its `id` must carry the instance's namespace, so a root row marked by mistake is
-  `E_JSON_SCHEMA` rather than lost (red team round 1, S1).
-  `E_JSON_DERIVED_IN_INSTANCE` now means only what the record cannot hold: a nested `place`, two
-  instances of one component with different bodies, an imported component. No payload outside the
-  gate moved.
+**PS3.9 · Plan JSON for a component that derives its walls.** `done` (PR #232, f420660a)
+- As built: `research/2026-10-24-ps3-as-built.md` § PS3.9.
 
 **PS3.12 · Plan JSON round trip for every placed plan.** `todo` (after PS3.9)
 - PS3.9's record (`components`/`instances`, `instance` on flattened rows) is gated to storeys where
@@ -876,11 +540,12 @@ into PS3.12)
 | Order | Cards | Done when |
 |---|---|---|
 | 1 | PS0.1, PS0.7, PS1.1 | Done 2026-10-18: PS0.7 in PR #197 (ad58551, dfd1737), PS1.1 in PR #195 (df00ab5), PS0.1 in PR #196 (1e0c2d9, e81a136; also closed backlog C.4). Corpus catch rate 7/53 |
-| 2 | PS2.1–PS2.9, PS2.13 | Defect-corpus catch rate ≥ 90 % for classes 1, 2, 3, 4 and 6, with no false positive on the clean twins; every corpus `lint()` movement is explained (two-bed is expected to start warning: fix the example, see PS3.6). *Corrected 2026-10-19:* class 5 (clearances) belongs to PS2.11 in row 5, so it was removed from this row's acceptance. *Status:* wave 1 landed 2026-10-19 (PRs #199, #201, #200): classes 1, 3, 6 at 100 %, class 4 at 3/4 (PS2.17), class 2 at 1/6 waiting on PS2.4; overall 33/53 on `main@cc165f4`. Wave 2 landed 2026-10-19 (PRs #203, #204, #211): classes 1, 2, 3, 6 at 100 %, class 4 at 4/5 (80 %, below the bar until PS2.17 lands); overall 44/67 on `main@fcb3074` (the +1 is A2, the balcony-door-masked laundry, caught by PS0.10's main entrance; T2 still refuses without `site`). Wave 3 landed 2026-10-20 (PRs #214, #216, #217): classes 1, 2, 3, 4, 6 at 100 %, overall 46/68 on `main@06c6b56`; this row's acceptance is met (class 5 is row 5). Next: PS3.1 landed as ADR 0028 (PR #215, Proposed), then PS3.2 and PS3.6 |
-| 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. *Status 2026-10-22 (PS3.0 done, PR #224):* met: ADR 0028 merged and Accepted; byte-identity law green (every digest suite unchanged, the PS3.0 table pinned); the class-2 corpus cases are refused or gain their walls in the D5 form; the widening drill moves the walls and the door with the room (`test/walls-from-rooms/widen.arch`). Remaining: rewriting `examples/relational.arch` and `examples/two-bed.arch` in the headline form (PS3.6), and PS3.3. *2026-10-22 (PS3.4 done, PR #225):* relational openings landed, and the widening drill now moves a `door between` and a `window on <room>.<edge>` with the room (`test/openings-between.test.ts`). *2026-10-23 (PS3.3 done, PR #226):* the pairwise forms landed, and the drill moves a `wall … between` and a `wall … around` ring with the room (`test/wall-between-around.test.ts`). Remaining: the PS3.6 rewrites of `examples/relational.arch` and `examples/two-bed.arch`. *2026-10-23 (PS3.6 done, PR #227): fully met, every bullet:* ADR merged (0028, Accepted); byte-identity law green (every moved digest row is one of the two rewritten examples or the two-bed twin, each explained in the re-pin commit); `relational.arch` lints clean with walls derived (597210c7: 0 warnings, was 7); `two-bed.arch` lints clean in the same form (a60e9124: 0 warnings, was 3 × `W_ROOM_VIA_PRIVATE`); the widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. Defect-corpus catch rate unchanged at 46/68 |
-| 4 | PS0.4, PS4.1, PS4.2 | The widening drill's `impact` names every moved, held and broken item correctly |
+| 2 | PS2.1–PS2.9, PS2.13 | Defect-corpus catch rate ≥ 90 % for classes 1, 2, 3, 4 and 6, with no false positive on the clean twins; every corpus `lint()` movement is explained (two-bed is expected to start warning: fix the example, see PS3.6). *Corrected 2026-10-19:* class 5 (clearances) belongs to PS2.11 in row 5, so it was removed from this row's acceptance. *Status:* met 2026-10-20 (PRs #214, #216, #217; 46/68 on `main@06c6b56`); dated status history verbatim: `research/2026-10-24-ps0-ps2-as-built.md` § §7 row 2 |
+| 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. *Status:* met 2026-10-23 by PS3.6 (PR #227), every bullet; catch rate then 46/68; dated status history verbatim: `research/2026-10-24-ps3-as-built.md` § §7 row 3 |
+| 3a | PS3.7, PS3.8, PS3.5, PS3.9 (and PS0.19) | Unplanned: done after row 3 was met, before row 4 (D7): PRs #228, #229, #230, #232; PS0.19 #231. First-contact re-run, PR #233 (`audits/2026-10-24-first-contact-rerun.md`): old six plans 17/57 caught (6 partially; 14/57 counting halves); cold re-authoring 6/6 rooms-first; defects 57 → 48, blockers 4 → 2; corpus catch rate 46/68 → 47/70 |
+| 4 | PS0.4, PS4.1, PS4.2 | **Next.** The widening drill's `impact` names every moved, held and broken item correctly |
 | 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically |
-| 6 | PS4.3, PS4.4, PS3.5, PS3.6, PS5.4, PS7.x | — |
+| 6 | PS4.3, PS4.4, PS3.5, PS3.6, PS5.4, PS7.x | — (PS3.6 landed in row 3, PS3.5 in row 3a) |
 | 7 | PS6.1 | — |
 
 The drill used in rows 3 and 4: `repro/widen-before.arch` → `repro/widen-after.arch`, and the studio
@@ -951,8 +616,8 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
   questions, and mark which prior evidence supports it. If it changes a decision in §3, add a new
   decision (D5, …) that names what it supersedes and why. Owner-reserved choices (iron laws,
   releases, paid eval) still go to the owner.
-- **A card lands:** delete it (cite the commit in the place that referenced it), update §7, and
-  record the release story in `CHANGELOG.md` only.
+- **A card lands:** cut it to its `done` line (PR and commit), move any as-built note verbatim to a
+  dated `research/` record, update §7, and record the release story in `CHANGELOG.md` only.
 - **A card turns out wrong:** say so in the card, keep the reason, and change course. Symptoms have
   been reliable; stated causes have been wrong about as often as right (`docs/backlog.md`).
 - **When the programme is done:** fold the lasting decisions into ADRs, delete this folder, and
@@ -980,4 +645,7 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
   coordinates.
 - `audits/2026-10-18-first-contact.md` and `audits/first-contact-plans/*.arch`: six briefs written
   cold by an AI author, lint-clean, 57 verified defects, twelve classes outside the taxonomy.
+- `audits/2026-10-24-first-contact-rerun.md`: the same, re-measured after row 3 (D7).
+- `research/2026-10-24-ps0-ps2-as-built.md`, `research/2026-10-24-ps3-as-built.md`: landed cards'
+  as-built notes, verbatim.
 - `repro/`: minimal reproductions (see its README).

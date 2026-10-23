@@ -1,7 +1,8 @@
 # 29. Furniture relations: `facing`, `against <room>.<edge>`, `clear front|sides`
 
-- **Status:** Proposed (plan-soundness card PS3.7, `docs/plans/plan-soundness/README.md`); it becomes
-  Accepted when the PR that builds it merges
+- **Status:** Accepted (plan-soundness card PS3.7, `docs/plans/plan-soundness/README.md`). Proposed
+  until the PR that builds it merged; accepted 2026-10-24, recorded after PR #228 shipped it
+  (merged 2026-10-23)
 - **Date:** 2026-10
 - **Relates to:** [ADR 0017](0017-fixture-semantics-three-flags.md) (amended: a stated `facing`
   is the licence decision 2 withheld), [ADR 0028](0028-rooms-primary-derived-walls.md) §5a
