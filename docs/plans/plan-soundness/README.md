@@ -450,10 +450,7 @@ into PS3.12)
 
 ### PS4 · The change model: what follows, what stays, what breaks
 
-**PS4.1 · `describe --facts depends` (opt-in).** `todo`
-- Per element: `on` (ids it derives from: host wall, relational room, anchor room, datums) and
-  `params` (the `let` names it reads; `src/cursor.ts` already walks references for LSP).
-- Plans not asking for it are unchanged.
+**PS4.1 · `describe --facts depends` (opt-in).** `done` (PR #239, pending)
 
 **PS4.2 · `arch impact`.** `todo` (after PS0.4, PS4.1)
 - `arch impact plan.arch --set NAME=value` (or `--against old.arch`) twin-compiles through the one
