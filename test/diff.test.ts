@@ -168,19 +168,11 @@ suite("diffPlans — auto-id rooms pair by unique label", () => {
     expect(d.summary).toEqual([]);
   });
 
-  it("a moved auto-id room reports its edges once, under its after-side id", () => {
+  it("a moved auto-id room reports its move once, under its after-side id", () => {
+    // PS0.4: this pinned the defect (`change: "resized"`, +0.0 m², both x edges +9000).
     const moved = `  room at (9000,0) size 3000x3000 label "Hall"`;
     const d = diffPlans(autoPlan([HALL, KITCHEN]), autoPlan([KITCHEN, moved]));
-    expect(d.rooms).toEqual([
-      {
-        id: "room_2",
-        label: "Hall",
-        change: "resized",
-        areaBeforeM2: 9,
-        areaAfterM2: 9,
-        edges: { top: 0, bottom: 0, left: 9000, right: 9000 },
-      },
-    ]);
+    expect(d.rooms).toEqual([{ id: "room_2", label: "Hall", change: "moved", offset: { dx: 9000, dy: 0 } }]);
   });
 
   it("a duplicated label is no key: those rooms keep the id match", () => {
@@ -216,20 +208,14 @@ suite("diffPlans — auto-id rooms pair by unique label", () => {
     const hallMoved = `  room id=hall at (3000,0) size 3000x3000 label "Hall"`;
     const fwd = diffPlans(autoPlan([HALL]), autoPlan([kitchenAtHall, hallMoved]));
     expect(fwd.ok).toBe(true);
+    // PS0.4: Hall only moved; this pinned "resized" and "Hall +0.0 m²; left edge ±3000 mm".
     expect(fwd.rooms).toEqual([
-      {
-        id: "hall",
-        label: "Hall",
-        change: "resized",
-        areaBeforeM2: 9,
-        areaAfterM2: 9,
-        edges: { top: 0, bottom: 0, left: 3000, right: 3000 },
-      },
+      { id: "hall", label: "Hall", change: "moved", offset: { dx: 3000, dy: 0 } },
       { id: "room_1", label: "Kitchen", change: "added", areaAfterM2: 9 },
     ]);
-    expect(fwd.summary).toEqual(["Hall +0.0 m²; left edge +3000 mm", "Added Kitchen (9.0 m²)"]);
+    expect(fwd.summary).toEqual(["Moved Hall 3000 mm right", "Added Kitchen (9.0 m²)"]);
     const back = diffPlans(autoPlan([kitchenAtHall, hallMoved]), autoPlan([HALL]));
-    expect(back.summary).toEqual(["Hall +0.0 m²; left edge -3000 mm", "Removed Kitchen (9.0 m²)"]);
+    expect(back.summary).toEqual(["Moved Hall 3000 mm left", "Removed Kitchen (9.0 m²)"]);
   });
 
   it("M.7: Hall kept in place under a new id= while Kitchen is inserted is one added room", () => {

@@ -34,6 +34,7 @@ import {
   type OpeningChange,
   type PlanDiff,
   type RoomChange,
+  type WallChange,
 } from "../src/diff.js";
 import { describe as describePlan } from "../src/describe.js";
 import { planSpec, renderPlan, type PlanSpec } from "./arbitrary-plan.js";
@@ -73,7 +74,20 @@ function invertRoom(r: RoomChange): RoomChange {
           right: -r.edges.right,
         },
       };
+    case "moved":
+      return { id: r.id, change: "moved", offset: r.offset && { dx: -r.offset.dx, dy: -r.offset.dy } };
   }
+}
+
+/** The host fields of a re-hosted opening swap sides; `betweenBefore`'s presence is kept (its
+ *  value, like `between`, is direction-dependent and excluded by the normalizer). */
+function invertHost(o: OpeningChange): Partial<OpeningChange> {
+  return {
+    ...(o.hostBefore !== undefined ? { hostBefore: o.hostAfter, hostAfter: o.hostBefore } : {}),
+    ...(o.relationAfter !== undefined ? { relationBefore: o.relationAfter } : {}),
+    ...(o.relationBefore !== undefined ? { relationAfter: o.relationBefore } : {}),
+    ...(o.betweenBefore !== undefined ? { betweenBefore: o.betweenBefore } : {}),
+  };
 }
 
 function invertOpening(o: OpeningChange): OpeningChange {
@@ -84,8 +98,44 @@ function invertOpening(o: OpeningChange): OpeningChange {
     case "removed":
       return { id, kind, change: "added", widthAfterMm: o.widthBeforeMm };
     case "resized":
-      return { id, kind, change: "resized", widthBeforeMm: o.widthAfterMm, widthAfterMm: o.widthBeforeMm };
+    case "rehosted":
+      return {
+        id,
+        kind,
+        change: o.change,
+        widthBeforeMm: o.widthAfterMm,
+        widthAfterMm: o.widthBeforeMm,
+        ...invertHost(o),
+      };
   }
+}
+
+function invertWall(w: WallChange): WallChange {
+  const head = { name: w.name, id: w.id, derived: w.derived, category: w.category };
+  const thick =
+    w.thicknessBeforeMm !== undefined || w.thicknessAfterMm !== undefined
+      ? { thicknessBeforeMm: w.thicknessAfterMm, thicknessAfterMm: w.thicknessBeforeMm }
+      : {};
+  switch (w.change) {
+    case "added":
+      return { ...head, change: "removed", lengthBeforeMm: w.lengthAfterMm, ...thick };
+    case "removed":
+      return { ...head, change: "added", lengthAfterMm: w.lengthBeforeMm, ...thick };
+    case "moved":
+      return { ...head, change: "moved", offset: w.offset && { dx: -w.offset.dx, dy: -w.offset.dy }, ...thick };
+    case "resized":
+      return { ...head, change: "resized", lengthBeforeMm: w.lengthAfterMm, lengthAfterMm: w.lengthBeforeMm, ...thick };
+    case "rethickened":
+      return { ...head, change: "rethickened", ...thick };
+  }
+}
+
+/** `WallChange`'s normalizer: `follows` names after-side room ids, so it is direction-
+ *  dependent under a shifted auto-id, like a resized room's `label`; it is excluded. */
+function normalizeWall(w: WallChange): unknown {
+  const copy: Partial<WallChange> = { ...w };
+  delete copy.follows;
+  return roundFloats(JSON.parse(JSON.stringify(copy)));
 }
 
 function invertFurniture(f: FurnitureChange): FurnitureChange {
@@ -121,7 +171,7 @@ function roundFloats<T>(t: T): T {
  *  round-trips through `invertRoom` unchanged for those two kinds. */
 function normalizeRoom(r: RoomChange): unknown {
   const copy: Partial<RoomChange> = { ...r };
-  if (r.change === "resized" || r.change === "relabeled") delete copy.label;
+  if (r.change === "resized" || r.change === "moved" || r.change === "relabeled") delete copy.label;
   return roundFloats(copy);
 }
 
@@ -130,6 +180,8 @@ function normalizeRoom(r: RoomChange): unknown {
 function normalizeOpening(o: OpeningChange): unknown {
   const copy: Partial<OpeningChange> = { ...o };
   delete copy.between;
+  // `betweenBefore` is `between` of the other direction: only its presence is compared.
+  if (copy.betweenBefore !== undefined) copy.betweenBefore = [];
   return roundFloats(copy);
 }
 
@@ -161,6 +213,7 @@ function assertAntisymmetric(ab: PlanDiff, ba: PlanDiff): void {
   expectInverted("rooms", ab.rooms, ba.rooms, (r) => `room:${r.id}`, invertRoom, normalizeRoom);
   expectInverted("openings", ab.openings, ba.openings, (o) => `${o.kind}:${o.id}`, invertOpening, normalizeOpening);
   expectInverted("furniture", ab.furniture, ba.furniture, (f) => `furniture:${f.id}`, invertFurniture, roundFloats);
+  expectInverted("walls", ab.walls, ba.walls, (w) => `wall:${w.name}`, invertWall, normalizeWall);
   expectInverted(
     "circulation",
     ab.circulation,
@@ -408,7 +461,7 @@ function assertRoomsInvertPairwise(ab: RoomChange[], ba: RoomChange[]): void {
     // `label` too for resized/relabeled — compare the rest.
     const strip = (r: RoomChange): unknown => {
       const copy: Partial<RoomChange> = { ...r };
-      if (r.change === "resized" || r.change === "relabeled") {
+      if (r.change === "resized" || r.change === "moved" || r.change === "relabeled") {
         delete copy.id;
         delete copy.label;
       }
@@ -562,7 +615,7 @@ function assertMixedRoomsInvert(ab: RoomChange[], ba: RoomChange[]): void {
   expect(ba.length, "room change counts differ").toBe(ab.length);
   const strip = (r: RoomChange): unknown => {
     const copy: Partial<RoomChange> = { ...r };
-    if (r.change === "resized" || r.change === "relabeled") {
+    if (r.change === "resized" || r.change === "moved" || r.change === "relabeled") {
       delete copy.id;
       delete copy.label;
     }
@@ -581,7 +634,8 @@ function assertMixedRoomsInvert(ab: RoomChange[], ba: RoomChange[]): void {
     const fits = (d: RoomChange): boolean =>
       !used.has(d) && d.change === inv.change && canon(strip(d)) === canon(strip(inv));
     let hit = ba.find((d) => fits(d) && d.id === s.id);
-    if (!hit && s.change === "resized" && s.label) hit = ba.find((d) => fits(d) && d.label === s.label);
+    if (!hit && (s.change === "resized" || s.change === "moved") && s.label)
+      hit = ba.find((d) => fits(d) && d.label === s.label);
     expect(hit, `no inverted counterpart for ${s.change} ${s.id} (${s.label ?? "-"})`).toBeDefined();
     used.add(hit!);
   }

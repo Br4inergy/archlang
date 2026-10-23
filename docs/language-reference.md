@@ -3026,16 +3026,33 @@ if (d.ok) for (const s of d.summary) console.log(s);
 
 The returned `PlanDiff` reports:
 
-- **`rooms`** — each room `added` / `removed` / `resized` / `relabeled`, with before/after
-  area and, for a resize, the signed mm delta of each bbox edge (`top`/`bottom`/`left`/`right`,
-  after − before, in plan coordinates).
+- **`rooms`** — each room `added` / `removed` / `resized` / `relabeled` / `moved`, with
+  before/after area and, for a resize, the signed mm delta of each bbox edge
+  (`top`/`bottom`/`left`/`right`, after − before, in plan coordinates). A room whose shape is
+  unchanged but whose position moved is `moved`, with the `offset` (`dx`, `dy` in mm, +y down
+  the page) read off its own vertices (a circle: its centre), never `resized` by +0.0 m².
 - **`openings`** — doors, windows, and openings `added` / `removed` / `resized` (before/after
-  clear width in mm, and what they sit `between`).
+  clear width in mm, and what they sit `between`), or `rehosted` when the width held but the
+  host changed (the wall it stands in, or its `between A and B` / `on <room>.<edge>`
+  placement) or the spaces it joins changed. `hostBefore`/`hostAfter` name the wall as a
+  person would (`wall "p"`, `the partition between "a" and "b"`,
+  `the exterior wall derived from the rooms`, `no wall`), `relationBefore`/`relationAfter`
+  quote a relational placement as written, and `betweenBefore` gives the spaces before.
+- **`walls`** — every wall, authored or derived by `walls from rooms`, `added` / `removed` /
+  `moved` (with its `offset`) / `resized` (centreline length before and after) /
+  `rethickened` (thickness before and after; a moved or resized wall carries these too when
+  its thickness also changed). An authored wall carries its `id`; a derived one has no id an
+  author can type, so it is named by its rooms (`name`, `derived: true`). A wall placed by
+  relation (derived, or `wall … between`/`around`) that moved or resized while its rooms did
+  lists those rooms in `follows`; a derived exterior ring follows every room that changed.
 - **`furniture`** — fixtures `added` / `removed`, by category.
 - **`circulation`** — per-room walk-distance and bottleneck (pinch) deltas, from the
   [circulation](#circulation) model.
 - **`totals`** — floor area and room count before and after.
-- **`summary`** — human-readable one-line sentences describing each change above.
+- **`summary`** — human-readable one-line sentences describing each change above: rooms,
+  then openings (a re-hosted opening's `… re-hosted: …` and `… joins … → …` lines follow its
+  own entry), then furniture, then walls (`Moved the partition between "a" and "b" 500 mm
+  right, following Bed`), then the trailing `Walk to …` block.
 
 **Matching** is by **id**, with two label rules for rooms. An `id` here is the element's
 **resolved id** — the explicit `id=` if you wrote one, otherwise the deterministic auto id

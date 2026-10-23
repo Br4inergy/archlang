@@ -3,10 +3,12 @@
  *
  * Where {@link import("./describe.js").describe} turns one source into *facts*, this
  * turns two sources into the *delta* between them: which rooms were added, removed,
- * resized or relabeled; which doors/windows/openings appeared, vanished or changed
- * width; which furniture came and went; and the before/after plan totals. It runs
- * entirely on top of `describe()` — no geometry code of its own — so it inherits the
- * same purity, determinism and never-throw contract.
+ * resized, moved or relabeled; which doors/windows/openings appeared, vanished, changed
+ * width or were re-hosted; which walls (authored or derived) came, went, moved, resized or
+ * changed thickness; which furniture came and went; and the before/after plan totals. It
+ * runs on top of `describe()` plus the walls and opening hosts of the same resolve
+ * (`describeWithAutoIds`'s `fabric`), so it inherits the same purity, determinism and
+ * never-throw contract. Every loop is one pass per element list with map lookups.
  *
  * Pure, synchronous, deterministic. It never throws on bad input: a side that fails
  * to resolve yields `{ ok: false, …empty… }`.
@@ -17,8 +19,17 @@
  * consumes `PlanDiff` verbatim.
  */
 
-import { describeWithAutoIds, type DescribeOptions, type RoomSummary, type SceneSummary } from "./describe.js";
+import {
+  describeWithAutoIds,
+  type DescribeOptions,
+  type DiffHostFact,
+  type DiffWallFact,
+  type RoomSummary,
+  type SceneSummary,
+} from "./describe.js";
 import type { Diagnostic } from "./diagnostics.js";
+
+type Pt = { x: number; y: number };
 
 /** A room's area may drift by this much (m²) before it counts as resized. */
 const AREA_EPS_M2 = 0.05;
@@ -32,19 +43,61 @@ const PINCH_EPS_MM = 50;
 export interface RoomChange {
   id: string;
   label?: string;
-  change: "added" | "removed" | "resized" | "relabeled";
+  /** `moved`: the same shape at another position (appended; it used to read "resized"). */
+  change: "added" | "removed" | "resized" | "relabeled" | "moved";
   areaBeforeM2?: number;
   areaAfterM2?: number;
   /** Signed mm delta of each bbox edge in plan coordinates (after − before); "resized" only. */
   edges?: { top: number; bottom: number; left: number; right: number };
+  /** "moved" only: the translation (mm, after − before, +y down) that carries the room's shape
+   *  onto its new one, read off the shape's own vertices (or a circle's centre). */
+  offset?: { dx: number; dy: number };
 }
 export interface OpeningChange {
   id: string;
   kind: "door" | "window" | "opening";
-  change: "added" | "removed" | "resized";
+  /** `rehosted` (appended): same width, but its host or the spaces it joins changed. */
+  change: "added" | "removed" | "resized" | "rehosted";
   widthBeforeMm?: number;
   widthAfterMm?: number;
+  /** The spaces it joins (a window: the room it serves), on the side the change reports. */
   between?: string[];
+  /** Present on a "rehosted" entry, and on a "resized" one whose host changed too: the wall
+   *  it stood in before and after, named as a person would (`wall "p"`, `the partition between
+   *  "a" and "b"`, `the exterior wall derived from the rooms`; `no wall`), and its relational
+   *  placement as written (`between a and b`, `on r.top`) when it has one. */
+  hostBefore?: string;
+  hostAfter?: string;
+  relationBefore?: string;
+  relationAfter?: string;
+  /** Present when the spaces it joins changed: {@link between} before the edit. */
+  betweenBefore?: string[];
+}
+/**
+ * One wall's change (appended section). Authored walls carry their `id`; a wall `walls from
+ * rooms` derived has none an author can type, so it is named by its relation (`name`).
+ */
+export interface WallChange {
+  /** How a person names it: `wall "<id>"`, `the partition between "a" and "b"`, … */
+  name: string;
+  /** The authored id; absent on a derived wall. */
+  id?: string;
+  /** True on a wall `walls from rooms` derived. */
+  derived?: true;
+  category: string;
+  /** `rethickened`: same line, new thickness. A moved or resized wall whose thickness also
+   *  changed carries both thickness fields under its geometric change. */
+  change: "added" | "removed" | "moved" | "resized" | "rethickened";
+  /** "moved" only: the translation (mm, +y down) carrying its centreline onto the new one. */
+  offset?: { dx: number; dy: number };
+  /** Centreline length (mm; a closed wall's perimeter, an arc measured on the arc). */
+  lengthBeforeMm?: number;
+  lengthAfterMm?: number;
+  thicknessBeforeMm?: number;
+  thicknessAfterMm?: number;
+  /** A wall placed by relation that moved or resized because these rooms (after-side ids)
+   *  moved or resized: it followed them. */
+  follows?: string[];
 }
 export interface FurnitureChange {
   id: string;
@@ -67,6 +120,8 @@ export interface PlanDiff {
   totals: { floorAreaBeforeM2: number; floorAreaAfterM2: number; roomsBefore: number; roomsAfter: number };
   circulation: CirculationChange[]; // populated in Task 4
   summary: string[]; // populated in Task 4
+  /** Walls added, removed, moved, resized or re-thickened (appended; authored and derived). */
+  walls: WallChange[];
 }
 
 /** Adapt here (only here) if BBox is min/max-shaped — see plan Task 3 Step 2.
@@ -206,6 +261,132 @@ function statePhrase(s: CirculationState, mm: (v: number) => string): string {
   return "no circulation model";
 }
 
+/** The translation that carries `a`'s points onto `b`'s, vertex for vertex within the edge
+ *  noise floor, or null when no single one does (another shape, or another vertex count).
+ *  Read off the vertices themselves, never a bounding box or a centroid. */
+function translationOf(a: readonly Pt[], b: readonly Pt[]): { dx: number; dy: number } | null {
+  if (a.length === 0 || a.length !== b.length) return null;
+  const dx = b[0]!.x - a[0]!.x;
+  const dy = b[0]!.y - a[0]!.y;
+  for (let i = 1; i < a.length; i++)
+    if (Math.abs(b[i]!.x - a[i]!.x - dx) > EDGE_EPS_MM || Math.abs(b[i]!.y - a[i]!.y - dy) > EDGE_EPS_MM) return null;
+  return { dx, dy };
+}
+
+/** A room's move: the same shape (and area) translated, from its floor ring or circle. */
+function roomOffset(a: RoomSummary, b: RoomSummary): { dx: number; dy: number } | null {
+  if (Math.abs(b.area_m2 - a.area_m2) > AREA_EPS_M2) return null;
+  if (a.floor_circle || b.floor_circle) {
+    const ca = a.floor_circle;
+    const cb = b.floor_circle;
+    if (!ca || !cb || Math.abs(cb.r - ca.r) > EDGE_EPS_MM) return null;
+    return { dx: cb.cx - ca.cx, dy: cb.cy - ca.cy };
+  }
+  return translationOf(a.floor_polygon, b.floor_polygon);
+}
+
+/** A wall's move: same closure, same arcs, same points translated. */
+function wallOffset(a: DiffWallFact, b: DiffWallFact): { dx: number; dy: number } | null {
+  if (a.closed !== b.closed || a.arcs.length !== b.arcs.length) return null;
+  for (let i = 0; i < a.arcs.length; i++) {
+    const p = a.arcs[i];
+    const q = b.arcs[i];
+    if (!p !== !q) return null;
+    if (p && q && (Math.abs(p.r - q.r) > EDGE_EPS_MM || Math.abs(p.sweep - q.sweep) > 1e-9)) return null;
+  }
+  return translationOf(a.points, b.points);
+}
+
+/** Centreline length: each straight segment's chord, each arc measured on the arc. */
+function wallLength(w: DiffWallFact): number {
+  const n = w.points.length;
+  const last = w.closed ? n : n - 1;
+  let len = 0;
+  for (let k = 0; k < last; k++) {
+    const arc = w.arcs[k];
+    if (arc) len += Math.abs(arc.sweep) * arc.r;
+    else {
+      const p = w.points[k]!;
+      const q = w.points[(k + 1) % n]!;
+      len += Math.hypot(q.x - p.x, q.y - p.y);
+    }
+  }
+  return Math.round(len);
+}
+
+const isMove = (o: { dx: number; dy: number }) => Math.abs(o.dx) > EDGE_EPS_MM || Math.abs(o.dy) > EDGE_EPS_MM;
+
+/** `500 mm right, 200 mm down` (plan +y runs down the page). */
+function offsetPhrase(o: { dx: number; dy: number }): string {
+  const parts: string[] = [];
+  if (Math.abs(o.dx) > EDGE_EPS_MM) parts.push(`${Math.round(Math.abs(o.dx))} mm ${o.dx > 0 ? "right" : "left"}`);
+  if (Math.abs(o.dy) > EDGE_EPS_MM) parts.push(`${Math.round(Math.abs(o.dy))} mm ${o.dy > 0 ? "down" : "up"}`);
+  return parts.join(", ");
+}
+
+const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** `a and b`, `exterior and a`, or `nothing`: the spaces as `describe()` names them. */
+const spacesPhrase = (s: readonly string[]) => (s.length === 0 ? "nothing" : s.join(" and "));
+
+/** `A`, `A and B`, `A, B and C`. */
+const listPhrase = (s: readonly string[]) =>
+  s.length <= 2 ? s.join(" and ") : `${s.slice(0, -1).join(", ")} and ${s[s.length - 1]}`;
+
+/**
+ * The wall section. Walls pair by their resolved id (a derived wall's internal name is
+ * stable while its rooms keep their ids); one map lookup per wall, so linear in the wall
+ * count. A wall placed by relation that moved or resized while one of its rooms did is
+ * listed as FOLLOWING those rooms: `changedRooms` holds every room that moved, resized,
+ * appeared or vanished, and a derived ring (which follows the whole room union) lists all of
+ * them — at most rings × rooms entries, rings being a handful.
+ */
+function diffWalls(
+  before: readonly DiffWallFact[],
+  after: readonly DiffWallFact[],
+  changedRooms: ReadonlyMap<string, string>,
+  geometricRooms: ReadonlySet<string>,
+): WallChange[] {
+  const out: WallChange[] = [];
+  const afterByKey = new Map(after.map((w) => [w.key, w]));
+  const head = (w: DiffWallFact): Pick<WallChange, "name" | "id" | "derived" | "category"> => ({
+    name: w.name,
+    ...(w.id !== undefined ? { id: w.id } : { derived: true as const }),
+    category: w.category,
+  });
+  const followsOf = (w: DiffWallFact): string[] | undefined => {
+    if (w.follows === undefined) return undefined;
+    const ids = w.follows === "rooms" ? [...changedRooms.keys()] : w.follows.filter((id) => geometricRooms.has(id));
+    return ids.length > 0 ? ids : undefined;
+  };
+  for (const a of before) {
+    const b = afterByKey.get(a.key);
+    if (!b) {
+      out.push({ ...head(a), change: "removed", lengthBeforeMm: wallLength(a), thicknessBeforeMm: a.thickness });
+      continue;
+    }
+    afterByKey.delete(a.key);
+    const thick =
+      a.thickness !== b.thickness ? { thicknessBeforeMm: a.thickness, thicknessAfterMm: b.thickness } : undefined;
+    const off = wallOffset(a, b);
+    const follows = followsOf(b);
+    const tail = { ...(thick ?? {}), ...(follows ? { follows } : {}) };
+    if (off && !isMove(off)) {
+      if (thick) out.push({ ...head(b), change: "rethickened", ...thick });
+    } else if (off) out.push({ ...head(b), change: "moved", offset: off, ...tail });
+    else
+      out.push({ ...head(b), change: "resized", lengthBeforeMm: wallLength(a), lengthAfterMm: wallLength(b), ...tail });
+  }
+  for (const b of afterByKey.values())
+    out.push({ ...head(b), change: "added", lengthAfterMm: wallLength(b), thicknessAfterMm: b.thickness });
+  return out;
+}
+
+/** The spaces an opening joins: a door's or cased opening's `between`, a window's room. */
+const spacesOf = (o: OpeningLike): string[] => o.between ?? (o.room ? [o.room] : []);
+const sameSpaces = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+
 /** Structural superset of {@link import("./describe.js").DoorSummary},
  *  `WindowSummary` and `OpeningSummary` — enough to diff any of the three by id. */
 interface OpeningLike {
@@ -215,10 +396,20 @@ interface OpeningLike {
   room?: string | null;
 }
 
+/** Both sides' opening hosts, and how each side names a wall key. */
+interface HostSides {
+  before: ReadonlyMap<string, DiffHostFact>;
+  after: ReadonlyMap<string, DiffHostFact>;
+  wallName: { before: (key: string | null) => string; after: (key: string | null) => string };
+  /** A before-side room id as the after side names the room it paired with (itself when unpaired). */
+  roomAfter: (id: string) => string;
+}
+
 function diffOpenings(
   kind: "door" | "window" | "opening",
   before: OpeningLike[],
   after: OpeningLike[],
+  hosts: HostSides,
 ): OpeningChange[] {
   const out: OpeningChange[] = [];
   const afterById = new Map(after.map((o) => [o.id, o]));
@@ -229,6 +420,32 @@ function diffOpenings(
       continue;
     }
     afterById.delete(a.id);
+    // The host: the wall it stands in (paired by key, like the wall section) and the host
+    // part of a relational placement as written; and the spaces it joins.
+    const ha = hosts.before.get(a.id);
+    const hb = hosts.after.get(b.id);
+    const wallA = ha?.wall ?? null;
+    const wallB = hb?.wall ?? null;
+    const hostMoved = wallA !== wallB || ha?.relation !== hb?.relation;
+    const sa = spacesOf(a);
+    const sb = spacesOf(b);
+    // Compared through the room pairing: under a shifted auto-id the same id names another
+    // room, so a before-side room id is read as its after-side partner's.
+    const spacesMoved = !sameSpaces(
+      sa.map((id) => hosts.roomAfter(id)),
+      sb,
+    );
+    const extra: Partial<OpeningChange> = {
+      ...(hostMoved
+        ? {
+            hostBefore: hosts.wallName.before(wallA),
+            hostAfter: hosts.wallName.after(wallB),
+            ...(ha?.relation !== undefined ? { relationBefore: ha.relation } : {}),
+            ...(hb?.relation !== undefined ? { relationAfter: hb.relation } : {}),
+          }
+        : {}),
+      ...(spacesMoved ? { betweenBefore: sa } : {}),
+    };
     if (a.width !== b.width)
       out.push({
         id: a.id,
@@ -237,6 +454,17 @@ function diffOpenings(
         widthBeforeMm: a.width,
         widthAfterMm: b.width,
         between: b.between,
+        ...extra,
+      });
+    else if (hostMoved || spacesMoved)
+      out.push({
+        id: a.id,
+        kind,
+        change: "rehosted",
+        widthBeforeMm: a.width,
+        widthAfterMm: b.width,
+        between: sb,
+        ...extra,
       });
   }
   for (const b of afterById.values())
@@ -254,8 +482,8 @@ function diffOpenings(
  * if (d.ok) for (const r of d.rooms) console.log(r.id, r.change);
  */
 export function diffPlans(sourceA: string, sourceB: string, opts: DescribeOptions = {}): PlanDiff {
-  const { summary: before, autoRoomIds: autoBefore } = describeWithAutoIds(sourceA, opts);
-  const { summary: after, autoRoomIds: autoAfter } = describeWithAutoIds(sourceB, opts);
+  const { summary: before, autoRoomIds: autoBefore, fabric: fabricBefore } = describeWithAutoIds(sourceA, opts);
+  const { summary: after, autoRoomIds: autoAfter, fabric: fabricAfter } = describeWithAutoIds(sourceB, opts);
   const base: PlanDiff = {
     ok: before.ok && after.ok,
     diagnostics: [...before.diagnostics, ...after.diagnostics].filter((d) => d.severity === "error"),
@@ -270,6 +498,7 @@ export function diffPlans(sourceA: string, sourceB: string, opts: DescribeOption
     },
     circulation: [],
     summary: [],
+    walls: [],
   };
   if (!base.ok) return base;
 
@@ -288,7 +517,11 @@ export function diffPlans(sourceA: string, sourceB: string, opts: DescribeOption
       };
       const geometryChanged =
         Math.abs(b.area_m2 - a.area_m2) > AREA_EPS_M2 || Object.values(edges).some((v) => Math.abs(v) > EDGE_EPS_MM);
-      if (geometryChanged)
+      // A pure move — the same shape translated — is a move, not a "+0.0 m²" resize. The
+      // offset comes from the floor ring's (or circle's) own vertices, never the bbox.
+      const offset = geometryChanged ? roomOffset(a, b) : null;
+      if (offset && isMove(offset)) base.rooms.push({ id: b.id, label: b.label, change: "moved", offset });
+      else if (geometryChanged)
         base.rooms.push({
           id: b.id,
           label: b.label,
@@ -301,11 +534,38 @@ export function diffPlans(sourceA: string, sourceB: string, opts: DescribeOption
     }
   }
 
+  const wallsByKey = (ws: readonly DiffWallFact[]) => new Map(ws.map((w) => [w.key, w.name]));
+  const namesBefore = wallsByKey(fabricBefore.walls);
+  const namesAfter = wallsByKey(fabricAfter.walls);
+  const pairedAfter = new Map<string, string>();
+  // A before room with no partner maps to a name no after-side room can carry, so a door
+  // into a removed room never reads as joining an added one that reused its id.
+  for (const [a, b] of pairs) if (a) pairedAfter.set(a.id, b ? b.id : `${a.id} (removed)`);
+  const hosts: HostSides = {
+    roomAfter: (id) => pairedAfter.get(id) ?? id,
+    before: fabricBefore.hosts,
+    after: fabricAfter.hosts,
+    wallName: {
+      before: (k) => (k === null ? "no wall" : (namesBefore.get(k) ?? `wall "${k}"`)),
+      after: (k) => (k === null ? "no wall" : (namesAfter.get(k) ?? `wall "${k}"`)),
+    },
+  };
   base.openings = [
-    ...diffOpenings("door", before.doors, after.doors),
-    ...diffOpenings("window", before.windows, after.windows),
-    ...diffOpenings("opening", before.openings, after.openings),
+    ...diffOpenings("door", before.doors, after.doors, hosts),
+    ...diffOpenings("window", before.windows, after.windows, hosts),
+    ...diffOpenings("opening", before.openings, after.openings, hosts),
   ];
+
+  // Rooms whose geometry changed, by after-side id (a removed room by its before id), with
+  // the name a sentence gives them; the wall section lists a relational wall as following them.
+  const changedRooms = new Map<string, string>();
+  const geometricRooms = new Set<string>();
+  for (const r of base.rooms) {
+    if (r.change === "relabeled") continue;
+    changedRooms.set(r.id, r.label ?? r.id);
+    if (r.change === "moved" || r.change === "resized") geometricRooms.add(r.id);
+  }
+  base.walls = diffWalls(fabricBefore.walls, fabricAfter.walls, changedRooms, geometricRooms);
 
   const afterFurn = new Map(after.furniture.map((f) => [f.id, f]));
   for (const f of before.furniture) {
@@ -369,6 +629,7 @@ export function diffPlans(sourceA: string, sourceB: string, opts: DescribeOption
     if (r.change === "added") base.summary.push(`Added ${name(r.id, r.label)} (${m2(r.areaAfterM2!)})`);
     else if (r.change === "removed") base.summary.push(`Removed ${name(r.id, r.label)} (${m2(r.areaBeforeM2!)})`);
     else if (r.change === "relabeled") base.summary.push(`Relabeled ${r.id} to "${r.label ?? ""}"`);
+    else if (r.change === "moved") base.summary.push(`Moved ${name(r.id, r.label)} ${offsetPhrase(r.offset!)}`);
     else {
       const delta = r.areaAfterM2! - r.areaBeforeM2!;
       const edge = Object.entries(r.edges!).reduce((m, e) => (Math.abs(e[1]) > Math.abs(m[1]) ? e : m));
@@ -380,10 +641,45 @@ export function diffPlans(sourceA: string, sourceB: string, opts: DescribeOption
   for (const o of base.openings) {
     if (o.change === "added") base.summary.push(`Added ${o.kind} ${o.id} (${mm(o.widthAfterMm!)})`);
     else if (o.change === "removed") base.summary.push(`Removed ${o.kind} ${o.id}`);
-    else base.summary.push(`${o.kind} ${o.id} width ${mm(o.widthBeforeMm!)} → ${mm(o.widthAfterMm!)}`);
+    else {
+      if (o.change === "resized")
+        base.summary.push(`${o.kind} ${o.id} width ${mm(o.widthBeforeMm!)} → ${mm(o.widthAfterMm!)}`);
+      // Appended after the entry's own width line: its host and the spaces it joins, named as
+      // written (a derived `open between` opening by its clause, never its internal id).
+      const who = fabricAfter.hosts.get(o.id)?.name ?? `${o.kind} ${o.id}`;
+      if (o.hostBefore !== undefined) {
+        const was = o.relationBefore ?? o.hostBefore;
+        const now = o.relationAfter ?? o.hostAfter!;
+        const host = was !== now ? `${was} → ${now}` : `${o.hostBefore} → ${o.hostAfter}`;
+        base.summary.push(`${who} re-hosted: ${host}`);
+      }
+      if (o.betweenBefore !== undefined)
+        base.summary.push(`${who} joins ${spacesPhrase(o.betweenBefore)} → ${spacesPhrase(o.between ?? [])}`);
+    }
   }
   for (const f of base.furniture)
     base.summary.push(`${f.change === "added" ? "Added" : "Removed"} ${f.category} ${f.id}`);
+  // The wall section's sentences, appended after every existing block and before the
+  // trailing "Walk to" block. A wall that followed a room says so, naming the room as the
+  // room sentence above does.
+  for (const w of base.walls) {
+    const following = w.follows ? `, following ${listPhrase(w.follows.map((id) => changedRooms.get(id) ?? id))}` : "";
+    const thick =
+      w.thicknessBeforeMm !== undefined && w.thicknessAfterMm !== undefined
+        ? `; thickness ${mm(w.thicknessBeforeMm)} → ${mm(w.thicknessAfterMm)}`
+        : "";
+    if (w.change === "added")
+      base.summary.push(
+        `Added ${w.name} (${w.category}, ${mm(w.lengthAfterMm!)} long, ${mm(w.thicknessAfterMm!)} thick)`,
+      );
+    else if (w.change === "removed") base.summary.push(`Removed ${w.name}`);
+    else if (w.change === "moved") base.summary.push(`Moved ${w.name} ${offsetPhrase(w.offset!)}${following}${thick}`);
+    else if (w.change === "resized")
+      base.summary.push(
+        `${capitalise(w.name)} ${mm(w.lengthBeforeMm!)} → ${mm(w.lengthAfterMm!)} long${following}${thick}`,
+      );
+    else base.summary.push(`${capitalise(w.name)} thickness ${mm(w.thicknessBeforeMm!)} → ${mm(w.thicknessAfterMm!)}`);
+  }
   for (const c of base.circulation) {
     base.summary.push(
       `Walk to ${c.roomId}: ${mm(c.walkDistanceBeforeMm)} → ${mm(c.walkDistanceAfterMm)} (pinch ${mm(c.bottleneckBeforeMm)} → ${mm(c.bottleneckAfterMm)})`,
