@@ -57,8 +57,23 @@ import type {
   ResolvedPlan,
 } from "./ir.js";
 import type { Diagnostic } from "./diagnostics.js";
-import type { DoorEnumClause, DoorHinge, DoorKind, DoorSlideDir, DoorSwingDir, TitleField } from "./grammar/tokens.js";
-import { DOOR_ENUMS, DOOR_KIND_CLAUSES, DOOR_KINDS, enumList, TITLE_FIELDS } from "./grammar/tokens.js";
+import type {
+  DoorEnumClause,
+  DoorHinge,
+  DoorKind,
+  DoorSlideDir,
+  DoorSwingBuilding,
+  DoorSwingDir,
+  TitleField,
+} from "./grammar/tokens.js";
+import {
+  DOOR_ENUMS,
+  DOOR_KIND_CLAUSES,
+  DOOR_KINDS,
+  DOOR_SWING_BUILDING,
+  enumList,
+  TITLE_FIELDS,
+} from "./grammar/tokens.js";
 import { parse } from "./parser.js";
 import { isDrawableHeight, isPlacedHeight, MAX_HEIGHT } from "./datum.js";
 import {
@@ -305,6 +320,13 @@ export interface OpeningJson {
   wall?: string;
   hinge?: DoorHinge;
   swing?: DoorSwingDir;
+  /**
+   * `swing inward|outward` as written (building-relative), beside the wall-relative `swing` it
+   * resolved to. Emitted only for a door of the plan itself that wrote the word (one inside a
+   * `place`d instance is exported by its resolved `swing`, as `relation` is by coordinates); on
+   * input it is the clause `planJsonToArch` writes back, and `swing` is then not read.
+   */
+  swing_building?: DoorSwingBuilding;
   /**
    * The door's kind — `door_kind`, not `kind`, because `kind` already discriminates
    * door/window/opening here. Emitted only when it is not the default `hinged`, so
@@ -629,6 +651,7 @@ export function resolvedToJson(ir: ResolvedPlan, tol: number = DEFAULT_TOL): Pla
         const allowed = DOOR_KIND_CLAUSES[e.doorKind ?? "hinged"];
         if (allowed.hinge) base.hinge = e.hinge;
         if (allowed.swing) base.swing = e.swing;
+        if (allowed.swing && e._swingBuilding && e._instance === undefined) base.swing_building = e._swingBuilding;
         if (e.doorKind !== undefined) {
           base.door_kind = e.doorKind;
           if (allowed.slide && e.slide !== undefined) base.slide = e.slide;
@@ -1147,6 +1170,15 @@ function validateOpening(o: unknown, path: string, val: Validator): void {
     if (v !== undefined && !(isStr(v) && (DOOR_ENUMS[clause] as readonly string[]).includes(v)))
       val.err(`${path}/${clause}`, `expected ${enumList(DOOR_ENUMS[clause])}`);
   }
+  // `swing_building` is a second spelling of `swing`, held to `DOOR_SWING_BUILDING` as `swing`
+  // is to `DOOR_ENUMS`, and a door's alone (it needs a leaf or a panel face to point).
+  if (
+    o.swing_building !== undefined &&
+    !(isStr(o.swing_building) && (DOOR_SWING_BUILDING as readonly string[]).includes(o.swing_building))
+  )
+    val.err(`${path}/swing_building`, `expected ${enumList(DOOR_SWING_BUILDING)}`);
+  if (o.swing_building !== undefined && o.kind !== "door")
+    val.err(`${path}/swing_building`, "only a door swings — a window and a cased opening have no leaf");
   // The kind word — `door_kind` here, because `kind` already discriminates
   // door/window/opening. Held to `DOOR_KINDS`, the same table the parser reads.
   if (o.door_kind !== undefined && !(isStr(o.door_kind) && (DOOR_KINDS as readonly string[]).includes(o.door_kind)))
@@ -1372,7 +1404,8 @@ function emitOpening(o: OpeningJson): string {
   if (!o.on && !rel && o.wall) line += ` wall ${o.wall}`;
   if (o.kind === "door") {
     if (o.hinge) line += ` hinge ${o.hinge}`;
-    if (o.swing) line += ` swing ${o.swing}`;
+    if (o.swing_building) line += ` swing ${o.swing_building}`;
+    else if (o.swing) line += ` swing ${o.swing}`;
     if (o.slide) line += ` slide ${o.slide}`;
     if (o.open !== undefined) line += ` open ${num(o.open)}`;
   }
@@ -1898,6 +1931,11 @@ export const PLAN_JSON_SCHEMA = {
             enum: [...DOOR_ENUMS.swing],
             description:
               "Hinged: which side of the wall the leaf sweeps to. Barn/bifold: which face the panel hangs on or folds toward. Not accepted on a sliding or pocket door.",
+          },
+          swing_building: {
+            enum: [...DOOR_SWING_BUILDING],
+            description:
+              "`swing inward|outward` as written: relative to the building (towards or away from the one face of the host wall that has floor), beside the wall-relative `swing` it resolved to. On input it wins over `swing`.",
           },
           door_kind: {
             enum: [...DOOR_KINDS],

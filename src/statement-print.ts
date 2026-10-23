@@ -201,7 +201,13 @@ export function statementText(s: LeafStatement): Doc {
       // an unprinted `pocket` re-formats into a hinged door with a swing arc.
       const doorKind = s.doorKind ? `${s.doorKind} ` : "";
       const hinge = s.hinge ? ` hinge ${s.hinge}` : s.hingeNear ? ` hinge near ${s.hingeNear}` : "";
-      const swing = s.swing ? ` swing ${s.swing}` : s.swingInto ? ` swing into ${s.swingInto}` : "";
+      const swing = s.swing
+        ? ` swing ${s.swing}`
+        : s.swingInto
+          ? ` swing into ${s.swingInto}`
+          : s.swingBuilding
+            ? ` swing ${s.swingBuilding}`
+            : "";
       const slide = s.slide ? ` slide ${s.slide}` : "";
       const open = s.open !== undefined ? ` open ${exprStr(s.open)}` : "";
       return `door ${id}${doorKind}${openingLead(s)} width ${exprStr(s.width)}${s.wall ? ` wall ${s.wall}` : ""}${hinge}${swing}${slide}${open}${heightsStr(s)}`;
