@@ -734,11 +734,34 @@ original brief follows.
 - A plain lint for an exterior door on a public building whose leaf swings into the floor belongs
   to PS2.16's non-residential profile, not here.
 
-**PS3.9 · Plan JSON for a component that derives its walls.** `todo` (after PS3.0)
-- Plan JSON has no per-component record, so a plan whose `place`d component holds `walls from rooms`
-  is refused at projection (`E_JSON_DERIVED_IN_INSTANCE`, PR #223) rather than lose the derived
+**PS3.9 · Plan JSON for a component that derives its walls.** `done` (PR #232; as built below)
+- Plan JSON had no per-component record, so a plan whose `place`d component holds `walls from rooms`
+  was refused at projection (`E_JSON_DERIVED_IN_INSTANCE`, PR #223) rather than lose the derived
   walls. Design an additive per-instance (or per-component) record that carries the statement as
   written, with a round-trip law, and retire the refusal.
+- *As built (PR #232):* on a storey where a placed instance derives its walls, and only there,
+  the payload gains `components: [{name, body}]` and `instances: [{name, component, at, rotate?,
+  mirror?}]`, and every flattened instance row gains `instance`. A body is the instance's own
+  resolution in its local frame and names (`instanceBodiesOf`, a side table in `src/ir.ts`),
+  projected by the root's row code, so `relation`, `facing`, `swing_building`, `against_edge` and
+  `walls_from_rooms` are carried as written. The way back prints the root rows, a parameterless
+  `component` per body and a `place` per instance, skipping the marked rows. The law, pinned in
+  `test/plan-json-instances.test.ts`: for a plan whose `place`s follow its root statements, SVG and
+  `describe()` are byte-identical, `lint()` is identical except for spans, and JSON → arch → JSON is
+  stable; a plan that places first comes back in the grouped order (pinned as a limit).
+  `E_JSON_DERIVED_IN_INSTANCE` now means only what the record cannot hold: a nested `place`, two
+  instances of one component with different bodies, an imported component. No payload outside the
+  gate moved.
+
+**PS3.12 · Plan JSON round trip for every placed plan.** `todo` (after PS3.9)
+- PS3.9's record (`components`/`instances`, `instance` on flattened rows) is gated to storeys where
+  a placed component derives its walls, so every other placed plan still exports flattened and
+  fails the way back with `E_DOTTED_DECL` (backlog G.10). Widen the gate to every placed plan. It
+  moves the Plan JSON of each placed example (`clinic`, `museum-wings`, `terrace-row`,
+  `hillside-villa` and every other plan with a `place`). List each one, and take the
+  `E_DOTTED_DECL` tripwire in `test/plan-json.test.ts` and those examples' entries in
+  `CANNOT_ROUND_TRIP` (`test/plan-json-gaps.ts`) off together. Nested places and imported
+  components need their own decision.
 
 ### PS4 · The change model: what follows, what stays, what breaks
 

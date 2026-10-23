@@ -186,7 +186,9 @@ form (`between A and B at …`), never `on A|B`. Plan JSON exports the `walls fr
 and the relational openings as written, as additive kinds in its schema (the Plan JSON and printer
 round-trip tests gain a case each); derived children are not exported as walls, and `arch fix` and
 `suggest` never emit a derived child as an authored one. `roof overhang` counts only the outer
-ring among its candidates. An author who needs a wall by id writes it by hand.
+ring among its candidates. An author who needs a wall by id writes it by hand. A statement inside
+a `place`d component is exported in that component's body (`components[].body.walls_from_rooms`,
+with `instances[]` for the frames; card PS3.9), still as written and still without its walls.
 
 **Coexistence with authored walls.** An authored wall whose centreline is exactly collinear with a
 derived segment and overlaps it with positive length drops the derived segment over the shared

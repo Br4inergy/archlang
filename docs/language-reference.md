@@ -585,6 +585,25 @@ fixture, and an `instance` marker in `freedom`. Read it as: the instance's
 placement is the one authored-absolute degree of freedom, and everything inside
 derives from it — so nudging a wing is one edit, not N.
 
+**Plan JSON.** A placed plan is exported *flattened*: every instance row sits in
+`rooms`/`walls`/`openings`/`furniture` under its dotted id, in plan coordinates, and such a
+payload does not round-trip (the dotted ids are `E_DOTTED_DECL` on the way back). The one
+exception is a storey where a placed component derives its walls with `walls from rooms`:
+only there does the payload gain `components` (each component's body, in its own frame and
+names, with the statement as written) and `instances` (`name`, `component`, `at`, `rotate`,
+`mirror`), and every flattened instance row gains `instance: "<name>"`, which
+`--from-json` skips. Every other payload is unchanged. The way back prints the root
+statements, then a `component <name>() { … }` per body, then a `place` per instance:
+
+- A component that takes parameters comes back **parameterless**: its body is the
+  resolved instance, arguments already applied.
+- The round trip compiles to the same SVG and `describe()` for a plan whose `place`s
+  **follow** its root statements; a plan that places first comes back in that grouped
+  order, which draws within a layer in another order.
+- Refused ([`E_JSON_DERIVED_IN_INSTANCE`](error-codes.md#e_json_derived_in_instance)): a
+  nested `place`, two instances of one component that resolve to different bodies, and a
+  component that comes in through an `import`.
+
 ### Whole-file instantiation — `import "…" as <name>` (v1.22)
 
 ```
@@ -917,8 +936,10 @@ wall that took it (`dropped[].by`).
 **Facts.** `describe --json` gains `derived_walls[]` (one row per derived wall: its internal
 name, the rooms of a partition, the spans an authored wall took) and a `freedom.walls`
 count, both only on a storey that derived a wall. Plan JSON carries the statement as
-`walls_from_rooms`, never the walls it derives; a plan whose `place`d component holds the
-statement is refused by Plan JSON (`E_JSON_DERIVED_IN_INSTANCE`) rather than lose those walls.
+`walls_from_rooms`, never the walls it derives. A plan whose `place`d component holds the
+statement carries the component too, in `components`/`instances` (see
+[Placing instances](#placing-instances--place-v122), "Plan JSON"); the few plans that record
+cannot hold are refused (`E_JSON_DERIVED_IN_INSTANCE`) rather than lose those walls.
 A `place`d component derives its own walls in its own frame; a root statement sees only the
 root's rooms.
 
