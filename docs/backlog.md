@@ -267,6 +267,16 @@ refused earlier, by `E_JSON_MIRROR`) and goes red when a placed plan starts roun
 fixes that still has to decide what a mirrored fixture becomes on the way back, since source has no
 word for it outside a `place`.
 
+**Landed for one case: a placed component that derives its walls (PS3.9).** On that storey alone
+the payload carries `components`/`instances` and marks the flattened rows `instance`, and the way
+back prints `component` + `place`, so the frame carries the reflection. Widening the record to every
+placed plan (which moves their Plan JSON) is plan-soundness card PS3.12.
+
+**Note (PR #232's red team): `door on <authored wall>` comes back absolute.** A door, window or
+opening written `on <wall> at <pos>` is exported by its `x`/`y` and host category, never the `on`
+clause, so after a round trip `describe().freedom` reports it absolute instead of attached (the
+"bar `freedom`" exception below). It holds at the root and inside a PS3.9 component body alike.
+
 **The CLI round-trip and its gap list.** `archlang compile -f json` writes the Plan JSON that
 `compile --from-json` reads back, and `test/cli-plan-json-roundtrip.test.ts` holds every example
 to byte-identical SVG, equal `describe()` facts (bar `freedom`, which flattens to absolute by

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://archlang.uk/plan.schema.json",
   "title": "ArchLang Plan",
-  "description": "A floor plan as structured JSON (RPLAN / DStruct2Design convention). Coordinates are millimetres; the origin is top-left with +x right and +y DOWN. Fields marked output-only are produced by planToJson and ignored on input. Scripting (let/for/if/component) and import are not representable — author those in .arch source. Vertical circulation (stair/escalator/elevator) is not projected: Plan JSON has no member for it.",
+  "description": "A floor plan as structured JSON (RPLAN / DStruct2Design convention). Coordinates are millimetres; the origin is top-left with +x right and +y DOWN. Fields marked output-only are produced by planToJson and ignored on input. Scripting (let/for/if/component) and import are not representable — author those in .arch source; the one exception is a placed component that derives its walls, carried by `components`/`instances`. Vertical circulation (stair/escalator/elevator) is not projected: Plan JSON has no member for it.",
   "type": "object",
   "required": [
     "plan",
@@ -151,6 +151,10 @@
           }
         ],
         "properties": {
+          "instance": {
+            "type": "string",
+            "description": "Output-only, and present only when the payload carries `instances`: the placed instance this row was born inside. The row is that instance's element in plan coordinates under its dotted id (`west.kit`), kept for a reader that only wants geometry. On input a marked row is regenerated from its component and an edit to it is IGNORED: edit `components[].body` (or `instances[]`) instead. A marked row's `id` must start with `<instance>.` (a dimension has none), so a root row cannot be marked and lost by mistake (E_JSON_SCHEMA). Never present on a row inside `components[].body`."
+          },
           "id": {
             "type": "string",
             "description": "Unique room id (referenced by furniture/openings)."
@@ -363,6 +367,10 @@
           "points"
         ],
         "properties": {
+          "instance": {
+            "type": "string",
+            "description": "Output-only, and present only when the payload carries `instances`: the placed instance this row was born inside. The row is that instance's element in plan coordinates under its dotted id (`west.kit`), kept for a reader that only wants geometry. On input a marked row is regenerated from its component and an edit to it is IGNORED: edit `components[].body` (or `instances[]`) instead. A marked row's `id` must start with `<instance>.` (a dimension has none), so a root row cannot be marked and lost by mistake (E_JSON_SCHEMA). Never present on a row inside `components[].body`."
+          },
           "id": {
             "type": "string",
             "description": "Unique wall id."
@@ -434,6 +442,10 @@
           "width"
         ],
         "properties": {
+          "instance": {
+            "type": "string",
+            "description": "Output-only, and present only when the payload carries `instances`: the placed instance this row was born inside. The row is that instance's element in plan coordinates under its dotted id (`west.kit`), kept for a reader that only wants geometry. On input a marked row is regenerated from its component and an edit to it is IGNORED: edit `components[].body` (or `instances[]`) instead. A marked row's `id` must start with `<instance>.` (a dimension has none), so a root row cannot be marked and lost by mistake (E_JSON_SCHEMA). Never present on a row inside `components[].body`."
+          },
           "kind": {
             "enum": [
               "door",
@@ -579,6 +591,10 @@
           "category"
         ],
         "properties": {
+          "instance": {
+            "type": "string",
+            "description": "Output-only, and present only when the payload carries `instances`: the placed instance this row was born inside. The row is that instance's element in plan coordinates under its dotted id (`west.kit`), kept for a reader that only wants geometry. On input a marked row is regenerated from its component and an edit to it is IGNORED: edit `components[].body` (or `instances[]`) instead. A marked row's `id` must start with `<instance>.` (a dimension has none), so a root row cannot be marked and lost by mistake (E_JSON_SCHEMA). Never present on a row inside `components[].body`."
+          },
           "category": {
             "type": "string",
             "description": "Furniture category, e.g. bed, sofa, wc, basin, stove."
@@ -706,6 +722,10 @@
           "to"
         ],
         "properties": {
+          "instance": {
+            "type": "string",
+            "description": "Output-only, and present only when the payload carries `instances`: the placed instance this row was born inside. The row is that instance's element in plan coordinates under its dotted id (`west.kit`), kept for a reader that only wants geometry. On input a marked row is regenerated from its component and an edit to it is IGNORED: edit `components[].body` (or `instances[]`) instead. A marked row's `id` must start with `<instance>.` (a dimension has none), so a root row cannot be marked and lost by mistake (E_JSON_SCHEMA). Never present on a row inside `components[].body`."
+          },
           "from": {
             "type": "object",
             "additionalProperties": false,
@@ -772,6 +792,10 @@
           "height"
         ],
         "properties": {
+          "instance": {
+            "type": "string",
+            "description": "Output-only, and present only when the payload carries `instances`: the placed instance this row was born inside. The row is that instance's element in plan coordinates under its dotted id (`west.kit`), kept for a reader that only wants geometry. On input a marked row is regenerated from its component and an edit to it is IGNORED: edit `components[].body` (or `instances[]`) instead. A marked row's `id` must start with `<instance>.` (a dimension has none), so a root row cannot be marked and lost by mistake (E_JSON_SCHEMA). Never present on a row inside `components[].body`."
+          },
           "id": {
             "type": "string",
             "description": "Unique column id."
@@ -791,6 +815,116 @@
           "height": {
             "type": "number",
             "description": "Height in millimetres."
+          }
+        }
+      }
+    },
+    "components": {
+      "type": "array",
+      "description": "The components the plan's placed instances were made from. Present (with `instances`, and with `instance` on every flattened instance row) ONLY on a storey where a placed component derives its walls with `walls from rooms`; every other payload has neither key, and a placed plan without that statement is exported flattened. Each body is what one instance resolved to in the component's own frame and names (`liv`, not `west.liv`), with the same row shapes as the root: the `walls from rooms` statement as written, never the walls it derives. A component that took parameters is carried parameterless, its arguments already applied. planFromJson prints each as `component <name>() { … }`. Not representable (planToJson refuses, E_JSON_DERIVED_IN_INSTANCE): a nested `place`, two instances of one component with different bodies, an imported component.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "body"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The component name, as `place` names it."
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rooms",
+              "walls",
+              "openings",
+              "furniture"
+            ],
+            "description": "The component's statements in its LOCAL frame and names; the root row shapes.",
+            "properties": {
+              "rooms": {
+                "$ref": "#/properties/rooms"
+              },
+              "walls": {
+                "$ref": "#/properties/walls"
+              },
+              "walls_from_rooms": {
+                "$ref": "#/properties/walls_from_rooms"
+              },
+              "openings": {
+                "$ref": "#/properties/openings"
+              },
+              "furniture": {
+                "$ref": "#/properties/furniture"
+              },
+              "dims": {
+                "$ref": "#/properties/dims"
+              },
+              "columns": {
+                "$ref": "#/properties/columns"
+              }
+            }
+          }
+        }
+      }
+    },
+    "instances": {
+      "type": "array",
+      "description": "The placed instances, in source order, as `describe().instances` lists them; present exactly when `components` is. planFromJson prints each as `place <component>() as <name> at (x,y) [rotate r] [mirror m]`, after the root statements: the round trip is byte-identical for a plan whose `place`s follow its root statements (one that places first comes back in that grouped order).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "component",
+          "at"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The `as <name>` instance name; one level, so never dotted."
+          },
+          "component": {
+            "type": "string",
+            "description": "A `components[].name`."
+          },
+          "at": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "x",
+              "y"
+            ],
+            "properties": {
+              "x": {
+                "type": "number",
+                "description": "X coordinate in millimetres (origin top-left, +x right)."
+              },
+              "y": {
+                "type": "number",
+                "description": "Y coordinate in millimetres (+y DOWN, screen convention)."
+              }
+            },
+            "description": "Where the component's local (0,0) lands, in plan coordinates."
+          },
+          "rotate": {
+            "enum": [
+              0,
+              90,
+              180,
+              270
+            ],
+            "description": "Quarter-turn of the instance (omitted when 0)."
+          },
+          "mirror": {
+            "enum": [
+              "x",
+              "y"
+            ],
+            "description": "Axis reflection of the instance, applied before the rotation."
           }
         }
       }

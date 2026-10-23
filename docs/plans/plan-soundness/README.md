@@ -315,8 +315,9 @@ budget (ADR 0022 §4). That is PS0.15.
 | PS0.16 | `set` value parsing: `parseSetValue` reads a bare identifier before `,`/`)` as a word (like `swing: out`), so `set door(width: W)` and `set door(width: hall.cx)` silently become the string "W"/"hall.cx" and have no effect, with no diagnostic (predates PR #221, found in its review; a door's explicit `width` overrides `set`, so the effect was never visible). Decide: a bound name or a dotted datum name as a `set` value is an expression; a bare word stays a word only for word-valued keys. Also: `set door(swing: inward\|outward)` is silently ignored like any unknown enum word there (PS3.8); fix it with this card | todo |
 | PS0.20 | Plan JSON: a door carrying both `swing` and `swing_building` that contradict each other (e.g. `swing: "out"` with `swing_building: "outward"` where outward resolves to `in`) is accepted silently; `swing_building` wins on input and the `swing` value is never read (found in PR #229's review). Consider a warning on import, or document `swing` as informational there | todo |
 | PS0.17 | `describe` keys: `outdoor` and `fences` are missing from `PER_STOREY_OPTIONAL_KEYS` (`src/describe.ts`), so `describe --level N` can leave another storey's surfaces standing, and from `DESCRIBE_KEYS` (`src/cli/commands-analyze.ts`), so `--select outdoor` is refused (found in PR #223, which added `derived_walls` to both; not fixed there) | todo |
-| PS0.18 | Plan JSON round trip turns a label-only "Hall" into `uses entry`: the room classifies `uses hall`, `room_type` `Entrance`, and the projection maps `Entrance` back to `entry` (`src/plan-json.ts`), so the compiled-back plan's `describe()` differs. Found in PR #227, where `examples/relational.arch`'s new hall authors `uses hall` to round-trip. Decide the honest mapping (carry the classified `uses`, or map `Entrance` to the use that produced it) | todo |
 | PS0.19 | A window's `facing` fact was not equivariant under a pure translation. Found on 2026-10-23 by `test/equivariance-fuzz.test.ts` on PR #230's CI (fast-check seed 1736625303, path "29:2:2:2:10:10:10:10:10:10:11:11:20:20:20:20:20:20:20:20:20:20:20:20", `g = t`); it reproduced on `main` too. The shrunk plan is a 6 × 6 m shell with partitions at x 2000 and 4000 and at y 3300, six rooms in a 3 × 2 grid, and `window id=o0 on w_v1 at 55% width 600`, placed 20 m out. `(55 / 100) × 6000` is 3300.0000000000005, an ulp off the room corner (2000,3300), so P₀ had no tie and read `E`; translated, the ulp rounded away, the window sat on the corner, and the `facing-tie` convention (N/S first) read `S`. **As built:** `percentOf` (`src/attach.ts`) reads the percentage as the decimal it was written as (`n / 10^k`, k ≤ 6), multiplies the run by the integer `n` and divides once, so a percentage whose true length is a double resolves to it exactly. `resolveAttachment` is the only place a percent position becomes a length (furniture, dims and hosted datums take no percentage; datum hosts refuse one). Measured over `examples/` and `test/`: 5 positions change by an ulp (`hexagon-pavilion.arch` p_ne, p_nw, p_se; `museum-wing.arch` o1; `test/fixtures/schedule-sheet.arch` door_1, 3400.0000000000005 → 3400), every one snapped or printed to the same output, so no digest, golden or snapshot row moved. The `float-translation` class's witness was this same ulp, so it now spells the position `at 12000 * 0.55`, a computed mm position that still carries the ulp (the class stays open for lint). The shrunk plan is pinned in the fuzz suite's counterexamples, with a unit table in `test/attach.test.ts` | done |
+| PS0.18 | Plan JSON round trip turns a label-only "Hall" into `uses entry`: the room classifies `uses hall`, `room_type` `Entrance`, and the projection maps `Entrance` back to `entry` (`src/plan-json.ts`), so the compiled-back plan's `describe()` differs. Found in PR #227, where `examples/relational.arch`'s new hall authors `uses hall` to round-trip. Decide the honest mapping (carry the classified `uses`, or map `Entrance` to the use that produced it). It applies inside a PS3.9 component body too, whose rooms go through the same projection (found by PR #232's red team) | todo |
+| PS0.21 | Plan JSON has no member for `outdoor`, so a plan whose rooms tile only with an `outdoor` surface (a courtyard) loses it on the way out and comes back refused with `E_ROOMS_NOT_TILING`, at the root and inside a PS3.9 component body alike (found by PR #232's red team). Carry `outdoor` additively, or refuse the projection with a named code rather than emit a payload that cannot compile | todo |
 
 ### PS1 · The defect corpus (do this before PS2; it is the yardstick)
 
@@ -734,11 +735,46 @@ original brief follows.
 - A plain lint for an exterior door on a public building whose leaf swings into the floor belongs
   to PS2.16's non-residential profile, not here.
 
-**PS3.9 · Plan JSON for a component that derives its walls.** `todo` (after PS3.0)
-- Plan JSON has no per-component record, so a plan whose `place`d component holds `walls from rooms`
-  is refused at projection (`E_JSON_DERIVED_IN_INSTANCE`, PR #223) rather than lose the derived
+**PS3.9 · Plan JSON for a component that derives its walls.** `done` (PR #232; as built below)
+- Plan JSON had no per-component record, so a plan whose `place`d component holds `walls from rooms`
+  was refused at projection (`E_JSON_DERIVED_IN_INSTANCE`, PR #223) rather than lose the derived
   walls. Design an additive per-instance (or per-component) record that carries the statement as
   written, with a round-trip law, and retire the refusal.
+- *As built (PR #232):* on a storey where a placed instance derives its walls, and only there,
+  the payload gains `components: [{name, body}]` and `instances: [{name, component, at, rotate?,
+  mirror?}]`, and every flattened instance row gains `instance`. A body is the instance's own
+  resolution in its local frame and names (`instanceBodiesOf`, a side table in `src/ir.ts`),
+  projected by the root's row code, so `relation`, `facing`, `swing_building`, `against_edge` and
+  `walls_from_rooms` are carried as written. The way back prints the root rows, a parameterless
+  `component` per body and a `place` per instance, skipping the marked rows. The law, pinned in
+  `test/plan-json-instances.test.ts`: for a plan whose `place`s follow its root statements, SVG and
+  `describe()` are byte-identical, `lint()` is identical once spans, fixes and related spans are
+  stripped, and JSON → arch → JSON is stable; a plan that places first comes back in the grouped
+  order (pinned as a limit, PS3.13). A marked row is regenerated on input and edits to it are
+  ignored; its `id` must carry the instance's namespace, so a root row marked by mistake is
+  `E_JSON_SCHEMA` rather than lost (red team round 1, S1).
+  `E_JSON_DERIVED_IN_INSTANCE` now means only what the record cannot hold: a nested `place`, two
+  instances of one component with different bodies, an imported component. No payload outside the
+  gate moved.
+
+**PS3.12 · Plan JSON round trip for every placed plan.** `todo` (after PS3.9)
+- PS3.9's record (`components`/`instances`, `instance` on flattened rows) is gated to storeys where
+  a placed component derives its walls, so every other placed plan still exports flattened and
+  fails the way back with `E_DOTTED_DECL` (backlog G.10). Widen the gate to every placed plan. It
+  moves the Plan JSON of each placed example (`clinic`, `museum-wings`, `terrace-row`,
+  `hillside-villa` and every other plan with a `place`). List each one, and take the
+  `E_DOTTED_DECL` tripwire in `test/plan-json.test.ts` and those examples' entries in
+  `CANNOT_ROUND_TRIP` (`test/plan-json-gaps.ts`) off together. Nested places and imported
+  components need their own decision.
+
+**PS3.13 · Plan JSON: print each `place` where its instance stood.** `todo` (after PS3.9; may fold
+into PS3.12)
+- PS3.9 prints every `place` after the root statements, so a plan that places before (or between)
+  its root statements comes back in the grouped order and draws within a layer in another order
+  (the LIMIT pin in `test/plan-json-instances.test.ts`). Print each `place` at the position its
+  marked rows held in the payload instead. Prove first, against the resolve order (instances
+  resolve deepest first and commit in group order before the root, `src/ir.ts` step 3), that the
+  row order alone determines `ir.elements` order; then turn the LIMIT pin into a law.
 
 ### PS4 · The change model: what follows, what stays, what breaks
 
