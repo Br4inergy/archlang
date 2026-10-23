@@ -453,14 +453,7 @@ into PS3.12)
 
 **PS4.1 · `describe --facts depends` (opt-in).** `done` (PR #239, pending)
 
-**PS4.2 · `arch impact`.** `todo` (after PS0.4, PS4.1)
-- `arch impact plan.arch --set NAME=value` (or `--against old.arch`) twin-compiles through the one
-  pipeline (the shape of `reroll`) and reports:
-  - **moved**, **resized** and **re-hosted** elements, each with its `depends` chain as the "why";
-  - **held**: elements that did not move although a dependency did. This is the "should have
-    followed" signal;
-  - **broke/healed**: the diagnostic delta, keyed by code and element, including `keep` violations.
-- This is the executable answer to "change one number: what changes, what must not".
+**PS4.2 · `arch impact`.** `done` (PR #240, pending)
 
 **PS4.3 · `keep` invariants (checked, never solved, by `compile()`).** `todo` (needs an ADR addendum)
 - Vocabulary: `keep align …`, `keep equal …`, `keep offset <x> from <y> <mm>`, `keep min clear <room> <mm>`,
@@ -544,7 +537,7 @@ into PS3.12)
 | 2 | PS2.1–PS2.9, PS2.13 | Defect-corpus catch rate ≥ 90 % for classes 1, 2, 3, 4 and 6, with no false positive on the clean twins; every corpus `lint()` movement is explained (two-bed is expected to start warning: fix the example, see PS3.6). *Corrected 2026-10-19:* class 5 (clearances) belongs to PS2.11 in row 5, so it was removed from this row's acceptance. *Status:* met 2026-10-20 (PRs #214, #216, #217; 46/68 on `main@06c6b56`); dated status history verbatim: `research/2026-10-24-ps0-ps2-as-built.md` § §7 row 2 |
 | 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. *Status:* met 2026-10-23 by PS3.6 (PR #227), every bullet; catch rate then 46/68; dated status history verbatim: `research/2026-10-24-ps3-as-built.md` § §7 row 3 |
 | 3a | PS3.7, PS3.8, PS3.5, PS3.9 (and PS0.19) | Unplanned: done after row 3 was met, before row 4 (D7): PRs #228, #229, #230, #232; PS0.19 #231. First-contact re-run, PR #233 (`audits/2026-10-24-first-contact-rerun.md`): old six plans 17/57 caught (6 partially; 14/57 counting halves); cold re-authoring 6/6 rooms-first; defects 57 → 48, blockers 4 → 2; corpus catch rate 46/68 → 47/70 |
-| 4 | PS0.4, PS4.1, PS4.2 | **Next.** The widening drill's `impact` names every moved, held and broken item correctly |
+| 4 | PS0.4, PS4.1, PS4.2 | **Next.** The widening drill's `impact` names every moved, held and broken item correctly. *Status:* met 2026-10-24 by PS4.2 (PR #240), pending merge: a resized, b moved, door_2 re-hosted, each with its chain to `AW`; held none (the walls that should have followed are written in numbers and depend on nothing); broke `W_BOUNDARY_NO_WALL`, `W_ROOM_DISCONNECTED`, `W_ROOM_OUTSIDE_SHELL` on b (`test/impact.test.ts`) |
 | 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically |
 | 6 | PS4.3, PS4.4, PS3.5, PS3.6, PS5.4, PS7.x | — (PS3.6 landed in row 3, PS3.5 in row 3a) |
 | 7 | PS6.1 | — |
