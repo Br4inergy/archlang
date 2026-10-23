@@ -212,5 +212,8 @@ export function selectSegment(sel: SegmentSelect, wall: RWall, ref: string, ctx:
     const b = vertical ? s.b.y : s.b.x;
     if (Math.min(Math.max(a, b), hi) > Math.max(Math.min(a, b), lo)) matches.push(s.index);
   }
-  return decide(matches, straight.length > 0 ? `its straight segments: ${listOf(straight)}` : "it has no straight segment");
+  return decide(
+    matches,
+    straight.length > 0 ? `its straight segments: ${listOf(straight)}` : "it has no straight segment",
+  );
 }
