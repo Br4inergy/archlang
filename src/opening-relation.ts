@@ -55,6 +55,10 @@ export interface DatumAccess {
   /** The value of `name` read as a datum: `undefined` when it is not one, `null` when the
    *  reader refused it (the diagnostic is already pushed). One step, charged by the caller. */
   read(name: string, span: Span | undefined): number | null | undefined;
+  /** Whether a bare compass word may stand for a frame direction in this group (the root of a
+   *  plan whose `north` is `up`, ADR 0028 §2), and why not when it may not: what `segment
+   *  north` reads (`src/segment-select.ts`). Absent = refused. */
+  compass?: { aliases: boolean; why: string };
 }
 
 /** What the placement needs from `ResolveCtx`. */

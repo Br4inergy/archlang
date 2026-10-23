@@ -492,6 +492,16 @@ export interface OpeningNode extends NodeBase {
   headSpan?: Span;
 }
 
+/**
+ * A segment selector, written where `segment <n>` is: `segment north|south|east|west` (the one
+ * straight segment of a closed ring whose outward face looks that way) or `segment containing
+ * <room>.<edge>` (the one straight segment lying on that room edge's line). It aliases the
+ * number it resolves to (`src/segment-select.ts`); `span` covers the selector's words.
+ */
+export type SegmentSelect =
+  | { kind: "compass"; dir: "north" | "south" | "east" | "west"; span: Span }
+  | { kind: "containing"; edge: string; span: Span };
+
 /** `against wall <id> [segment <n>] [offset <d>] [side left|right]` — anchor a fixture
  *  flush to a wall face. The renderer position + quarter-turn are computed from it
  *  at resolve (closed-form). Mutually exclusive with {@link FurnitureNode.at}. */
@@ -500,6 +510,9 @@ export interface FurnitureAgainst {
   wall: string;
   /** Which segment of a multi-segment wall (0-based); required when the wall has >1. */
   segment?: Expr;
+  /** `segment north|south|east|west` / `segment containing <room>.<edge>` in place of the
+   *  number (never both); resolves to the index the number would name. */
+  segmentSelect?: SegmentSelect;
   /** Distance (mm) along the segment from its start to the fixture's along-wall centre; default = segment midpoint. */
   offset?: Expr;
   /** Which face of the wall — left/right of the segment's start→end direction. */
@@ -631,6 +644,9 @@ export interface DimCurve {
   ref: string;
   /** Which arc edge of a multi-segment wall — required only when it has several. */
   segment?: Expr;
+  /** A selector written in place of the number: always refused here, since a selector
+   *  picks a straight segment and `dim radius` measures an arc. */
+  segmentSelect?: SegmentSelect;
   span?: Span;
 }
 
