@@ -157,6 +157,8 @@ export function parseAttachTarget(
  * that reads back as `pct` (k ≤ 6), and the length is multiplied by the integer `n` before
  * the one division: an integer run within `MODEL_RANGE_MM` times `n ≤ 10^8` stays below
  * 2^53, so the only rounding is the division's, and a representable result is exact.
+ * A percentage that needs more than 6 decimals (k > 6) falls back to the plain
+ * `(len · pct) / 100`: two roundings, as before this fix.
  */
 export function percentOf(len: number, pct: number): number {
   for (let k = 0, s = 1; k <= 6; k++, s *= 10) {
