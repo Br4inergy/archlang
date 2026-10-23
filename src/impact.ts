@@ -4,7 +4,7 @@
  *
  * Both sources go through the one pipeline (`compileUncached`, the shape `reroll` proves its
  * twins with, plus `resolvePlan`, `describe()` and `lint()`, all over the same parse), and the
- * report is built on two facts that already exist: {@link diffPlans} says what moved, resized
+ * report is built on two facts that already exist: `diffPlans` says what moved, resized
  * or was re-hosted, and `describe(…, { facts: ["depends"] })` (PS4.1) says what each element
  * was derived from. Four sections:
  *
@@ -12,14 +12,20 @@
  *   `diffPlans` classifies them; other kinds, and a door that slid along an unchanged wall,
  *   from their resolved position), each with `why`: the dependency chain from it back to a
  *   root that itself changed. The chain follows `on`, `hostWallId` (`host`), `axes` and
- *   `params` (a top-level `let`, and a `let` it reads, whose expression changed); one more
- *   edge, `joins`, is followed for a re-hosted opening only: the rooms whose change moved the
- *   spaces it joins (its `between` is read off the rooms around it, not named by it). `root`
- *   says how the chain ends: `let` (a `let`'s expression changed, e.g. the `--set` target),
- *   `edited` (that element's own statement changed), `axis` (a positioning axis moved) or
- *   `unexplained` (it changed but no dependency it records did: geometry found by search).
+ *   `params`: a bound name (a `let` anywhere, a `for` variable, a component parameter) whose
+ *   binding changed or reads a changed one, plus the names the element's `place … at (x, y)`
+ *   and arguments read. One more edge, `joins`, is followed for a re-hosted opening only: the
+ *   rooms whose change moved the spaces it joins (its `between` is read off the rooms around
+ *   it, not named by it). Among a node's changed edges the chain takes the first, in that edge
+ *   order and then code-unit id order, that reaches a root (a memoised depth-first search),
+ *   else the first changed one: "first" is an order, not a claim about which cause mattered
+ *   most. `root` says how the chain ends: `let` (a binding's expression changed, e.g. the
+ *   `--set` target), `edited` (that element's own statement changed), `axis` (a positioning
+ *   axis moved) or `unexplained` (no recorded dependency reaches a change: geometry found by
+ *   search, such as `flush` measuring from a wall, or a `place` edited to a literal).
  * - **held**: an element that did NOT change although something it depends on (by the same
- *   four edges) changed geometry or value. The "should it have followed?" signal. A
+ *   four edges) changed geometry or value. A wall changes only as `diffPlans` sees it (points,
+ *   arcs, closure, thickness): an opening widened in it is not a change of the wall. The "should it have followed?" signal. A
  *   relabel never makes a dependant held.
  * - **diagnostics**: `broke` (on the after side only) and `healed` (on the before side only),
  *   matched as a multiset keyed by code, element and storey, and `unchanged_count`. The
@@ -43,19 +49,20 @@
  * **Limits** (recorded, not hidden): elements pair by id, so under `--against` a statement
  * inserted ahead of auto-id'd elements shifts their ids (PS0.23, as in `diffPlans`); only the
  * lowest storey's elements are compared (as `describe()`'s top-level facts and `diffPlans`
- * do), while diagnostics cover every storey; a `params` name counts as a changed `let` only
- * when a top-level `let` of that name changed (a component parameter or `for` variable of the
- * same name shadows it, which the name alone cannot tell); and an element whose position comes
+ * do), while diagnostics cover every storey; a bound name is one entry however many places
+ * bind it (a component parameter and a `let` of the same name are not told apart, PS4.7); and
+ * an element whose position comes
  * from geometry it does not record as a dependency (an absolute wall a room has outgrown)
  * cannot be "held" by this definition: the breakage it causes appears under `broke` instead.
  *
  * **Bounds.** Post-compile and outside the evaluator, so nothing is charged to the step meter
  * (`src/expr.ts`; there is no meter outside a resolution). Every loop is bounded by a count:
  * with E elements and walls per side (at most `MAX_ELEMENTS` = 5,000 elements per
- * resolution, plus the walls they derive), L top-level lets with R names read in all, D
+ * resolution, plus the walls they derive), L bound names with R names read in all, D
  * diagnostics and K the largest dependency row: pairing and classifying is O(E) map lookups;
- * the let closure is at most L passes over R reads, O(L·R); each `why` chain is at most
- * {@link MAX_WHY_DEPTH} steps of at most K edges, O(E·MAX_WHY_DEPTH·K) for all of them; held
+ * the binding closure is at most L passes, each over every name and its reads, O(L·(L+R));
+ * the chain search visits each node once (memoised) over its edges, O(E·K), and each reported
+ * chain is at most {@link MAX_WHY_DEPTH} steps, O(E·MAX_WHY_DEPTH) to print them all; held
  * is one pass over every row, O(E·K); keying diagnostics scans the elements once per
  * diagnostic, O(D·E). Worst case is that last term, ~5,000 × the diagnostic count.
  *
@@ -63,14 +70,14 @@
  * user source.
  */
 
-import type { LetNode, PlanNode } from "./ast.js";
-import { exprChildren } from "./cursor.js";
+import type { ComponentDef, LetNode, PlanNode, Statement } from "./ast.js";
+import { exprChildren, statementBodies } from "./cursor.js";
 import { describe, type DescribeOptions } from "./describe.js";
 import type { DependsEntry, DerivedWallDepends } from "./analyze/depends.js";
 import { indexStatements } from "./analyze/depends.js";
 import { resolvePlan } from "./analyze.js";
 import type { Diagnostic, Severity } from "./diagnostics.js";
-import { diffPlans, type OpeningChange, type PlanDiff, type RoomChange, type WallChange } from "./diff.js";
+import { diffSides, type OpeningChange, type PlanDiff, type RoomChange, type WallChange } from "./diff.js";
 import { closest, type Expr } from "./expr.js";
 import type { ResolvedElement, ResolvedPlan, ROpening, RWall } from "./ir.js";
 import { lex } from "./lexer.js";
@@ -85,7 +92,10 @@ export const MAX_WHY_DEPTH = 32;
 
 /** Options `impact` shares with `compile()`, as `reroll` takes them. */
 export interface ImpactOptions {
+  /** The environment both sides resolve `import`s through, unless {@link beforeWorld} is given. */
   world?: CompileOptions["world"];
+  /** The before side's environment, when it differs (`--against` a file in another directory). */
+  beforeWorld?: CompileOptions["world"];
   plugins?: CompileOptions["plugins"];
 }
 
@@ -168,9 +178,19 @@ export interface ImpactReport {
 
 interface LetFact {
   key: string;
-  text: string;
   reads: Set<string>;
+  /** The first top-level `let`'s expression text, and the first `let`'s anywhere in the source. */
+  topText: string;
+  anyText: string;
 }
+/** A changed binding, briefly: `4000 → 4500`, `reads W`, or `changed` when it has no text. */
+const letChangePhrase = (l: ImpactLet): string =>
+  l.reads
+    ? `reads ${l.reads.join(", ")}`
+    : l.before === undefined && l.after === undefined
+      ? "changed"
+      : `${l.before ?? "(none)"} → ${l.after ?? "(none)"}`;
+const textOf = (l: LetFact | undefined): string | undefined => (l ? l.topText || l.anyText || undefined : undefined);
 
 interface Side {
   ok: boolean;
@@ -189,6 +209,10 @@ interface Side {
   /** The statement each element came from, span-blind. */
   stmt: Map<string, string>;
   lets: Map<string, LetFact>;
+  /** The names each `place` reads, by instance path. */
+  places: Map<string, Set<string>>;
+  /** Each element's instance path. */
+  instance: Map<string, string>;
   axes: Map<string, string>;
   /** Openings' resolved `at` and furniture's `at`/`size`, for move/resize phrases. */
   at: Map<string, { x: number; y: number }>;
@@ -229,22 +253,88 @@ function letText(source: string, s: LetNode): string {
   return eq < 0 ? text : text.slice(eq + 1).trim();
 }
 
-/** The root plan's top-level `let`s (and reassignments, which redefine one), by name. */
-function topLets(source: string, plan: PlanNode | undefined): Map<string, LetFact> {
-  const out = new Map<string, LetFact>();
-  for (const s of plan?.body ?? []) {
-    if (s.kind !== "let" && s.kind !== "assign") continue;
-    const prev = out.get(s.name);
+/**
+ * Every bound name of the plan, by name: a `let` or reassignment anywhere (the root body, a
+ * block, a component body), a `for` variable (it reads its range) and a component parameter
+ * (it reads the arguments every `place`/call passes it). A name bound in several places is one
+ * entry whose `key` joins them in walk order and whose `reads` is their union, so the name, not
+ * the binding, is what changes (PS4.7). `text` is the expression of the first top-level `let`
+ * of that name in the compiled source, else of the first `let` there; empty otherwise.
+ *
+ * Also the names each `place … as <alias> at (x, y)` reads in its `at` and arguments, by
+ * instance path (`west`, `west.inner`), which move every element of that instance.
+ *
+ * Linear in the statements and their expressions; each component body is walked once for its
+ * bindings, and once per instance path for its places (a component on the current path is not
+ * re-entered, so a self-placing component, already `E_RECURSION`, cannot loop).
+ */
+function bindingsOf(
+  source: string,
+  plan: PlanNode | undefined,
+): { lets: Map<string, LetFact>; places: Map<string, Set<string>> } {
+  const lets = new Map<string, LetFact>();
+  const places = new Map<string, Set<string>>();
+  if (!plan) return { lets, places };
+  const comps = new Map<string, ComponentDef>();
+  const seen = new Set<ComponentDef>();
+  const collect = (m: ReadonlyMap<string, ComponentDef> | undefined): void => {
+    for (const [n, c] of m ?? []) {
+      if (seen.has(c)) continue;
+      seen.add(c);
+      if (!comps.has(n)) comps.set(n, c);
+      collect(c.scope);
+    }
+  };
+  collect(plan.components);
+  const bind = (name: string, part: string, value: Expr | undefined, text: string, top: boolean): void => {
+    const prev = lets.get(name);
     const reads = prev?.reads ?? new Set<string>();
-    exprReads(s.value, reads);
-    reads.delete(s.name);
-    out.set(s.name, {
-      key: `${prev ? `${prev.key};` : ""}${s.kind}:${keyOf(s.value)}`,
-      text: prev?.text ?? (s.kind === "let" ? letText(source, s) : ""),
+    if (value) exprReads(value, reads);
+    reads.delete(name);
+    lets.set(name, {
+      key: `${prev ? `${prev.key};` : ""}${part}`,
       reads,
+      topText: prev?.topText || (top ? text : ""),
+      anyText: prev?.anyText || text,
     });
-  }
-  return out;
+  };
+  const argsOf = (callee: string, args: readonly Expr[]): void => {
+    const def = comps.get(callee);
+    if (!def) return;
+    def.params.forEach((p, k) => {
+      const a = args[k];
+      bind(p, `arg:${a ? keyOf(a) : ""}`, a, "", false);
+    });
+  };
+  const walk = (body: readonly Statement[], top: boolean, file: string | undefined): void => {
+    for (const s of body) {
+      if (s.kind === "let" || s.kind === "assign") {
+        const text = s.kind === "let" && file === undefined ? letText(source, s) : "";
+        bind(s.name, `${s.kind}:${keyOf(s.value)}`, s.value, text, top);
+      } else if (s.kind === "for") bind(s.varName, `for:${keyOf(s.iter)}`, s.iter, "", false);
+      else if (s.kind === "place" || s.kind === "instance") argsOf(s.name, s.args);
+      for (const b of statementBodies(s)) walk(b, false, file);
+    }
+  };
+  walk(plan.body, true, undefined);
+  for (const c of seen) walk(c.body, false, c.file);
+  const walkPlaces = (body: readonly Statement[], prefix: string, stack: ReadonlySet<string>): void => {
+    for (const s of body) {
+      if (s.kind === "place") {
+        const path = prefix ? `${prefix}.${s.alias}` : s.alias;
+        const reads = new Set<string>();
+        exprReads(s.at.x, reads);
+        exprReads(s.at.y, reads);
+        for (const a of s.args) exprReads(a, reads);
+        places.set(path, reads);
+        const def = comps.get(s.name);
+        if (def && !stack.has(s.name)) walkPlaces(def.body, path, new Set([...stack, s.name]));
+      }
+      for (const b of statementBodies(s)) walkPlaces(b, prefix, stack);
+    }
+  };
+  walkPlaces(plan.body, "", new Set());
+  return { lets, places };
 }
 
 function nameOf(e: ResolvedElement): { name: string; derived: boolean } {
@@ -275,6 +365,7 @@ function sideDiagnostics(source: string, opts: ImpactOptions): Side["diagnostics
 function readSide(source: string, opts: ImpactOptions): Side {
   const aopts: DescribeOptions = { world: opts.world, plugins: opts.plugins };
   const { ir, levels, plan } = resolvePlan(source, aopts);
+  const bound = bindingsOf(source, plan);
   const side: Side = {
     ok: ir !== null,
     ir,
@@ -287,7 +378,9 @@ function readSide(source: string, opts: ImpactOptions): Side {
     name: new Map(),
     derived: new Set(),
     stmt: new Map(),
-    lets: topLets(source, plan),
+    lets: bound.lets,
+    places: bound.places,
+    instance: new Map(),
     axes: new Map(),
     at: new Map(),
     size: new Map(),
@@ -303,6 +396,7 @@ function readSide(source: string, opts: ImpactOptions): Side {
     const n = nameOf(e);
     side.name.set(e.id, n.name);
     if (n.derived) side.derived.add(e.id);
+    if (e._instance !== undefined) side.instance.set(e.id, e._instance);
     // An opening's host segment is `diffPlans`' business (re-hosted); its own place is `at`.
     const { host: _host, ...rest } = e as unknown as Record<string, unknown>;
     side.fp.set(e.id, keyOf(e.kind === "door" || e.kind === "window" || e.kind === "opening" ? rest : e));
@@ -318,8 +412,8 @@ function readSide(source: string, opts: ImpactOptions): Side {
     if (side.kind.has(w.id)) continue;
     side.kind.set(w.id, "wall");
     side.name.set(w.id, w._derived ? wallName(w) : w.id);
+    if (w._instance !== undefined) side.instance.set(w.id, w._instance);
     if (w._derived) side.derived.add(w.id);
-    side.fp.set(w.id, keyOf(w));
     const s = w._derived ? undefined : index?.statement(w.span, w._file);
     if (s) side.stmt.set(w.id, keyOf(s));
   }
@@ -394,7 +488,8 @@ interface Node {
  * the first for `--set`). See the module header for the sections, naming and bounds.
  */
 export function impact(before: string, after: string, opts: ImpactOptions = {}): ImpactReport {
-  const A = readSide(before, opts);
+  const beforeOpts: ImpactOptions = { ...opts, world: opts.beforeWorld ?? opts.world };
+  const A = readSide(before, beforeOpts);
   const B = readSide(after, opts);
   const ok = A.ok && B.ok;
   const report: ImpactReport = {
@@ -406,7 +501,13 @@ export function impact(before: string, after: string, opts: ImpactOptions = {}):
     summary: [],
   };
   if (ok) {
-    const diff = diffPlans(before, after, { world: opts.world, plugins: opts.plugins });
+    // `diffPlans`, with each side read in its own environment.
+    const diff = diffSides(
+      before,
+      after,
+      { world: beforeOpts.world, plugins: opts.plugins },
+      { world: opts.world, plugins: opts.plugins },
+    );
     buildChanges(A, B, diff, report);
   }
   report.summary = summaryOf(report);
@@ -414,21 +515,24 @@ export function impact(before: string, after: string, opts: ImpactOptions = {}):
 }
 
 function buildChanges(A: Side, B: Side, diff: PlanDiff, report: ImpactReport): void {
-  // 1. Lets: changed text, then (at most one pass per let) any let reading a changed one.
+  // 1. Bound names: a changed binding, then (at most one pass per name) any name whose
+  // bindings read a changed one. `before`/`after` are the `let` text as written, when there is
+  // one in the compiled source.
   const letNames = [...new Set([...A.lets.keys(), ...B.lets.keys()])].sort(cmp);
   const lets = new Map<string, ImpactLet>();
-  for (const n of letNames) {
-    const a = A.lets.get(n);
-    const b = B.lets.get(n);
-    if (a?.key !== b?.key) lets.set(n, { name: n, ...(a ? { before: a.text } : {}), ...(b ? { after: b.text } : {}) });
-  }
+  const texts = (n: string): Pick<ImpactLet, "before" | "after"> => {
+    const a = textOf(A.lets.get(n));
+    const b = textOf(B.lets.get(n));
+    return { ...(a !== undefined ? { before: a } : {}), ...(b !== undefined ? { after: b } : {}) };
+  };
+  for (const n of letNames) if (A.lets.get(n)?.key !== B.lets.get(n)?.key) lets.set(n, { name: n, ...texts(n) });
   for (let pass = 0; pass < letNames.length; pass++) {
     let grew = false;
     for (const n of letNames) {
       if (lets.has(n)) continue;
       const reads = [...(B.lets.get(n)?.reads ?? [])].filter((r) => lets.has(r)).sort(cmp);
       if (reads.length === 0) continue;
-      lets.set(n, { name: n, before: A.lets.get(n)!.text, after: B.lets.get(n)!.text, reads });
+      lets.set(n, { name: n, ...texts(n), reads });
       grew = true;
     }
     if (!grew) break;
@@ -457,12 +561,12 @@ function buildChanges(A: Side, B: Side, diff: PlanDiff, report: ImpactReport): v
       continue;
     }
     if (kind === "wall") {
+      // A wall changes only as `diffPlans` sees it: its points, arcs, closure or thickness
+      // (and appearing or vanishing). The openings cut into it are theirs, never the wall's.
       const derived = (inB ? B : A).derived.has(id);
       const w = wallByKey.get(derived ? `\u0000${B.name.get(id) ?? A.name.get(id)}` : id);
-      if (w) {
-        set(w.change, wallDetail(w), w.change === "moved" ? wallDetail(w) : w.change);
-        continue;
-      }
+      if (w) set(w.change, wallDetail(w), w.change === "moved" ? wallDetail(w) : w.change);
+      continue;
     }
     if (!inA || !inB) {
       set(inB ? "added" : "removed", inB ? "added" : "removed");
@@ -493,8 +597,7 @@ function buildChanges(A: Side, B: Side, diff: PlanDiff, report: ImpactReport): v
   const nameOfId = (id: string): string => B.name.get(id) ?? A.name.get(id) ?? id;
   const isLetNode = (k: string): boolean => k.startsWith("let\u0000");
   const letBrief = (n: string): string => {
-    const l = lets.get(n)!;
-    return l.reads ? `reads ${l.reads.join(", ")}` : `${l.before ?? "(none)"} → ${l.after ?? "(none)"}`;
+    return letChangePhrase(lets.get(n)!);
   };
   const axisChanged = (label: string): boolean => A.axes.get(label) !== B.axes.get(label);
   /** A node changed in geometry or value (a relabel does not count). */
@@ -527,8 +630,17 @@ function buildChanges(A: Side, B: Side, diff: PlanDiff, report: ImpactReport): v
     for (const id of row?.on ?? drow?.on ?? []) if (id !== row?.hostWallId) out.push({ via: "on", key: id });
     if (row?.hostWallId !== undefined) out.push({ via: "host", key: row.hostWallId });
     for (const a of row?.axes ?? []) out.push({ via: "axis", key: `axis\u0000${a}` });
-    for (const p of row?.params ?? drow?.params ?? [])
-      if (lets.has(p)) out.push({ via: "param", key: `let\u0000${p}` });
+    const params = new Set(row?.params ?? drow?.params ?? []);
+    // The `place`s it was instantiated by (outermost first): their `at` and arguments.
+    const inst = B.instance.get(key) ?? A.instance.get(key);
+    if (inst !== undefined) {
+      const parts = inst.split(".");
+      for (let i = 1; i <= parts.length; i++) {
+        const path = parts.slice(0, i).join(".");
+        for (const r of B.places.get(path) ?? A.places.get(path) ?? []) params.add(r);
+      }
+    }
+    for (const p of [...params].sort(cmp)) if (lets.has(p)) out.push({ via: "param", key: `let\u0000${p}` });
     const kind = B.kind.get(key) ?? A.kind.get(key);
     const o = kind ? openingById.get(`${kind}\u0000${key}`) : undefined;
     if (o?.betweenBefore !== undefined)
@@ -544,6 +656,44 @@ function buildChanges(A: Side, B: Side, diff: PlanDiff, report: ImpactReport): v
     return a !== b;
   };
 
+  /** How a node is a root of a chain, or undefined when it is not one. */
+  const rootOf = (key: string): ImpactChange["root"] | undefined => {
+    if (edited(key)) return "edited";
+    if (isLetNode(key)) return lets.get(key.slice(4))!.reads ? undefined : "let";
+    if (key.startsWith("axis\u0000")) return "axis";
+    return undefined;
+  };
+  // Which edge each node's chain takes: the first (in `edges` order) whose target reaches a
+  // root, else the first that changed at all (the chain then ends `unexplained`). Memoised, so
+  // every node is searched once whichever element's chain reaches it: O(nodes x edges) in all.
+  // A node already on the search path is skipped, so a cycle terminates (deterministically).
+  const reaches = new Map<string, boolean>();
+  const nextOf = new Map<string, { via: ImpactStep["via"]; key: string } | undefined>();
+  const onPath = new Set<string>();
+  const reach = (key: string): boolean => {
+    const memo = reaches.get(key);
+    if (memo !== undefined) return memo;
+    if (rootOf(key) !== undefined) {
+      reaches.set(key, true);
+      return true;
+    }
+    onPath.add(key);
+    let first: { via: ImpactStep["via"]; key: string } | undefined;
+    let found: typeof first;
+    for (const e of edges(key)) {
+      if (onPath.has(e.key) || !moves(e.key)) continue;
+      first ??= e;
+      if (reach(e.key)) {
+        found = e;
+        break;
+      }
+    }
+    onPath.delete(key);
+    nextOf.set(key, found ?? first);
+    reaches.set(key, found !== undefined);
+    return found !== undefined;
+  };
+
   for (const id of ids) {
     const n = nodes.get(id);
     if (!n) continue;
@@ -553,20 +703,14 @@ function buildChanges(A: Side, B: Side, diff: PlanDiff, report: ImpactReport): v
     let root: ImpactChange["root"] = "unexplained";
     let truncated = false;
     for (;;) {
-      if (edited(cur)) {
-        root = "edited";
+      const r = rootOf(cur);
+      if (r !== undefined) {
+        root = r;
         break;
       }
-      if (isLetNode(cur) && !lets.get(cur.slice(4))!.reads) {
-        root = "let";
-        break;
-      }
-      if (cur.startsWith("axis\u0000")) {
-        root = "axis";
-        break;
-      }
-      const next = edges(cur).find((e) => !seen.has(e.key) && moves(e.key));
-      if (!next) break;
+      reach(cur);
+      const next = nextOf.get(cur);
+      if (!next || seen.has(next.key)) break;
       if (why.length >= MAX_WHY_DEPTH) {
         truncated = true;
         break;
@@ -698,10 +842,7 @@ function summaryOf(r: ImpactReport): string[] {
   };
   if (r.lets.length > 0) {
     head("Lets", r.lets.length);
-    for (const l of r.lets)
-      out.push(
-        `  ${l.name}: ${l.reads ? `reads ${l.reads.join(", ")}` : `${l.before ?? "(none)"} → ${l.after ?? "(none)"}`}`,
-      );
+    for (const l of r.lets) out.push(`  ${l.name}: ${letChangePhrase(l)}`);
   }
   head("Changed", r.changed.length);
   for (const c of r.changed) {
@@ -711,7 +852,7 @@ function summaryOf(r: ImpactReport): string[] {
       c.root === "edited"
         ? `${c.why.length === 0 ? "its own statement" : "that statement"} was edited`
         : c.root === "unexplained"
-          ? "no dependency it records changed"
+          ? "no recorded dependency reaches a change"
           : "";
     out.push(`    why: ${[chain, end].filter((x) => x !== "").join("; ")}${c.truncated ? " (truncated)" : ""}`);
   }
@@ -760,7 +901,7 @@ export function applyLetOverride(source: string, name: string, value: string): L
       (toks.length === 2 && toks[0]!.type === "minus" && toks[1]!.type === "number"));
   if (!literal)
     return refuse(`\`--set ${name}=${value}\`: the value is not a numeric literal`, [
-      "Give one number as the language writes it: 4500, 4.5m, 45cm or -200.",
+      "Give one number as the language writes it: 4500, 4.5m, 45cm or -200. A bare number is millimetres (a plan's units are always mm).",
     ]);
   const { plan, diagnostics } = parseForOverride(source);
   if (!plan) return { ok: false, diagnostics: diagnostics.filter((d) => d.severity === "error") };

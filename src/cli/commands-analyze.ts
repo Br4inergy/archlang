@@ -792,7 +792,9 @@ export function cmdImpact(args: Args): number {
         return ioError(`cannot read ${args.against}`, args.json);
       }
     }
-    const report = impact(before, after, { world });
+    // Each file resolves its `import`s against its own directory.
+    const beforeWorld = hasAgainst ? makeNodeWorld(baseDirOf(args.against!)) : world;
+    const report = impact(before, after, { world, beforeWorld });
     const { ok, ...rest } = report;
     if (args.json) emitJson({ ok, ...(set ? { set } : {}), ...rest });
     else if (!args.quiet) {

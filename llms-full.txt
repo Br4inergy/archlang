@@ -760,7 +760,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 
 **`archlang impact`** — change one number: what moved and why, what held, what broke
   - input: <file.arch|-> → output: { ok, set?, lets, changed[] (each with its `why` dependency chain and `root`), held[], diagnostics: { broke, healed, unchanged_count }, summary } (exit 0 on a report, 2 on a refused --set)
-  - flags: `--set <NAME=value>` override the root plan's top-level `let NAME` with a numeric literal (`4500`, `4.5m`) and compare the plan before and after; refused with E_SET_OVERRIDE when NAME is not exactly one top-level let · `--against <old.arch>` compare the input (the new version) against this older file instead; exactly one of --set and --against · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
+  - flags: `--set <NAME=value>` override the root plan's top-level `let NAME` with a numeric literal (`4500` is mm, `4.5m`) and compare the plan before and after; refused with E_SET_OVERRIDE when NAME is not exactly one top-level let · `--against <old.arch>` compare the input (the new version) against this older file instead; exactly one of --set and --against · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
   - example: `archlang impact plan.arch --set W=4500 --json` — widen by one number: every moved/resized/re-hosted element with the chain that moved it, what held, what broke
 
 **`archlang suggest`** — advisory topology suggestions as data (door/window statements that resolve reachability/window faults)
@@ -908,7 +908,7 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `archlang e
 - `E_ROOM_SIZE` — Room must have a positive size. **Fix:** Give the room a positive `size W x H`.
 - `E_RUN_TOO_LONG` — A stair or escalator run is longer than any run the plan draws. **Fix:** Check the footprint's long side; a real run is a few metres. Model a long concourse as a `room` with several runs in it.
 - `E_SEGMENT_SELECT` — A segment selector (`segment north`, `segment containing <room>.<edge>`) does not name exactly one segment. **Fix:** Type one of the `segment <n>` numbers the message lists, or name a different edge or direction.
-- `E_SET_OVERRIDE` — `arch impact --set NAME=value` cannot override that name with that value. **Fix:** Name a top-level `let` the message lists, give a plain number, or compare two whole files with `arch impact plan.arch --against old.arch`.
+- `E_SET_OVERRIDE` — `archlang impact --set NAME=value` cannot override that name with that value. **Fix:** Name a top-level `let` the message lists, give a plain number, or compare two whole files with `archlang impact plan.arch --against old.arch`.
 - `E_SILL_ABOVE_HEAD` — A window's sill sits at or above its head. **Fix:** Lower the `sill` below the `head`, or raise the `head`. Dropping the `sill` clause (the fix) restores the 900 mm default.
 - `E_SITE_BOUNDARY_DEGENERATE` — The site `boundary` encloses no lot. **Fix:** Give the boundary at least 3 corners that are not all on one line.
 - `E_SITE_BOUNDARY_SELF_INTERSECT` — The site `boundary` crosses itself. **Fix:** Reorder the vertices so the boundary walks the lot line once without crossing back over itself.

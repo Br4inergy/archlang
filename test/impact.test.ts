@@ -541,4 +541,116 @@ suite("PS4.2 — `arch impact`", () => {
     expect(run(["impact", before, "--set", "AW=1", "--against", before]).status).toBe(3);
     expect(run(["impact", before, "--set", "AW"]).status).toBe(3);
   });
+
+  it("--against resolves each file's imports against its own directory (red team N4)", () => {
+    // old.arch sits in another directory and imports a sibling module that exists only there.
+    // Resolved against the new file's directory it would fail to import, and nothing would be
+    // compared; resolved against its own, both sides resolve.
+    const lib = `plan "lib" {\n  units mm\n  component bed(x, y) {\n    furniture bed at (x, y) size 1500x2000\n  }\n}\n`;
+    const body = (bedX: number) =>
+      `plan "t" {\n  units mm\n  import "lib.arch": bed\n  wall id=s exterior thickness 200 { (0,0) (4000,0) (4000,4000) (0,4000) close }\n  room id=r at (0,0) size 4000x4000 label "Bed"\n  door on s at 500 width 900\n  bed(${bedX}, 300)\n}\n`;
+    const oldDir = mkdtempSync(join(tmpdir(), "arch-impact-old-"));
+    const newDir = mkdtempSync(join(tmpdir(), "arch-impact-new-"));
+    writeFileSync(join(oldDir, "lib.arch"), lib, "utf8");
+    writeFileSync(join(newDir, "lib.arch"), lib.replace("1500x2000", "1600x2000"), "utf8");
+    writeFileSync(join(oldDir, "old.arch"), body(300), "utf8");
+    writeFileSync(join(newDir, "new.arch"), body(300), "utf8");
+    const j = JSON.parse(
+      run(["impact", join(newDir, "new.arch"), "--against", join(oldDir, "old.arch"), "--json"]).stdout,
+    );
+    expect(j.ok).toBe(true);
+    // The only difference is the sibling module each file imports: the bed is 100 mm wider.
+    expect(j.changed.map((c: { kind: string; change: string }) => `${c.kind} ${c.change}`)).toEqual([
+      "furniture resized",
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// Red team round 1, B1: a door's width is not its host wall's geometry
+
+suite("PS4.2 — a wider door does not change its wall (red team B1)", () => {
+  const src = read("examples/parametric.arch");
+
+  it("`--set DOOR=1100`: the three doors widen because they read DOOR; no wall changes, nothing held", () => {
+    // Each `door … width DOOR wall exterior` reads DOOR directly. The wall it stands in keeps its
+    // points, arcs and thickness (its cut list is the door's business, not the wall's), so no
+    // wall is changed, and the windows on those walls depend on nothing that changed.
+    const r = setImpact(src, "DOOR", "1100");
+    expect(r.summary).toEqual([
+      "Lets (1):",
+      "  DOOR: 900 → 1100",
+      "Changed (3):",
+      "  door door_1 width 900 mm → 1100 mm",
+      "    why: reads DOOR (900 → 1100)",
+      "  door door_2 width 900 mm → 1100 mm",
+      "    why: reads DOOR (900 → 1100)",
+      "  door door_3 width 900 mm → 1100 mm",
+      "    why: reads DOOR (900 → 1100)",
+      "Held (0): none",
+      "Broke (0): none",
+      "Healed (0): none",
+      "Unchanged diagnostics: 0",
+    ]);
+  });
+
+  it("`--set WIN=1800`: the windows widen; no door is held", () => {
+    const r = setImpact(src, "WIN", "1800");
+    expect(r.changed.map((c) => `${c.name} ${c.change} ${c.why.map((s) => s.name).join(">")} ${c.root}`)).toEqual([
+      "window_1 resized WIN let",
+      "window_2 resized WIN let",
+      "window_3 resized WIN let",
+    ]);
+    expect(r.held).toEqual([]);
+  });
+
+  it("the chain prefers an edge that reaches a root over an earlier one that dead-ends", () => {
+    // b is `right-of u.r` (on, first in order) and reads W (param). The edit is made with
+    // `--against` so that u.r moves while its own statement and its place's `at` are
+    // unchanged: the place `at (X, 0)` reads X, and X is the only edited `let`. Read through
+    // the place, u.r's chain reaches X; b's first edge (on u.r) reaches it too. To make the
+    // first edge dead-end, the place is edited to a literal, which no `let` explains, and u.r
+    // has no statement of its own that changed: its chain ends `unexplained`, so b must take
+    // its second edge, `reads W`.
+    const src = plan(`  let W = 3000
+  component unit() {
+    room id=r at (0,0) size 3000x3000 label "R"
+  }
+  place unit() as u at (0, 0)
+  room id=b right-of u.r align top gap 0 size W x 3000 label "B"`);
+    const after = src.replace("at (0, 0)", "at (500, 0)").replace("let W = 3000", "let W = 3500");
+    const r = impact(src, after);
+    expect(changed(r, "u.r")).toMatchObject({ change: "moved", why: [], root: "unexplained" });
+    expect(changed(r, "b")).toMatchObject({
+      why: [{ via: "param", name: "W", change: "3000 → 3500" }],
+      root: "let",
+    });
+  });
+
+  it("an instance's elements follow its `place … at` (red team N1)", () => {
+    const src = plan(`  let X = 0
+  component unit() {
+    room id=r at (0,0) size 3000x3000 label "R"
+  }
+  place unit() as u at (X, 0)`);
+    expect(changed(setImpact(src, "X", "500"), "u.r")).toMatchObject({
+      change: "moved",
+      why: [{ via: "param", name: "X", change: "0 → 500" }],
+      root: "let",
+    });
+  });
+
+  it("a loop-local `let` reading the changed one explains what reads it (red team N1)", () => {
+    // parametric.arch: `for i in 0..COUNT { let x = i * W … furniture bed at (x + 300, 300) … }`.
+    const r = setImpact(read("examples/parametric.arch"), "W", "4500");
+    expect(changed(r, "bed_3")).toMatchObject({
+      change: "moved",
+      why: [
+        { via: "param", name: "x", change: "reads W" },
+        { via: "param", name: "W", change: "4000 → 4500" },
+      ],
+      root: "let",
+    });
+    expect(r.changed.filter((c) => c.root === "unexplained")).toEqual([]);
+  });
 });

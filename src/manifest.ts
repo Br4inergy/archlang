@@ -867,7 +867,7 @@ const COMMANDS: ManifestCommand[] = [
         flag: "--set",
         arg: "<NAME=value>",
         description:
-          "override the root plan's top-level `let NAME` with a numeric literal (`4500`, `4.5m`) and compare the plan before and after; refused with E_SET_OVERRIDE when NAME is not exactly one top-level let",
+          "override the root plan's top-level `let NAME` with a numeric literal (`4500` is mm, `4.5m`) and compare the plan before and after; refused with E_SET_OVERRIDE when NAME is not exactly one top-level let",
       },
       {
         flag: "--against",

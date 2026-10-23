@@ -1008,7 +1008,8 @@ Without `--json` the human summary gains one line, e.g.
 `archlang impact plan.arch --against old.arch`, `--json` for the object — compiles two versions
 of a plan through the one pipeline and answers "change one number: what changes, what must
 not". `--set NAME=value` makes the second version from the first by replacing the expression of
-the root plan's top-level `let NAME` with a numeric literal (`4500`, `4.5m`); any other name, a
+the root plan's top-level `let NAME` with a numeric literal (`4500`, which is millimetres since a
+plan's units are always mm, or `4.5m`); any other name, a
 value-function, a `let` declared twice or reassigned, or a value that is not one number is
 refused with `E_SET_OVERRIDE` (exit 2). `--against` compares the input (the new version) with an
 older file. The report is a measurement: it exits 0 whatever broke.
@@ -1018,9 +1019,9 @@ rows above. It has four parts:
 
 | Part | Meaning |
 |------|---------|
-| `lets` | the top-level `let`s whose expression changed, and those that read one (`reads`) |
+| `lets` | the bound names whose binding changed (a `let` anywhere, a `for` variable's range, the argument a component parameter is given), and those whose binding reads one (`reads`); `before`/`after` are the `let`'s text as written when there is one |
 | `changed[]` | every element that changed: rooms, openings and walls as `diffPlans` classifies them (`moved`, `resized`, `rehosted`, `rethickened`, `relabeled`, `added`, `removed`); other kinds, and a door that slid along a wall that did not move, from their resolved position (`moved`, `resized`, `changed`) |
-| `changed[].why` | the chain from the element back to what changed first: each step names the dependency it followed (`on`, `host`, `axis`, `param`, and `joins` for a re-hosted opening only: a room whose change moved the spaces it joins) and how that dependency changed. `root` says how the chain ends: `let` (a `let`'s text changed), `edited` (that element's own statement changed), `axis`, or `unexplained` (no dependency it records changed) |
+| `changed[].why` | the chain from the element back to what changed first: each step names the dependency it followed (`on`, `host`, `axis`, `param` (a name the element or its `place … at` reads), and `joins` for a re-hosted opening only: a room whose change moved the spaces it joins) and how that dependency changed. Where several dependencies changed, the chain takes the first, in that edge order and then by id in code-unit order, that leads to a root, else the first that changed: an order, not a judgement of which cause mattered most. `root` says how the chain ends: `let` (a binding's text changed), `edited` (that element's own statement changed), `axis`, or `unexplained` (no recorded dependency reaches a change) |
 | `held[]` | elements that did not change although a dependency did (`because`): the "should it have followed?" signal. A relabel never makes a dependant held |
 | `diagnostics` | `broke` (only after), `healed` (only before) and `unchanged_count`, matched by code, element and storey over the compile and lint diagnostics of both sides |
 
@@ -1060,8 +1061,15 @@ What it cannot tell you:
   positional ids (`door_2`) shifts them, as in `diffPlans`.
 - **The lowest storey's elements** are compared, as `describe()`'s top-level facts are;
   diagnostics cover every storey.
-- **A name in `params`** counts as a changed `let` only when a top-level `let` of that name
-  changed; a component parameter or loop variable of the same name is not told apart.
+- **A bound name is one entry** however many places bind it: a component parameter, a loop
+  variable and a `let` of the same name are not told apart (PS4.7).
+- **`unexplained`** remains where a position is found by search rather than read from a name:
+  a piece placed `flush` measures from the wall behind it, so a thicker wall moves it with no
+  recorded dependency (6 of the 26 single-number overrides of the examples' top-level lets,
+  all in `townhouse.arch`). An element of a `place` whose `at` was edited to a literal is
+  `unexplained` too: its own statement did not change.
+- **A wall changes only in its own geometry** (points, arcs, closure, thickness); a door widened
+  in it changes the door, not the wall.
 - **A diagnostic is keyed by the element whose statement contains it**; one raised on a different
   element after the change (a whole-plan figure such as `W_FLOOR_UNASSIGNED` attached to its
   nearest room) reads as one broke and one healed. A side that does not resolve keys its errors

@@ -560,7 +560,7 @@ change one number: what moved and why, what held, what broke
 
 | Flag | Does |
 | --- | --- |
-| `--set <NAME=value>` | override the root plan's top-level `let NAME` with a numeric literal (`4500`, `4.5m`) and compare the plan before and after; refused with E_SET_OVERRIDE when NAME is not exactly one top-level let |
+| `--set <NAME=value>` | override the root plan's top-level `let NAME` with a numeric literal (`4500` is mm, `4.5m`) and compare the plan before and after; refused with E_SET_OVERRIDE when NAME is not exactly one top-level let |
 | `--against <old.arch>` | compare the input (the new version) against this older file instead; exactly one of --set and --against |
 | `--json` | structured result on stdout, messages on stderr |
 | `--quiet, -q` | suppress human messages on stderr |
