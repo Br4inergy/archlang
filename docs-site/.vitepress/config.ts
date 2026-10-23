@@ -320,6 +320,11 @@ const PAGE_META = [
     "ADR 28 — rooms primary, walls derived",
     "Rooms may be primary: room-edge datums, one form deriving every wall from the room tiling, pairwise wall forms and relational openings; wall-first authoring stays legal.",
   ],
+  [
+    "/adr/0029-furniture-relations",
+    "ADR 29 — furniture relations",
+    "Furniture states what it is for: facing derives a piece's quarter-turn from its target, against backs it onto a room edge, and clear declares free depth that lint checks.",
+  ],
 ] as const;
 
 type PageMeta = { readonly title: string; readonly description: string };

@@ -42,7 +42,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_FACING_TRANSPOSED`](#e_facing_transposed) | error | Facing the target would put the piece's back on its short side. |
 | [`E_FENCE_CURVED`](#e_fence_curved) | error | A fence cannot have a curved (`arc`) edge. |
 | [`E_FURN_AGAINST`](#e_furn_against) | error | Invalid `against wall` or `against <room>.<edge>` fixture placement. |
-| [`E_FURN_CLEAR`](#e_furn_clear) | error | Invalid `clear front|sides` depth. |
+| [`E_FURN_CLEAR`](#e_furn_clear) | error | Invalid `clear` depth. |
 | [`E_FURN_FLUSH`](#e_furn_flush) | error | `flush` on a placement that touches no edge. |
 | [`E_FURN_ROOM`](#e_furn_room) | error | Furniture placed `in` an unknown room. |
 | [`E_FURN_ROTATE`](#e_furn_rotate) | error | Furniture rotation must be a quarter-turn. |
@@ -620,7 +620,7 @@ furniture wc against wall w1 side left size 400x700   # error if w1 is unknown o
 
 ## E_FURN_CLEAR
 
-*error* — Invalid `clear front|sides` depth.
+*error* — Invalid `clear` depth.
 
 **Cause.** `clear front <mm>` and `clear sides <mm>` declare a depth the piece needs kept free (ADR 0029 §4). The depth must be a positive number of millimetres within the modelling range, and each zone is written at most once on a piece.
 

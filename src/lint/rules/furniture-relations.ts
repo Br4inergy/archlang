@@ -151,7 +151,7 @@ export const seatFacingAway: LintRule = {
         severity: "warning",
         code: "W_SEAT_FACING_AWAY",
         ...at(s),
-        message: `A ${pieceName(s)}${inRoomPhrase(s, ctx)} faces away from the ${pieceName(nearest)} beside it.`,
+        message: `${/^[aeiou]/i.test(pieceName(s)) ? "An" : "A"} ${pieceName(s)}${inRoomPhrase(s, ctx)} faces away from the ${pieceName(nearest)} beside it.`,
         hints: [hint],
       });
     }

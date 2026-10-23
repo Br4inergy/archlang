@@ -187,7 +187,7 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
   ),
   E_FURN_CLEAR: E(
     "E_FURN_CLEAR",
-    "Invalid `clear front|sides` depth.",
+    "Invalid `clear` depth.",
     "`clear front <mm>` and `clear sides <mm>` declare a depth the piece needs kept free (ADR 0029 §4). The depth must be a positive number of millimetres within the modelling range, and each zone is written at most once on a piece.",
     "Write one positive depth per zone, e.g. `clear front 600`, or drop the clause.",
     "furniture wardrobe at (0,0) size 1800x600 clear front 0   # error: a clear depth must be positive",
