@@ -7,28 +7,33 @@
  *   `segment containing <room>.<edge>`; a `facing` target; the room of `in <room> anchor|
  *   centered`, and of `in <room>` on an `against wall` piece with no `side` (the side is
  *   inferred from it); `swing into <room>`; a pairwise wall's rooms; `dim radius|diameter`'s
- *   element and the ring a `roof … overhang` follows (named or inferred); every room whose datum (`r.top|bottom|left|right|cx|cy`,
- *   or a compass alias) one of its expressions or `from <room>.<edge>` reads; and its host
- *   wall or the wall it backs onto.
+ *   element; every room whose datum (`r.top|bottom|left|right|cx|cy`, or a compass alias) one
+ *   of its expressions or `from <room>.<edge>` reads; and an AUTHORED host or backing wall
+ *   (an opening's host, an `against wall` piece's wall, the ring a `roof … overhang` follows).
+ * - `axes`: the positioning-axis labels it is placed at (`at axis <label>`, ADR 0028 §5),
+ *   sorted. Always present, empty when it reads none, like `on` and `params`.
+ * - `hostWallId`: the wall it is hosted on or backed onto, authored or derived.
  * - `params`: the bound names its expressions read (a `let`, a module `let`, a component or
  *   function parameter, a `for` variable), and the user functions it calls. Direct reads
  *   only: a `let` that reads another `let` is not followed (shadowing and reassignment make a
  *   static chain ambiguous, and `arch impact` twin-compiles anyway).
  *
- * **A derived wall** (ADR 0028 §3) has no author-facing id, and `describe()` may print its
- * internal name only in `derived_walls[]`, in `heights.walls[]` and as an opening's
- * `hostWallId`. So `on` never holds one: an opening hosted on a derived wall names it as
- * `hostWallId` (the join reference §3 already allows), and a piece of furniture backed onto
- * one lists the rooms that produced it instead. The derived walls' own dependencies are rows
- * of `depends.derived_walls[]`, keyed by `name` exactly as `heights.walls[]` keys them.
+ * **A derived wall** (ADR 0028 §3, as amended by PS4.1) has no author-facing id, and
+ * `describe()` prints its internal name only in `derived_walls[]`, in `heights.walls[]` and as
+ * the `hostWallId` of an element hosted on or backed onto one. So `on` never holds one: the
+ * element names it as `hostWallId`, and the rooms that produced it are listed ONCE, in its own
+ * row of `depends.derived_walls[]` (keyed by `name` exactly as `heights.walls[]` keys them),
+ * never copied into every piece backed onto it.
  *
  * Read from the linked AST (the names as written, in the frame of the statement, then
  * namespaced by the element's instance path exactly as `frame.ts`'s `nsId` does) and from
  * the resolved IR (hosts, derived walls). Post-resolve and outside the evaluator: each
- * statement is walked once (memoised), so the work is linear in the AST plus, per element,
- * the distinct names its own statement reads — no element can list more names than its
- * statement holds, and the element count is held by `MAX_ELEMENTS`. No step is charged,
- * because no evaluation happens (there is no meter outside a resolution, see `src/expr.ts`).
+ * statement is walked once (memoised), so the work and the output are linear in the AST, the
+ * elements (each lists at most the distinct names and ids its own statement holds, plus one
+ * host) and the derived walls times their rooms (a ring's row lists its room set once; the
+ * set is computed once per statement). The element count is held by `MAX_ELEMENTS`. No step
+ * is charged, because no evaluation happens (there is no meter outside a resolution, see
+ * `src/expr.ts`).
  *
  * `--view` cannot reach it: `describe()` never sees a view, and nothing here reads one.
  * Heights are not dependencies: no element's position reads a height, and a height clause's
@@ -41,7 +46,7 @@ import { BUILTIN_NAMES } from "../builtins.js";
 import { exprChildren, statementBodies, statementReads } from "../cursor.js";
 import type { Span } from "../diagnostics.js";
 import type { Expr } from "../expr.js";
-import type { RFurniture, ResolvedElement, ResolvedPlan, RRoof, RRoom, RWall, RWallsFromRooms } from "../ir.js";
+import type { RFurniture, ResolvedElement, ResolvedPlan, RRoof, RRoom, RWallsFromRooms } from "../ir.js";
 import { splitDatum } from "../room-datums.js";
 
 /** One element's dependencies. */
@@ -52,7 +57,11 @@ export interface DependsEntry {
   on: string[];
   /** Bound names its expressions read, sorted, no repeats. */
   params: string[];
-  /** The wall a door, window or cased opening is hosted on (as `access.edges[].hostWallId`). */
+  /** Positioning-axis labels it is placed at (`at axis <label>`), sorted; empty when none. */
+  axes: string[];
+  /** The wall it is hosted on (a door, window or cased opening, as `access.edges[].hostWallId`)
+   *  or backed onto (an `against wall` piece, a roof following a ring), authored or derived:
+   *  the one place a derived wall's internal name appears in an element's row. */
   hostWallId?: string;
 }
 
@@ -77,6 +86,7 @@ export interface DependsFacts {
 interface Reads {
   names: ReadonlySet<string>;
   ids: ReadonlySet<string>;
+  axes: ReadonlySet<string>;
 }
 
 type ClauseHit = { stmt: WallsFromRoomsNode; pair: WallsPairClause };
@@ -152,6 +162,7 @@ const datumRoom = (name: string | undefined, ids: Set<string>): void => {
 function readsOf(s: Statement): Reads {
   const names = new Set<string>();
   const ids = new Set<string>();
+  const axes = new Set<string>();
   walkExprs(statementReads(s), names, ids);
   switch (s.kind) {
     case "room":
@@ -167,6 +178,7 @@ function readsOf(s: Statement): Reads {
       datumRoom(s.attach?.wall, ids);
       for (const pos of [s.attach?.pos, "between" in s ? s.between?.pos : undefined]) {
         if (pos?.kind === "from" && "datum" in pos.from) datumRoom(pos.from.datum, ids);
+        if (pos?.kind === "axis") axes.add(pos.label);
       }
       if ("between" in s && s.between) ids.add(s.between.a.id).add(s.between.b.id);
       if (s.kind === "door" && s.swingInto !== undefined) ids.add(s.swingInto);
@@ -187,15 +199,14 @@ function readsOf(s: Statement): Reads {
       }
       break;
   }
-  return { names, ids };
+  return { names, ids, axes };
 }
 
 const sorted = (xs: Iterable<string>): string[] => [...new Set(xs)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
-/** The ids `walls from rooms` derived `w` from: a partition's pair, a ring's whole room set. */
-function derivedFrom(w: RWall, stmt: RWallsFromRooms | undefined, rooms: readonly RRoom[]): string[] {
-  if (w._derived?.between) return [...w._derived.between];
-  if (!stmt) return [];
+/** The rooms a `walls from rooms` statement derives from: its group's placed rooms less
+ *  `except` (what a ring is drawn round). */
+function roomSet(stmt: RWallsFromRooms, rooms: readonly RRoom[]): string[] {
   const ns = (id: string): string => (stmt._instance ? `${stmt._instance}.${id}` : id);
   const except = new Set(stmt.except.map(ns));
   return rooms
@@ -207,10 +218,7 @@ function derivedFrom(w: RWall, stmt: RWallsFromRooms | undefined, rooms: readonl
 export function dependsFacts(ir: ResolvedPlan, index: StatementIndex): DependsFacts {
   const rooms = ir.elements.filter((e): e is RRoom => e.kind === "room");
   const wallsById = new Map(ir.walls.map((w) => [w.id, w]));
-  // Which statement derived each derived wall (its ring reads the statement's room set).
-  const ownerOf = new Map<string, RWallsFromRooms>();
   const statements = ir.elements.filter((e): e is RWallsFromRooms => e.kind === "walls");
-  for (const s of statements) for (const w of s._derivedWalls) ownerOf.set(w.id, s);
   const ns = (e: { _instance?: string }) => (id: string) => (e._instance ? `${e._instance}.${id}` : id);
   const namesOf = (exprs: readonly (Expr | undefined)[]): Set<string> => {
     const names = new Set<string>();
@@ -227,6 +235,7 @@ export function dependsFacts(ir: ResolvedPlan, index: StatementIndex): DependsFa
     if (e.kind === "walls") continue;
     const on = new Set<string>();
     let params: Iterable<string> = [];
+    let axes: Iterable<string> = [];
     let hostWallId: string | undefined;
     const prefix = ns(e);
     const clause = e.kind === "opening" && e._derived ? index.clause(e.span, e._file) : undefined;
@@ -239,35 +248,25 @@ export function dependsFacts(ir: ResolvedPlan, index: StatementIndex): DependsFa
       if (stmt) {
         const r = index.reads(stmt);
         params = r.names;
+        axes = r.axes;
         for (const id of r.ids) on.add(prefix(id));
       }
     }
-    if (e.kind === "door" || e.kind === "window" || e.kind === "opening") {
-      const host = e.host?.wallId;
-      if (host !== undefined) {
-        hostWallId = host;
-        if (!wallsById.get(host)?._derived) on.add(host);
-      }
-    }
-    if (e.kind === "furniture") {
-      const back = (e as RFurniture)._againstWall;
-      if (back !== undefined) on.add(back);
-    }
-    if (e.kind === "roof" && (e as RRoof)._follows !== undefined) on.add((e as RRoof)._follows!);
+    // The wall it is hosted on or backed onto: always `hostWallId`; in `on` only when authored.
+    if (e.kind === "door" || e.kind === "window" || e.kind === "opening") hostWallId = e.host?.wallId;
+    else if (e.kind === "furniture") hostWallId = (e as RFurniture)._againstWall;
+    else if (e.kind === "roof") hostWallId = (e as RRoof)._follows;
+    if (hostWallId !== undefined) on.add(hostWallId);
     // A derived wall is never named in `on` (ADR 0028 §3), even where the author could spell
-    // it (`roof … wall exterior`): the rooms that produced it stand in for it.
-    for (const id of [...on]) {
-      const w = wallsById.get(id);
-      if (!w?._derived) continue;
-      on.delete(id);
-      for (const r of derivedFrom(w, ownerOf.get(w.id), rooms)) on.add(r);
-    }
+    // it: it is reached through `hostWallId` and its own `derived_walls[]` row.
+    for (const id of [...on]) if (wallsById.get(id)?._derived) on.delete(id);
     on.delete(e.id);
     elements.push({
       id: e.id,
       kind: e.kind,
       on: sorted(on),
       params: sorted(params),
+      axes: sorted(axes),
       ...(hostWallId !== undefined ? { hostWallId } : {}),
     });
   }
@@ -278,23 +277,25 @@ export function dependsFacts(ir: ResolvedPlan, index: StatementIndex): DependsFa
     const node = index.statement(s.span, s._file);
     const ast = node?.kind === "walls" ? node : undefined;
     const prefix = ns(s);
+    const pairKey = (a: string, b: string): string => (a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`);
+    // Each lookup is a map, so a statement's rows cost time linear in its walls.
+    const rowOf = new Map(s._derivedRows.map((r) => [r.name, r]));
+    const thicknessOf = new Map<string, Expr>();
+    for (const p of ast?.pairs ?? [])
+      if (p.kind === "thickness") thicknessOf.set(pairKey(prefix(p.a.id), prefix(p.b.id)), p.thickness);
+    let ring: string[] | undefined;
     for (const w of s._derivedWalls) {
-      const on = new Set(derivedFrom(w, s, rooms));
+      const between = w._derived?.between;
+      if (!between && ring === undefined) ring = roomSet(s, rooms);
+      const on = new Set(between ?? ring);
       // An authored wall that took a span of this run over: the remainder's ends follow it.
-      const row = s._derivedRows.find((r) => w.id === r.name || w.id.startsWith(`${r.name}~`));
+      // A piece split off a run is named `<run>~<n>`.
+      const row = rowOf.get(w.id) ?? rowOf.get(w.id.replace(/~\d+$/, ""));
       for (const d of row?.dropped ?? []) on.add(d.by);
       let thickness: Expr | undefined;
       if (ast) {
         if (w._derived?.ring) thickness = ast.exterior;
-        else {
-          const [a, b] = w._derived?.between ?? [];
-          const pair = (ast.pairs ?? []).find(
-            (p) =>
-              p.kind === "thickness" &&
-              ((prefix(p.a.id) === a && prefix(p.b.id) === b) || (prefix(p.a.id) === b && prefix(p.b.id) === a)),
-          );
-          thickness = pair?.kind === "thickness" ? pair.thickness : ast.partition;
-        }
+        else thickness = (between && thicknessOf.get(pairKey(between[0], between[1]))) || ast.partition;
       }
       derived_walls.push({ name: w.id, on: sorted(on), params: sorted(namesOf([thickness])) });
     }

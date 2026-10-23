@@ -958,19 +958,22 @@ Opt-in like `symmetry`; without `--facts` the key is absent.
 | Field | Meaning |
 |-------|---------|
 | `id`, `kind` | the element, as in the rest of the summary |
-| `on` | the ids it derives from, sorted: a relational room's reference room; the two rooms of `between A and B`; the room of `on <room>.<edge>`, `against <room>.<edge>` and `segment containing <room>.<edge>`; a `facing` target; the room of `in <room> anchor` or `centered` (and of `in <room>` on an `against wall` piece with no `side`, which picks the face from it); `swing into <room>`; a pairwise wall's rooms; the element `dim radius` or `diameter` measures; the ring a `roof … overhang` follows; every room whose datum (`r.top`, `r.cx`, a compass alias, `from r.left`) it reads; and its host wall, or the wall it backs onto |
+| `on` | the ids it derives from, sorted: a relational room's reference room; the two rooms of `between A and B`; the room of `on <room>.<edge>`, `against <room>.<edge>` and `segment containing <room>.<edge>`; a `facing` target; the room of `in <room> anchor` or `centered` (and of `in <room>` on an `against wall` piece with no `side`, which picks the face from it); `swing into <room>`; a pairwise wall's rooms; the element `dim radius` or `diameter` measures; every room whose datum (`r.top`, `r.cx`, a compass alias, `from r.left`) it reads; and its host wall, or the wall it backs onto, when that wall is authored |
 | `params` | the bound names its own expressions read, sorted: a `let`, a module `let`, a component or function parameter, a `for` variable, and the user functions it calls (never a built-in) |
-| `hostWallId` | a door's, window's or cased opening's host wall, as in `access.edges[]` |
+| `axes` | the positioning-axis labels it is placed at (`at axis 3`, `at axis B`), sorted. Always present, like `on` and `params`, and empty when it reads none |
+| `hostWallId` | the wall it is hosted on or backed onto, authored or derived: a door's, window's or cased opening's host (as in `access.edges[]`), an `against wall` piece's wall, the ring a `roof … overhang` follows. Absent when there is none |
 
 `depends.derived_walls[]` has one row per wall `walls from rooms` derived, sorted by
 `name` (the name `derived_walls[]` and `heights.walls[]` use): `on` is the pair of rooms a
 partition stands between, or the whole room set (less `except`) for a ring, plus any
 authored wall that took a span of the run over; `params` are the names its thickness reads.
 
-**A derived wall is never named in `on`.** It has no id an author can write, so an opening
-hosted on one reaches it through `hostWallId` (join it to `depends.derived_walls[]` for the
-next link), and a piece backed onto one (`against wall exterior …`) lists the rooms that
-produced it instead.
+**A derived wall is never named in `on`.** It has no id an author can write, so an element
+hosted on or backed onto one (a door, a window, a piece `against wall exterior …`, a roof
+following the ring) names it only as `hostWallId`; join that to `depends.derived_walls[]`
+for the rooms it came from. Those rooms are listed once there, never copied into each piece,
+so the output is linear in the elements plus the derived walls times their rooms (225 rooms
+and 2,400 pieces against the ring print about 0.5 MB, not 540,000 copied room ids).
 
 What it does not record, so you can tell an empty list from a missing one:
 
@@ -988,9 +991,10 @@ What it does not record, so you can tell an empty list from a missing one:
 For `examples/relational.arch`, where only the living room is placed by number:
 
 ```json
-{ "id": "bath", "kind": "room", "on": ["bed"], "params": [] },
-{ "id": "door_2", "kind": "door", "on": ["bed", "hall"], "params": [], "hostWallId": "hall|bed" },
-{ "id": "window_1", "kind": "window", "on": ["living"], "params": [], "hostWallId": "exterior" }
+{ "id": "bath", "kind": "room", "on": ["bed"], "params": [], "axes": [] },
+{ "id": "counter_5", "kind": "furniture", "on": ["kitchen"], "params": [], "axes": [], "hostWallId": "exterior" },
+{ "id": "door_2", "kind": "door", "on": ["bed", "hall"], "params": [], "axes": [], "hostWallId": "hall|bed" },
+{ "id": "window_1", "kind": "window", "on": ["living"], "params": [], "axes": [], "hostWallId": "exterior" }
 ```
 
 and among the derived walls, `{ "name": "hall|bed", "on": ["bed", "hall"], "params": [] }`.

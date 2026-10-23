@@ -69,18 +69,26 @@ suite("`on`: one case per source", () => {
 
   it("`door between A and B` reads both rooms; its derived host is `hostWallId` only", () => {
     const f = depends(plan(`${DERIVED}\n  door id=d between a and b at center width 800`));
-    expect(entry(f, "d")).toEqual({ id: "d", kind: "door", on: ["a", "b"], params: [], hostWallId: "a|b" });
+    expect(entry(f, "d")).toEqual({ id: "d", kind: "door", on: ["a", "b"], params: [], axes: [], hostWallId: "a|b" });
   });
 
   it("`on <room>.<edge>` reads the room; an authored host is in `on` as well", () => {
     const derived = depends(plan(`${DERIVED}\n  window id=w on a.top width 1200`));
-    expect(entry(derived, "w")).toEqual({ id: "w", kind: "window", on: ["a"], params: [], hostWallId: "exterior" });
+    expect(entry(derived, "w")).toEqual({
+      id: "w",
+      kind: "window",
+      on: ["a"],
+      params: [],
+      axes: [],
+      hostWallId: "exterior",
+    });
     const authored = depends(plan(`${RING}\n  window id=w on a.top width 1200`));
     expect(entry(authored, "w")).toEqual({
       id: "w",
       kind: "window",
       on: ["a", "ring"],
       params: [],
+      axes: [],
       hostWallId: "ring",
     });
   });
@@ -91,7 +99,7 @@ suite("`on`: one case per source", () => {
         `${ROOMS}\n  wall id=h partition thickness 100 { (0,1500) (7000,1500) }\n  door id=d on h at 600 from b.left width 800`,
       ),
     );
-    expect(entry(f, "d")).toEqual({ id: "d", kind: "door", on: ["b", "h"], params: [], hostWallId: "h" });
+    expect(entry(f, "d")).toEqual({ id: "d", kind: "door", on: ["b", "h"], params: [], axes: [], hostWallId: "h" });
   });
 
   it("`swing into <room>` reads the room", () => {
@@ -122,6 +130,7 @@ suite("`on`: one case per source", () => {
   it("`against wall <id>` reads the wall, and the `in` room only when it picks the face", () => {
     const inferred = depends(plan(`${RING}\n  furniture id=k wardrobe against wall p offset 1500 size 1200x600 in a`));
     expect(entry(inferred, "k").on).toEqual(["a", "p"]);
+    expect(entry(inferred, "k").hostWallId).toBe("p");
     const stated = depends(
       plan(`${RING}\n  furniture id=k wardrobe against wall p offset 1500 side left size 1200x600`),
     );
@@ -137,11 +146,20 @@ suite("`on`: one case per source", () => {
     expect(entry(f, "k").on).toEqual(["b", "ring"]);
   });
 
-  it("a piece backed onto a DERIVED wall lists the rooms that produced it, never its name", () => {
+  it("a piece backed onto a DERIVED wall names it as `hostWallId` only; `on` keeps the face room", () => {
     const f = depends(
       plan(`${DERIVED}\n  furniture id=k wardrobe against wall exterior segment 0 offset 1000 size 1200x600 in a`),
     );
-    expect(entry(f, "k").on).toEqual(["a", "b"]);
+    expect(entry(f, "k")).toEqual({
+      id: "k",
+      kind: "furniture",
+      on: ["a"],
+      params: [],
+      axes: [],
+      hostWallId: "exterior",
+    });
+    // The ring's rooms are listed once, in its own row, not copied into the piece's.
+    expect(wallOf(f, "exterior").on).toEqual(["a", "b"]);
   });
 
   it("a datum read in an expression reads the room", () => {
@@ -171,15 +189,46 @@ suite("`on`: one case per source", () => {
       kind: "opening",
       on: ["a", "b"],
       params: ["OW"],
+      axes: [],
       hostWallId: "a|b",
     });
   });
 
-  it("a roof follows its ring: a derived ring stands in as its rooms", () => {
+  it("a roof follows its ring: `hostWallId`, and `on` too when the ring is authored", () => {
     const f = depends(plan(`${DERIVED}\n  roof overhang 500`));
-    expect(entry(f, "roof_1").on).toEqual(["a", "b"]);
+    expect(entry(f, "roof_1").on).toEqual([]);
+    expect(entry(f, "roof_1").hostWallId).toBe("exterior");
     const named = depends(plan(`${RING}\n  roof overhang 500 wall ring`));
     expect(entry(named, "roof_1").on).toEqual(["ring"]);
+    expect(entry(named, "roof_1").hostWallId).toBe("ring");
+  });
+
+  it("`at axis <label>` lists the axis in `axes` (pinned row)", () => {
+    const f = depends(
+      plan(`  axes {
+    x at 2000
+    y at 1000
+  }
+${RING}
+  window id=w on a.top at axis 1 width 1200
+  door id=d between a and b at axis A width 800`),
+    );
+    expect(entry(f, "w")).toEqual({
+      id: "w",
+      kind: "window",
+      on: ["a", "ring"],
+      params: [],
+      axes: ["1"],
+      hostWallId: "ring",
+    });
+    expect(entry(f, "d")).toEqual({
+      id: "d",
+      kind: "door",
+      on: ["a", "b", "p"],
+      params: [],
+      axes: ["A"],
+      hostWallId: "p",
+    });
   });
 
   it("`dim radius <wall>` reads the wall", () => {
@@ -221,6 +270,31 @@ suite("derived walls (ADR 0028 §3)", () => {
     for (const w of rest) expect(w.on).toEqual(["a", "b", "q"]);
   });
 
+  it("no `on` or `axes` entry has the SHAPE of a derived wall's name, unless it is an authored id", () => {
+    // Independent of `derived_walls[]`: a derived wall is `A|B`, `exterior`, `exterior#n`, or a
+    // run split off one (`~n`), possibly under an instance prefix. `|`, `#` and `~` cannot be
+    // spelled by an identifier; `exterior` can, so an authored element of that id is allowed.
+    const DERIVED_SHAPE = /\||(^|\.)exterior(#\d+)?$|~\d+$/;
+    let checked = 0;
+    const sources = [
+      ...Object.entries(EXAMPLE_FILES),
+      ...ELIGIBLE_EXAMPLES.map((rel) => [`placed ${rel}`, wrapperSource(rel, null)] as const),
+    ];
+    for (const [rel, src] of sources) {
+      const s = describe(src, { world: EXAMPLES_WORLD, facts: ["depends"] });
+      for (const storey of storeys(s)) {
+        if (!storey.depends) continue;
+        const authored = new Set(storey.depends.elements.map((e) => e.id));
+        for (const e of storey.depends.elements)
+          for (const id of [...e.on, ...e.axes]) {
+            checked++;
+            expect(DERIVED_SHAPE.test(id) && !authored.has(id), `${rel}: ${e.id} → ${id}`).toBe(false);
+          }
+      }
+    }
+    expect(checked, "the sweep read real entries").toBeGreaterThan(1000);
+  });
+
   it("no `on` list in the corpus names a derived wall", () => {
     for (const [rel, src] of Object.entries(EXAMPLE_FILES)) {
       const s = describe(src, { world: EXAMPLES_WORLD, facts: ["depends"] });
@@ -257,7 +331,7 @@ suite("`params`: the bound names an element's expressions read", () => {
     furniture table at (1000 * i, 5000) size 800x800
   }`),
     );
-    expect(entry(f, "west.r")).toEqual({ id: "west.r", kind: "room", on: [], params: ["w"] });
+    expect(entry(f, "west.r")).toEqual({ id: "west.r", kind: "room", on: [], params: ["w"], axes: [] });
     expect(entry(f, "table_1").params).toEqual(["i"]);
     expect(entry(f, "table_2").params).toEqual(["i"]);
   });
@@ -280,8 +354,8 @@ suite("`params`: the bound names an element's expressions read", () => {
   wall id=e exterior thickness 200 height H { (0,0) (7000,0) (7000,3000) (0,3000) close }
   window id=w on e at center width 1200 sill S`),
     );
-    expect(entry(f, "e")).toEqual({ id: "e", kind: "wall", on: [], params: ["H"] });
-    expect(entry(f, "w")).toEqual({ id: "w", kind: "window", on: ["e"], params: ["S"], hostWallId: "e" });
+    expect(entry(f, "e")).toEqual({ id: "e", kind: "wall", on: [], params: ["H"], axes: [] });
+    expect(entry(f, "w")).toEqual({ id: "w", kind: "window", on: ["e"], params: ["S"], axes: [], hostWallId: "e" });
   });
 });
 
@@ -322,7 +396,7 @@ function rows(f: DependsFacts): string[] {
   return [
     ...f.elements.map(
       (e) =>
-        `${e.id} ${e.kind} on=[${e.on.join(" ")}] params=[${e.params.join(" ")}]${e.hostWallId !== undefined ? ` host=${e.hostWallId}` : ""}`,
+        `${e.id} ${e.kind} on=[${e.on.join(" ")}] params=[${e.params.join(" ")}]${e.axes.length > 0 ? ` axes=[${e.axes.join(" ")}]` : ""}${e.hostWallId !== undefined ? ` host=${e.hostWallId}` : ""}`,
     ),
     ...f.derived_walls.map((w) => `wall ${w.name} on=[${w.on.join(" ")}] params=[${w.params.join(" ")}]`),
   ];
@@ -334,13 +408,14 @@ const ALL_TWO_BED = "r_bath r_bed1 r_bed2 r_hall r_living";
 suite("pinned", () => {
   it("examples/relational.arch", () => {
     expect(rows(describe(EXAMPLE_FILES["relational.arch"]!, { facts: ["depends"] }).depends!)).toEqual([
-      // `against wall exterior segment 1 … in bath`: the ring is derived, so its rooms stand in.
-      `basin_8 furniture on=[${ALL_RELATIONAL}] params=[]`,
+      // `against wall exterior segment 1 … in bath`, no `side`: the face is picked from `bath`;
+      // the ring is derived, so it is `host` only and its rooms are in its own row below.
+      "basin_8 furniture on=[bath] params=[] host=exterior",
       "bath room on=[bed] params=[]", // `right-of bed`
       "bed room on=[hall] params=[]", // `below hall`
       "bed_1 furniture on=[bed] params=[]", // `in bed anchor bottom-right`
       "coffee_table_3 furniture on=[living] params=[]", // `in living anchor left`
-      `counter_5 furniture on=[${ALL_RELATIONAL}] params=[]`, // the derived ring, as for basin_8
+      "counter_5 furniture on=[kitchen] params=[] host=exterior", // as basin_8, `in kitchen`
       "dim_1 dim on=[] params=[]", // literal points; `faces` projects by geometry, not by id
       "dining_table_4 furniture on=[kitchen] params=[]", // `in kitchen anchor left`
       "door_1 door on=[hall] params=[] host=exterior", // `on hall.left`, `swing into hall`; derived host
@@ -352,10 +427,10 @@ suite("pinned", () => {
       "living|hall:open opening on=[hall living] params=[] host=living|hall", // `open between living and hall`
       "living|kitchen:open opening on=[kitchen living] params=[] host=living|kitchen", // `open between living and kitchen`
       "shower_10 furniture on=[bath] params=[]", // `in bath anchor bottom-left`
-      `sink_6 furniture on=[${ALL_RELATIONAL}] params=[]`, // the derived ring, as for basin_8
+      "sink_6 furniture on=[kitchen] params=[] host=exterior", // as basin_8, `in kitchen`
       "sofa_2 furniture on=[living] params=[]", // `in living anchor bottom-left`
-      `stove_7 furniture on=[${ALL_RELATIONAL}] params=[]`, // the derived ring, as for basin_8
-      `wc_9 furniture on=[${ALL_RELATIONAL}] params=[]`, // the derived ring, as for basin_8
+      "stove_7 furniture on=[kitchen] params=[] host=exterior", // as basin_8, `in kitchen`
+      "wc_9 furniture on=[bath] params=[] host=exterior", // as basin_8, `in bath`
       "window_1 window on=[living] params=[] host=exterior", // `on living.top`
       "window_2 window on=[kitchen] params=[] host=exterior", // `on kitchen.top`
       "window_3 window on=[bed] params=[] host=exterior", // `on bed.bottom`
@@ -375,26 +450,27 @@ suite("pinned", () => {
       "basin_13 furniture on=[r_bath] params=[]", // `in r_bath anchor right`
       "bed_1 furniture on=[r_bed1] params=[]", // `in r_bed1 anchor top-left`
       "bed_3 furniture on=[r_bed2] params=[]", // `in r_bed2 anchor bottom-right`
-      // `against wall exterior segment 3 … in r_living`: the derived ring's rooms stand in.
-      `counter_8 furniture on=[${ALL_TWO_BED}] params=[]`,
+      // `against wall exterior segment 3 … in r_living`, no `side`: the face is picked from
+      // `r_living`; the derived ring is `host` only, its rooms in its own row below.
+      "counter_8 furniture on=[r_living] params=[] host=exterior",
       "d_front door on=[r_hall] params=[] host=exterior", // `on r_hall.right`, `swing into r_hall`
       "dim_1 dim on=[] params=[]", // literal points
       "dim_2 dim on=[] params=[]", // literal points
       "door_2 door on=[r_bed1 r_hall] params=[] host=r_bed1|r_hall", // `between r_hall and r_bed1`
       "door_3 door on=[r_bath r_hall] params=[] host=r_hall|r_bath", // `between r_hall and r_bath`
       "door_4 door on=[r_bed2 r_hall] params=[] host=r_hall|r_bed2", // `between r_hall and r_bed2`
-      `fridge_5 furniture on=[${ALL_TWO_BED}] params=[]`, // the derived ring, as for counter_8
-      `kitchen_sink_7 furniture on=[${ALL_TWO_BED}] params=[]`, // the derived ring, as for counter_8
+      "fridge_5 furniture on=[r_living] params=[] host=exterior", // as counter_8
+      "kitchen_sink_7 furniture on=[r_living] params=[] host=exterior", // as counter_8
       "r_bath room on=[] params=[]", // `at (4000,5000)`
       "r_bed1 room on=[] params=[]", // `at (4000,0)`
       "r_bed2 room on=[r_bath] params=[]", // `right-of r_bath`
       "r_hall room on=[] params=[]", // `at (4000,3600)`
       "r_living room on=[] params=[]", // `at (0,0)`
       "r_living|r_hall:open opening on=[r_hall r_living] params=[] host=r_living|r_hall", // `open between r_hall and r_living`
-      `roof_1 roof on=[${ALL_TWO_BED}] params=[]`, // `roof overhang 500` follows the derived ring
+      "roof_1 roof on=[] params=[] host=exterior", // `roof overhang 500` follows the derived ring
       "shower_11 furniture on=[r_bath] params=[]", // `in r_bath anchor bottom-left`
       "sofa_9 furniture on=[] params=[]", // `at (2850,5400) … in r_living`: membership only
-      `stove_6 furniture on=[${ALL_TWO_BED}] params=[]`, // the derived ring, as for counter_8
+      "stove_6 furniture on=[r_living] params=[] host=exterior", // as counter_8
       "table_10 furniture on=[] params=[]", // `at (800,5800) … in r_living`: membership only
       "wardrobe_2 furniture on=[r_bed1] params=[]", // `in r_bed1 anchor top-right`
       "wardrobe_4 furniture on=[r_bed2] params=[]", // `in r_bed2 anchor bottom-left`

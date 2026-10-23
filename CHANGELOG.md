@@ -17,11 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `describe --facts depends` (plan card PS4.1). Opt-in: `describe(src, { facts: ["depends"] })`
   adds `depends.elements[]`, one row per element sorted by id, with `on` (the ids it derives
   from: its reference room, the rooms of `between`, the room of `on|against <room>.<edge>`, a
-  `facing` target, an anchor room, the rooms whose datums it reads, its host wall) and `params`
-  (the `let`, module `let`, parameter and loop names its expressions read), plus
-  `depends.derived_walls[]` for the walls `walls from rooms` derived. A derived wall is never
-  named in `on`: an opening reaches it through `hostWallId`. A summary that does not ask for it,
-  `lint()`, the SVG and Plan JSON are unchanged.
+  `facing` target, an anchor room, the rooms whose datums it reads, an authored host wall),
+  `params` (the `let`, module `let`, parameter and loop names its expressions read), `axes` (the
+  positioning axes it is placed at) and `hostWallId` (the wall it is hosted on or backed onto),
+  plus `depends.derived_walls[]` for the walls `walls from rooms` derived. A derived wall is
+  never named in `on`: an element hosted on or backed onto one names it as `hostWallId`, and its
+  rooms are listed once, in its own row (ADR 0028 §3, amended). A summary that does not ask for
+  it, `lint()`, the SVG and Plan JSON are unchanged.
 
 ### Changed
 
