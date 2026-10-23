@@ -945,6 +945,59 @@ The bath is the deepest and least integrated space, the hall has the most contro
 `museum-wing.arch` the corridor opens onto the outside and all three galleries, so its RA
 is `0` and its `integration` is `null`: it is as integrated as a space can be.
 
+## Dependencies — what each element derives from
+
+`describe(src, { facts: ["depends"] })` — `archlang describe plan.arch --facts depends --json`
+— adds `depends`: for every element, the ids its position was derived from and the names
+its expressions read. It answers "if I change this, what follows?" before you change it.
+Opt-in like `symmetry`; without `--facts` the key is absent.
+
+`depends.elements[]` has one row per element (every element of the storey except the
+`walls from rooms` statement itself), sorted by `id`:
+
+| Field | Meaning |
+|-------|---------|
+| `id`, `kind` | the element, as in the rest of the summary |
+| `on` | the ids it derives from, sorted: a relational room's reference room; the two rooms of `between A and B`; the room of `on <room>.<edge>`, `against <room>.<edge>` and `segment containing <room>.<edge>`; a `facing` target; the room of `in <room> anchor` or `centered` (and of `in <room>` on an `against wall` piece with no `side`, which picks the face from it); `swing into <room>`; a pairwise wall's rooms; the element `dim radius` or `diameter` measures; the ring a `roof … overhang` follows; every room whose datum (`r.top`, `r.cx`, a compass alias, `from r.left`) it reads; and its host wall, or the wall it backs onto |
+| `params` | the bound names its own expressions read, sorted: a `let`, a module `let`, a component or function parameter, a `for` variable, and the user functions it calls (never a built-in) |
+| `hostWallId` | a door's, window's or cased opening's host wall, as in `access.edges[]` |
+
+`depends.derived_walls[]` has one row per wall `walls from rooms` derived, sorted by
+`name` (the name `derived_walls[]` and `heights.walls[]` use): `on` is the pair of rooms a
+partition stands between, or the whole room set (less `except`) for a ring, plus any
+authored wall that took a span of the run over; `params` are the names its thickness reads.
+
+**A derived wall is never named in `on`.** It has no id an author can write, so an opening
+hosted on one reaches it through `hostWallId` (join it to `depends.derived_walls[]` for the
+next link), and a piece backed onto one (`against wall exterior …`) lists the rooms that
+produced it instead.
+
+What it does not record, so you can tell an empty list from a missing one:
+
+- **Direct reads only.** `let w = base * 2` read by a room puts `w` in its `params`, not
+  `base`; a `place wing(W)` puts the component's own parameter name in its contents' rows.
+- **The enclosing loop or condition** (`for i in 0..n`, `if`) decides whether an element
+  exists, not where it stands, and is not listed; the loop variable it reads is.
+- **Geometry found by search, not by name:** `dim faces`/`clear` projecting onto the wall
+  they meet, `flush` measuring from the wall behind an edge, a door `at (x,y)` finding its
+  nearest wall (that one is listed, as its host), `set` defaults.
+- **Heights** are not dependencies of a position (they draw nothing); a `height`, `sill` or
+  `head` clause's names are in that element's own `params` and nowhere else. `--view` never
+  reaches `describe()`.
+
+For `examples/relational.arch`, where only the living room is placed by number:
+
+```json
+{ "id": "bath", "kind": "room", "on": ["bed"], "params": [] },
+{ "id": "door_2", "kind": "door", "on": ["bed", "hall"], "params": [], "hostWallId": "hall|bed" },
+{ "id": "window_1", "kind": "window", "on": ["living"], "params": [], "hostWallId": "exterior" }
+```
+
+and among the derived walls, `{ "name": "hall|bed", "on": ["bed", "hall"], "params": [] }`.
+Without `--json` the human summary gains one line, e.g.
+`depends: 22 of 24 element(s) derive from another id or a name; 7 derived wall(s) (--json for the lists)`
+(the two that do not: the living room, placed `at (0,0)`, and the `dim`, whose points are numbers).
+
 ## `lint` — architectural soundness
 
 `archlang lint plan.arch --json` returns advisory `W_*` diagnostics, each with a byte

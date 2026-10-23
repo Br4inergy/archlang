@@ -307,7 +307,7 @@ export const roof: ElementDef = {
       });
       return { kind: "roof", id, ring: [], span: n.span };
     }
-    return { kind: "roof", id, ring, span: n.span };
+    return { kind: "roof", id, ring, _follows: wall.id, span: n.span };
   },
 
   bounds(resolved): Point[] {
@@ -354,6 +354,11 @@ export const roof: ElementDef = {
     // would have nowhere useful to point.
     const el = resolved as RRoof;
     const { id } = t;
-    return { ...el, id, ring: el.ring.map((p) => t.point(p)) };
+    return {
+      ...el,
+      id,
+      ring: el.ring.map((p) => t.point(p)),
+      ...(el._follows !== undefined ? { _follows: t.nsId(el._follows) } : {}),
+    };
   },
 };

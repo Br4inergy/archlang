@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `against wall … segment`, and `dim radius … segment`, where a selector is refused because it
   picks a straight segment. A selector that matches no segment, or several, is the new
   `E_SEGMENT_SELECT`. Plan JSON gains an additive `segment_select` field.
+- `describe --facts depends` (plan card PS4.1). Opt-in: `describe(src, { facts: ["depends"] })`
+  adds `depends.elements[]`, one row per element sorted by id, with `on` (the ids it derives
+  from: its reference room, the rooms of `between`, the room of `on|against <room>.<edge>`, a
+  `facing` target, an anchor room, the rooms whose datums it reads, its host wall) and `params`
+  (the `let`, module `let`, parameter and loop names its expressions read), plus
+  `depends.derived_walls[]` for the walls `walls from rooms` derived. A derived wall is never
+  named in `on`: an opening reaches it through `hostWallId`. A summary that does not ask for it,
+  `lint()`, the SVG and Plan JSON are unchanged.
 
 ### Changed
 

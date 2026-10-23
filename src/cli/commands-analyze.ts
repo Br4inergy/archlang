@@ -140,6 +140,7 @@ export const DESCRIBE_KEYS: readonly string[] = [
   // Opt-in: present only under `--facts`, so selectable only alongside it.
   "symmetry",
   "syntax",
+  "depends",
 ];
 
 /** Tally a {@link FreedomReport} bucket without fighting the placement unions. */
@@ -387,6 +388,12 @@ function factLines(s: SceneSummary): string[] {
     out.push(`symmetry: shell ${g(shell)} · rooms ${g(rooms)} · full ${g(full)}; repeats ${s.symmetry.repeats.length}`);
   }
   if (s.syntax) out.push(`syntax: k=${s.syntax.k} cycleRank=${s.syntax.cycleRank}`);
+  if (s.depends) {
+    const linked = s.depends.elements.filter((e) => e.on.length > 0 || e.params.length > 0).length;
+    out.push(
+      `depends: ${linked} of ${s.depends.elements.length} element(s) derive from another id or a name; ${s.depends.derived_walls.length} derived wall(s) (--json for the lists)`,
+    );
+  }
   return out;
 }
 

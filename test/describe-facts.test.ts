@@ -1,12 +1,12 @@
 /**
  * The `facts` gate of `describe()` — the byte-identity law for the opt-in derived facts.
  *
- * `symmetry` and `syntax` are computed ONLY when named in `DescribeOptions.facts`. So, over
+ * `symmetry`, `syntax` and `depends` are computed ONLY when named in `DescribeOptions.facts`. So, over
  * every example (multi-storey ones included, where each storey carries its own copy):
  *
- *  - the default summary never contains either key, anywhere;
+ *  - the default summary never contains any of their keys, anywhere;
  *  - `facts: []` is the default, byte for byte;
- *  - asking for them only ADDS the two keys: strip them and the summary is the default one,
+ *  - asking for them only ADDS their keys: strip them and the summary is the default one,
  *    byte for byte — no other fact moves because a fact was requested.
  *
  * The SVG and `lint()` never see `DescribeOptions` at all; the corpus digest suites
@@ -31,8 +31,8 @@ function strip(s: SceneSummary): unknown {
 const hasFactKey = (json: string): boolean => FACT_KEYS.some((k) => json.includes(`"${k}":`));
 
 suite("describe facts gate — the default is byte-identical", () => {
-  it("DESCRIBE_FACTS names exactly the two opt-in facts", () => {
-    expect([...DESCRIBE_FACTS]).toEqual(["symmetry", "syntax"]);
+  it("DESCRIBE_FACTS names exactly the three opt-in facts", () => {
+    expect([...DESCRIBE_FACTS]).toEqual(["symmetry", "syntax", "depends"]);
   });
 
   it.each(Object.keys(EXAMPLE_FILES))("%s", (rel) => {
@@ -46,9 +46,11 @@ suite("describe facts gate — the default is byte-identical", () => {
     if (withFacts.ok) {
       expect(withFacts.symmetry, "requested → present").toBeDefined();
       expect(withFacts.syntax, "requested → present").toBeDefined();
+      expect(withFacts.depends, "requested → present").toBeDefined();
       for (const l of withFacts.levels ?? []) {
         expect(l.symmetry, `level ${l.level} carries its own symmetry`).toBeDefined();
         expect(l.syntax, `level ${l.level} carries its own syntax`).toBeDefined();
+        expect(l.depends, `level ${l.level} carries its own depends`).toBeDefined();
       }
     }
     // Deterministic: a second request reports the same bytes.
@@ -62,5 +64,6 @@ suite("describe facts gate — the default is byte-identical", () => {
     const s = describe(src, { facts: ["syntax"] });
     expect(s.syntax).toBeDefined();
     expect("symmetry" in s).toBe(false);
+    expect("depends" in s).toBe(false);
   });
 });

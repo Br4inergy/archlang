@@ -221,6 +221,24 @@ export function statementExprs(s: Statement): Expr[] {
   return out;
 }
 
+/**
+ * Every expression a statement READS, for `describe --facts depends`: {@link statementExprs}
+ * plus the furniture clauses PS3.7 added that the LSP table does not list yet
+ * (`against <room>.<edge> offset <mm>`, `clear front|sides <mm>`). They are kept out of
+ * {@link STATEMENT_EXPRS} here so that the LSP's rename and reference results stay byte for
+ * byte what they were; folding them into the table is its own change, with the LSP tests
+ * moved on purpose.
+ */
+export function statementReads(s: Statement): Expr[] {
+  const out = statementExprs(s);
+  if (s.kind === "furniture") {
+    if (s.againstEdge?.offset !== undefined) out.push(s.againstEdge.offset);
+    if (s.clear?.front !== undefined) out.push(s.clear.front);
+    if (s.clear?.sides !== undefined) out.push(s.clear.sides);
+  }
+  return out;
+}
+
 /** The nested statement blocks of a control-flow statement (empty otherwise). */
 export function statementBodies(s: Statement): Statement[][] {
   switch (s.kind) {
