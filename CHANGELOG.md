@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `<room>.<edge>` follows it, which never parsed before, so a variable named `containing` reads
   as it did.
 
+### Fixed
+
+- `at <pct>%` resolves to the exact length (55 % of 6000 = 3300, not 3300.0000000000005); a window or door an ulp off a corner or threshold now lands on it.
+
 ## [1.43.1] - 2026-10-17
 
 ### Changed
