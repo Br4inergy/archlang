@@ -159,6 +159,9 @@ export type {
   MirrorRepeat,
   SyntaxFacts,
   SyntaxRoom,
+  DependsFacts,
+  DependsEntry,
+  DerivedWallDepends,
   DerivedWallRow,
 } from "./describe.js";
 // Structured JSON I/O: the machine-native RPLAN/DStruct2Design plan shape.

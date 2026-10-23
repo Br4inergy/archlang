@@ -12,7 +12,7 @@ import { parse } from "./parser.js";
 import { link } from "./import.js";
 import { resolveAll } from "./ir.js";
 import type { ResolvedLevel, ResolvedPlan, RDoor, ROutdoor, RRoom, ROpening } from "./ir.js";
-import type { UseKind } from "./ast.js";
+import type { PlanNode, UseKind } from "./ast.js";
 import { BUILTIN_REGISTRY, createRegistry } from "./registry.js";
 import { NULL_WORLD } from "./world.js";
 import type { Diagnostic } from "./diagnostics.js";
@@ -99,7 +99,7 @@ export const DEFAULT_TOL = 200;
 export function resolvePlan(
   source: string,
   opts: AnalyzeOptions = {},
-): { ir: ResolvedPlan | null; diagnostics: Diagnostic[]; levels: ResolvedLevel[] } {
+): { ir: ResolvedPlan | null; diagnostics: Diagnostic[]; levels: ResolvedLevel[]; plan?: PlanNode } {
   const registry = opts.plugins?.length ? createRegistry(opts.plugins) : BUILTIN_REGISTRY;
   const world = opts.world ?? NULL_WORLD;
 
@@ -110,7 +110,14 @@ export function resolvePlan(
 
   const hasError = diagnostics.some((d) => d.severity === "error");
   const ok = resolved !== null && !hasError;
-  return { ir: ok ? resolved.ir : null, diagnostics, levels: ok ? resolved.levels : [] };
+  // The linked plan rides along only for a read that walks the source (`describe --facts
+  // depends`); every other caller ignores it.
+  return {
+    ir: ok ? resolved.ir : null,
+    diagnostics,
+    levels: ok ? resolved.levels : [],
+    ...(ok && linked ? { plan: linked.plan } : {}),
+  };
 }
 
 /** Axis-aligned rectangle of a sized element. */

@@ -65,6 +65,7 @@ import { computeCirculation, type CirculationModel } from "./analyze/circulation
 import { entranceInputs, storeyHasEntranceCandidate, withMainEntrance } from "./analyze/entrance.js";
 import { symmetryFacts, type SymmetryFacts } from "./analyze/symmetry.js";
 import { syntaxFacts, type SyntaxFacts } from "./analyze/syntax.js";
+import { type DependsFacts, dependsFacts, indexStatements, type StatementIndex } from "./analyze/depends.js";
 import { roomTypeForUses, buildInputGraph } from "./plan-json.js";
 import { roomSchedule, type ScheduleRow } from "./sheet-tables.js";
 // The page→compass conversion and the `site` derivation live in ONE module: the site
@@ -113,6 +114,7 @@ export type {
   TranslationRepeat,
 } from "./analyze/symmetry.js";
 export type { SyntaxFacts, SyntaxRoom } from "./analyze/syntax.js";
+export type { DependsEntry, DependsFacts, DerivedWallDepends } from "./analyze/depends.js";
 
 // The access graph and its two node/edge shapes are DECLARED in `analyze.js`, but
 // `describe()` is the only public value that surfaces them ({@link SceneSummary.access}),
@@ -135,14 +137,15 @@ export interface DescribeOptions extends AnalyzeOptions {
   adjacencyTolMm?: number;
   /**
    * Opt-in derived facts, each computed only when named here: `"symmetry"` adds
-   * {@link SceneSummary.symmetry}, `"syntax"` adds {@link SceneSummary.syntax}. Absent or
-   * empty (the default), the summary is byte-identical to one written before either existed.
+   * {@link SceneSummary.symmetry}, `"syntax"` adds {@link SceneSummary.syntax}, `"depends"`
+   * adds {@link SceneSummary.depends}. Absent or empty (the default), the summary is
+   * byte-identical to one written before any of them existed.
    */
   facts?: readonly DescribeFact[];
 }
 
 /** Every opt-in fact {@link DescribeOptions.facts} can name — `arch describe --facts` reads this list. */
-export const DESCRIBE_FACTS = ["symmetry", "syntax"] as const;
+export const DESCRIBE_FACTS = ["symmetry", "syntax", "depends"] as const;
 
 /** One opt-in fact of {@link DESCRIBE_FACTS}. */
 export type DescribeFact = (typeof DESCRIBE_FACTS)[number];
@@ -861,6 +864,12 @@ export interface SceneSummary {
    * control, cycle rank). Present **only when requested** (`facts: ["syntax"]`).
    */
   syntax?: SyntaxFacts;
+  /**
+   * What each element is derived from: the ids it reads (`on`) and the bound names its
+   * expressions read (`params`), sorted by element id; the derived walls in their own list.
+   * Present **only when requested** (`facts: ["depends"]`). See {@link DependsFacts}.
+   */
+  depends?: DependsFacts;
   /** All problems from parse/link/resolve, with byte spans and codes. */
   diagnostics: Diagnostic[];
 }
@@ -1198,6 +1207,8 @@ function summarize(
   arrivals: readonly ArrivingRun[] = [],
   /** A shaft arrives on this storey from below: it names no main entrance (PS0.10/PS0.3). */
   upperStorey = false,
+  /** The linked plan's statements, built only when `depends` is requested. */
+  statements?: StatementIndex,
 ): Omit<SceneSummary, "ok" | "diagnostics"> {
   const roomEls = ir.elements.filter((e): e is RRoom => e.kind === "room");
   const doorEls = ir.elements.filter((e): e is RDoor => e.kind === "door");
@@ -1565,6 +1576,7 @@ function summarize(
     // summary is byte-identical. The logic lives in `analyze/symmetry.ts`/`analyze/syntax.ts`.
     ...(facts.includes("symmetry") ? { symmetry: symmetryFacts(ir) } : {}),
     ...(facts.includes("syntax") ? { syntax: syntaxFacts(access) } : {}),
+    ...(facts.includes("depends") && statements ? { depends: dependsFacts(ir, statements) } : {}),
   };
 }
 
@@ -1641,11 +1653,16 @@ export function describeWithAutoIds(
   source: string,
   opts: DescribeOptions = {},
 ): { summary: SceneSummary; autoRoomIds: ReadonlySet<string>; fabric: DiffFabric } {
-  const { ir, diagnostics, levels } = resolvePlan(source, opts);
+  const { ir, diagnostics, levels, plan } = resolvePlan(source, opts);
   const autoRoomIds = new Set<string>();
   if (ir)
     for (const e of ir.elements) if (e.kind === "room" && (e as RRoom)._idAuthored !== true) autoRoomIds.add(e.id);
-  return { summary: summarizeResolved(ir, diagnostics, levels, opts), autoRoomIds, fabric: diffFabricOf(ir) };
+  const statements = plan && opts.facts?.includes("depends") ? indexStatements(plan) : undefined;
+  return {
+    summary: summarizeResolved(ir, diagnostics, levels, opts, statements),
+    autoRoomIds,
+    fabric: diffFabricOf(ir),
+  };
 }
 
 /**
@@ -1763,6 +1780,7 @@ function summarizeResolved(
   diagnostics: Diagnostic[],
   levels: ReturnType<typeof resolvePlan>["levels"],
   opts: DescribeOptions,
+  statements?: StatementIndex,
 ): SceneSummary {
   const tol = opts.adjacencyTolMm ?? DEFAULT_TOL;
 
@@ -1804,7 +1822,14 @@ function summarizeResolved(
       ? levels.map((l) => ({
           level: l.level,
           ...(l.name !== undefined ? { name: l.name } : {}),
-          ...summarize(l.ir, tol, opts.facts, arrivalsOn(l.level), building?.fromBelow.has(l.level) ?? false),
+          ...summarize(
+            l.ir,
+            tol,
+            opts.facts,
+            arrivalsOn(l.level),
+            building?.fromBelow.has(l.level) ?? false,
+            statements,
+          ),
         }))
       : undefined;
 
@@ -1817,6 +1842,7 @@ function summarizeResolved(
       opts.facts,
       levels.length > 0 ? arrivalsOn(levels[0]!.level) : [],
       levels.length > 0 ? (building?.fromBelow.has(levels[0]!.level) ?? false) : false,
+      statements,
     ),
     ...(perLevel ? { levels: perLevel } : {}),
     ...(vertical ? { vertical } : {}),

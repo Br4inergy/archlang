@@ -276,6 +276,8 @@ export const furniture: ElementDef = {
     let at: Point;
     let size = { w: dw, h: dh };
     let roomOut = n.room;
+    /** The wall an `against wall` piece backs onto, by id (`describe --facts depends`). */
+    let againstWall: string | undefined;
     // The authored placement clause, with its expressions evaluated — recorded so a
     // projection can hand back the STATEMENT rather than the coordinate it resolved
     // to. Only the absolute `at (x,y)` form leaves it absent, because there the
@@ -339,7 +341,7 @@ export const furniture: ElementDef = {
       }
       // A selector resolves inside the placement (it needs the wall); the clause then carries
       // the index it aliases, exactly as its numeric twin's does, plus the words as written.
-      const picked: { segment?: number } = {};
+      const picked: { segment?: number; wall?: string } = {};
       const sel = n.against.segmentSelect;
       authored = {
         mode: "against",
@@ -364,6 +366,7 @@ export const furniture: ElementDef = {
       if (placed) {
         size = placed.size;
         rotate = placed.rotate;
+        againstWall = picked.wall;
       }
     } else if (n.place) {
       authored =
@@ -420,6 +423,7 @@ export const furniture: ElementDef = {
       ...(n.againstEdge ? { _relation: againstText(n.againstEdge.edge, authored) } : {}),
       ...(facing !== undefined ? { _facing: facing, _facingSpan: n.facing!.span } : {}),
       ...(clear ? { _clear: clear } : {}),
+      ...(againstWall !== undefined ? { _againstWall: againstWall } : {}),
       span: n.span,
     };
   },
@@ -546,6 +550,7 @@ export const furniture: ElementDef = {
     else delete out._mirror;
     if (el.room !== undefined) out.room = t.nsId(el.room);
     if (el._facing !== undefined) out._facing = t.nsId(el._facing);
+    if (el._againstWall !== undefined) out._againstWall = t.nsId(el._againstWall);
     return out;
   },
 };
@@ -564,7 +569,7 @@ function placeAgainst(
   roomId: string | undefined,
   ctx: ResolveCtx,
   span: Span | undefined,
-  picked: { segment?: number },
+  picked: { segment?: number; wall?: string },
 ): { at: Point; size: { w: number; h: number }; rotate: number } | null {
   const err = (message: string): null => {
     ctx.diag({ severity: "error", message: `Furniture "${id}" ${message}`, code: "E_FURN_AGAINST", span });
@@ -581,6 +586,7 @@ function placeAgainst(
   if (matches.length > 1)
     return err(`\`against wall ${ag.wall}\` matches ${matches.length} walls — reference a unique wall id`);
   const wall = matches[0]!;
+  picked.wall = wall.id;
   const segs = segmentsOfWall(wall);
   let segIdx: number;
   if (ag.segmentSelect !== undefined) {

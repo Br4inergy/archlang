@@ -303,7 +303,7 @@ semantic facts: rooms, areas, adjacency, what doors connect
 | `--zone <path[,path…]>` | keep only the rooms declared in these `zone` blocks (nested zones roll up; paths are dotted, e.g. west.galleries) — a DISPLAY filter: `ok` and the exit code still weigh the whole plan |
 | `--select <key[,key…]>` | emit only these top-level keys of the --json object (rooms, doors, totals, access, circulation, freedom, …); the ok/plan/units/diagnostics envelope is always kept |
 | `--level <n>` | report this storey of a multi-storey plan as the top-level facts (a DISPLAY filter — `ok` and the exit code still weigh the whole plan) |
-| `--facts <symmetry\|syntax[,…]>` | also compute these opt-in facts: `symmetry` (the plan's symmetry group per layer — shell, rooms, full — and its repeated rooms) and `syntax` (space-syntax depth, mean depth, RA, integration and control on the access graph); absent by default |
+| `--facts <symmetry\|syntax\|depends[,…]>` | also compute these opt-in facts: `symmetry` (the plan's symmetry group per layer — shell, rooms, full — and its repeated rooms), `syntax` (space-syntax depth, mean depth, RA, integration and control on the access graph) and `depends` (per element, the ids it derives from and the `let`/parameter names it reads); absent by default |
 | `--json` | structured result on stdout, messages on stderr |
 | `--quiet, -q` | suppress human messages on stderr |
 
@@ -330,6 +330,9 @@ $ archlang describe house.arch --level 2 --json
 
 # add the symmetry group per layer, repeated rooms, and space-syntax integration on the access graph
 $ archlang describe plan.arch --facts symmetry,syntax --json
+
+# per element, the ids it derives from (`on`) and the `let`/parameter names it reads (`params`) — what follows a change
+$ archlang describe plan.arch --facts depends --json --select depends
 ```
 
 ### `archlang score`
@@ -609,7 +612,7 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 
 | Flag | Does |
 | --- | --- |
-| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 130 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 50 KB) |
+| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 131 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 22 KB; errors = the diagnostic catalog, 50 KB) |
 | `--json` | structured result on stdout, messages on stderr |
 
 **Examples**
@@ -618,7 +621,7 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 # the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 $ archlang context
 
-# just the diagnostic catalog (50 KB) — read one section instead of paying for the whole 130 KB bundle
+# just the diagnostic catalog (50 KB) — read one section instead of paying for the whole 131 KB bundle
 $ archlang context --section errors
 ```
 

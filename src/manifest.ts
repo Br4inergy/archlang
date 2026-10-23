@@ -296,7 +296,7 @@ const FACTS_FLAG: ManifestFlag = {
   flag: "--facts",
   arg: `<${DESCRIBE_FACTS.join("|")}[,…]>`,
   description:
-    "also compute these opt-in facts: `symmetry` (the plan's symmetry group per layer — shell, rooms, full — and its repeated rooms) and `syntax` (space-syntax depth, mean depth, RA, integration and control on the access graph); absent by default",
+    "also compute these opt-in facts: `symmetry` (the plan's symmetry group per layer — shell, rooms, full — and its repeated rooms), `syntax` (space-syntax depth, mean depth, RA, integration and control on the access graph) and `depends` (per element, the ids it derives from and the `let`/parameter names it reads); absent by default",
 };
 const SELECT_FLAG: ManifestFlag = {
   flag: "--select",
@@ -640,6 +640,10 @@ const COMMANDS: ManifestCommand[] = [
       {
         cmd: "archlang describe plan.arch --facts symmetry,syntax --json",
         note: "add the symmetry group per layer, repeated rooms, and space-syntax integration on the access graph",
+      },
+      {
+        cmd: "archlang describe plan.arch --facts depends --json --select depends",
+        note: "per element, the ids it derives from (`on`) and the `let`/parameter names it reads (`params`) — what follows a change",
       },
     ],
   },

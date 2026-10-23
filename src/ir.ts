@@ -565,6 +565,9 @@ export interface RFurniture extends RBase {
   _clear?: { front?: number; sides?: number };
   /** The author wrote this piece's `id=` (set only then). Read by lint's seat hint. Internal. */
   _idAuthored?: true;
+  /** `against wall <id|category>`: the id of the one wall it resolved to, namespaced by a
+   *  `place` frame as the piece's own id is. Read only by `describe --facts depends`. Internal. */
+  _againstWall?: string;
 }
 export interface RDim extends RBase {
   kind: "dim";
@@ -695,6 +698,9 @@ export interface REscalator extends RBase {
 export interface RRoof extends RBase {
   kind: "roof";
   ring: Point[];
+  /** The `overhang` form: the id of the closed wall ring it follows, named or inferred.
+   *  Read only by `describe --facts depends`. Internal. */
+  _follows?: string;
 }
 
 /** A resolved floor void. `at` is the TOP-LEFT of the opening (the `room`/`column`
