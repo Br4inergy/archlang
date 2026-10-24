@@ -1,8 +1,11 @@
 # 32. Taste is a separate, sourced score that never gates
 
-- **Status:** Proposed (plan-soundness card PS5.1a, `docs/plans/plan-soundness/README.md` §6 PS5
-  and §3 D2). Accepted when the PR that builds it merges
-- **Date:** 2026-10
+- **Status:** Accepted 2026-10-25 on §7 row 5's taste acceptance (the separation law holds with
+  0 reversed and an empty ledger), with the caveats of plan-soundness D14 and D15
+  (`docs/plans/plan-soundness/README.md` §3), built by PRs #244 (PS5.1a), #247 (PS5.1b), #248
+  (PS5.2, the residential-advisory taste profiles) and #246 (PS5.3, taste as the last tier of
+  `validate --json` `next`); D11 records the layer ruling
+- **Date:** 2026-10 (proposed 2026-10-24, accepted 2026-10-25)
 - **Relates to:** [ADR 0005](0005-no-invisible-architect.md) (facts and advisory lint, honestly
   named profiles; this ADR adds a second advisory channel beside lint),
   [ADR 0022](0022-exact-decisions-and-bounded-input.md) (exact decisions, counted budgets),
@@ -78,9 +81,11 @@ already separate the corpus's circulation and daylight pairs.
 - Multi-dwelling plans (`terrace-row`) are read as one dwelling until declared dwellings exist
   (PS2.14); upper storeys are skipped by the depth-reading criteria until their entrance depths
   are reliable (PS0.3). Both are visible in `coverage.skipped`.
-- A valid plan with poor taste can score below a capped invalid one (a pair in the separation
-  law's ledger shows it: the fix that clears a lint warning narrowed a window). The cap bounds the
-  invalid plan from above; it does not lift the valid one.
+- A valid plan with poor taste can score below a capped invalid one: the cap bounds the invalid
+  plan from above; it does not lift the valid one. PS5.1a's one ledger pair showed it (the fix that
+  clears a lint warning narrowed a window). The ledger has been empty since PR #247, by dilution,
+  not by a fix: R9 lifts that twin's total above 0.5 while R7 still prefers the bad case
+  (0.7677 against 0.4606).
 - `LintRule` gains two required fields, so a rule cannot be added without a layer.
 - **An unknown profile throws.** `taste()` raises a `RangeError` for a profile name it does not
   know, where `lint()` ignores an unknown profile and runs the defaults. A taste report names its
@@ -88,5 +93,24 @@ already separate the corpus's circulation and daylight pairs.
   profile nobody asked for. The profile is the caller's argument, not user source, so the
   never-throws contract on source stands; `arch score --taste` checks the name first and exits 3
   with a did-you-mean.
+- **Messages fall back to the room id today, against decision 6.** A room with no label is named
+  by its id in `message` (`namesOf`, `src/taste/criteria.ts` line 98, the same `label ?? id`
+  fallback as lint's `labelOf`). It is fixed with lint's under plan-soundness card PS2.29
+  (id-free messages).
+- **Measured at acceptance (2026-10-25,
+  `docs/plans/plan-soundness/audits/2026-10-25-first-contact-rerun-row5.md`).** On the corpus the
+  score separates as the separation law requires: 41 pairs, 37 ordered, 0 tied, 0 reversed (the
+  ledger is empty), 4 unjudged. Its reach on first-contact defects is small and orthogonal to the
+  audits: `score --taste generic` names 0 of the 57 defects of the 2026-10-18 plans, 3 of the 48
+  of the 2026-10-24 plans plus one partial, and 2 of the 49 of the 2026-10-25 plans, all of them
+  kitchens hidden by a `uses living` type (R6) or the night zone (R15); its most active criteria,
+  R16 and R17, judge things no audit counted. Uptake was nil: 0 of 6 cold authors ran `score
+  --taste` or `validate`, because the spec and the author role did not teach the step. PR #250
+  (PS7.4) put the loop into both. The 0 of 6 hits this ADR's reverse-if, but it is not yet
+  assessed: the measuring dispatch prompt names only `compile|lint`, and the author role changed in
+  PR #250. Plan-soundness D15 decides it with two arms on the same briefs, (A) the spec with the
+  pre-#250 role text and (B) the current role, counting `score --taste` and `validate` calls;
+  taste stays an author tool only if arm A shows calls, and otherwise is re-scoped as a reviewer's
+  tool.
 
 *Reverse if:* agents measurably ignore a separate score (D2's own trigger).
