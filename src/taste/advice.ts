@@ -57,7 +57,7 @@ export const TASTE_ADVICE: readonly TasteAdviceRow[] = [
     subscore: "geometry",
     code: "A_ROOM_ELONGATED",
     source:
-      "Palladio, I Quattro Libri I.xxi (2:1, the last of the seven room shapes), via Wittkower, Architectural Principles in the Age of Humanism (1949), part IV; ResPlan aspect priors (design-taste.md §4)",
+      "Palladio, I Quattro Libri I.xxi (preferred room shapes, the longest 2:1), as read in Mitrović, Nexus Network Journal 6(2), 2004; ResPlan aspect priors (design-taste.md §4)",
     verified: "S",
     asks: "rooms no longer than 2:1 (2.5:1 for a bathroom or WC) by their minimum enclosing rectangle",
   },
@@ -113,7 +113,7 @@ export const TASTE_ADVICE: readonly TasteAdviceRow[] = [
     name: "axis-economy",
     subscore: "geometry",
     code: "A_AXES_SCATTERED",
-    source: 'Ching, Architecture: Form, Space, and Order, ch. 7 "Principles", § Datum; Brandão 2008 (wall segments)',
+    source: "Brandão 2008 (wall segments)",
     verified: "S",
     asks: "room and wall edges on at most 1.5 shared axes per room",
   },
