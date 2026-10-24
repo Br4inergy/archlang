@@ -37,7 +37,10 @@ describe("readDimText — what reads as a length", () => {
     ["4 m", 4_000_000, 1_000_000],
     ["350cm", 3_500_000, 10_000],
     ["1562.05", 1_562_050, 10],
-    ["0.125", 125, 1],
+    ["1562.005", 1_562_005, 1],
+    ["0.12", 120, 10],
+    ["4.000 m", 4_000_000, 1000],
+    ["12.500 m", 12_500_000, 1000],
     ["1.000001 m", 1_000_001, 1],
   ])("%j is %d µm to %d µm", (text, um, step) => {
     const r = readDimText(text);
@@ -63,6 +66,10 @@ describe("readDimText — what reads as a length", () => {
     "4,00",
     "1,500 m", // a grouped number with a unit may be a decimal comma
     "0.0001", // finer than the 0.001 mm lattice
+    "4.000", // a European thousands dot, or metres with no `m`: ambiguous with no unit
+    "1.500",
+    "12.500",
+    "0.125",
     "1.0000001 m",
     "4 km",
     "",
@@ -157,6 +164,32 @@ describe("W_DIM_TEXT_MISMATCH — the fix and the hint", () => {
     const ds = mismatches(src);
     expect(ds).toHaveLength(1); // the 4000 mm one; the 2000 mm one is right
     expect(ds[0]!.fixes).toBeUndefined();
-    expect(ds[0]!.hints!.some((h) => h.includes("more than one dimension"))).toBe(true);
+    // One hint, and it does not quote a `text` to write: no single rewrite can be right.
+    expect(ds[0]!.hints).toHaveLength(1);
+    expect(ds[0]!.hints![0]).toContain("more than one dimension");
+    expect(ds[0]!.hints![0]).not.toContain("`text");
+  });
+});
+
+describe("W_DIM_TEXT_MISMATCH — red-team round 1", () => {
+  it("a bare dot-grouped number is ambiguous and exempt; with a unit it is metres and checked", () => {
+    expect(mismatches(dim("4000", "4.000"))).toEqual([]);
+    expect(mismatches(dim("1500", "1.500"))).toEqual([]);
+    expect(mismatches(dim("12500", "12.500"))).toEqual([]);
+    expect(mismatches(dim("4000", "4.000 m"))).toEqual([]);
+    expect(mismatches(dim("4000", "4.500 m"))).toHaveLength(1);
+  });
+
+  it("the message's printed numbers subtract", () => {
+    const [d] = mismatches(dim("3901.05", "4000"));
+    expect(d!.message).toContain("its line spans 3901.05 mm: the text is 98.95 mm longer");
+    // written finer than the printer's 0.01 mm: the span is printed to the micrometre
+    const [e] = mismatches(dim("1562.0026", "1562.004"));
+    expect(e!.message).toContain("spans 1562.003 mm: the text is 0.001 mm longer");
+  });
+
+  it("a text in millimetres is quoted once; one in metres also gives its millimetres", () => {
+    expect(mismatches(dim("4000", "5000 mm"))[0]!.message).toContain("is lettered 5000 mm, but");
+    expect(mismatches(dim("4000", "5 m"))[0]!.message).toContain("is lettered 5 m, 5000 mm, but");
   });
 });

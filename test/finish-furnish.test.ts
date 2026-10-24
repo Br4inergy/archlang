@@ -536,7 +536,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
     (
       [
         ["50bfe2d1d4955f0399834c0e436ef5f6308a109552a22a7df3aea13f93cdfdd9", "accessible"], // PS2.9 source edit, see above
-        ["d1e1a89dc3743a37e9992be18d87d8156bd4d7226f095602dc370500a8124cb2", "aquarium"], // PS2.4 source edit, see above; PS2.10 source edit (byte-identity-baseline.ts)
+        ["3ef3f9e68707af4ac51383b6108f97c2ef51efeb5d41cf74d3d3eac2e9e42ba9", "aquarium"], // PS2.4 source edit, see above; PS2.10 source edit (byte-identity-baseline.ts)
         ["8894023b744a155aad52d1ca28b7836ad1c9d63d1665e82f6b835c8d8e480f3b", "attached"],
         ["68042a31d598b906bf022a88135afd0c68c12886f9432f6fd6b2172345b32324", "bungalow"], // PS2.17 source edit (a worktop), see above
         ["cbf505c9f38de1bce32a5f6256b035a3a5cb35df068f411621db590234da0685", "classroom-block"], // first measurement, added with the example

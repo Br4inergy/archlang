@@ -322,7 +322,7 @@
 // moved are in `test/byte-identity-baseline.ts`'s header.
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
-  ["examples/aquarium.arch", "d2136696fbca52aa8a241f34cbc0f33ac687457ab60343f22160adc07c147935"], // re-measured for PS2.4, see header; PS2.10 dims fixed (byte-identity-baseline.ts)
+  ["examples/aquarium.arch", "3e86bb779c5dac50c86e8d7e6d8c4948ab2bb59e7244994f7c4fde8ed66b3fa7"], // re-measured for PS2.4, see header; PS2.10 dims fixed (byte-identity-baseline.ts)
   ["examples/attached.arch", "591f4199087b7f7fcab65af3cab3f12dbe062456954e7ef0f02969a974d34b93"],
   ["examples/bungalow.arch", "5fddcfb20684e94f609c770e7632c207df253d8acdae244243327df6b926b7df"],
   ["examples/classroom-block.arch", "48ee65709fc9f1b2875c7b96fd680d03a8012811d0bd18bc4a3a45422f19fe79"], // added with the example, re-measured for net area, see header

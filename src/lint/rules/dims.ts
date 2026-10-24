@@ -272,7 +272,10 @@ const UNIT_UM: Readonly<Record<string, number>> = { "": 1000, mm: 1000, cm: 10_0
  * grouped with commas in strict groups of three (`4,000`, `12,500.5`). The printer never groups
  * (`fmt2` prints `String(n)`), but authors copy numbers from schedules that do, and a strict
  * group cannot be misread as a decimal comma unless the text also carries a unit, which is why
- * a grouped number with a unit is not read at all (`1,500 m` may be a European 1.5 m).
+ * a grouped number with a unit is not read at all (`1,500 m` may be a European 1.5 m). The
+ * mirror case is not read either: one to three digits, a dot and exactly three decimals with NO
+ * unit (`4.000`, `12.500`) may be a European thousands dot or metres without the `m`; with a
+ * unit (`4.000 m`) it is read.
  *
  * Everything else is exempt, because it is not a claim this rule can check: a word (`VARIES`,
  * `EQ`), a prefix or suffix (`R9000`, `φ5000`, `~4000`, `2300 clear`, `4000 min`), a sign, an
@@ -285,12 +288,18 @@ const UNIT_UM: Readonly<Record<string, number>> = { "": 1000, mm: 1000, cm: 10_0
  * in its last written digit), both integers. `fmt` re-letters a micrometre length in the same
  * unit, precision and grouping, with the author's own spacing.
  */
-export function readDimText(text: string): { um: number; stepUm: number; fmt: (um: number) => string } | null {
+export function readDimText(
+  text: string,
+): { um: number; stepUm: number; unit: string; fmt: (um: number) => string } | null {
   const m = /^(\s*)(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(?:( ?)(mm|cm|m))?(\s*)$/.exec(text);
   if (!m) return null;
   const [, lead, intPart, frac = "", gap = "", unit = "", trail] = m;
   const grouped = intPart!.includes(",");
   if (grouped && unit !== "") return null;
+  // `4.000`, `1.500`, `12.500` with no unit: a European thousands dot (4000 mm) or metres
+  // written without the `m` (4 m)? Neither reading is safe, so it is not read; with a unit
+  // (`4.000 m`) it is unambiguous and checked.
+  if (unit === "" && !grouped && intPart!.length <= 3 && frac.length === 3) return null;
   const perUnit = UNIT_UM[unit]!;
   const scale = 10 ** frac.length;
   if (perUnit % scale !== 0) return null; // finer than the 0.001 mm lattice
@@ -301,11 +310,16 @@ export function readDimText(text: string): { um: number; stepUm: number; fmt: (u
   const fmt = (len: number): string => {
     const raw = String(Math.round(len / stepUm)).padStart(frac.length + 1, "0");
     let whole = raw.slice(0, raw.length - frac.length);
-    if (grouped) whole = whole.replace(/\B(?=(\d{3})+$)/g, ",");
+    if (grouped) {
+      // Comma every three digits from the right, by a plain loop (no regex over the digits).
+      const groups: string[] = [];
+      for (let end = whole.length; end > 0; end -= 3) groups.unshift(whole.slice(Math.max(0, end - 3), end));
+      whole = groups.join(",");
+    }
     const dec = frac.length > 0 ? `.${raw.slice(raw.length - frac.length)}` : "";
     return `${lead}${whole}${dec}${gap}${unit}${trail}`;
   };
-  return { um, stepUm, fmt };
+  return { um, stepUm, unit, fmt };
 }
 
 /**
@@ -357,25 +371,29 @@ export const dimTextMismatch: LintRule = {
       const lettered = read.fmt(spanUm);
       const writtenMm = fmt3(read.um / 1000);
       const shown = dm.text!.trim();
-      const reads = /^[\d,.]+$/.test(shown) ? shown : `${shown}, ${writtenMm} mm`;
-      const diff = fmt2(Math.abs(read.um - spanUm) / 1000);
+      // A text in millimetres is quoted as written; one in cm or m also gives its millimetres.
+      const reads = read.unit === "cm" || read.unit === "m" ? `${shown}, ${writtenMm} mm` : shown;
+      // The quoted numbers must subtract: the span is printed to two decimals (the printer's own
+      // `fmt2`), or to the micrometre when the text is written finer than that, and the
+      // difference is taken from the two PRINTED values, in whole micrometres. Since the rule
+      // fired, the printed span is still on the same side of the written number (it lies within
+      // 5 µm of the span, and the span is more than 5 µm off), so the difference is never 0.
+      const spanShown = read.stepUm < 10 ? fmt3(spanUm / 1000) : fmt2(span);
+      const shownUm = Math.round(Number(spanShown) * 1000);
+      const diff = fmt3(Math.abs(read.um - shownUm) / 1000);
       const single = (drawn.get(reportKey(dm)) ?? 0) === 1;
       const fix = single ? dimTextFix(dm, lettered) : null;
+      const remedy = !single
+        ? "This statement draws more than one dimension, so no fix is offered: one rewrite of its text cannot be right for every span it draws."
+        : dm._textSpan
+          ? `Letter dim "${dm.id}" with what it measures, \`text "${lettered}"\` (or drop the \`text\` clause and the drawing prints ${fmt2(span)}); if the number is right, the endpoints are wrong: move them so they span ${writtenMm} mm.`
+          : `Make dim "${dm.id}"'s text evaluate to what it measures, ${lettered.trim()} (or drop the \`text\` clause and the drawing prints ${fmt2(span)}); if the number is right, the endpoints are wrong: move them so they span ${writtenMm} mm.`;
       out.push({
         severity: "warning",
         code: "W_DIM_TEXT_MISMATCH",
         ...ctx.at(dm),
-        message: `The dimension from ${pointWords(dm.from)} to ${pointWords(dm.to)} is lettered ${reads}, but its line spans ${fmt2(span)} mm: the text is ${diff} mm ${read.um > spanUm ? "longer" : "shorter"} than what it measures.`,
-        hints: [
-          dm._textSpan
-            ? `Letter dim "${dm.id}" with what it measures, \`text "${lettered}"\` (or drop the \`text\` clause and the drawing prints ${fmt2(span)}); if the number is right, the endpoints are wrong: move them so they span ${writtenMm} mm.`
-            : `Make dim "${dm.id}"'s text evaluate to what it measures, ${lettered.trim()} (or drop the \`text\` clause and the drawing prints ${fmt2(span)}); if the number is right, the endpoints are wrong: move them so they span ${writtenMm} mm.`,
-          ...(dm._textSpan && !single
-            ? [
-                "This statement draws more than one dimension, so no fix is offered: one rewrite of its text cannot be right for every span it draws.",
-              ]
-            : []),
-        ],
+        message: `The dimension from ${pointWords(dm.from)} to ${pointWords(dm.to)} is lettered ${reads}, but its line spans ${spanShown} mm: the text is ${diff} mm ${read.um > shownUm ? "longer" : "shorter"} than what it measures.`,
+        hints: [remedy],
         ...fixesFrom(fix),
       });
     }

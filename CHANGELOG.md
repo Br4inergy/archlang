@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fix (`archlang fix --unsafe`) that letters the measured span in the text's own unit and
   precision. `examples/gallery-l.arch` and `examples/aquarium.arch` had three such dimensions,
   drawn off the jambs they claimed to measure; their endpoints now sit on the jambs, and
-  aquarium's two window dims, which state the width along the arc, now read `2000 arc`. Their
+  aquarium's two window dims, which state the width along the arc, now read `2.0m`. Their
   SVGs move; `describe()` and every other plan's output are unchanged.
 
 ### Changed

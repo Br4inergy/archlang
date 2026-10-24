@@ -1338,8 +1338,13 @@
  * 1500 mm door on the 6:5 facade has, so the GEOMETRY was wrong; the endpoints now sit on the
  * jambs (1500.01 mm). `aquarium`'s two window dims (1992.49 and 1979.9 mm, lettered "2000") had
  * grid-rounded endpoints off the jambs, and even on the jambs a straight dim measures the chord
- * (1997.69 mm), not the 2000 mm along the arc the text meant: both were wrong, so the endpoints
- * now sit on the jambs and the text reads "2000 arc". Each example was FIXED, never blessed.
+ * (1997.68 mm as drawn, endpoints rounded to 0.01), not the 2000 mm along the arc the text
+ * meant: both were wrong, so the endpoints now sit on the jambs and the text reads "2.0m"
+ * (1950–2050 mm, which holds the chord and the arc length). The PR's first draft wrote
+ * "2000 arc", which is too wide for the line and was placed off it, past a station; red team
+ * round 1 caught it, and only the `aquarium` rows were re-measured again for "2.0m", whose
+ * labels sit on their lines at (59775.08,31583.72) and (56703.32,36703.32), within 60 mm of
+ * main's. Each example was FIXED, never blessed.
  * Only the SVG moved (the two dims' lines, ticks and text): with the OLD sources' `compile()`
  * and the NEW sources' `describe()`/`lint()` (rule on), both payloads reproduce their old rows
  * here and in `while-byte-identity-baseline.ts`, and the `SEMANTIC_BASELINE` rows hold. No
@@ -1350,7 +1355,7 @@
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
 export const BASELINE: [string, string][] = [
   ["accessible", "cdc14f20b17a41f25cb20a6c5b19ca55e368bd5c84ca1ef6eeb0a9ecb53d08b1"],
-  ["aquarium", "2cb0b2d5b6fb4ed516aaae62775cb0bcdb61aa8b2edaf9a3b62d08d9b39c4ee6"], // re-measured for PS2.4, see header; PS2.10 dims fixed, see header
+  ["aquarium", "69f982c04c2efb80f233c9d21ee68339490c663155e3d1c77540c4a46fa63510"], // re-measured for PS2.4, see header; PS2.10 dims fixed, see header
   ["attached", "f1b122904c1242d9ef7088c5eed12c765dc63f4dbc2af2a75ab8f23f398feac2"],
   ["bungalow", "7e4b4f8e97cd44c1f03f2fa8aa9ae85ee1568a17dc5743c384e55590196eb1e5"],
   ["classroom-block", "b3e8150f963c3c1060e4f2caa809a6d133795b8130466f3fee798b5a0aa602e1"], // added with the example, re-measured for net area, see header

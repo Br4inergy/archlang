@@ -128,10 +128,11 @@ plan "Harbour Aquarium" {
   # No facade chain can tick an opening on a curve, so `lint` reports each one
   # (W_OPENING_NOT_DIMENSIONED) until it is dimensioned by hand. These are drawn ON the
   # openings, jamb to jamb on the wall's centreline (offset 0), and state the width along
-  # the arc as written. A straight dimension measures the CHORD (1997.69 mm here), so the
-  # text says `arc`: a bare "2000" would contradict its own line (W_DIM_TEXT_MISMATCH).
-  dim (59149.42,32437.38)->(59731.07,30526.25) offset 0 text "2000 arc"
-  dim (55749.55,37162.12)->(57162.12,35749.55) offset 0 text "2000 arc"
+  # the arc as written. A straight dimension measures the CHORD (1997.68 mm here), so a
+  # bare "2000" would contradict its own line (W_DIM_TEXT_MISMATCH); "2.0m" reads 1950-2050,
+  # which holds both the chord and the 2000 along the arc, and fits between the ticks.
+  dim (59149.42,32437.38)->(59731.07,30526.25) offset 0 text "2.0m"
+  dim (55749.55,37162.12)->(57162.12,35749.55) offset 0 text "2.0m"
   window at (10000,0) width 3000 wall shell
   window at (50000,0) width 3000 wall shell
   window at (0,14000) width 3000 wall shell

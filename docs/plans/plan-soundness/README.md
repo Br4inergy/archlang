@@ -393,6 +393,7 @@ A done row's "record" is `research/2026-10-24-ps0-ps2-as-built.md`.
 | PS2.35 | A wet-room door onto a food store | `W_WET_ROOM_DOOR` reaches `kitchen` and `dining` only. A WC opening onto a store in a plan with a kitchen should count (NC3). Source: `audits/2026-10-24-first-contact-rerun.md` | todo |
 | PS2.36 | Accessible WC door swing | An accessible WC whose hinged door opens inward (NC4, NK2). Fold it into PS2.16 with the pan offset and basin reach. Source: `audits/2026-10-24-first-contact-rerun.md` | todo |
 | PS2.37 | `W_WET_ROOM_DOOR` on non-residential plans | NC6 cites GB 50096 (residential) on a café's public WC, and the author kept it as wrong for the building type. Decide whether the rule should defer to a non-residential profile. Source: `audits/2026-10-24-first-contact-rerun.md` | todo |
+| PS2.38 | Chord-aware dimension hint, or an arc-length dimension form | A straight `dim` drawn on the jambs of an opening on an arc and lettered with the opening's width (the arc length) is told by `W_DIM_TEXT_MISMATCH` to move its endpoints so they span that width, i.e. off the jambs. Either make the hint chord-aware (recognise jambs on an arc and say the line measures the chord) or add an arc-length dimension form that measures along the arc. Found in PR #243 (aquarium's two window dims, now lettered `2.0m`) | todo |
 
 ### PS3 · Relation-first authoring (D1 + D5; needs an ADR)
 

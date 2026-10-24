@@ -180,11 +180,11 @@
 <line x1="59149.42" y1="32437.38" x2="59731.07" y2="30526.25" stroke="#0E5484" stroke-width="36"/>
 <line x1="59361.18" y1="32324.44" x2="58937.66" y2="32550.32" stroke="#0E5484" stroke-width="36"/>
 <line x1="59942.83" y1="30413.31" x2="59519.31" y2="30639.19" stroke="#0E5484" stroke-width="36"/>
-<text x="60164.9" y="29100.81" font-size="500" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-73.07 60164.9 29100.81)">2000 arc</text>
+<text x="59775.08" y="31583.72" font-size="500" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-73.07 59775.08 31583.72)">2.0m</text>
 <line x1="55749.55" y1="37162.12" x2="57162.12" y2="35749.55" stroke="#0E5484" stroke-width="36"/>
 <line x1="55989.55" y1="37162.12" x2="55509.55" y2="37162.12" stroke="#0E5484" stroke-width="36"/>
 <line x1="57402.12" y1="35749.55" x2="56922.12" y2="35749.55" stroke="#0E5484" stroke-width="36"/>
-<text x="58215.71" y="34695.96" font-size="500" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-45 58215.71 34695.96)">2000 arc</text>
+<text x="56703.32" y="36703.32" font-size="500" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(-45 56703.32 36703.32)">2.0m</text>
 <line x1="-150" y1="40150" x2="-150" y2="40750" stroke="#0E5484" stroke-width="25.2"/>
 <line x1="28800" y1="40150" x2="28800" y2="40750" stroke="#0E5484" stroke-width="25.2"/>
 <line x1="-150" y1="40750" x2="28800" y2="40750" stroke="#0E5484" stroke-width="36"/>
