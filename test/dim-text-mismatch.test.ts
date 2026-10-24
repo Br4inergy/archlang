@@ -14,6 +14,16 @@ const plan = (body: string) =>
 const dim = (to: string, text: string) => plan(`  dim (0,-600)->(${to},-600) offset -300 text "${text}"\n`);
 const mismatches = (src: string) => lint(src).filter((d) => d.code === CODE);
 
+/** The content of the SVG's first `<text …>…</text>` element, found by a linear scan (no regex
+ *  backtracking over the document). The plan below draws one text: the dimension's number. */
+function firstText(svg: string): string | undefined {
+  const open = svg.indexOf("<text");
+  if (open < 0) return undefined;
+  const start = svg.indexOf(">", open);
+  const end = svg.indexOf("</text>", start);
+  return start < 0 || end < 0 ? undefined : svg.slice(start + 1, end);
+}
+
 describe("readDimText — what reads as a length", () => {
   it.each([
     ["4000", 4_000_000, 1000],
@@ -95,9 +105,7 @@ describe("W_DIM_TEXT_MISMATCH — the rounding rule", () => {
 
   it("copying what the drawing prints with no `text` never fires (the printer's own rounding)", () => {
     for (const to of ["1562.0499", "1562.05", "1000.004", "3333.333", "2999.995", "7.126"]) {
-      const printed = /<text[^>]*>([^<]+)<\/text>/
-        .exec(compile(plan(`  dim (0,-600)->(${to},-600) offset -300\n`), { noCache: true }).svg)
-        ?.at(1);
+      const printed = firstText(compile(plan(`  dim (0,-600)->(${to},-600) offset -300\n`), { noCache: true }).svg);
       expect(printed, to).toBeDefined();
       expect(mismatches(dim(to, printed!)), `${to} printed ${printed}`).toEqual([]);
     }
