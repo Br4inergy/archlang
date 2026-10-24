@@ -1273,13 +1273,13 @@ ramp anchor.
 | R3 intimacy gradient | zoning | the share of (living/dining/kitchen, bedroom) pairs where the public room is no deeper from the entrance | 0 → 1 | Alexander, *A Pattern Language*, 127 [V] |
 | R6 furniture–use match | furnishing | the share of plumbing fixtures, kitchen fittings and beds standing in a room of their use (a counter or worktop is not judged; homes only) | 0 → 1 | the fixture catalogue's zones and a bedroom's defining piece |
 | R7 daylight ratio | light | glazing (width × (head − sill)) over net floor area, per habitable room; generic target 8 % | 0 → 8 % | IRC R303.1 [S] |
-| R9 proportion | geometry | per habitable, bath or WC room, long ÷ short side of the minimum-area rectangle enclosing its floor (from the shape, never the bounding box; a circle reads 1) | habitable 3 → 2, bath or WC 3.5 → 2.5 | Palladio, *Quattro Libri* I.xxi [S]; ResPlan aspect p95 [prior] |
+| R9 proportion | geometry | per habitable, bath or WC room, long ÷ short side of the minimum-area rectangle enclosing its floor (from the shape, never the bounding box; a circle reads 1) | habitable 3 → 2, bath or WC 3.5 → 2.5 | Palladio, *I Quattro Libri* I.xxi (2:1, the last of the seven room shapes), via Wittkower, *Architectural Principles in the Age of Humanism* (1949), part IV [S]; ResPlan aspect p95 [prior] |
 | R11 kitchen–dining link | zoning | the share of kitchens with a living or dining use, or a door or opening to such a room (homes only) | 0 → 1 | Alexander 139 [V]; ResPlan 99 % [prior] |
 | R12 dwelling aspect | light | the number of compass sides the habitable windows face: none 0, one 0.5 (0 if it is the pole side of a `site`), two or more 1 (homes only) | — | London Plan D6, LPG C4.1 [S] |
 | R14 common area at the heart | circulation | the best rank, by total depth on the access graph, of a living or dining room | rank n → ⌈n/3⌉ | Alexander 129; Hanson 1998 |
 | R15 night-zone contiguity | zoning | the share of bedroom pairs (joined without going outside) that open onto a common hall or corridor | 0 → 1 | 动静分区; Alexander 136 [V] |
 | R16 corner doors | circulation | per door into a room under 15 m² (not a hall), whether the nearer jamb is within max(wall thickness, 600 mm) of the room's corner; rectilinear rooms only | 0 → 1 | Alexander 196 [V]; ResPlan jamb-to-corner p50 [prior] |
-| R17 axis economy | geometry | distinct x and y lines of room and wall edges (lines within 100 mm are one) per room that is not circulation; four rooms or more | 2.5 → 1.5 | Ching, *Form, Space and Order*, ch. 7 [S]; Brandão 2008 [S] |
+| R17 axis economy | geometry | distinct x and y lines of room and wall edges (lines within 100 mm are one) per room that is not circulation; four rooms or more | 2.5 → 1.5 | Ching, *Architecture: Form, Space, and Order*, ch. 7 "Principles", § Datum [S]; Brandão 2008 [S] |
 | R18 shape regularity | geometry | per bedroom, bath or kitchen, floor area ÷ the area of its minimum enclosing rectangle (a circle is skipped) | 0.75 → 0.9 | Alexander 191 [V]; ResPlan rectangularity p10 [prior] |
 
 A criterion that cannot judge (no entrance, nothing to compare, an upper storey, a building that
@@ -1324,6 +1324,37 @@ A hall → bath → bedroom → living chain, abridged to its first criterion:
   ]
 }
 ```
+
+### Deviations from design §3 (PS5.1b)
+
+Each was ruled by the plan-soundness lead on the measured reason given.
+
+- **R6 and R11 skip a non-residential plan** (`non-dwelling`), read plan-wide by lint's
+  `dwellingReading`. Measured: on `clinic` R6 read 10 of 12 consulting-room basins as bath
+  fittings out of place, and on `corner-cafe` R11 read the café kitchen, which serves seating
+  that no use names, as unlinked.
+- **R6 does not judge a `counter` or `worktop`.** The catalogue zones them as kitchen only so a
+  kitchen's worktop counts as its fixture; measured, R6 read the laundry bench on `bungalow`,
+  the workshop benches on `materials` and a desk written as a counter on `hexagon-pavilion` as
+  kitchen fittings in the wrong room.
+- **R16 does not judge the hall or corridor side of a door**: a corridor's doors cannot all sit
+  at corners (measured: `bungalow`'s hall side read a 4,100 mm nib).
+- **R17 needs at least four classified rooms.** `n` rectangles need at least `a + b + 2` axes
+  for an `a × b` grid, so one room reaches 4 axes per room at best, two 2.5 and three 2: a
+  3-room plan would be capped at 0.5 whatever its order, and smaller plans at 0, so the
+  criterion would score the room count. The design's line "a 3-room strip reads 6/3" is replaced
+  by a four-room grid.
+
+**Gaps.** A use-scoped R6 and R11 (card PS5.5, "use-scoped R6/R11") would judge a
+non-residential plan's rooms by their own uses instead of skipping the plan, and would judge a
+counter that stands in a bathroom or a bedroom, which goes unjudged today. Relabelling a small
+room as circulation removes its doors from R16 (the coverage-weight caveat of design §6 Q9
+applies: `uses` is the author's claim).
+
+**Calibration notes for PS5.2.** The separation ledger is empty, but one order is the cap's,
+not a criterion's: `openings-ignore-walls/door-window-overlap-chamfer`'s fixed twin out-scores
+its case (0.7303 > 0.5) because R9 lifts the twin's geometry subscore, while R7 still prefers the
+case's window (0.7677 against the twin's 0.4606).
 
 Read taste after `lint` is clean: it is advice for a sound plan, not a substitute for fixing
 one. Only `generic` ships today.

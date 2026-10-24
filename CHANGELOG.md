@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and kitchens that fill their enclosing rectangle). Every subscore but `facade` now has
   criteria. The minimum enclosing rectangle is computed exactly on the 0.001 mm lattice. The
   workflow skill and the language spec teach the loop compile → lint → score --taste → repair.
+  The exported `TASTE_BUDGET` rises from 2,000,000 to 6,500,000 work units, re-measured as at
+  least 1,000 times the largest corpus charge with the eight new criteria.
 - The taste score (plan card PS5.1a, ADR 0032). `archlang score plan.arch --taste generic
   [--json]` and `taste(source, { profile })` report a separate, sourced score in [0, 1] from
   three criteria: R3 (no living, dining or kitchen room deeper from the entrance than a bedroom),

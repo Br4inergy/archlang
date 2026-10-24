@@ -31,7 +31,7 @@
  * (`door-window-overlap-chamfer`'s twin now scores 0.7303 > 0.5: R9 judges its one room 1, which
  * lifts the geometry subscore, while R7 still reads the twin's narrower window as less light,
  * 0.4606 against the case's 0.7677 — the order of the totals is the cap's, not R7's) and two
- * pairs left UNJUDGED (`wc-utility-passage`, `wc-window-crossed-by-partition`: R9 now judges their
+ * pairs left the UNJUDGED list (`wc-utility-passage`, `wc-window-crossed-by-partition`: R9 now judges their
  * bath/WC, and both twins out-score their capped cases).
  */
 

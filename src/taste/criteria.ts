@@ -723,7 +723,9 @@ const minRectCriterionCost =
  * the shape, never the bounding box). A circular room reads 1. Ramps: habitable 3 → 2, bath or
  * WC alone 3.5 → 2.5. The criterion is the mean of its rooms; `measured` counts the rooms at 1.
  *
- * Sources: Palladio's seven room proportions end at 2:1 (Quattro Libri I.xxi) [S]; the anchors
+ * Sources: Palladio, I Quattro Libri dell'Architettura I.xxi: 2:1 ("two squares") is the last of
+ * the seven room shapes he lists, via Wittkower, Architectural Principles in the Age of Humanism
+ * (1949), part IV [S]; the anchors
  * are ResPlan priors, "Aspect ratio (min rotated rectangle) p50/p95 bedroom 1.19/1.57; kitchen
  * 1.29/1.90; bath 1.58/2.24; living 1.32/2.26" [ResPlan prior, design-taste.md §4]: the habitable
  * `one` at 2 sits above every habitable p95 but living's (2.26), the bath `one` at 2.5 above the
@@ -1338,7 +1340,8 @@ const R17_MIN_ROOMS = 4;
  * out and counted in the evidence. The criterion is the mean of its storeys; `measured` is
  * Σ clusters / Σ rooms.
  *
- * Sources: Ching, Architecture: Form, Space and Order, ch. 7 (the datum) [S]; Brandão 2008 (wall
+ * Sources: Ching, Architecture: Form, Space, and Order, ch. 7 "Principles", § Datum (a line or plane
+ * whose regularity and continuity organise the elements around it) [S]; Brandão 2008 (wall
  * segments) [S]; "Distinct wall axes per plan p50/p95 15/23 (axes per non-hall room 2.33/3.0).
  * ArchLang's counting differs (room centrelines), so calibrate on the corpus: examples run
  * 0.7–2.0" [ResPlan prior, design-taste.md §4]: `one` at 1.5 and `zero` at 2.5 bracket that.

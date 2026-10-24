@@ -102,6 +102,13 @@ describe("the advice table (A_* codes are advice, not diagnostics)", () => {
       expect(row.asks.length).toBeGreaterThan(10);
       expect(TASTE_SUBSCORES).toContain(row.subscore);
     }
+    // The criteria's doc comments carry the same marks: none may still read [M].
+    const marks = [...read("src/taste/criteria.ts").matchAll(/\[(V|S|M)\]/g)].map((m) => m[1]);
+    expect(marks.length).toBeGreaterThanOrEqual(10);
+    expect(
+      marks.filter((m) => m === "M"),
+      "a criterion's doc comment cites a remembered [M] source",
+    ).toEqual([]);
   });
 });
 
