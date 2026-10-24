@@ -1,13 +1,14 @@
 /**
  * `nextDiagnostic()` (plan-soundness PS5.3): the one item to fix first, by fixed precedence —
- * error → validity → drafting → compile warning → intent (gating, graph, advisory) → profile →
+ * error → compile warning → validity → drafting → intent (gating, graph, advisory) → profile →
  * taste — and, within a tier, emission order.
  *
- * - Unit: every tier alone, every adjacent pair of tiers, emission order within a tier, the
- *   profile multiset difference, the taste minimum, and `null`.
- * - Table: over the defect corpus, each `done` case's `next` is the first validity warning of
- *   its default `lint()` in emission order, else the first drafting one; it is the case's own
- *   `expect` code (and that code's tier) whenever that code is the plan's only warning.
+ * - Unit: every tier alone, every tier against every lower one, emission order within a tier,
+ *   the profile run's wording, the taste minimum, and `null`.
+ * - Table: over the defect corpus, each case's `next` is its first compile warning, else the
+ *   first validity warning of its default `lint()` in emission order, else the first drafting
+ *   one; it is the case's own `expect` code (and that code's tier) whenever that code is the
+ *   plan's only warning.
  * - L1: computing `next` with every input over every example leaves SVG, `describe()` and
  *   `lint()` at the pinned byte-identity baseline (`nextDiagnostic` only reads results it is
  *   handed; the measuring is `compile`/`lint`/`validateIntent`/`taste`, run here first).
@@ -170,11 +171,20 @@ describe("nextDiagnostic · each tier alone", () => {
   it("profile: a warning only the profile raises; a default warning it repeats ranks as its own layer", () => {
     const shared = W(VALIDITY, 10);
     const extra = W("W_DOOR_TOO_NARROW", 20);
-    // The profile repeats the default warning (perhaps quoting another threshold): validity wins.
+    // The profile repeats the default warning quoting another threshold: validity wins, worded as
+    // the profile run words it (the text the caller's diagnostics show).
     expect(
-      nextDiagnostic({ diagnostics: [], lint: [shared], profileLint: [{ ...shared, message: "reworded" }, extra] })
-        ?.tier,
-    ).toBe("validity");
+      nextDiagnostic({
+        diagnostics: [],
+        lint: [shared],
+        profileLint: [extra, { ...shared, message: "reworded", hints: ["profile hint"] }],
+      }),
+    ).toMatchObject({ tier: "validity", code: VALIDITY, message: "reworded", span: [10, 11], hint: "profile hint" });
+    // A profile warning of the same code elsewhere is not the same finding.
+    expect(
+      nextDiagnostic({ diagnostics: [], lint: [shared], profileLint: [{ ...W(VALIDITY, 99), message: "other" }] })
+        ?.message,
+    ).toBe(`${VALIDITY} message`);
     // Default lint() clean: the profile's first warning, in emission order.
     expect(nextDiagnostic({ diagnostics: [], lint: [], profileLint: [extra, shared] })).toMatchObject({
       tier: "profile",
@@ -218,8 +228,8 @@ describe("nextDiagnostic · precedence between tiers", () => {
     return m;
   };
 
-  it("the tiers are the card's order, with drafting after validity and compile warnings before intent", () => {
-    expect(NEXT_TIERS).toEqual(["error", "validity", "drafting", "warning", "intent", "profile", "taste"]);
+  it("the tiers: compile warnings right after errors (upstream causes), drafting after validity", () => {
+    expect(NEXT_TIERS).toEqual(["error", "warning", "validity", "drafting", "intent", "profile", "taste"]);
   });
 
   for (let i = 0; i < NEXT_TIERS.length; i++) {
@@ -249,19 +259,39 @@ describe("nextDiagnostic · the defect corpus table", () => {
     const h = headerOf(s.src);
     const linted = lintWithCoverage(s.src);
     const warnings = linted.diagnostics.filter((d) => d.severity === "warning");
-    const next = nextDiagnostic({ diagnostics: compile(s.src).diagnostics, lint: linted.diagnostics });
-    return { name: s.name, expect: h.expect!, status: h.status!, warnings, layers: linted.layers, next };
+    const compiled = compile(s.src).diagnostics;
+    const compileWarnings = compiled.filter((d) => d.severity === "warning");
+    const next = nextDiagnostic({ diagnostics: compiled, lint: linted.diagnostics });
+    return {
+      name: s.name,
+      expect: h.expect!,
+      status: h.status!,
+      compileWarnings,
+      warnings,
+      layers: linted.layers,
+      next,
+    };
   });
+  const done = rows.filter((r) => r.status === "done");
 
   it("covers the corpus (the table is not vacuous)", () => {
     expect(rows.length).toBeGreaterThan(60);
-    expect(rows.filter((r) => r.status === "done").length).toBeGreaterThan(40);
+    expect(done.length).toBeGreaterThan(40);
   });
 
-  it("every bad twin's next is the first validity warning in emission order, else the first drafting one", () => {
+  it("every done case's expect code is a lint code with a layer (no vacuous row)", () => {
+    expect(done.filter((r) => r.layers[r.expect] === undefined).map((r) => `${r.name}: ${r.expect}`)).toEqual([]);
+  });
+
+  it("every bad twin's next: first compile warning, else first validity warning, else first drafting one", () => {
     const wrong = rows.flatMap((r) => {
+      const cw = r.compileWarnings[0];
       const first = r.warnings.find((d) => r.layers[d.code!] !== "drafting") ?? r.warnings[0];
-      const want = first ? { tier: r.layers[first.code!] ?? "validity", code: first.code } : null;
+      const want = cw
+        ? { tier: "warning", code: cw.code }
+        : first
+          ? { tier: r.layers[first.code!] ?? "validity", code: first.code }
+          : null;
       const got = r.next ? { tier: r.next.tier, code: r.next.code } : null;
       return JSON.stringify(got) === JSON.stringify(want) ? [] : [`${r.name}: ${JSON.stringify(got)}`];
     });
@@ -269,7 +299,7 @@ describe("nextDiagnostic · the defect corpus table", () => {
   });
 
   it("a done case whose only warning is its expect code gets exactly that code, in that code's tier", () => {
-    const single = rows.filter((r) => r.status === "done" && r.warnings.length === 1);
+    const single = done.filter((r) => r.warnings.length === 1 && r.compileWarnings.length === 0);
     expect(single.length).toBeGreaterThan(20);
     for (const r of single) {
       expect(r.warnings[0]!.code, r.name).toBe(r.expect);
@@ -277,13 +307,20 @@ describe("nextDiagnostic · the defect corpus table", () => {
     }
   });
 
-  it("a done case's next has its expect code's tier, unless a validity warning outranks a drafting expect", () => {
-    for (const r of rows.filter((x) => x.status === "done")) {
+  it("a done case's next has its expect code's tier, unless a higher tier outranks it", () => {
+    for (const r of done) {
       const tier = r.layers[r.expect];
-      if (tier === "drafting" && r.warnings.some((d) => r.layers[d.code!] !== "drafting"))
+      if (r.compileWarnings.length > 0) expect(r.next?.tier, r.name).toBe("warning");
+      else if (tier === "drafting" && r.warnings.some((d) => r.layers[d.code!] !== "drafting"))
         expect(r.next?.tier, r.name).toBe("validity"); // the lead ruling: drafting never ahead of validity
       else expect(r.next?.tier, r.name).toBe(tier);
     }
+  });
+
+  it("title-overflow is a real drafting-tier row (W_TITLE_OVERFLOW)", () => {
+    const r = rows.find((x) => x.name.endsWith("annotation-collisions/title-overflow.arch"))!;
+    expect(r.status).toBe("done");
+    expect(r.next).toMatchObject({ tier: "drafting", code: "W_TITLE_OVERFLOW" });
   });
 
   it("every clean twin's next never names its case's expect code", () => {

@@ -543,9 +543,10 @@ into PS3.12)
   then profile, then taste.
 - Prior art: a checker that returns the most important specific critique works about as well as
   returning all of them, and far better than "try again".
-- Shipped tiers: `error`, `validity`, `drafting`, `warning` (compile-channel warnings, which the
-  card did not place), `intent` (gating, then a `--graph` mismatch, then advisory), `profile`,
-  `taste`; `validate --profile` and `validate --taste` added.
+- Shipped tiers: `error`, `warning`, `validity`, `drafting`, `intent` (gating, then a `--graph`
+  mismatch, then advisory), `profile`, `taste`; `validate --profile` and `validate --taste` added.
+  Deviation from the card's wording (lead ruling, PR #246): compile-channel warnings precede
+  validity because they are upstream causes.
 
 **PS5.3a · MCP `validate` returns `next` (version bump).** `todo`
 - The MCP `validate` tool returns the same `next` key, with `--profile`/`--taste` parameters.

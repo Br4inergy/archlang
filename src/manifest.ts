@@ -595,7 +595,7 @@ const COMMANDS: ManifestCommand[] = [
     ],
     input: "<file.arch|->",
     output:
-      "diagnostics (plus a graph{} report with --graph and an intent{ ok, satisfied, total, subscores, violations } block with --intent), then `next`: the one item to fix first { tier, code, message, span?, hint? } or null (tiers: error, validity, drafting, warning, intent, profile, taste)",
+      "diagnostics (plus a graph{} report with --graph and an intent{ ok, satisfied, total, subscores, violations } block with --intent), then `next`: the one item to fix first { tier, code, message, span?, hint? } or null (tiers: error, warning, validity, drafting, intent, profile, taste)",
     examples: [
       {
         cmd: "archlang validate plan.arch --strict --json",

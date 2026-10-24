@@ -3,24 +3,30 @@
  * precedence over everything `arch validate` knows about a plan:
  *
  * 1. `error` — a `compile()` error. Nothing downstream means anything until the plan resolves.
- * 2. `validity` — a default-ruleset `lint()` warning whose rule is in the validity layer
+ * 2. `warning` — a compile-channel warning. The geometric ones (`W_DOOR_OFF_WALL`,
+ *    `W_WINDOW_OFF_WALL`, `W_OPENING_OFF_WALL`, `W_ROOM_OVERLAP`, `W_SWING_ROOM_NOT_ADJACENT`,
+ *    `W_DIM_NO_WALL`) say the source did not resolve to what it says, and lint then judges the
+ *    wrongly resolved geometry: a door moved off its wall reads to lint as a room with no door.
+ *    So the cause comes before its symptoms. The cosmetic ones (fonts, hatch scale, unknown keys,
+ *    deprecations) ride along in the same tier: they are trivial, and one rule stays explainable.
+ *    (Lead ruling on PR #246; the card's wording puts validity right after errors.)
+ * 3. `validity` — a default-ruleset `lint()` warning whose rule is in the validity layer
  *    (`LINT_CODE_LAYERS`, ADR 0032). A code no rule declares counts as validity, as it does for
  *    the taste cap.
- * 3. `drafting` — a default `lint()` warning from a drafting-layer rule (the annotation family).
+ * 4. `drafting` — a default `lint()` warning from a drafting-layer rule (the annotation family).
  *    Its own sub-tier after validity: a drafting code is never chosen ahead of a validity code.
- * 4. `warning` — a compile-channel warning (`W_DOOR_OFF_WALL`, `W_ROOM_OVERLAP`, the deprecations,
- *    …). The card's precedence names no place for them; they are not lint findings (ADR 0032: they
- *    never cap), so they come after the lint tiers, and before the brief, because they are still
- *    findings about the source itself.
  * 5. `intent` — a failing gating assertion of the brief, then a `--graph` mismatch (it gates
  *    too), then an advisory assertion.
  * 6. `profile` — a warning only the named lint profile raises. Default `lint()` warnings all
- *    rank above (tiers 2–3), so this tier is reached only when default `lint()` is empty and
+ *    rank above (tiers 3–4), so this tier is reached only when default `lint()` is empty and
  *    every profile warning is then profile-only.
  * 7. `taste` — the lowest-scoring assessable taste criterion that scored below 1.
  *
  * Within a tier the first in emission order wins, which is already deterministic. A tier whose
  * input was not supplied is empty. `null` when nothing in any tier is left to fix.
+ *
+ * When a profile run is supplied, a validity or drafting item is reported as the profile run
+ * words it (the same code at the same place): that is the text the caller's diagnostics show.
  *
  * Pure, sync, deterministic: it reads the results it is handed and computes nothing about the
  * plan itself, so it can never move `describe()`, `lint()` or the drawing.
@@ -31,11 +37,12 @@ import { ERROR_CATALOG } from "./error-catalog.js";
 import type { IntentCheckResult } from "./intent.js";
 import { feedbackForResult } from "./intent.js";
 import { LINT_CODE_LAYERS, type LintLayer } from "./lint.js";
+import { fmtPermyriad } from "./num-format.js";
 import type { GraphCheck } from "./plan-json.js";
 import type { TasteReport } from "./taste/report.js";
 
 /** The tiers, in precedence order. */
-export const NEXT_TIERS = ["error", "validity", "drafting", "warning", "intent", "profile", "taste"] as const;
+export const NEXT_TIERS = ["error", "warning", "validity", "drafting", "intent", "profile", "taste"] as const;
 export type NextTier = (typeof NEXT_TIERS)[number];
 
 /** The one item to fix first. */
@@ -85,21 +92,32 @@ function fromDiagnostic(tier: NextTier, d: Diagnostic): NextItem {
   return out;
 }
 
+/** The same finding: same code, module, storey and span (a profile's threshold changes the
+ *  number a message quotes, not where the finding is). */
+const samePlace = (a: Diagnostic, b: Diagnostic): boolean =>
+  a.code === b.code &&
+  a.file === b.file &&
+  a.level === b.level &&
+  a.span?.start === b.span?.start &&
+  a.span?.end === b.span?.end;
+
 /** The one item to fix first, or `null` when there is nothing left to fix. Pure. */
 export function nextDiagnostic(input: NextInput): NextItem | null {
   const err = input.diagnostics.find((d) => d.severity === "error");
   if (err) return fromDiagnostic("error", err);
 
+  const compileWarning = input.diagnostics.find((d) => d.severity === "warning");
+  if (compileWarning) return fromDiagnostic("warning", compileWarning);
+
   const layers = input.layers ?? LINT_CODE_LAYERS;
   const lintWarnings = (input.lint ?? []).filter((d) => d.severity === "warning");
   const isDrafting = (d: Diagnostic): boolean => d.code !== undefined && layers[d.code] === "drafting";
+  // As the caller's diagnostics word it: the profile run's twin of a default warning, if any.
+  const asShown = (d: Diagnostic): Diagnostic => input.profileLint?.find((p) => samePlace(p, d)) ?? d;
   const validity = lintWarnings.find((d) => !isDrafting(d));
-  if (validity) return fromDiagnostic("validity", validity);
+  if (validity) return fromDiagnostic("validity", asShown(validity));
   const drafting = lintWarnings.find(isDrafting);
-  if (drafting) return fromDiagnostic("drafting", drafting);
-
-  const compileWarning = input.diagnostics.find((d) => d.severity === "warning");
-  if (compileWarning) return fromDiagnostic("warning", compileWarning);
+  if (drafting) return fromDiagnostic("drafting", asShown(drafting));
 
   const intent = input.intent;
   if (intent) {
@@ -124,11 +142,13 @@ export function nextDiagnostic(input: NextInput): NextItem | null {
       if (worst === undefined || c.score < worst.score!) worst = c;
     }
     if (worst) {
+      // A criterion's score is the exact parse of a permyriad's decimal, so ×10⁴ rounds back to it.
+      const score = fmtPermyriad(Math.round(worst.score! * 10000));
       return {
         tier: "taste",
         code: worst.advice ?? worst.id,
         message: worst.message,
-        hint: `${worst.id} ${worst.name} scored ${worst.score} under ${t.profile} (source: ${worst.source})`,
+        hint: `${worst.id} ${worst.name} scored ${score} under ${t.profile} (source: ${worst.source})`,
       };
     }
   }

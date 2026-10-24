@@ -1335,9 +1335,9 @@ emission order wins:
 | Tier | What | Present when |
 |---|---|---|
 | `error` | a compile error | always |
+| `warning` | a compile-channel warning (`W_DOOR_OFF_WALL`, `W_ROOM_OVERLAP`, a deprecation) | always |
 | `validity` | a default `lint()` warning from a validity-layer rule | always |
 | `drafting` | a default `lint()` warning from a drafting-layer rule (the annotation family) | always |
-| `warning` | a compile-channel warning (`W_DOOR_OFF_WALL`, `W_ROOM_OVERLAP`, a deprecation) | always |
 | `intent` | a failing gating assertion, then a `--graph` mismatch, then an advisory assertion | `--intent`, `--graph` |
 | `profile` | a warning only the named lint profile raises | `--profile <name>` |
 | `taste` | the lowest-scoring assessable taste criterion below 1 | `--taste <profile>` |
@@ -1362,6 +1362,12 @@ archlang validate plan.arch --json --taste generic
 the correction prompt `--feedback` prints; for taste it names the criterion, its score and its
 source. `code` is the taste criterion's `A_*` advice code in the taste tier, and `null` for a
 `--graph` mismatch. `level` and `file` appear when the diagnostic carries them.
+
+Compile-channel warnings come right after errors because they are upstream causes: a door that
+did not land on its wall (`W_DOOR_OFF_WALL`) reads to lint as a room with no door, and the fix
+is the door, not the extra door lint would suggest. The cosmetic ones (fonts, hatch scale,
+unknown keys, deprecations) share the tier; they are quick to clear. With `--profile`, a lint
+warning is quoted as the profile run words it, the text the diagnostics show.
 
 `next` adds a key and changes nothing else: every byte before it, `ok` and the exit code are
 what they were, and a display filter (`--code`, `--severity`) never moves it. `--profile`
