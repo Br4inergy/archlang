@@ -755,18 +755,17 @@ arch validate plan.arch --strict --json  # ship-gate: --strict fails on warnings
 arch fix plan.arch --dry-run --json  # preview/apply the machine-applicable diagnostics[].fixes
 arch validate plan.arch --intent brief.json --feedback --json  # gate on a brief's intent contract (miss → exit 2)
 arch score plan.arch --brief brief.json --json  # satisfied/total — measures, never gates
-arch score plan.arch --taste generic --json  # taste advice (A_* codes): compile → lint → score --taste → repair
+arch score plan.arch --taste generic --json  # taste advice (A_* codes)
 \`\`\`
 
-**Self-correction loop:** compile/validate → if \`ok\` is false, read each \`diagnostics[].fix\` (and
+**Self-correction loop:** The loop is compile → \`validate --json\` (fix its \`next\` first) → lint →
+\`score --taste generic\` → repair. Taste is advice and never gates; a score capped at 0.5 means a
+validity lint warning stands, so fix validity first. If \`ok\` is false, read each \`diagnostics[].fix\` (and
 \`line\`/\`col\`/\`span\`), edit the source, recompile. Then \`describe --json\` to confirm intent without rendering
-an image (floor area: \`net_area_m2\`; \`area_m2\` runs to wall centrelines). **Before shipping, gate with \`arch validate --strict --json\`**
-— lint flags furniture through a wall, a fixture blocking a doorway, a room you can't step into or
-reach, a walk too narrow (\`W_PATH_TOO_NARROW\`) or circuitous (\`W_CIRCUITOUS_PATH\`); none passes silently.
-
-**Place furniture so it's physically sound:** keep every piece inside its room and off the walls
-(never cross a wall centerline); back plumbing/kitchen fixtures onto a wall rather than guessing an
-\`at\`; give every room a \`door\`/\`opening\`; leave the doorway approach and the door's swing clear.
+an image (floor area: \`net_area_m2\`; \`area_m2\` runs to wall centrelines). **Before shipping, gate with \`validate --strict\`**
+— lint flags furniture through a wall or in the wrong room, a fixture blocking a doorway or a door's
+swing, a room you can't step into or reach, a walk too narrow (\`W_PATH_TOO_NARROW\`) or circuitous
+(\`W_CIRCUITOUS_PATH\`); none passes silently.
 
 **Fix topology from facts, not guesses.** \`arch repair\` corrects furniture but never adds a door or
 window (that is a design choice). When lint reports \`W_ROOM_UNREACHABLE\`, \`W_NO_ENTRANCE\`,
