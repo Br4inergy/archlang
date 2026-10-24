@@ -518,6 +518,7 @@ into PS3.12)
 ### PS5 · The taste layer and the review sheet (D2)
 
 **PS5.1 · `taste()` and `arch score --taste <profile> [--json]`.** `todo` (after PS0.7; benefits from PS2)
+- Design: `research/2026-10-24-ps5-taste-design.md`.
 - Shape: `research/design-taste.md` §5.1 (coverage first, six subscores, criteria with source,
   evidence and advice code, capped at 0.5 while any validity rule fails).
 - Start with R3 (privacy gradient), R6 (furniture–use match), R7 (daylight ratio), R9 (proportion
