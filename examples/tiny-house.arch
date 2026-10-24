@@ -69,7 +69,7 @@ plan "Tiny House" {
   # ---- rooms ----------------------------------------------------------------
   # One room does living, sleeping and cooking, which is what `uses living kitchen`
   # says: it is a kitchen for the fixture rules and a living room for everything else.
-  room id=r_main at (0,0)    size 5300x2800 label "Living / Sleep" uses living kitchen
+  room id=r_main at (0,0)    size 5300x2800 label "Living / Sleep" at (1500,1250) uses living kitchen
   room id=r_wet  at (5300,0) size 1700x2800 label "Wet room"       uses bath
 
   # ---- doors ----------------------------------------------------------------

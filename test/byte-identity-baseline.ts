@@ -1350,12 +1350,39 @@
  * here and in `while-byte-identity-baseline.ts`, and the `SEMANTIC_BASELINE` rows hold. No
  * other plan in any digest corpus moved. Each new row is the measurement with this file's
  * digest bodies.
+ *
+ * ## Seven examples fixed, and `townhouse` redrawn: annotation collisions (PS2.12)
+ *
+ * Two new drafting rules, `W_ANNOTATION_OVERLAP` and `W_TITLE_OVERFLOW`, read the drawn sheet
+ * (`src/lint/rules/annotations.ts`). They found real overprints on seven examples, each FIXED by
+ * one clause, never blessed: `aquarium` (the "Ocean Rotunda" name was pinned on the `R8000`
+ * leader's lettering; pinned below the centre line instead), `hillside-villa` (the "Master Suite"
+ * label was pinned on the double bed; moved to clear floor), `library` (the "Reference Stacks" name
+ * lay on a shelf; pinned below the shelves), `tiny-house` (the area figure lay on the bench; label
+ * pinned on clear floor, the example's one deliberate `W_PATH_TOO_NARROW` kept), `two-bed`
+ * (Bedroom 2 had no clear floor for its label; the bed moved from the window wall to the top-right
+ * corner, `anchor top-right flush`), and `museum-wings` and `transit-hall` (project titles of 31
+ * and 35 characters, wider than the 25 the row holds; shortened). Each moves its SVG, and
+ * `describe()` too where the edit is a fact it reports (the bed's position, a pinned label);
+ * `lint()` loses the new warning and is otherwise unchanged. The renderer change: the `dims auto`
+ * thickness figure now keeps off a stair as it did off furniture, so `townhouse`'s "300" moves off
+ * the stair on all three storeys (SVG only). Proof that nothing else moved: with the seven
+ * previous sources put back, every digest suite (this file's tables through `finish`,
+ * `height-byte-identity`, `iso-byte-identity`, `garage-byte-identity`, `import-module-lets`,
+ * `while-byte-identity`, `outdoor`/`roof-void-byte-identity`, `finish-furnish`) fails only on
+ * those seven plans (each now carrying the warning), `townhouse` (the figure) and
+ * `eval/goldens/l-shaped-flat` (a new `W_ANNOTATION_OVERLAP`: its "Bathroom" name on the basin; a
+ * holdout golden, not edited). Each new row is the measurement with that suite's digest body.
+ * Rebased onto PS2.10 (PR #243), which also edited `aquarium` (its two window dims): `aquarium`'s
+ * rows in every table are the measurement of the source carrying both edits, and its SUMMARY
+ * rows (describe + lint) did not move, since neither edit changes a fact `describe()` reports and
+ * both leave its `lint()` as PS2.10 left it. No other row moved on the rebase.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
 export const BASELINE: [string, string][] = [
   ["accessible", "cdc14f20b17a41f25cb20a6c5b19ca55e368bd5c84ca1ef6eeb0a9ecb53d08b1"],
-  ["aquarium", "69f982c04c2efb80f233c9d21ee68339490c663155e3d1c77540c4a46fa63510"], // re-measured for PS2.4, see header; PS2.10 dims fixed, see header
+  ["aquarium", "23ad34714826a1c0506b6c8252b7244d579a37b4cc183305e9a2f7cd424b72ee"], // re-measured for PS2.4, see header; PS2.10 dims fixed, see header
   ["attached", "f1b122904c1242d9ef7088c5eed12c765dc63f4dbc2af2a75ab8f23f398feac2"],
   ["bungalow", "7e4b4f8e97cd44c1f03f2fa8aa9ae85ee1568a17dc5743c384e55590196eb1e5"],
   ["classroom-block", "b3e8150f963c3c1060e4f2caa809a6d133795b8130466f3fee798b5a0aa602e1"], // added with the example, re-measured for net area, see header
@@ -1367,13 +1394,13 @@ export const BASELINE: [string, string][] = [
   ["garden-house", "761caf9183dab7346e8dcdc6da765fd1b38615203e90bcb161cceebf7af3a1e4"], // re-measured, see header
   ["garden-loft", "faeb8af492776e9014ea4c4a568d73490063003223f748e834d2a7fd228f0edb"],
   ["hexagon-pavilion", "92d343afbb62315ad0014b95de9f4a8b26ccffbc14093b04c5956b689f850252"],
-  ["hillside-villa", "8aa25af83d67a2152544b2b842e5747c5609392e7bd9f0b162fd4eb9bb6052f2"], // re-measured, see header
+  ["hillside-villa", "57c2118bbe294497b0b522f01ba43bcbc3b348ad6f299bf4aad21b6665f2c283"], // re-measured, see header
   ["imports", "4b0151513963a656e52ac84c6fd80eb35c9820ae101921420cb8d5c9c13c0b70"],
   ["laneway-house", "78dddfdf45d0dd82e6e98f8bc270060421ab7361080a18be74fdd3558e28e348"],
-  ["library", "4f33155730ca62f7b75b303bced44856223ffa2efecbc345d6ba6b880d061b4d"],
+  ["library", "3482b924cb35a47f09dec06bf46b3d0155bc2f7b07630fb76a1747c3456167e9"],
   ["materials", "5c0bdccbbf6f5f80b1e51320a174f19b06f66aa7c1fc2aaecef3114d97173a98"],
   ["museum-wing", "00ac6744ffaa76596229248fd62ca5a41c9a5d70315c41ffa0fd6fc844ce2201"],
-  ["museum-wings", "a070b806daf16c5eefce03a0259d7e031ecb4b8ca2fec0ac7e0b9bdb176b6c4f"], // re-measured, see header
+  ["museum-wings", "c1f4233dc49a9ea09aa2a3f216c2d186136c3ebe049268c2938877172570c55d"], // re-measured, see header
   ["museum", "e8ebfe1fddec93af03bb9c645d0ec2e9bdd8032a313fbff38a7a845869bed1f4"],
   ["one-room", "9519d5c396d8644e840a1520e6d84f75a8306d1309abebcbd61aa59560fda364"],
   ["parametric", "e45fddefabb204b9470fd9b06f59c2aec440a8fd786773effc1334f1b7fb904c"],
@@ -1383,10 +1410,10 @@ export const BASELINE: [string, string][] = [
   ["studio", "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f"],
   ["terrace-row", "bfd1fe32b7d7631e046493c8595c890fb18e174136971fad52c4e17596b86584"], // re-measured, see header
   ["themed", "cc3a3b597d0a268b12b233bc82aa8b85eadd9232493962766a0d39b8d0a7b318"],
-  ["tiny-house", "cd514ac3ec015cec85a671a20c16181b209ef0a8060afb8a724733006e82d270"],
-  ["townhouse", "eaf7cc339ac1f514d5f650ee96fbd38923f584264b73392d1c9644abc1b3f2cf"], // re-measured, see header
-  ["transit-hall", "526b3ee5f2c029458843bf2de8c5c37276f996f795d17cdd4e708966f0540b54"],
-  ["two-bed", "0ec613240e85fd5911f2d0c3e79d069f274d266b7d3555bc62e3ad49a44eced1"], // PS3.6 source rewrite, see header
+  ["tiny-house", "5dca96cc37c684643951f36de68e7421be20c044fadae4ceee54690a5646c504"],
+  ["townhouse", "c2765ba12d431fc7c4c8504e880dbe97e84c473bbd6f87be9492492ce878633b"], // re-measured, see header
+  ["transit-hall", "558cd626af15b0400cee0443d52a67b4d7a8a8b55aae4afd7b93372e59761841"],
+  ["two-bed", "cea88e622fc30ae874fcf59fc83f130f6f9fc3ae16c96048ae137493c9a710c1"], // PS3.6 source rewrite, see header
   ["two-storey", "0f5583f09f8bddf841e5866e040ba8d6645addf225c02eb246fee089d564d20a"], // re-measured, see header
 ];
 
@@ -1431,10 +1458,10 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["terrace-row", "1d051b48b165c88a4c001d8feea36f41e686efd062e7f0119424cbbc8999785e"],
   ["themed", "b68f852d95fddacf8f5cd97228da4bd88054bd262a79dbd7083539a7e53605e0"],
-  ["tiny-house", "00d5f2c7c050c3a774c142e84af2de662c8deb1dd8ef78c5f7fc68f77674f27f"],
+  ["tiny-house", "bcc27f3e38ddd46d340b31f35c5513a687f733a3aa2c129d6d9e7fadd0260781"],
   ["townhouse", "f61e88ee465adca56e1c65e40d4c6e539f6cc07774eb3e6136539255f061627b"], // re-measured, see header
   ["transit-hall", "fce22abf9ad40aa1de121328a80e33120015b5a7a338d04a8d22d32153b12dab"],
-  ["two-bed", "39e8db9f7233fa438d2ca1c517d67af5a862561e80ca93878b6edb1ac0d9ad5a"], // PS3.6 source rewrite, see header
+  ["two-bed", "1f0dbc3a18d1bc55cd10aedb20306b55d458604a6dc0c2fc4e447e50cce87d45"], // PS3.6 source rewrite, see header
   ["two-storey", "7389f95b73b7280475e3a92130748bb0560368e9b96f950d5e2364b294bbfc05"], // re-measured, see header
 ];
 

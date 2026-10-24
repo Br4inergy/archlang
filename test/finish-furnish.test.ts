@@ -10,6 +10,7 @@ import {
   furnishStage,
   MAX_CHECKS_PER_ROOM,
   MAX_PIECES_PER_ROOM,
+  NOT_GATED_DRAFTING,
 } from "../src/furnish.js";
 import {
   compile,
@@ -63,7 +64,8 @@ function codes(src: string, w: World | undefined = world): Map<string, number> {
 }
 const gainedBy = (before: string, after: string, w?: World): string[] => {
   const was = codes(before, w);
-  return [...codes(after, w)].filter(([c, n]) => n > (was.get(c) ?? 0)).map(([c]) => c);
+  // The drafting-layer codes the law exempts (`NOT_GATED_DRAFTING`, ADR 0032).
+  return [...codes(after, w)].filter(([c, n]) => !NOT_GATED_DRAFTING.has(c) && n > (was.get(c) ?? 0)).map(([c]) => c);
 };
 const errorsOf = (src: string): string[] =>
   compile(src, { world, noCache: true })
@@ -532,11 +534,14 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
   // Re-measured 2026-10-23 (PS3.7): aquarium, corner-cafe, furnished-flat, gallery-l, hillside-villa, materials, museum, themed: chairs turned to the table they sit at, a real
   // defect `W_SEAT_FACING_AWAY` found (ADR 0029 §6); the cause and the proof that nothing else
   // moved are in `test/byte-identity-baseline.ts`'s header.
+  // Re-measured 2026-10-24 (PS2.12): aquarium, hillside-villa, library, museum-wings, tiny-house,
+  // transit-hall and two-bed were fixed for annotation collisions; why, and the swap-back proof, in
+  // `test/byte-identity-baseline.ts`'s header.
   const FINISH_DIGESTS: ReadonlyMap<string, string> = new Map(
     (
       [
         ["50bfe2d1d4955f0399834c0e436ef5f6308a109552a22a7df3aea13f93cdfdd9", "accessible"], // PS2.9 source edit, see above
-        ["3ef3f9e68707af4ac51383b6108f97c2ef51efeb5d41cf74d3d3eac2e9e42ba9", "aquarium"], // PS2.4 source edit, see above; PS2.10 source edit (byte-identity-baseline.ts)
+        ["1d05ff3c458719f82911616f38cd72d7899a814c8fd68fb2ce5ffdbb5ea81c25", "aquarium"], // PS2.4 source edit, see above; PS2.10 source edit (byte-identity-baseline.ts)
         ["8894023b744a155aad52d1ca28b7836ad1c9d63d1665e82f6b835c8d8e480f3b", "attached"],
         ["68042a31d598b906bf022a88135afd0c68c12886f9432f6fd6b2172345b32324", "bungalow"], // PS2.17 source edit (a worktop), see above
         ["cbf505c9f38de1bce32a5f6256b035a3a5cb35df068f411621db590234da0685", "classroom-block"], // first measurement, added with the example
@@ -551,14 +556,14 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["a8f92591396682a6c7c13c746c747b390e7240717712d6cf9d3a88735a525d7c", "garden-house"], // PS2.17 source edit (a worktop), see above
         ["122e17aabc2643131006de47ed85c5a98d60950cc73bbe867d306c767fdb553a", "garden-loft"], // PS2.17 source edit (a worktop), see above
         ["57d4237846d3b666c6806da6ee2bf4cadeb68a2e1d39723c6a024e5b415d5faf", "hexagon-pavilion"],
-        ["5091b622001a2a9745e2361070d3673b2cd5d1bb0e6587dd6733d8ee586d143b", "hillside-villa"], // PS2.1–PS2.3 and PS2.9 source edits, see above
+        ["3e5406d4d5b7301cc848679aaee22e82c9f309940d897b88bf83bf566465cd3a", "hillside-villa"], // PS2.1–PS2.3 and PS2.9 source edits, see above
         ["d90d58c40a4068427ef23c066acba5d50d8e99a801b6ce890da3ac9dc01a9554", "imports"],
         ["f68275be8a97b35c070244b92347b69ba2f1d645e199cc101d7063bcfbcbfb74", "laneway-house"], // PS2.17 source edit (a worktop), see above
-        ["a80df92f27d3f9f35535fb27f41b12b56a8d81f582dab3e818fff97487ded019", "library"],
+        ["daec2640f58f23e22543d3d1d0f2875926409bbe817dac218bd2829cd4df4419", "library"],
         ["cd45042748f8b49878ada0edee708be71cf72414d5e8408c9f4315ceb194bf0c", "materials"],
         ["5abaa53ca8813f41fb3e2c1f782e8bb25cf52033ee857f0dd91f4fc970a976f7", "museum"],
         ["e56adeb88cb99daf3c2e93723b84ccd134c948f803bffb84fb519553d0ff63c4", "museum-wing"],
-        ["c5264000e380ff26ad0ea75d9cb75b84d52d22c5988671aee640f87ef125c340", "museum-wings"],
+        ["c40393b1ef20bcdc8fff77b1a584925ec3367fbf0a04b3296f99c32226e8827f", "museum-wings"],
         ["863a9f2c6d83393b414fc6cf634c7757d3148ba19d9c85ff19b9b935f2d64f99", "one-room"],
         ["aa3345f2ba982f844e25108a7908a6f60a8ed295b574248fb895b54bb5599c27", "parametric"],
         ["6f41e8048b258bec3d26874a47db65f70d25582ce4da40dd69f488cf3ed4713b", "relational"], // PS2.9 and PS2.4 source edits; PS2.17 source edit (a worktop), see above; PS3.6 source rewrite, see ./byte-identity-baseline.ts
@@ -567,10 +572,10 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["147ce7e23f6f2a403d2d269cc0e68b678cab850e0d3a641287ef50bced7c76d3", "studio"],
         ["29827821fb1f1893289a63131cbb17a5b5209aadf6d71d4750b0e0f750871ecb", "terrace-row"], // PS2.1–PS2.3 and PS2.9 source edits; PS2.17 source edit (a worktop), see above
         ["4607ea41ae2417d9972689aa59285c843bed4f7140ba44184c9f7fdefc492ef2", "themed"],
-        ["31f8334333946e24f32ae1399e066be544cf561984f496bd6c5ae57858ae1ce0", "tiny-house"], // PS2.17 source edit (a worktop), see above
+        ["e31ae86aa5a99c90eab6c36d36a430c8317517bd2b467fea7a36d19d879c2c82", "tiny-house"], // PS2.17 source edit (a worktop), see above
         ["8861cbfcf369054c2de2752552b048de2e5ba9cf4a2ab3c93476611445c56419", "townhouse"], // PS2.17 source edit (a worktop), see above
-        ["8512160d1872176b1d122364ca4a36274ccde6c5e8204c394d50e325598bdc33", "transit-hall"],
-        ["07c0649dd30a24692543119d3d9926c39e911bae6d7501bcb0a047ed3df68753", "two-bed"], // PS2.17 source edit (a worktop), see above; PS3.6 source rewrite, see ./byte-identity-baseline.ts
+        ["1bc121651874bac4a7618a3b174d5f7ea38680948dcfd84a59ecb47612c33df6", "transit-hall"],
+        ["80ce9b1edd5fb44c6adfb6101a2b43530a103a50ecfb6bec0eca2aef6042a93e", "two-bed"], // PS2.17 source edit (a worktop), see above; PS3.6 source rewrite, see ./byte-identity-baseline.ts
         ["554e334d2006a38f659726806b7cbc9918c635a39595209acb95a0bf50032246", "two-storey"], // PS2.1–PS2.3 and PS2.9 source edits; PS2.17 source edit (a worktop), see above
       ] as const
     ).map(([digest, example]) => [example, digest]),

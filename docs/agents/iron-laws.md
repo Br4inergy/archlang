@@ -83,6 +83,17 @@ Owner decisions and laws that no test fully states. Do not re-propose, re-open o
   renders, describes and lints exactly as before. Prove it with a SHA-256 sweep whose payload is SVG
   + `describe()` + `lint()` (add `compile().diagnostics` when the resolver is reachable), taking the
   baseline with the test's own digest body. A moved golden is a finding to explain first.
+- **A drawing change never moves `describe()`, and moves `lint()` only through its drafting-layer
+  rules** (ADR 0032). `W_ANNOTATION_OVERLAP` and `W_TITLE_OVERFLOW` (PS2.12,
+  `src/lint/rules/annotations.ts`) read the drawn sheet, because the defect they report (text
+  printed over a symbol or a label; a title value wider than its row) exists only there: they build
+  the storey's Scene and read where labels and `dims auto` numbers landed. So a renderer change that
+  moves a label, a `dims auto` number, a symbol's drawn shape or the title block can move them. A PR
+  that does so lists each corpus plan whose drafting-layer lint moved, says whether the plan or the
+  renderer was wrong, and proves nothing else moved (the swap-back law in
+  `test/byte-identity-baseline.ts`'s header). Every other rule still reads only the plan's facts.
+  Drafting-layer codes are also excepted from `finish`'s never-worse law (`NOT_GATED_DRAFTING`,
+  read from `LINT_CODE_LAYERS`; ADR 0024 §6, ADR 0025 §7).
 - **A derived position comes from the shape, never its bounding box or centroid.** This is a defect
   class that `arch lint` cannot see. The grep that finds a new instance: `room\.size`/`r\.size\.w`
   without a nearby `r.poly` branch. Fix locally: probe one wall thickness off each face and ask

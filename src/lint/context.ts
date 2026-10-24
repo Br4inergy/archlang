@@ -52,6 +52,11 @@ export interface BuildingContext {
   /** What the whole plan's rooms read as (`dwellingReading`, PS2.18), read once over every
    *  storey. Absent means a dwelling, so a context built outside `lint()` judges as before. */
   dwelling?: DwellingReading;
+  /** This is the LOWEST storey of a multi-storey plan: the one a plan-level drawing fact that
+   *  every page repeats identically (a title-block row, `W_TITLE_OVERFLOW`) is reported on, so
+   *  it is reported once rather than once per page. Absent on every other storey and on a
+   *  single-storey plan (whose one context reports it). */
+  lowestStorey?: true;
 }
 
 export const NO_BUILDING: BuildingContext = {

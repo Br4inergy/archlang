@@ -1,8 +1,8 @@
 # class: annotation-collisions
 # origin: audits/2026-10-18-first-contact.md A11 (first-contact-plans/1-apartment.arch: the "Bathroom" label prints
 #   over the WC symbol; reduced, at 1:100 so the label keeps its size)
-# expect: W_LABEL_COLLISION
-# status: todo
+# expect: W_ANNOTATION_OVERLAP
+# status: done
 # fact: the 350 mm "Bathroom" label is centred at (1000,1555) in the SVG, about 1540 mm wide at 0.55 em per character
 #   (x 230-1770, y 1380-1730); the wc spans x 1200-1900, y 1100-1500: about 570 x 120 mm of the label lies on it
 plan "Room label over the WC" {

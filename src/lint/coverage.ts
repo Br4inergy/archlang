@@ -86,7 +86,11 @@ export type LintSkipReason =
    *  office use or a shop, lobby or reception label), so a rule that describes a defect of a
    *  home declines (PS2.18). Not `no-dwelling`, which waits
    *  for declared dwellings (PS2.14). `residential-basic` judges every plan as a dwelling. */
-  | "non-dwelling";
+  | "non-dwelling"
+  /** The storey's drawing is past the drawing budget (`MAX_DRAW_UNITS`, `src/draw-budget.ts`),
+   *  or its annotation texts and symbols would take more than the counted collision budget
+   *  (`MAX_ANNOTATION_WORK`, `src/lint/rules/annotations.ts`), so no collision is measured. */
+  | "annotation-budget";
 
 /** What each family checks, as the human coverage line names it. */
 export const FAMILY_NOUN: Readonly<Record<LintFamily, string>> = {
@@ -125,6 +129,7 @@ export const SKIP_WHY: Readonly<Record<LintSkipReason, string>> = {
   "no-main-entrance": "no main entrance could be named",
   "hint-budget": "the run checked as many quoted fixture placements as it may, so later hints quote none",
   "non-dwelling": "the plan reads as non-residential",
+  "annotation-budget": "the drawing is too large to measure for collisions",
 };
 
 /**

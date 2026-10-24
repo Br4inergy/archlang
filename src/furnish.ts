@@ -48,7 +48,7 @@ import { distToPolygonEdge, pointInPolygon, polygonsOverlap, rectRing } from "./
 import { type BBox, doorLandingRect, rectsOverlap } from "./geometry/rect.js";
 import type { RDoor, RFurniture, ROpening, ResolvedPlan, RRoom, RWall, RWindow } from "./ir.js";
 import { lex } from "./lexer.js";
-import { DEFAULT_RULESET, LINT_PROFILES } from "./lint.js";
+import { DEFAULT_RULESET, LINT_CODE_LAYERS, LINT_PROFILES } from "./lint.js";
 import { buildLintContext } from "./lint/context.js";
 import { definingItems, pasteSet, useNoun } from "./lint/defining.js";
 import { fmtSource } from "./num-format.js";
@@ -151,11 +151,30 @@ export interface FurnishCodes {
   profiles?: ReadonlyMap<string, ReadonlyMap<string, number>>;
 }
 
-/** The codes `after` has more of than `before`, under the default ruleset or any profile. */
+/**
+ * The codes the never-worse law does not count, in either stage: every DRAFTING-layer lint code
+ * (ADR 0032; read from {@link LINT_CODE_LAYERS}, so a new drafting rule joins by declaring its
+ * layer). A drafting code reports the annotation, not the plan: where a label or a number landed
+ * on the sheet (`W_ANNOTATION_OVERLAP`, `W_TITLE_OVERFLOW`, PS2.12), how a dimension is drawn
+ * (`W_DIM_INSIDE`, `W_DIM_OVERLAP`) and what it says (`W_DIM_TEXT_MISMATCH`, PS2.10), or what the `dims auto` chains leave out
+ * (`W_OPENING_NOT_DIMENSIONED`). The law protects the plan's soundness. Counted, a drafting code
+ * refused a kitchen's fridge because the room's name would sit on it, and degraded `dims auto all`
+ * for an opening no chain can reach — trading a real piece or a dimension set for an annotation.
+ * The finished plan is then measured by the lint like any other, and says so (ADR 0024 §6 and ADR
+ * 0025 §7, amended 2026-10-24).
+ */
+export const NOT_GATED_DRAFTING: ReadonlySet<string> = new Set(
+  Object.entries(LINT_CODE_LAYERS)
+    .filter(([, layer]) => layer === "drafting")
+    .map(([code]) => code),
+);
+
+/** The codes `after` has more of than `before`, under the default ruleset or any profile —
+ *  {@link NOT_GATED_DRAFTING} aside. */
 export function gainedCodes(before: FurnishCodes, after: FurnishCodes): string[] {
   const out = new Set<string>();
   const more = (was: ReadonlyMap<string, number> | undefined, now: ReadonlyMap<string, number>): void => {
-    for (const [code, n] of now) if (n > (was?.get(code) ?? 0)) out.add(code);
+    for (const [code, n] of now) if (!NOT_GATED_DRAFTING.has(code) && n > (was?.get(code) ?? 0)) out.add(code);
   };
   more(before.codes, after.codes);
   for (const [profile, now] of after.profiles ?? []) more(before.profiles?.get(profile), now);

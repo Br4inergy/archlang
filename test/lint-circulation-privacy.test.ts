@@ -435,8 +435,8 @@ describe("review fixes (PR #199)", () => {
 });
 
 describe("the three rules' texts", () => {
-  it("are appended in card order, followed only by the opening rules (PS2.1–PS2.3), the room-contents rules (PS2.8, PS2.9), the space-enclosure rules (PS2.4), the furniture-relation rules (ADR 0029) and the dimension-text rule (PS2.10)", () => {
-    expect(LINT_RULES.slice(-14).map((r) => r.name)).toEqual([
+  it("are appended in card order, followed only by the opening rules (PS2.1–PS2.3), the room-contents rules (PS2.8, PS2.9), the space-enclosure rules (PS2.4), the furniture-relation rules (ADR 0029), PS2.10's dimension text and the annotation-collision rules (PS2.12)", () => {
+    expect(LINT_RULES.slice(-16).map((r) => r.name)).toEqual([
       "room-via-private",
       "wet-room-door",
       "entrance-into-private",
@@ -451,6 +451,8 @@ describe("the three rules' texts", () => {
       "furn-clear-declared",
       "seat-facing-away",
       "dim-text-mismatch",
+      "annotation-overlap",
+      "title-overflow",
     ]);
   });
 

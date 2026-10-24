@@ -22,7 +22,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LINT_CODE_LAYERS` maps every lint `W_*` code to its layer, `validity` or `drafting`, and
   `lintWithCoverage()` returns the map as `layers`, beside the diagnostics; `lint()` output is
   unchanged. The annotation codes (`W_DIM_INSIDE`, `W_DIM_OVERLAP`,
-  `W_OPENING_NOT_DIMENSIONED`) are drafting.
+  `W_OPENING_NOT_DIMENSIONED`, and PS2.12's `W_ANNOTATION_OVERLAP` and `W_TITLE_OVERFLOW`) are
+  drafting.
+- Annotation collisions in `lint()` (plan card PS2.12), two drafting advisories that read the
+  drawing and change nothing else. `W_ANNOTATION_OVERLAP`: a room's name or area figure, or a
+  number `dims auto` writes (a wall-thickness figure, an `R` or `φ` call-out, a chain figure), is
+  printed over a furniture, fixture or stair symbol, or a `dims auto` number over a room label. It
+  reads the labels where the label placer left them and each symbol's drawn shapes, and fires when
+  more than 2 % of the text's box is covered. `W_TITLE_OVERFLOW`: a title-block value wider than
+  its row (about 25 characters at any scale), which prints over its caption. Neither has a machine
+  fix. A new coverage skip, `annotation-budget`, covers a storey too large to measure. The
+  `dims auto` wall-thickness figure now also keeps off a stair, lift or escalator, as it already
+  did off furniture (`examples/townhouse` draws its "300" clear of the stair). Seven examples were
+  fixed: `aquarium`, `hillside-villa`, `library`, `tiny-house` (a label moved), `two-bed` (a bed
+  moved), and `museum-wings` and `transit-hall` (a shorter project title).
 - Segment selectors (plan card PS3.5). `segment north|south|east|west` and `segment containing
   <room>.<edge>` can be written wherever `segment <n>` is, and resolve to that number:
   `against wall … segment`, and `dim radius … segment`, where a selector is refused because it
@@ -61,6 +74,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `finish`'s never-worse law no longer counts drafting-layer codes (plan card PS2.12, ADR 0024
+  and ADR 0025 amended; `W_ANNOTATION_OVERLAP`, `W_TITLE_OVERFLOW`, `W_DIM_INSIDE`,
+  `W_DIM_OVERLAP`, `W_OPENING_NOT_DIMENSIONED`, `W_DIM_TEXT_MISMATCH`): they report the annotation, not the plan, and
+  counted, `W_ANNOTATION_OVERLAP` refused a kitchen's fridge for its room name. Placement is
+  unchanged, so a finished plan can now report the overprints `finish` always drew (on the eval
+  goldens, 9 across 6 plans), and the sheet stage no longer trades `dims auto all` for
+  `dims auto overall` when an opening is on no chain; `W_OPENING_NOT_DIMENSIONED` reports it.
 - After `segment`, a bare `north|south|east|west` is now the selector. A plan that binds a
   variable with one of those names and uses it bare as a segment number now reads the selector;
   write the variable as `segment (east)` instead. No example or corpus plan does this (checked

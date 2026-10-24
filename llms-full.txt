@@ -780,7 +780,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 
 **`archlang context`** — print the full bundled agent context (spec + workflow + CLI + errors)
   - input: none → output: the full agent context (llms-full.txt), or one --section of it
-  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 133 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 24 KB; errors = the diagnostic catalog, 51 KB) · `--json` structured result on stdout, messages on stderr
+  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 134 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 24 KB; errors = the diagnostic catalog, 52 KB) · `--json` structured result on stdout, messages on stderr
   - example: `archlang context` — the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 
 **`archlang new`** (aliases: `init`) — scaffold a starter .arch
@@ -798,7 +798,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 ## 4. Diagnostic catalog
 
 Every diagnostic carries a stable code and a `fix`. Look one up with `archlang explain <CODE>`.
-**134 errors** (abort rendering) · **67 warnings** (advisory; `validate --strict` fails on them too).
+**134 errors** (abort rendering) · **69 warnings** (advisory; `validate --strict` fails on them too).
 
 ### Errors
 
@@ -940,6 +940,7 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `archlang e
 ### Warnings
 
 - `W_ALIAS_MATCH` — A room's use was inferred from an indirect alias, not stated. **Fix:** Add an explicit `uses …` to the room stating the inferred function — the machine-applicable fix inserts it for you. This pins the classification without changing the room's `describe()` type.
+- `W_ANNOTATION_OVERLAP` — A label or a `dims auto` number is printed over a symbol or another label. **Fix:** For a room label: give it a clear point with `label "…" at (x,y)`, move the pinned point if it already has one, or move the piece. For a `dims auto` number: move the piece or the pinned label clear of it; a wall-thickness figure is lettered on the longest straight wall of its thickness at a run no crossing wall, opening, piece of furniture or stair stands on, so moving the piece off that wall frees one, or use `dims auto rooms` and state the thickness with a hand `dim`. There is no machine-applicable fix: where the label or the piece should go is a drafting decision with no unique answer.
 - `W_BALCONY_NO_DOOR` — A balcony with no way onto it. **Fix:** Add a door (or a full-height window) on the wall the balcony hangs off — the usual fix — or move the balcony to the facade that already has one.
 - `W_BATH_VIA_BEDROOM` — Bathroom is reachable only through a bedroom. **Fix:** Connect it to a hall or living space — or, if it is an en-suite, add a second bathroom or WC on the same storey that is reached without passing through a bedroom.
 - `W_BEDROOM_NO_WINDOW` — Bedroom has no window. **Fix:** Add a `window` on an exterior wall of the room.
@@ -1000,6 +1001,7 @@ Every diagnostic carries a stable code and a `fix`. Look one up with `archlang e
 - `W_STAIR_UNMATCHED` — A run of vertical circulation appears on only one storey. **Fix:** Draw the same run with the SAME `id` on the neighbouring storey (each storey declares its own `dir` — `up` on the lower floor, `down` on the upper one), or fix the id.
 - `W_SWING_OBSTRUCTED` — Door swing is obstructed. **Fix:** Hang the leaf on the other jamb (`hinge left|right`) — a machine-applicable fix when the flipped swing is proved clear; or open it the other way (`swing in|out`), move the door along its wall, move the obstruction (`archlang repair`), narrow the leaf to the width the warning quotes (never below the minimum passable width — that relocates the problem into `W_DOOR_CLEARANCE`), hang no swinging leaf at all (a `sliding`, `pocket` or `barn` door sweeps nothing, so this rule cannot apply to it), or make it a leafless `opening`.
 - `W_SWING_ROOM_NOT_ADJACENT` — `swing into <room>` names a room the door does not border. **Fix:** Point `swing into` at a room the door actually opens onto, or use explicit `swing in|out`. The door falls back to its default swing.
+- `W_TITLE_OVERFLOW` — A title-block value is wider than its row. **Fix:** Shorten the value to the number of characters the warning quotes and move the rest to a `notes "…"` line. There is no machine-applicable fix: what to cut is the author's wording.
 - `W_UNKNOWN_MATERIAL` — Unknown wall material; using the default hatch. **Fix:** Use a known material (e.g. brick, concrete, insulation, tile) or omit it.
 - `W_UNKNOWN_STYLE_KEY` — Unknown style key. **Fix:** Use a valid key (e.g. fill / stroke / label, depending on the kind).
 - `W_UNKNOWN_THEME_KEY` — Unknown theme key. **Fix:** Use a known theme key (see the language reference / hover).

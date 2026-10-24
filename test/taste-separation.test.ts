@@ -27,7 +27,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { lint, taste, type TasteReport, type TasteSubscore } from "../src/index.js";
+import { LINT_CODE_LAYERS, lint, taste, type TasteReport, type TasteSubscore } from "../src/index.js";
 import { defectPairs, type TastePair, tasteCorpusPairs, TASTE_WORLD } from "./taste-sources.js";
 
 type Rel = "<" | "=" | ">" | "n/a";
@@ -90,7 +90,10 @@ const rel = (a: number | null, b: number | null): Rel =>
 
 const PAIRS = defectPairs();
 const byName = new Map(PAIRS.map((p) => [p.slug, p]));
-const lintClean = (p: TastePair, side: "bad" | "good") => lint(p[side].src, { world: TASTE_WORLD }).length === 0;
+/** No VALIDITY-layer warning (ADR 0032): the cap set B leans on reads that layer only, so a pair a
+ *  drafting-layer code alone separates (PS2.12's radius pairs) is not lint-separated here. */
+const lintClean = (p: TastePair, side: "bad" | "good") =>
+  lint(p[side].src, { world: TASTE_WORLD }).every((d) => LINT_CODE_LAYERS[d.code ?? ""] === "drafting");
 
 type Verdict = "ordered" | "tied" | "reversed" | "unjudged";
 /** When two sets read one pair, the stronger verdict wins: a reversal anywhere is a reversal. */

@@ -320,9 +320,10 @@
 // Re-measured 2026-10-23 (PS3.7): aquarium, corner-cafe, furnished-flat, gallery-l, hillside-villa, materials, museum, themed: chairs turned to the table they sit at, a real
 // defect `W_SEAT_FACING_AWAY` found (ADR 0029 §6); the cause and the proof that nothing else
 // moved are in `test/byte-identity-baseline.ts`'s header.
+// Re-measured 2026-10-24 (PS2.12): the annotation-collision examples (seven fixed examples and townhouse); why, and the swap-back proof, in `test/byte-identity-baseline.ts`'s header.
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
-  ["examples/aquarium.arch", "3e86bb779c5dac50c86e8d7e6d8c4948ab2bb59e7244994f7c4fde8ed66b3fa7"], // re-measured for PS2.4, see header; PS2.10 dims fixed (byte-identity-baseline.ts)
+  ["examples/aquarium.arch", "58e77abe2d1295ae6fd8cdfbb6edc7ecb793987a7556c8438a579d6c62eab0aa"], // re-measured for PS2.4, see header; PS2.10 dims fixed (byte-identity-baseline.ts)
   ["examples/attached.arch", "591f4199087b7f7fcab65af3cab3f12dbe062456954e7ef0f02969a974d34b93"],
   ["examples/bungalow.arch", "5fddcfb20684e94f609c770e7632c207df253d8acdae244243327df6b926b7df"],
   ["examples/classroom-block.arch", "48ee65709fc9f1b2875c7b96fd680d03a8012811d0bd18bc4a3a45422f19fe79"], // added with the example, re-measured for net area, see header
@@ -335,13 +336,13 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/garden-house.arch", "61b1f27c03dd240fa9bb72a866c666970c5bd05d7f825ebb7d45cc360656a891"], // re-measured, see header
   ["examples/garden-loft.arch", "c71a830b8dd98fa134a662c9ffd9a7138d84bafc086d56857e1c00f2ca935c94"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
-  ["examples/hillside-villa.arch", "77a1650ca6aff3b16f0f1d1074f8b717eca56d28ff76d092d89db3df9560d9dc"], // re-measured, see header
+  ["examples/hillside-villa.arch", "cae3d8768492e129a96904b2cfa65a97ba558320703812fe706f56a910eb2e5e"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
   ["examples/laneway-house.arch", "7ae6603a78b63faff8a5bf9b393226cfa5d32b428e5297821ea9db6599228b2a"],
-  ["examples/library.arch", "35dcd343befa526864edfe86efc7bc8d332413598c4cbfac661e3f1db79381bd"],
+  ["examples/library.arch", "85e0a65732f435bace56035fb5f1dc0cec529e5e9d86c19b4e57d12a7e4de86c"],
   ["examples/materials.arch", "aa3b63a3273ccd3ac08872dff9d874ebc8bb807623d7cbfb5cc8e48321dad7f2"],
   ["examples/museum-wing.arch", "6e01f37f15c674c544fac6651e9f3bd32d4d6e4865fdafba36ed97feca9ff33a"],
-  ["examples/museum-wings.arch", "273fcdf2e5493e731893362b345c15804299d81d30c681a0d11fd78adfe605b6"], // re-measured, see header
+  ["examples/museum-wings.arch", "6c9d3bd413ac9b9c5cdc9404a68ff86930b763bec36bb902d208888a76a503f3"], // re-measured, see header
   ["examples/museum.arch", "06d8104e18fc14ab78c7a26227a8b7d7383119b853ff3f15438dcc60c7cc075d"],
   ["examples/one-room.arch", "e12596f5401f097b5cf431fda952e96fc6523d7ca6a97c1518ffe6dd64e72cbe"],
   ["examples/parametric.arch", "4b4e50a6118cdca922c93a88e9c783abe17fd7d29458e27f98f0400721c2c8c7"],
@@ -351,10 +352,10 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
   ["examples/terrace-row.arch", "2d5fba9f0db68736e8da81277cb775268e1d3f35cceeb8d4a75c8c12fe5649c0"],
   ["examples/themed.arch", "4e7c2e8038077ad9698c3e654e15f88ee89bf3468fe8261082dafcc018f24776"],
-  ["examples/tiny-house.arch", "c3d562235b68223d1018f22230e28fc54404a8fed6f1a617816ce834aa0f5b01"],
-  ["examples/townhouse.arch", "fe8e58b3b89a6e35101d852a82a425bee082d28735de04f1ad6546b9be3466f8"],
-  ["examples/transit-hall.arch", "36eeb0b92a45d3e1db704bd302ce34731bef4cb2ed637021e90ddca7f9744d76"],
-  ["examples/two-bed.arch", "e090b95af12f5643ee1c1767a40a36be025872909f9b32172df2626f3de0a8b1"], // PS3.6 source rewrite, see ./byte-identity-baseline.ts
+  ["examples/tiny-house.arch", "e5c8f8e51153c08d5383a7e15cf20c2bfe0686365df8d6933e1dbd92c8013f59"],
+  ["examples/townhouse.arch", "d40899d7bac220a2ce7526f96b6751eb983b3586f3f7f27ffc40f7f9ac91bdd1"],
+  ["examples/transit-hall.arch", "c9cd341de542893c026a75eab9251de869db96b405e334738ef535a170ff6a5d"],
+  ["examples/two-bed.arch", "fe9e4ae3c30c8f6c88864bf67a334b5f4619ab36ebc8a836a62213172c2b1e6e"], // PS3.6 source rewrite, see ./byte-identity-baseline.ts
   ["examples/two-storey.arch", "76b5e43457bd8723b53bf77739de5083718f478b5fd29cf937b6eacf6fd91632"],
   ["test/fixtures/axes-grid.arch", "a0a729cd0ec5bbfd90353f47e0fc9d3ee45601b66dbb67df459f54165465e8ff"],
   ["test/fixtures/chain30.arch", "858da6001d3d8032a10d372a3dac4c4eae453ad898c4f930ec4dd09ad4d9c54a"], // new fixture, see header

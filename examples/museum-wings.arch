@@ -34,7 +34,7 @@ plan "Museum — two wings" {
   }
 
   title {
-    project "Municipal museum — ground floor"
+    project "Museum ground floor"
     drawn_by "ArchLang"
     date "2026-07-26"
   }

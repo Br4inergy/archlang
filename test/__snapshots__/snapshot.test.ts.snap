@@ -6555,8 +6555,8 @@ exports[`golden SVG snapshots > renders hillside-villa.arch as one page per leve
 <text x="4900" y="1457.5" font-size="125" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">4.7 m²</text>
 <text x="8900" y="1265" font-size="175" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Ensuite</text>
 <text x="8900" y="1457.5" font-size="125" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">4.7 m²</text>
-<text x="7000" y="7465" font-size="175" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Master Suite</text>
-<text x="7000" y="7657.5" font-size="125" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">49.3 m²</text>
+<text x="8600" y="5865" font-size="175" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Master Suite</text>
+<text x="8600" y="6057.5" font-size="125" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">49.3 m²</text>
 <text x="12900" y="5465" font-size="175" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Ensuite</text>
 <text x="12900" y="5657.5" font-size="125" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">4.7 m²</text>
 <text x="8970" y="3365" font-size="175" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Landing</text>
@@ -8218,8 +8218,8 @@ exports[`golden SVG snapshots > renders library.arch deterministically 1`] = `
 <text x="42000" y="30130" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">30.0 m²</text>
 <text x="8500" y="12260" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Open Stacks</text>
 <text x="8500" y="13030" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">246.5 m²</text>
-<text x="27400" y="6260" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Reference Stacks</text>
-<text x="27400" y="7030" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">128.0 m²</text>
+<text x="25000" y="6960" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Reference Stacks</text>
+<text x="25000" y="7730" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">128.0 m²</text>
 <text x="41500" y="20610" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Staff Workroom</text>
 <text x="41500" y="21380" font-size="500" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">110.5 m²</text>
 <text x="47000" y="9285" font-size="700" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Cafe Kitchen</text>
@@ -10831,7 +10831,7 @@ exports[`golden SVG snapshots > renders museum-wings.arch (two placed instances)
 </g>
 <g><polygon points="41700,-1425 41475,-705 41700,-862.5 41925,-705" fill="#333333" transform="rotate(0 41700 -975)"/><text x="41700" y="-1633" font-size="260" fill="#333333" text-anchor="middle" dominant-baseline="central">N</text></g>
 <g><rect x="-19950" y="37240" width="1000" height="140" fill="#333333"/><rect x="-18950" y="37240" width="1000" height="140" fill="none" stroke="#333333" stroke-width="18"/><text x="-19950" y="37580" font-size="200" fill="#333333" text-anchor="start" dominant-baseline="central">0</text><text x="-17950" y="37580" font-size="200" fill="#333333" text-anchor="middle" dominant-baseline="central">2 m</text></g>
-<g><rect x="57750" y="37240" width="3400" height="1840" fill="none" stroke="#333333" stroke-width="18"/><text x="57920" y="37470" font-size="152" fill="#888888" dominant-baseline="central">PROJECT</text><text x="60980" y="37470" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">Municipal museum — ground floor</text><text x="57920" y="37930" font-size="152" fill="#888888" dominant-baseline="central">DRAWN BY</text><text x="60980" y="37930" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">ArchLang</text><line x1="57750" y1="37700" x2="61150" y2="37700" stroke="#333333" stroke-width="9"/><text x="57920" y="38390" font-size="152" fill="#888888" dominant-baseline="central">DATE</text><text x="60980" y="38390" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2026-07-26</text><line x1="57750" y1="38160" x2="61150" y2="38160" stroke="#333333" stroke-width="9"/><text x="57920" y="38850" font-size="152" fill="#888888" dominant-baseline="central">SCALE</text><text x="60980" y="38850" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1:100</text><line x1="57750" y1="38620" x2="61150" y2="38620" stroke="#333333" stroke-width="9"/></g>
+<g><rect x="57750" y="37240" width="3400" height="1840" fill="none" stroke="#333333" stroke-width="18"/><text x="57920" y="37470" font-size="152" fill="#888888" dominant-baseline="central">PROJECT</text><text x="60980" y="37470" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">Museum ground floor</text><text x="57920" y="37930" font-size="152" fill="#888888" dominant-baseline="central">DRAWN BY</text><text x="60980" y="37930" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">ArchLang</text><line x1="57750" y1="37700" x2="61150" y2="37700" stroke="#333333" stroke-width="9"/><text x="57920" y="38390" font-size="152" fill="#888888" dominant-baseline="central">DATE</text><text x="60980" y="38390" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">2026-07-26</text><line x1="57750" y1="38160" x2="61150" y2="38160" stroke="#333333" stroke-width="9"/><text x="57920" y="38850" font-size="152" fill="#888888" dominant-baseline="central">SCALE</text><text x="60980" y="38850" font-size="190" fill="#333333" text-anchor="end" dominant-baseline="central">1:100</text><line x1="57750" y1="38620" x2="61150" y2="38620" stroke="#333333" stroke-width="9"/></g>
 </svg>"
 `;
 
@@ -12913,8 +12913,8 @@ exports[`golden SVG snapshots > renders tiny-house.arch deterministically 1`] = 
 <polygon points="7100,1160 7140,1160 7140,1840 7100,1840" fill="none" stroke="#1b1b1b" stroke-width="12.8"/>
 </g>
 <g id="A-ANNO-TEXT" inkscape:groupmode="layer" inkscape:label="A-ANNO-TEXT">
-<text x="4240" y="1772" font-size="240" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Living / Sleep</text>
-<text x="4240" y="2036" font-size="176" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">14.8 m²</text>
+<text x="1500" y="1202" font-size="240" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Living / Sleep</text>
+<text x="1500" y="1466" font-size="176" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">14.8 m²</text>
 <text x="6150" y="1352" font-size="240" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Wet room</text>
 <text x="6150" y="1616" font-size="176" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">4.8 m²</text>
 </g>
@@ -13201,10 +13201,10 @@ exports[`golden SVG snapshots > renders townhouse.arch as one page per level > t
 <line x1="3142.43" y1="3692.43" x2="3057.57" y2="3607.57" stroke="#0E5484" stroke-width="9"/>
 <line x1="3342.43" y1="3692.43" x2="3257.57" y2="3607.57" stroke="#0E5484" stroke-width="9"/>
 <text x="3478.75" y="3650" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(0 3478.75 3650)">200</text>
-<line x1="5050" y1="3550" x2="5350" y2="3550" stroke="#0E5484" stroke-width="9"/>
-<line x1="5092.43" y1="3592.43" x2="5007.57" y2="3507.57" stroke="#0E5484" stroke-width="9"/>
-<line x1="5392.43" y1="3592.43" x2="5307.57" y2="3507.57" stroke="#0E5484" stroke-width="9"/>
-<text x="4871.25" y="3550" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(0 4871.25 3550)">300</text>
+<line x1="5050" y1="8800" x2="5350" y2="8800" stroke="#0E5484" stroke-width="9"/>
+<line x1="5092.43" y1="8842.43" x2="5007.57" y2="8757.57" stroke="#0E5484" stroke-width="9"/>
+<line x1="5392.43" y1="8842.43" x2="5307.57" y2="8757.57" stroke="#0E5484" stroke-width="9"/>
+<text x="4871.25" y="8800" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(0 4871.25 8800)">300</text>
 </g>
 <g><polygon points="5125,-787.5 5012.5,-427.5 5125,-506.25 5237.5,-427.5" fill="#333333" transform="rotate(0 5125 -562.5)"/><text x="5125" y="-891.5" font-size="130" fill="#333333" text-anchor="middle" dominant-baseline="central">N</text></g>
 <g><rect x="-4281.25" y="14650" width="500" height="70" fill="#333333"/><rect x="-3781.25" y="14650" width="500" height="70" fill="none" stroke="#333333" stroke-width="9"/><text x="-4281.25" y="14820" font-size="100" fill="#333333" text-anchor="start" dominant-baseline="central">0</text><text x="-3281.25" y="14820" font-size="100" fill="#333333" text-anchor="middle" dominant-baseline="central">1 m</text></g>
@@ -13466,10 +13466,10 @@ exports[`golden SVG snapshots > renders townhouse.arch as one page per level > t
 <line x1="3142.43" y1="2392.43" x2="3057.57" y2="2307.57" stroke="#0E5484" stroke-width="9"/>
 <line x1="3342.43" y1="2392.43" x2="3257.57" y2="2307.57" stroke="#0E5484" stroke-width="9"/>
 <text x="3478.75" y="2350" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(0 3478.75 2350)">200</text>
-<line x1="5050" y1="3550" x2="5350" y2="3550" stroke="#0E5484" stroke-width="9"/>
-<line x1="5092.43" y1="3592.43" x2="5007.57" y2="3507.57" stroke="#0E5484" stroke-width="9"/>
-<line x1="5392.43" y1="3592.43" x2="5307.57" y2="3507.57" stroke="#0E5484" stroke-width="9"/>
-<text x="4871.25" y="3550" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(0 4871.25 3550)">300</text>
+<line x1="5050" y1="1375" x2="5350" y2="1375" stroke="#0E5484" stroke-width="9"/>
+<line x1="5092.43" y1="1417.43" x2="5007.57" y2="1332.57" stroke="#0E5484" stroke-width="9"/>
+<line x1="5392.43" y1="1417.43" x2="5307.57" y2="1332.57" stroke="#0E5484" stroke-width="9"/>
+<text x="4871.25" y="1375" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(0 4871.25 1375)">300</text>
 </g>
 <g><polygon points="5125,-787.5 5012.5,-427.5 5125,-506.25 5237.5,-427.5" fill="#333333" transform="rotate(0 5125 -562.5)"/><text x="5125" y="-891.5" font-size="130" fill="#333333" text-anchor="middle" dominant-baseline="central">N</text></g>
 <g><rect x="-4281.25" y="14650" width="500" height="70" fill="#333333"/><rect x="-3781.25" y="14650" width="500" height="70" fill="none" stroke="#333333" stroke-width="9"/><text x="-4281.25" y="14820" font-size="100" fill="#333333" text-anchor="start" dominant-baseline="central">0</text><text x="-3281.25" y="14820" font-size="100" fill="#333333" text-anchor="middle" dominant-baseline="central">1 m</text></g>
@@ -13740,10 +13740,10 @@ exports[`golden SVG snapshots > renders townhouse.arch as one page per level > t
 <line x1="3142.43" y1="2392.43" x2="3057.57" y2="2307.57" stroke="#0E5484" stroke-width="9"/>
 <line x1="3342.43" y1="2392.43" x2="3257.57" y2="2307.57" stroke="#0E5484" stroke-width="9"/>
 <text x="3478.75" y="2350" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(0 3478.75 2350)">200</text>
-<line x1="5050" y1="3550" x2="5350" y2="3550" stroke="#0E5484" stroke-width="9"/>
-<line x1="5092.43" y1="3592.43" x2="5007.57" y2="3507.57" stroke="#0E5484" stroke-width="9"/>
-<line x1="5392.43" y1="3592.43" x2="5307.57" y2="3507.57" stroke="#0E5484" stroke-width="9"/>
-<text x="4871.25" y="3550" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(0 4871.25 3550)">300</text>
+<line x1="5050" y1="1375" x2="5350" y2="1375" stroke="#0E5484" stroke-width="9"/>
+<line x1="5092.43" y1="1417.43" x2="5007.57" y2="1332.57" stroke="#0E5484" stroke-width="9"/>
+<line x1="5392.43" y1="1417.43" x2="5307.57" y2="1332.57" stroke="#0E5484" stroke-width="9"/>
+<text x="4871.25" y="1375" font-size="125" fill="#0E5484" text-anchor="middle" dominant-baseline="central" transform="rotate(0 4871.25 1375)">300</text>
 </g>
 <g id="A-ROOF" inkscape:groupmode="layer" inkscape:label="A-ROOF">
 <polygon points="-550,-550 5750,-550 5750,11250 -550,11250" fill="none" stroke="#888888" stroke-width="9" stroke-dasharray="54 36"/>
@@ -14976,7 +14976,7 @@ exports[`golden SVG snapshots > renders transit-hall.arch deterministically 1`] 
 </g>
 <g><polygon points="89300,-2750 88850,-1310 89300,-1625 89750,-1310" fill="#333333" transform="rotate(0 89300 -1850)"/><text x="89300" y="-3166" font-size="520" fill="#333333" text-anchor="middle" dominant-baseline="central">N</text></g>
 <g><rect x="-200" y="46450" width="2500" height="280" fill="#333333"/><rect x="2300" y="46450" width="2500" height="280" fill="none" stroke="#333333" stroke-width="36"/><text x="-200" y="47130" font-size="400" fill="#333333" text-anchor="start" dominant-baseline="central">0</text><text x="4800" y="47130" font-size="400" fill="#333333" text-anchor="middle" dominant-baseline="central">5 m</text></g>
-<g><rect x="83400" y="46450" width="6800" height="3680" fill="none" stroke="#333333" stroke-width="36"/><text x="83740" y="46910" font-size="304" fill="#888888" dominant-baseline="central">PROJECT</text><text x="89860" y="46910" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">Metro Interchange — concourse level</text><text x="83740" y="47830" font-size="304" fill="#888888" dominant-baseline="central">DRAWN BY</text><text x="89860" y="47830" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">ArchLang</text><line x1="83400" y1="47370" x2="90200" y2="47370" stroke="#333333" stroke-width="18"/><text x="83740" y="48750" font-size="304" fill="#888888" dominant-baseline="central">DATE</text><text x="89860" y="48750" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">2026-08-16</text><line x1="83400" y1="48290" x2="90200" y2="48290" stroke="#333333" stroke-width="18"/><text x="83740" y="49670" font-size="304" fill="#888888" dominant-baseline="central">SCALE</text><text x="89860" y="49670" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">1:200</text><line x1="83400" y1="49210" x2="90200" y2="49210" stroke="#333333" stroke-width="18"/></g>
+<g><rect x="83400" y="46450" width="6800" height="3680" fill="none" stroke="#333333" stroke-width="36"/><text x="83740" y="46910" font-size="304" fill="#888888" dominant-baseline="central">PROJECT</text><text x="89860" y="46910" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">Interchange concourse</text><text x="83740" y="47830" font-size="304" fill="#888888" dominant-baseline="central">DRAWN BY</text><text x="89860" y="47830" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">ArchLang</text><line x1="83400" y1="47370" x2="90200" y2="47370" stroke="#333333" stroke-width="18"/><text x="83740" y="48750" font-size="304" fill="#888888" dominant-baseline="central">DATE</text><text x="89860" y="48750" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">2026-08-16</text><line x1="83400" y1="48290" x2="90200" y2="48290" stroke="#333333" stroke-width="18"/><text x="83740" y="49670" font-size="304" fill="#888888" dominant-baseline="central">SCALE</text><text x="89860" y="49670" font-size="380" fill="#333333" text-anchor="end" dominant-baseline="central">1:200</text><line x1="83400" y1="49210" x2="90200" y2="49210" stroke="#333333" stroke-width="18"/></g>
 </svg>"
 `;
 
@@ -15012,13 +15012,13 @@ exports[`golden SVG snapshots > renders two-bed.arch deterministically 1`] = `
 <line x1="9484" y1="240" x2="9484" y2="660" stroke="#a8a29a" stroke-width="13.06"/>
 <line x1="9616" y1="240" x2="9616" y2="660" stroke="#a8a29a" stroke-width="13.06"/>
 <line x1="9748" y1="240" x2="9748" y2="660" stroke="#a8a29a" stroke-width="13.06"/>
-<path d="M 9529,7550 L 8171,7550 A 21 21 0 0 1 8150,7529 L 8150,5571 A 21 21 0 0 1 8171,5550 L 9529,5550 A 21 21 0 0 1 9550,5571 L 9550,7529 A 21 21 0 0 1 9529,7550 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>
-<path d="M 9529,7550 L 8171,7550 A 21 21 0 0 1 8150,7529 L 8150,7460 L 9550,7460 L 9550,7529 A 21 21 0 0 1 9529,7550 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>
-<path d="M 9367.33,7400 L 8995.33,7400 A 108 108 0 0 1 8887.33,7292 L 8887.33,7148 A 108 108 0 0 1 8995.33,7040 L 9367.33,7040 A 108 108 0 0 1 9475.33,7148 L 9475.33,7292 A 108 108 0 0 1 9367.33,7400 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="13.06"/>
-<path d="M 8704.67,7400 L 8332.67,7400 A 108 108 0 0 1 8224.67,7292 L 8224.67,7148 A 108 108 0 0 1 8332.67,7040 L 8704.67,7040 A 108 108 0 0 1 8812.67,7148 L 8812.67,7292 A 108 108 0 0 1 8704.67,7400 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="13.06"/>
-<polygon points="9508,6950 8192,6950 8192,5816 8416,5592 9508,5592" fill="#f4f2ee" stroke="#a8a29a" stroke-width="13.06"/>
-<polygon points="9508,6950 8192,6950 8192,6750 9508,6750" fill="#ffffff" stroke="#a8a29a" stroke-width="13.06"/>
-<polygon points="8192,5816 8416,5592 8416,5816" fill="#ffffff" stroke="#a8a29a" stroke-width="13.06"/>
+<path d="M 8471,5050 L 9829,5050 A 21 21 0 0 1 9850,5071 L 9850,7029 A 21 21 0 0 1 9829,7050 L 8471,7050 A 21 21 0 0 1 8450,7029 L 8450,5071 A 21 21 0 0 1 8471,5050 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>
+<path d="M 8471,5050 L 9829,5050 A 21 21 0 0 1 9850,5071 L 9850,5140 L 8450,5140 L 8450,5071 A 21 21 0 0 1 8471,5050 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>
+<path d="M 8632.67,5200 L 9004.67,5200 A 108 108 0 0 1 9112.67,5308 L 9112.67,5452 A 108 108 0 0 1 9004.67,5560 L 8632.67,5560 A 108 108 0 0 1 8524.67,5452 L 8524.67,5308 A 108 108 0 0 1 8632.67,5200 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="13.06"/>
+<path d="M 9295.33,5200 L 9667.33,5200 A 108 108 0 0 1 9775.33,5308 L 9775.33,5452 A 108 108 0 0 1 9667.33,5560 L 9295.33,5560 A 108 108 0 0 1 9187.33,5452 L 9187.33,5308 A 108 108 0 0 1 9295.33,5200 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="13.06"/>
+<polygon points="8492,5650 9808,5650 9808,6784 9584,7008 8492,7008" fill="#f4f2ee" stroke="#a8a29a" stroke-width="13.06"/>
+<polygon points="8492,5650 9808,5650 9808,5850 8492,5850" fill="#ffffff" stroke="#a8a29a" stroke-width="13.06"/>
+<polygon points="9808,6784 9584,7008 9584,6784" fill="#ffffff" stroke="#a8a29a" stroke-width="13.06"/>
 <path d="M 6450,7844 L 6450,6656 A 6 6 0 0 1 6456,6650 L 7044,6650 A 6 6 0 0 1 7050,6656 L 7050,7844 A 6 6 0 0 1 7044,7850 L 6456,7850 A 6 6 0 0 1 6450,7844 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="18.08"/>
 <line x1="7026" y1="7850" x2="7026" y2="6650" stroke="#a8a29a" stroke-width="13.06"/>
 <line x1="6450" y1="7250" x2="7050" y2="7250" stroke="#a8a29a" stroke-width="13.06"/>
@@ -15139,8 +15139,8 @@ exports[`golden SVG snapshots > renders two-bed.arch deterministically 1`] = `
 <text x="7000" y="4605.1" font-size="248.6" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">8.4 m²</text>
 <text x="5200" y="5982.2" font-size="339" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Bathroom</text>
 <text x="5200" y="6355.1" font-size="248.6" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">7.2 m²</text>
-<text x="8740" y="5232.2" font-size="339" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Bedroom 2</text>
-<text x="8740" y="5605.1" font-size="248.6" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">10.8 m²</text>
+<text x="8740" y="7332.2" font-size="339" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Bedroom 2</text>
+<text x="8740" y="7705.1" font-size="248.6" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">10.8 m²</text>
 </g>
 <g id="A-ANNO-DIMS" inkscape:groupmode="layer" inkscape:label="A-ANNO-DIMS">
 <line x1="-150" y1="8000" x2="-150" y2="8700" stroke="#0E5484" stroke-width="12.66"/>

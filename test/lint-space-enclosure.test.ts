@@ -281,14 +281,16 @@ describe("W_ROOM_OUTSIDE_SHELL", () => {
 });
 
 describe("the three rules' place in LINT_RULES", () => {
-  it("are appended in card order, followed only by the furniture-relation rules (ADR 0029) and PS2.10's dimension text", () => {
-    expect(LINT_RULES.slice(-6).map((r) => r.name)).toEqual([
+  it("are appended in card order, followed only by the furniture-relation rules (ADR 0029), PS2.10's dimension text and the annotation-collision rules (PS2.12)", () => {
+    expect(LINT_RULES.slice(-8).map((r) => r.name)).toEqual([
       "boundary-no-wall",
       "floor-unassigned",
       "room-outside-shell",
       "furn-clear-declared",
       "seat-facing-away",
       "dim-text-mismatch",
+      "annotation-overlap",
+      "title-overflow",
     ]);
   });
 });

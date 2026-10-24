@@ -213,13 +213,14 @@ import { type CompilerApi, semanticDigestWith } from "./byte-identity-digest.js"
 // Re-measured 2026-10-23 (PS3.7): aquarium, gallery-l (both tables): chairs turned to the table they sit at, a real
 // defect `W_SEAT_FACING_AWAY` found (ADR 0029 §6); the cause and the proof that nothing else
 // moved are in `test/byte-identity-baseline.ts`'s header.
+// Re-measured 2026-10-24 (PS2.12): the annotation-collision examples (aquarium); why, and the swap-back proof, in `test/byte-identity-baseline.ts`'s header.
 const BASELINE: [string, string][] = [
   // Both laneway-house rows re-measured 2026-10-20 (PS2.17): its kitchen gained a worktop; the new
   // compiler on the previous source, the worktop finding removed, reproduces 1e163ea9… and f3afd6b5….
   ["laneway-house", "77d8d554d22af69327534161554168941e2d1408bfa00bc951c8073bb9e23e90"],
   ["studio", "fe06b9554615b4722732d13e7976991b7469d03387e8846ad83f54f83f3cbde7"],
   ["gallery-l", "721b24f30ba6dc199ef3bc7f8ccca09157157296293a1164bd94a2fe9c1e5fa2"], // PS2.10 dims fixed (byte-identity-baseline.ts)
-  ["aquarium", "43d67ea671681790fe81e3f5fde2cf88937d9f048c95ffa03a1d1afc5ca1c50e"], // re-measured for PS2.4, see header; PS2.10 dims fixed (byte-identity-baseline.ts)
+  ["aquarium", "6bef7d4f7c7fb3fa4425fddc2be889fdbb519e4d444d6bf8b59f7a9cb625f9d1"], // re-measured for PS2.4, see header; PS2.10 dims fixed (byte-identity-baseline.ts)
 ];
 
 /** The SUMMARY half of the same law — see the header. Re-measured for `aquarium` twice, both times because its rooms were wrong (the second: PS2.4). */

@@ -6,6 +6,7 @@
 
 import type { LintRule } from "../context.js";
 import { aliasMatch } from "./alias-match.js";
+import { annotationOverlap, titleOverflow } from "./annotations.js";
 import { roomNoClearPath } from "./circulation.js";
 import { dimInside, dimOverlap, dimTextMismatch, openingNotDimensioned } from "./dims.js";
 import { circuitousPath, pathTooNarrow } from "./circulation-facts.js";
@@ -120,6 +121,12 @@ export const LINT_RULES: readonly LintRule[] = [
   // Annotation validity (plan-soundness PS2.10): a hand-written dimension whose number is not
   // the span its line measures. Appended LAST so no existing diagnostic moves within the array.
   dimTextMismatch,
+  // Annotation collisions on the drawn sheet (plan-soundness PS2.12): a `dims auto` number or a
+  // room label printed over a symbol or a label, and a title-block value wider than its row.
+  // Drafting only — they read the drawing, never `describe()`. Appended LAST, in this order, so
+  // no existing diagnostic moves within the array.
+  annotationOverlap,
+  titleOverflow,
 ];
 
 export type { LintContext, LintRule } from "../context.js";

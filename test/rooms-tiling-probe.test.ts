@@ -202,7 +202,8 @@ describe("the corpus (ADR 0028 Acceptance): both figures, pinned", () => {
     expect(tiling).toEqual(["test/fixtures/zones-wings.arch"]);
     // Of the (b) refusals, how many could not decide tiling (a non-rectilinear room in the set).
     const undecided = b.storeys.filter((s) => isRefused(s) && s.groups.some((g) => g.note && !g.budget)).length;
-    expect(undecided).toBe(13);
+    // 13 until PS2.12's four `circle` pavilions (the defect corpus's radius pairs) joined them.
+    expect(undecided).toBe(17);
   });
 
   it("pins the per-directory counts", () => {
@@ -266,7 +267,7 @@ describe("the corpus (ADR 0028 Acceptance): both figures, pinned", () => {
 /** `[storeys, refused (a), refused (b), overlap/not-tiling/short/not-rect under (b)]`. */
 const PINNED_ROWS: Record<string, [number, number, number, string]> = {
   examples: [39, 7, 7, "0/0/0/7"],
-  "test/defect-corpus": [144, 5, 5, "0/0/0/5"],
+  "test/defect-corpus": [148, 9, 9, "0/0/0/9"],
   "test/recovery-corpus": [9, 0, 0, "0/0/0/0"],
   "test/fixtures": [13, 0, 0, "0/0/0/0"],
   "docs/plans/plan-soundness/repro": [6, 0, 0, "0/0/0/0"],
@@ -277,11 +278,13 @@ const PINNED_ROWS: Record<string, [number, number, number, string]> = {
   "test/callout-fixtures": [1, 0, 0, "0/0/0/0"],
   "test/finish-fixtures": [1, 0, 0, "0/0/0/0"],
   "test/resolve-order": [1, 0, 0, "0/0/0/0"],
-  total: [283, 15, 15, "0/0/0/15"],
+  total: [287, 19, 19, "0/0/0/19"],
 };
 /** Measured 2026-10-21 on `main@9fb7949`: 15 of 279 storeys refused, both figures (5.4 %). 2026-10-24: 15 of 283
- * (5.3 %) after four defect-corpus plans (seat-facing-away, fire-door-inward and their twins), none refused. */
-const PINNED_SHARE_A: [number, number] = [15, 283];
-const PINNED_SHARE_B: [number, number] = [15, 283];
-/** The literal reading of "no use kind means outdoor": 16 of 279 (5.7 %); 16 of 283 (5.7 %) since 2026-10-24. */
-const PINNED_SHARE_LITERAL: [number, number] = [16, 283];
+ * (5.3 %) after four defect-corpus plans (seat-facing-away, fire-door-inward and their twins), none refused. 19 of 287
+ * (6.6 %) after four more (PS2.12: radius-over-label, radius-over-piece and their twins), each refused as not a
+ * rectangle: a `circle` pavilion is the only room that carries a `dims auto` R call-out. */
+const PINNED_SHARE_A: [number, number] = [19, 287];
+const PINNED_SHARE_B: [number, number] = [19, 287];
+/** The literal reading of "no use kind means outdoor": 16 of 279 (5.7 %); 16 of 283 (5.7 %) since 2026-10-24; 20 of 287 with PS2.12's four pavilions. */
+const PINNED_SHARE_LITERAL: [number, number] = [20, 287];

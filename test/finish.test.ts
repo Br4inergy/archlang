@@ -13,6 +13,7 @@ import {
   type FinishResult,
 } from "../src/index.js";
 import { codesOf, SHEET_MAX_CHECKS, sheetStage } from "../src/finish.js";
+import { NOT_GATED_DRAFTING } from "../src/furnish.js";
 import { parse } from "../src/parser.js";
 import { sourceConflicts } from "../src/repair.js";
 import { PAPER_SIZES } from "../src/sheet.js";
@@ -148,8 +149,10 @@ function codesUnderEveryProfile(src: string): Map<string, Map<string, number>> {
 function gainedUnderAnyProfile(before: string, after: string): string[] {
   const was = codesUnderEveryProfile(before);
   const out: string[] = [];
+  // The law excepts the drafting-layer codes (ADR 0024 §6, amended 2026-10-24).
   for (const [profile, now] of codesUnderEveryProfile(after))
-    for (const [code, n] of now) if (n > (was.get(profile)?.get(code) ?? 0)) out.push(`${profile}: ${code}`);
+    for (const [code, n] of now)
+      if (!NOT_GATED_DRAFTING.has(code) && n > (was.get(profile)?.get(code) ?? 0)) out.push(`${profile}: ${code}`);
   return out;
 }
 
@@ -210,20 +213,20 @@ suite("finish — the sheet stage degrades instead of giving up", () => {
       expect(codes(src.replace("  units mm\n", "  units mm\n  dims auto overall\n")).has(OPENING)).toBe(false);
     });
 
-    it(`${what}: all six statements are written, with \`dims auto overall\`, and the step down is reported`, () => {
+    // Since 2026-10-24 (PR #245, ADR 0024 §6 amended) the advisory is a drafting-layer code the law
+    // does not count: `dims auto all` is written whole, and the finished plan reports the opening
+    // the chains leave out. The step down itself is still pinned below, with a planted code.
+    it(`${what}: all six statements are written, with \`dims auto all\`, and the plan reports the gap`, () => {
       const r = finish(src, { only: "sheet" });
       expect(r.changed).toBe(true);
       expect(statements(r)).toEqual(["paper", "scale", "dims", "schedule", "legend", "title"]);
-      expect(r.changes.find((c) => c.statement === "dims")?.text).toBe("dims auto overall");
-      const notes = r.unresolved.filter((u) => u.statement === "dims");
-      expect(notes.length).toBe(1);
-      expect(notes[0]!.codes).toEqual([OPENING]);
-      expect(notes[0]!.reason).toContain("`dims auto all` was not added");
-      expect(notes[0]!.reason).toContain("`dims auto overall` was added instead");
-      expect(r.unresolved.map((u) => u.reason).join("\n")).not.toContain("rolled back");
+      expect(r.changes.find((c) => c.statement === "dims")?.text).toBe("dims auto all");
+      expect(r.unresolved.filter((u) => u.statement === "dims")).toEqual([]);
+      expect(codes(r.source).has(OPENING)).toBe(true);
+      expect(NOT_GATED_DRAFTING.has(OPENING)).toBe(true);
     });
 
-    it(`${what}: the degraded result keeps every law`, () => {
+    it(`${what}: the finished result keeps every law`, () => {
       for (const only of ["sheet", undefined] as const) {
         const r = finish(src, only ? { only } : {});
         // never worse, under every profile

@@ -44,7 +44,7 @@ plan "Two-Bedroom Flat" {
 
   furniture bed      in r_bed1 anchor top-left flush inset 300 size 1800x2100 label "Bed"
   furniture wardrobe in r_bed1 anchor top-right flush size 1200x600
-  furniture bed      in r_bed2 anchor bottom-right flush inset 300 size 1400x2000 label "Bed"
+  furniture bed      in r_bed2 anchor top-right flush size 1400x2000 label "Bed"
   furniture wardrobe in r_bed2 anchor bottom-left flush size 600x1200 rotate 270
 
   furniture fridge       against wall w_ring segment 3 offset 7500 in r_living

@@ -27,6 +27,14 @@
  * validity-layer `W_ROOM_NO_FIXTURE`), `uncapped`, every criterion and skip are unchanged: a
  * drafting code never caps. No other row moved; the two examples PS2.10 fixed (`aquarium`,
  * `gallery-l`) changed only their drawing, which no taste criterion reads.
+ *
+ * PS2.12 (PR #245) moved three defect-corpus rows and added four. `label-over-bed`,
+ * `label-over-wc` and `title-overflow` now carry their new drafting-layer warning
+ * (`W_ANNOTATION_OVERLAP`, `W_ANNOTATION_OVERLAP`, `W_TITLE_OVERFLOW`) in `validity.drafting`:
+ * warnings 0 → 1 and the code listed. Removing that one warning and code from each report
+ * reproduces the old digest exactly, so no criterion, score, cap or message moved (drafting never
+ * caps). The four new rows are the radius pairs; each defect case lists one
+ * `W_ANNOTATION_OVERLAP` under `validity.drafting`, each twin none.
  */
 
 import { describe, expect, it } from "vitest";
@@ -90,7 +98,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/annotation-collisions/dim-text-lies.clean.arch",
   ],
   [
-    "9558296e9425fe2dcb6f57b71a4fd23456b5674faa4e61ef6db203a2bf854c8f",
+    "81c7cb46748dde445304d3baee67392cb3a5e7ffba4cb21af23905dfb0fc9260",
     "generic",
     "test/defect-corpus/annotation-collisions/label-over-bed.arch",
   ],
@@ -100,7 +108,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/annotation-collisions/label-over-bed.clean.arch",
   ],
   [
-    "afa04c30b65a57355884edfd8e54f52c27e4893433ee96dd3632af54095071fc",
+    "236b5224cfe0c32b586cc9e90582aef7bb87ae12dd4c96291a3b5cc7b24a21f7",
     "generic",
     "test/defect-corpus/annotation-collisions/label-over-wc.arch",
   ],
@@ -110,7 +118,27 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/annotation-collisions/label-over-wc.clean.arch",
   ],
   [
-    "e8dbf66bfdb10e2e3ec2593d36445a49f87f466590c28ccc57dff3a2ebb01ae2",
+    "380066e2f46c98ccdfb8a0407516bc229b6e59e582691d3335442785a5fa755e",
+    "generic",
+    "test/defect-corpus/annotation-collisions/radius-over-label.arch",
+  ],
+  [
+    "d10061d98d0d6ea30f73838fa3ed09bfaa55982c2bbf747dce2bcd4e5d570a8b",
+    "generic",
+    "test/defect-corpus/annotation-collisions/radius-over-label.clean.arch",
+  ],
+  [
+    "380066e2f46c98ccdfb8a0407516bc229b6e59e582691d3335442785a5fa755e",
+    "generic",
+    "test/defect-corpus/annotation-collisions/radius-over-piece.arch",
+  ],
+  [
+    "d10061d98d0d6ea30f73838fa3ed09bfaa55982c2bbf747dce2bcd4e5d570a8b",
+    "generic",
+    "test/defect-corpus/annotation-collisions/radius-over-piece.clean.arch",
+  ],
+  [
+    "d071c62041e9c132d923de2479ec6bd4466f337154e8438c0537823742aa1dc0",
     "generic",
     "test/defect-corpus/annotation-collisions/title-overflow.arch",
   ],
