@@ -635,6 +635,13 @@ export interface RDim extends RBase {
    */
   _offsetSpan?: Span;
   /**
+   * Byte span of the authored `text "…"` string literal, quotes included — set only when the
+   * text is ONE literal with no `{…}` interpolation, so the `W_DIM_TEXT_MISMATCH` lint fix can
+   * rewrite it without baking a literal over an authored expression. Internal; never reaches
+   * the Scene, `describe()` or Plan JSON.
+   */
+  _textSpan?: Span;
+  /**
    * This dim's instance frame REFLECTS (`place … mirror`). XOR-composed by `dim.transform`.
    * The transform already negates `offset`, which carries the line and a non-zero offset's
    * number; this bit is what carries a ZERO-offset call-out's number to the mirrored side.

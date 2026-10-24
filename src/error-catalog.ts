@@ -1311,6 +1311,13 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "Move one of them out a tier: raise the magnitude of its `offset` (keeping its sign, which is the side it reads on). The machine-applicable fix computes the smallest whole number of chain tiers that clears the other dimension's line and text.",
     'dim (0,-100)->(7000,-100) offset -300 text "7000"\ndim (0,-100)->(4000,-100) offset -300 text "4000"   # warning: both in the same tier',
   ),
+  W_DIM_TEXT_MISMATCH: W(
+    "W_DIM_TEXT_MISMATCH",
+    "A hand-written dimension's number is not the span it measures.",
+    'A `dim … text "…"` whose text reads as a length states a number that its own line contradicts. Read as a length: the whole text is digits with an optional decimal part and an optional unit `mm`, `cm` or `m` (a bare number is millimetres; thousands may be comma-grouped in threes when no unit is written), so `4000`, `4,000`, `4000mm`, `3.5 m` and `350cm` are read and `VARIES`, `EQ`, `R9000`, `2300 clear` or `~4000` are not checked at all. **The rounding rule:** the text is read at its own written precision, and it agrees with the line when the span, rounded to the last digit written, is that number: `2 × |span − written| ≤ one unit of the last digit`, decided exactly on the 0.001 mm lattice. So `4000` covers 3999.5–4000.5 mm, `3.5 m` covers 3450–3550 mm and `4 m` covers 3500–4500 mm. A text copied from what the drawing prints when no `text` is given (the span to two decimals) therefore never warns, nor does any coarser rounding of it. The span is the one the line draws: after `faces`/`clear` moved its endpoints onto the walls, and the radius or diameter for a curve call-out. A number written finer than the lattice (more than three decimals in mm) is not checked. `dims auto` chains letter their own spans and are never judged.',
+    "Decide which side is wrong. If the number is right, the endpoints are not on what it dimensions (a common cause is endpoints rounded to the grid off a jamb on an angled or curved wall): move them so they span the number. If the line is right, letter it with the measured span, or drop the `text` clause and the drawing prints the measured length. A fix rewrites a literal text to the span in the text's own unit and precision; it is `maybe-incorrect` (`archlang fix --unsafe`), because rewriting the text of a line drawn between the wrong points would bake the error in. No fix is offered for an interpolated text or a statement that draws more than one dimension.",
+    'dim (0,-100)->(4000,-100) offset -300 text "4500"   # lint: the line spans 4000 mm',
+  ),
   W_OPENING_NOT_DIMENSIONED: W(
     "W_OPENING_NOT_DIMENSIONED",
     "An opening on the outside of the building is on no `dims auto all` chain.",

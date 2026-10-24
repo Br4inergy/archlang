@@ -451,6 +451,7 @@ suite("doors — W_POCKET_RUN", () => {
     // position and for the same reasons; their corpus movement is listed in the same header.
     // The two furniture-relation rules (ADR 0029 §6) follow those: a declared `clear` measured
     // short, and PS2.11's undeclared seat check, whose corpus movement is listed there too.
+    // PS2.10's dimension-text rule follows those, for the same reasons.
     expect(names.slice(i + 1)).toEqual([
       "outdoor-overlaps-room",
       "balcony-no-door",
@@ -469,6 +470,7 @@ suite("doors — W_POCKET_RUN", () => {
       "room-outside-shell",
       "furn-clear-declared",
       "seat-facing-away",
+      "dim-text-mismatch",
     ]);
   });
 
@@ -480,8 +482,9 @@ suite("doors — W_POCKET_RUN", () => {
     // plan has no room for them to read; the three opening rules follow those, and none fires
     // here (a door at a corner is `W_DOOR_NEAR_CORNER`'s alone); the two room-contents rules
     // follow those, and this plan has no room for them to read either; nor do the three
-    // space-enclosure rules after them, nor the two furniture-relation rules after those.
-    expect(LINT_RULES.map((r) => r.name).slice(-15)).toEqual([
+    // space-enclosure rules after them, nor the two furniture-relation rules after those, nor
+    // the dimension-text rule last of all (this plan has no `dim`).
+    expect(LINT_RULES.map((r) => r.name).slice(-16)).toEqual([
       "door-near-corner",
       "opening-not-dimensioned",
       "room-via-private",
@@ -497,6 +500,7 @@ suite("doors — W_POCKET_RUN", () => {
       "room-outside-shell",
       "furn-clear-declared",
       "seat-facing-away",
+      "dim-text-mismatch",
     ]);
     // A plan carrying an unrelated pre-existing warning (a sub-passable door width) AND
     // tripping the new rule: the old diagnostic must still be first, byte-for-byte.

@@ -218,8 +218,8 @@ const BASELINE: [string, string][] = [
   // compiler on the previous source, the worktop finding removed, reproduces 1e163ea9… and f3afd6b5….
   ["laneway-house", "77d8d554d22af69327534161554168941e2d1408bfa00bc951c8073bb9e23e90"],
   ["studio", "fe06b9554615b4722732d13e7976991b7469d03387e8846ad83f54f83f3cbde7"],
-  ["gallery-l", "ca98882095fee11c1e7528ef380ed27079b2b4ace8f2e26f3c0de61eaf903b88"],
-  ["aquarium", "b2d98fb4f39b7a4d8266d8bf3f90f2176f387486fd58b684f377449742ecbcf1"], // re-measured for PS2.4, see header
+  ["gallery-l", "721b24f30ba6dc199ef3bc7f8ccca09157157296293a1164bd94a2fe9c1e5fa2"], // PS2.10 dims fixed (byte-identity-baseline.ts)
+  ["aquarium", "19d0276b14bea33497c1026b802e175bb11ebfd242dadd08dd2af715e158d98e"], // re-measured for PS2.4, see header; PS2.10 dims fixed (byte-identity-baseline.ts)
 ];
 
 /** The SUMMARY half of the same law — see the header. Re-measured for `aquarium` twice, both times because its rooms were wrong (the second: PS2.4). */

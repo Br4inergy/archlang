@@ -1328,12 +1328,29 @@
  * plans are message for message the same, and `describe()` moves elsewhere only on
  * `furnished-flat`, whose walk into Bedroom 2 grows 100 mm (5200 to 5300) round the moved
  * chair. Each new row is the measurement with this file's digest bodies.
+ *
+ * ## `aquarium` and `gallery-l` (`BASELINE` rows only): two lying dimensions fixed (PS2.10)
+ *
+ * A new rule, `W_DIM_TEXT_MISMATCH` (plan-soundness PS2.10), found three hand dimensions whose
+ * text contradicts their own line, all drawn "jamb to jamb" on an opening no facade chain can
+ * tick. `gallery-l`'s entrance dim ran (8400,12000)→(9600,11000), 1562.05 mm, lettered "1500":
+ * its endpoints were ±(600,−500) off the door's centre instead of the ±(576.17,−480.14) a
+ * 1500 mm door on the 6:5 facade has, so the GEOMETRY was wrong; the endpoints now sit on the
+ * jambs (1500.01 mm). `aquarium`'s two window dims (1992.49 and 1979.9 mm, lettered "2000") had
+ * grid-rounded endpoints off the jambs, and even on the jambs a straight dim measures the chord
+ * (1997.69 mm), not the 2000 mm along the arc the text meant: both were wrong, so the endpoints
+ * now sit on the jambs and the text reads "2000 arc". Each example was FIXED, never blessed.
+ * Only the SVG moved (the two dims' lines, ticks and text): with the OLD sources' `compile()`
+ * and the NEW sources' `describe()`/`lint()` (rule on), both payloads reproduce their old rows
+ * here and in `while-byte-identity-baseline.ts`, and the `SEMANTIC_BASELINE` rows hold. No
+ * other plan in any digest corpus moved. Each new row is the measurement with this file's
+ * digest bodies.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
 export const BASELINE: [string, string][] = [
   ["accessible", "cdc14f20b17a41f25cb20a6c5b19ca55e368bd5c84ca1ef6eeb0a9ecb53d08b1"],
-  ["aquarium", "ea7769014bc29cf3612c0288c8ad1ac5b55ba600245be5fd55a21039aa5e32da"], // re-measured for PS2.4, see header
+  ["aquarium", "2cb0b2d5b6fb4ed516aaae62775cb0bcdb61aa8b2edaf9a3b62d08d9b39c4ee6"], // re-measured for PS2.4, see header; PS2.10 dims fixed, see header
   ["attached", "f1b122904c1242d9ef7088c5eed12c765dc63f4dbc2af2a75ab8f23f398feac2"],
   ["bungalow", "7e4b4f8e97cd44c1f03f2fa8aa9ae85ee1568a17dc5743c384e55590196eb1e5"],
   ["classroom-block", "b3e8150f963c3c1060e4f2caa809a6d133795b8130466f3fee798b5a0aa602e1"], // added with the example, re-measured for net area, see header
@@ -1341,7 +1358,7 @@ export const BASELINE: [string, string][] = [
   ["corner-cafe", "afb1988c01b07af451de094ec7e1a98f02bab6c6b53dd99bfb5a5d2e7a386f7f"], // added with the example, re-measured for net area, see header
   ["courtyard-house", "a7778b04f1111a33de39134c1eb726fda7d50c07c4d14961dc8683ef69838ba6"], // re-measured for PS2.4, see header
   ["furnished-flat", "530e546cb90a685d9fb1244b68e181bb8a739912f399ceee58797307ffa94641"],
-  ["gallery-l", "e32703cbce3e8e1e0e459511ef1481ee10ce8e0da32710bc570f7df2944209f3"],
+  ["gallery-l", "a65cc6b6100dea8fcd1381541a4d60e07aa43a509f4be7087a2dfafe8421cfc1"], // PS2.10 dim fixed, see header
   ["garden-house", "761caf9183dab7346e8dcdc6da765fd1b38615203e90bcb161cceebf7af3a1e4"], // re-measured, see header
   ["garden-loft", "faeb8af492776e9014ea4c4a568d73490063003223f748e834d2a7fd228f0edb"],
   ["hexagon-pavilion", "92d343afbb62315ad0014b95de9f4a8b26ccffbc14093b04c5956b689f850252"],

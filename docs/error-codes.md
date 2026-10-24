@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**134 errors** · **66 warnings**
+**134 errors** · **67 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -154,6 +154,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_DIM_INSIDE`](#w_dim_inside) | warning | A hand-written dimension line lands inside the building. |
 | [`W_DIM_NO_WALL`](#w_dim_no_wall) | warning | A `dim faces`/`dim clear` endpoint has no wall to measure to. |
 | [`W_DIM_OVERLAP`](#w_dim_overlap) | warning | Two hand-written dimensions are drawn on top of each other. |
+| [`W_DIM_TEXT_MISMATCH`](#w_dim_text_mismatch) | warning | A hand-written dimension's number is not the span it measures. |
 | [`W_DOORWAY_BLOCKED`](#w_doorway_blocked) | warning | A doorway's landing is blocked. |
 | [`W_DOOR_CLEARANCE`](#w_door_clearance) | warning | Door is narrower than the minimum clear width. |
 | [`W_DOOR_NEAR_CORNER`](#w_door_near_corner) | warning | A door leaves less wall between its jamb and a corner than the wall is thick. |
@@ -2051,6 +2052,18 @@ dim faces (0,9000)->(5000,9000) offset 600   # warning: nothing to project onto 
 ```arch static
 dim (0,-100)->(7000,-100) offset -300 text "7000"
 dim (0,-100)->(4000,-100) offset -300 text "4000"   # warning: both in the same tier
+```
+
+## W_DIM_TEXT_MISMATCH
+
+*warning* — A hand-written dimension's number is not the span it measures.
+
+**Cause.** A `dim … text "…"` whose text reads as a length states a number that its own line contradicts. Read as a length: the whole text is digits with an optional decimal part and an optional unit `mm`, `cm` or `m` (a bare number is millimetres; thousands may be comma-grouped in threes when no unit is written), so `4000`, `4,000`, `4000mm`, `3.5 m` and `350cm` are read and `VARIES`, `EQ`, `R9000`, `2300 clear` or `~4000` are not checked at all. **The rounding rule:** the text is read at its own written precision, and it agrees with the line when the span, rounded to the last digit written, is that number: `2 × |span − written| ≤ one unit of the last digit`, decided exactly on the 0.001 mm lattice. So `4000` covers 3999.5–4000.5 mm, `3.5 m` covers 3450–3550 mm and `4 m` covers 3500–4500 mm. A text copied from what the drawing prints when no `text` is given (the span to two decimals) therefore never warns, nor does any coarser rounding of it. The span is the one the line draws: after `faces`/`clear` moved its endpoints onto the walls, and the radius or diameter for a curve call-out. A number written finer than the lattice (more than three decimals in mm) is not checked. `dims auto` chains letter their own spans and are never judged.
+
+**Fix.** Decide which side is wrong. If the number is right, the endpoints are not on what it dimensions (a common cause is endpoints rounded to the grid off a jamb on an angled or curved wall): move them so they span the number. If the line is right, letter it with the measured span, or drop the `text` clause and the drawing prints the measured length. A fix rewrites a literal text to the span in the text's own unit and precision; it is `maybe-incorrect` (`archlang fix --unsafe`), because rewriting the text of a line drawn between the wrong points would bake the error in. No fix is offered for an interpolated text or a statement that draws more than one dimension.
+
+```arch static
+dim (0,-100)->(4000,-100) offset -300 text "4500"   # lint: the line spans 4000 mm
 ```
 
 ## W_DOORWAY_BLOCKED
