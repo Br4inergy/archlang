@@ -1,8 +1,13 @@
 # 32. Taste is a separate, sourced score that never gates
 
-- **Status:** Proposed (plan-soundness card PS5.1a, `docs/plans/plan-soundness/README.md` §6 PS5
-  and §3 D2). Accepted when the PR that builds it merges
-- **Date:** 2026-10
+- **Status:** Accepted 2026-10-25, when the plan-soundness programme's §7 row 5 was met
+  (`docs/plans/plan-soundness/README.md` §3 D2, D11 and D14). Built by PRs #244 (PS5.1a: the
+  skeleton, R3, R7, R14, the rule layer), #247 (PS5.1b: the other eight criteria), #248 (PS5.2:
+  the residential-advisory taste profiles) and #246 (PS5.3: taste as the last tier of
+  `validate --json` `next`). Accepted with D14's caveat: the row's corpus acceptance holds, but
+  taste's reach on first-contact defects is small and no cold author used it (see the last
+  consequence)
+- **Date:** 2026-10 (proposed 2026-10-24, accepted 2026-10-25)
 - **Relates to:** [ADR 0005](0005-no-invisible-architect.md) (facts and advisory lint, honestly
   named profiles; this ADR adds a second advisory channel beside lint),
   [ADR 0022](0022-exact-decisions-and-bounded-input.md) (exact decisions, counted budgets),
@@ -88,5 +93,17 @@ already separate the corpus's circulation and daylight pairs.
   profile nobody asked for. The profile is the caller's argument, not user source, so the
   never-throws contract on source stands; `arch score --taste` checks the name first and exits 3
   with a did-you-mean.
+- **Measured at acceptance (2026-10-25,
+  `docs/plans/plan-soundness/audits/2026-10-25-first-contact-rerun-row5.md`).** On the corpus the
+  score separates as the separation law requires: 41 pairs, 37 ordered, 0 tied, 0 reversed (the
+  ledger is empty), 4 unjudged. Its reach on first-contact defects is small and orthogonal to the
+  audits: `score --taste generic` names 0 of the 57 defects of the 2026-10-18 plans, 3 of the 48
+  of the 2026-10-24 plans plus one partial, and 2 of the 49 of the 2026-10-25 plans, all of them
+  kitchens hidden by a `uses living` type (R6) or the night zone (R15); its most active criteria,
+  R16 and R17, judge things no audit counted. Uptake was nil: 0 of 6 cold authors ran `score
+  --taste` or `validate`, because the spec and the author role did not teach the step. PR #250
+  (PS7.4) put the loop into both; the next first-contact re-measure, on the same protocol, counts
+  the calls. If it still finds none, or still no defect reach, taste is re-scoped as a reviewer's
+  tool rather than an author's (plan-soundness D14).
 
 *Reverse if:* agents measurably ignore a separate score (D2's own trigger).
