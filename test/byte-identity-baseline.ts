@@ -1343,7 +1343,7 @@
  * (1950–2050 mm, which holds the chord and the arc length). The PR's first draft wrote
  * "2000 arc", which is too wide for the line and was placed off it, past a station; red team
  * round 1 caught it, and only the `aquarium` rows were re-measured again for "2.0m", whose
- * labels sit on their lines at (59775.08,31583.72) and (56703.32,36703.32), within 60 mm of
+ * labels sit on their lines at (59775.08,31583.72) and (56703.32,36703.32), within 65 mm of
  * main's. Each example was FIXED, never blessed.
  * Only the SVG moved (the two dims' lines, ticks and text): with the OLD sources' `compile()`
  * and the NEW sources' `describe()`/`lint()` (rule on), both payloads reproduce their old rows

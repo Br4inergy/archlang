@@ -275,7 +275,9 @@ const UNIT_UM: Readonly<Record<string, number>> = { "": 1000, mm: 1000, cm: 10_0
  * a grouped number with a unit is not read at all (`1,500 m` may be a European 1.5 m). The
  * mirror case is not read either: one to three digits, a dot and exactly three decimals with NO
  * unit (`4.000`, `12.500`) may be a European thousands dot or metres without the `m`; with a
- * unit (`4.000 m`) it is read.
+ * unit (`4.000 m`) it is read. For a leading-zero text such as `0.500` only the metres reading
+ * applies (no thousands group starts with 0), but it is still not read: 0.5 m and 0.5 mm are
+ * both possible.
  *
  * Everything else is exempt, because it is not a claim this rule can check: a word (`VARIES`,
  * `EQ`), a prefix or suffix (`R9000`, `φ5000`, `~4000`, `2300 clear`, `4000 min`), a sign, an

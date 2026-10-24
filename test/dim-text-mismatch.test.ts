@@ -14,10 +14,14 @@ const plan = (body: string) =>
 const dim = (to: string, text: string) => plan(`  dim (0,-600)->(${to},-600) offset -300 text "${text}"\n`);
 const mismatches = (src: string) => lint(src).filter((d) => d.code === CODE);
 
-/** The content of the SVG's first `<text …>…</text>` element, found by a linear scan (no regex
- *  backtracking over the document). The plan below draws one text: the dimension's number. */
+/** The content of the first `<text …>…</text>` element in the dimensions layer (`A-ANNO-DIMS`),
+ *  found by a linear scan (no regex backtracking over the document). The plan's room label is
+ *  drawn earlier, in another layer, so the scan starts at the dimensions layer: with one `dim`
+ *  in the plan, its first text is that dimension's number. */
 function firstText(svg: string): string | undefined {
-  const open = svg.indexOf("<text");
+  const layer = svg.indexOf('id="A-ANNO-DIMS"');
+  if (layer < 0) return undefined;
+  const open = svg.indexOf("<text", layer);
   if (open < 0) return undefined;
   const start = svg.indexOf(">", open);
   const end = svg.indexOf("</text>", start);
@@ -114,6 +118,7 @@ describe("W_DIM_TEXT_MISMATCH — the rounding rule", () => {
     for (const to of ["1562.0499", "1562.05", "1000.004", "3333.333", "2999.995", "7.126"]) {
       const printed = firstText(compile(plan(`  dim (0,-600)->(${to},-600) offset -300\n`), { noCache: true }).svg);
       expect(printed, to).toBeDefined();
+      expect(printed, to).toMatch(/^\d/); // the dimension's number, never a label: not vacuous
       expect(mismatches(dim(to, printed!)), `${to} printed ${printed}`).toEqual([]);
     }
   });
