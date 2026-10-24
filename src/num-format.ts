@@ -76,6 +76,21 @@ export const fmt3 = makeNumFmt(1000, true);
 export const fmt4 = makeNumFmt(1e4);
 
 /**
+ * An integer PERMYRIAD `p` (a score in [0, 1] times 10,000, decided in integers by the taste
+ * layer, ADR 0032) as its exact decimal: built from the integer's digits, no division, so no
+ * float sits upstream of the bytes. `6125 → "0.6125"`, `5000 → "0.5"`, `10000 → "1"`,
+ * `5 → "0.0005"`, `0 → "0"`. The JSON number is the parse of this string, which ECMA-262 makes
+ * the nearest double and `JSON.stringify` prints back byte for byte. A non-integer or a value
+ * outside [0, 10000] is a caller bug and throws (it never comes from user source).
+ */
+export function fmtPermyriad(p: number): string {
+  if (!Number.isInteger(p) || p < 0 || p > 10000) throw new RangeError(`fmtPermyriad: ${p} is not a permyriad`);
+  if (p === 10000) return "1";
+  const frac = String(p).padStart(4, "0").replace(/0+$/, "");
+  return frac === "" ? "0" : `0.${frac}`;
+}
+
+/**
  * {@link fmt3} for SOURCE text — the printers that write `.arch` (`format`, the shared
  * statement and expression printers). Every finite value it prints re-parses to the same
  * double:

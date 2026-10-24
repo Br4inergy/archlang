@@ -103,6 +103,8 @@ export interface Args {
   feedback?: boolean;
   /** `--brief <file>`: (score) the intent JSON to measure satisfaction against. */
   brief?: string;
+  /** `--taste <profile>`: (score) the taste profile to score the plan under (ADR 0032). */
+  taste?: string;
   /** `--at <byteOffset>`: (complete) source offset to list completions at. */
   at?: number;
   /** `--room <id[,id…]>`: (describe) keep only these rooms and what touches them. */
@@ -182,6 +184,7 @@ export const FLAG_KEYS: Record<string, FlagSpec> = {
   "--graph": { key: "graph", kind: "string" },
   "--intent": { key: "intent", kind: "string" },
   "--brief": { key: "brief", kind: "string" },
+  "--taste": { key: "taste", kind: "string" },
   "--only": { key: "only", kind: "string" },
   "--reissue": { key: "reissue", kind: "boolean" },
   "--from-json": { key: "fromJson", kind: "boolean" },

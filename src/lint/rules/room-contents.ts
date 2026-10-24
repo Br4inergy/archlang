@@ -113,6 +113,8 @@ function arcWindowUnattributed(ctx: LintContext, r: RRoom): boolean {
 export const habitableNoWindow: LintRule = {
   name: "habitable-no-window",
   family: "daylight",
+  layer: "validity",
+  codes: ["W_HABITABLE_NO_WINDOW"],
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const r of ctx.rooms) {
@@ -171,6 +173,8 @@ const spoken = (category: string): string => category.replace(/_/g, " ");
 export const roomMissingDefining: LintRule = {
   name: "room-missing-defining",
   family: "contents",
+  layer: "validity",
+  codes: ["W_ROOM_MISSING_DEFINING"],
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const r of ctx.rooms) {

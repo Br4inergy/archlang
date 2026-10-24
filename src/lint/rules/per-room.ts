@@ -168,6 +168,15 @@ export function roomAreaFloor(r: RRoom, rules: LintRuleset): { m2: number; use: 
 export const perRoomRules: LintRule = {
   name: "per-room",
   family: "rooms",
+  layer: "validity",
+  codes: [
+    "W_ROOM_TOO_SMALL",
+    "W_ROOM_DISCONNECTED",
+    "W_BEDROOM_NO_WINDOW",
+    "W_ROOM_NOT_ENCLOSED",
+    "W_ROOM_NO_FIXTURE",
+    "W_GARAGE_TOO_NARROW",
+  ],
   check(ctx: LintContext): Diagnostic[] {
     const { rules, rooms, furniture, connectors, roomRects, wallSegs, labelOf, at, ir } = ctx;
     const out: Diagnostic[] = [];

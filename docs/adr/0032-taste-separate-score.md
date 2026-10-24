@@ -1,0 +1,84 @@
+# 32. Taste is a separate, sourced score that never gates
+
+- **Status:** Proposed (plan-soundness card PS5.1a, `docs/plans/plan-soundness/README.md` §6 PS5
+  and §3 D2). Accepted when the PR that builds it merges
+- **Date:** 2026-10
+- **Relates to:** [ADR 0005](0005-no-invisible-architect.md) (facts and advisory lint, honestly
+  named profiles; this ADR adds a second advisory channel beside lint),
+  [ADR 0022](0022-exact-decisions-and-bounded-input.md) (exact decisions, counted budgets),
+  [ADR 0011](0011-machine-applicable-fixes.md) (no machine fix is offered for taste)
+- **Scope:** a new library function `taste()`, a new `--taste <profile>` mode of `arch score`, a
+  required `layer` and `codes` on every lint rule. `compile()`, `describe()` and `lint()` output
+  is unchanged.
+- **Numbering:** 0030 and 0031 are reserved by the archlang-3d programme's drafts
+  (`docs/plans/archlang-3d/`).
+
+## Context
+
+The plan-soundness programme (`docs/plans/plan-soundness/README.md`) splits what a plan can get
+wrong into four layers: validity (lint), advisory code (lint profiles), intent (a brief) and
+taste: the privacy gradient, day and night zoning, light, a living room at the heart, alignment
+and proportion. Decision D2 of that programme puts taste in a separate score, but the programme's
+README is deleted when the programme ends, and ADR 0005 allows "honestly named, caveated advisory
+checks" without saying anything of a score, a cap or a second channel. Putting taste in `lint()`
+would move the lint output of the whole corpus every time a threshold is tuned, and turn a
+cultural preference into a warning an agent is told to clear.
+
+The design record is `docs/plans/plan-soundness/research/2026-10-24-ps5-taste-design.md`. It
+measured that the defect corpus's clean twins are not lint-clean (28 of 70 still warn), so the
+cap alone cannot separate good from bad plans, and that three starting criteria (R3, R7, R14)
+already separate the corpus's circulation and daylight pairs.
+
+## Decision
+
+1. **Quality judgements that are profile- or culture-dependent go to `taste()` and `arch score
+   --taste <profile>`, never to `lint()` or `describe()`.** Neither of those ever imports the
+   taste module (`test/taste-invisible.test.ts` walks the import graph), and taste draws nothing.
+2. **Only plain defects become `W_*` lint rules** (D2). A taste criterion graduates to lint only
+   with a defect-corpus case, a clean twin, and the corpus `lint()` movement explained.
+3. **The score is in [0, 1], computed in integers, never gating.** Each criterion's measured value
+   is a rational of integers; ramps, means and the cap are decided in `BigInt` and rounded half up
+   to an integer permyriad, printed by `fmtPermyriad` (`src/num-format.ts`); the JSON numbers are
+   the parse of those strings. No float sits upstream of a pinned byte. The score never sets an
+   exit code: `arch score --taste` exits 0 on a measurement, 2 on compile errors, 3 on bad usage.
+4. **The validity cap reads layers, not a list.** The total is capped at 0.5 while default-ruleset
+   `lint()` reports a warning from a rule whose layer is `validity`. Every lint rule declares
+   `layer: "validity" | "drafting"` and the `codes` it may emit (`LintRule`, required fields, so
+   the compiler refuses a rule without them); `lintWithCoverage()` returns the code → layer map
+   beside the diagnostics, never inside them, and `lint()`'s output is unchanged. Drafting rules
+   (the annotation family: `W_DIM_INSIDE`, `W_DIM_OVERLAP`, `W_OPENING_NOT_DIMENSIONED`, and the
+   annotation codes later cards add) never cap; they are listed in `validity.drafting`.
+   Compile-channel warnings (`W_ROOM_OVERLAP`, the `while` deprecations) never cap. Profile-only
+   warnings (later cards) go to `advisory` and never cap. The taste module keeps no code list of
+   its own (`test/lint-layers.test.ts` holds every code to exactly one rule).
+5. **Coverage first.** A criterion that cannot judge says so (`assessable: false` and a reason)
+   and is excluded from the total, never counted as a pass. `score` is `null` when nothing is
+   assessable. `coverage.weight` reports how much of the profile was judged, so a plan hollowed
+   out by relabelling shows it.
+6. **Messages name rooms by label**, as lint's do; ids appear only in `evidence[].ids`. Advice
+   codes are `A_*`, kept in `src/taste/advice.ts`, not in the error catalogue and not in `arch
+   explain`.
+7. **Bounded by counts.** One `TASTE_BUDGET` per call, charged before each criterion's work at
+   its declared cost; a criterion that would exceed it reports `taste-budget`. The budget was set
+   by measurement: 1,000,000 units, 1,470 times the largest corpus charge (680, `terrace-row`).
+8. **Every threshold cites a source**; a value remembered rather than read ([M]) is verified
+   before it ships. Profiles are advisory names (ADR 0005). PS5.1a ships `generic` only.
+9. **Calibration is deterministic over the repository's corpora**: the separation law
+   (`test/taste-separation.test.ts`) reads the defect corpus and `test/taste-corpus/`; no paid
+   eval, no live model run, no claim of a model-loop gain.
+
+## Consequences
+
+- An agent gets a second, slower-moving signal it may optimise without moving lint, and the
+  corpus `lint()` digests do not move when a taste threshold is tuned.
+- A taste criterion can be wrong without being harmful: it never blocks a build. Its errors show
+  up as separation-law rows and pinned digest rows, each explained when it moves.
+- Multi-dwelling plans (`terrace-row`) are read as one dwelling until declared dwellings exist
+  (PS2.14); upper storeys are skipped by the depth-reading criteria until their entrance depths
+  are reliable (PS0.3). Both are visible in `coverage.skipped`.
+- A valid plan with poor taste can score below a capped invalid one (a pair in the separation
+  law's ledger shows it: the fix that clears a lint warning narrowed a window). The cap bounds the
+  invalid plan from above; it does not lift the valid one.
+- `LintRule` gains two required fields. A rule written outside the repository must declare them.
+
+*Reverse if:* agents measurably ignore a separate score (D2's own trigger).

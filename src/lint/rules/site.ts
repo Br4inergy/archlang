@@ -52,6 +52,8 @@ function isHabitable(r: RRoom): boolean {
 export const roomNotEquatorFacing: LintRule = {
   name: "room-not-equator-facing",
   family: "orientation",
+  layer: "validity",
+  codes: ["W_ROOM_NOT_EQUATOR_FACING"],
   check(ctx: LintContext): Diagnostic[] {
     const site = ctx.ir.site;
     if (!site) {

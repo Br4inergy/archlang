@@ -453,6 +453,8 @@ function shorten(items: readonly string[], rest: (n: number) => string): string[
 export const roomViaPrivate: LintRule = {
   name: "room-via-private",
   family: "privacy",
+  layer: "validity",
+  codes: ["W_ROOM_VIA_PRIVATE"],
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const f = classifiedFactsOf(ctx);
@@ -594,6 +596,8 @@ function viaPrivateHints(
 export const wetRoomDoor: LintRule = {
   name: "wet-room-door",
   family: "privacy",
+  layer: "validity",
+  codes: ["W_WET_ROOM_DOOR"],
   readsFurniture: "wet-door",
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
@@ -878,6 +882,8 @@ function privateEntrances(ctx: LintContext, f: Facts): Array<{ door: RDoor; room
 export const entranceIntoPrivate: LintRule = {
   name: "entrance-into-private",
   family: "privacy",
+  layer: "validity",
+  codes: ["W_ENTRANCE_INTO_PRIVATE"],
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     // PS2.18: a front door into a WC is a home's fault; a café or clinic is declared, not judged.

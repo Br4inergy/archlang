@@ -337,13 +337,14 @@ $ archlang describe plan.arch --facts depends --json --select depends
 
 ### `archlang score`
 
-continuous intent satisfaction (satisfied/total) as data — the refine-loop reward. Measures, never gates (validate --intent is the gate).
+continuous intent satisfaction (satisfied/total) as data — the refine-loop reward — or, with --taste, the plan's taste score. Measures, never gates (validate --intent is the gate).
 
-**Input:** `<file.arch|->` · **Output:** { ok, satisfied, total, score, subscores, violations } (exit 0 on a successful measurement, even when assertions fail)
+**Input:** `<file.arch|->` · **Output:** --brief: { ok, satisfied, total, score, subscores, violations }; --taste: { profile, ok, score, uncapped, capped, validity, advisory, coverage, subscores, criteria } (exit 0 on a successful measurement, whatever the score)
 
 | Flag | Does |
 | --- | --- |
-| `--brief <intent.json>` | the intent JSON to measure satisfaction against (required) |
+| `--brief <intent.json>` | the intent JSON to measure satisfaction against (this or --taste) |
+| `--taste <generic>` | score taste instead (ADR 0032): sourced criteria in [0,1], capped at 0.5 while a validity lint warning stands; never gates (not with --brief) |
 | `--json` | structured result on stdout, messages on stderr |
 | `--quiet, -q` | suppress human messages on stderr |
 
@@ -352,6 +353,9 @@ continuous intent satisfaction (satisfied/total) as data — the refine-loop rew
 ```bash
 # continuous intent satisfaction as the refine-loop reward; always exits 0 on a measurement
 $ archlang score plan.arch --brief brief.json --json
+
+# taste advice per criterion with its source and an A_* code; read after lint is clean, never a gate
+$ archlang score plan.arch --taste generic --json
 ```
 
 ### `archlang lint`
@@ -635,7 +639,7 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 
 | Flag | Does |
 | --- | --- |
-| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 132 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 23 KB; errors = the diagnostic catalog, 50 KB) |
+| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 132 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 24 KB; errors = the diagnostic catalog, 50 KB) |
 | `--json` | structured result on stdout, messages on stderr |
 
 **Examples**

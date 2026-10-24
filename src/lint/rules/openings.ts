@@ -546,6 +546,8 @@ const idHint = (ctx: LintContext, el: Hosted): string => {
 export const openingAtJunction: LintRule = {
   name: "opening-at-junction",
   family: "openings",
+  layer: "validity",
+  codes: ["W_OPENING_AT_JUNCTION"],
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const all = openingsOnRuns(ctx);
@@ -676,6 +678,8 @@ function doubleDoor(p: Hosted, q: Hosted): boolean {
 export const openingOverlap: LintRule = {
   name: "opening-overlap",
   family: "openings",
+  layer: "validity",
+  codes: ["W_OPENING_OVERLAP"],
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const all = openingsOnRuns(ctx);
@@ -782,6 +786,8 @@ function straddlesRooms(
 export const connectorAmbiguous: LintRule = {
   name: "connector-ambiguous",
   family: "openings",
+  layer: "validity",
+  codes: ["W_CONNECTOR_AMBIGUOUS"],
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const edges = ctx.access().edges;

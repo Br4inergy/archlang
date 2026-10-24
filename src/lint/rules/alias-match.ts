@@ -39,6 +39,8 @@ const USE_PHRASE: Record<UseKind, string> = {
 export const aliasMatch: LintRule = {
   name: "alias-match",
   family: "classification",
+  layer: "validity",
+  codes: ["W_ALIAS_MATCH"],
   check(ctx: LintContext): Diagnostic[] {
     const { rooms, labelOf, at } = ctx;
     const out: Diagnostic[] = [];

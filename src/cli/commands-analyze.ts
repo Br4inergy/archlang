@@ -22,6 +22,8 @@ import {
   feedbackForResult,
   impact,
   applyLetOverride,
+  taste,
+  TASTE_PROFILE_NAMES,
 } from "../index.js";
 import type {
   DescribeFact,
@@ -35,6 +37,7 @@ import type {
   FreedomElement,
   FreedomReport,
   LintCoverage,
+  TasteReport,
 } from "../index.js";
 // Internal (not part of the public surface): parse → link → resolve without
 // rendering — validate/lint need only the diagnostics, never the SVG.
@@ -697,7 +700,10 @@ function reportWithChecks(
  * read pass/fail, but never changes the exit code.
  */
 export function cmdScore(args: Args): number {
-  if (args.brief === undefined) return usageError("score needs --brief <intent.json>");
+  if (args.taste !== undefined && args.brief !== undefined)
+    return usageError("score takes one of --brief <intent.json> and --taste <profile>, not both");
+  if (args.taste !== undefined) return cmdScoreTaste(args, args.taste);
+  if (args.brief === undefined) return usageError("score needs --brief <intent.json> or --taste <profile>");
   return withSource(args, (source, input) => {
     const it = loadIntent(args.brief!, "--brief", args);
     if (isCheckError(it)) return it.exit;
@@ -722,6 +728,49 @@ export function cmdScore(args: Args): number {
     // The meter always exits 0 on a successful measurement, gated or not.
     return EXIT.OK;
   });
+}
+
+/**
+ * `score <file.arch|-> --taste <profile>` — the TASTE meter (ADR 0032, PS5.1): a separate,
+ * sourced score in [0, 1], capped at 0.5 while a validity-layer lint warning stands. Like the
+ * intent meter it measures and never gates: a measurement exits 0 whatever the score. A plan
+ * with compile errors exits 2 and prints them (the `lint` path); an unknown profile exits 3.
+ */
+function cmdScoreTaste(args: Args, profile: string): number {
+  if (!TASTE_PROFILE_NAMES.includes(profile)) {
+    return usageError(
+      `unknown taste profile "${profile}"${didYouMean(profile, TASTE_PROFILE_NAMES)} (available: ${echoList(TASTE_PROFILE_NAMES)})`,
+    );
+  }
+  return withSource(args, (source, input) => {
+    const world = makeNodeWorld(baseDirOf(input));
+    const { diagnostics } = resolvePlan(source, { world });
+    const errs = diagnostics.filter((d) => d.severity === "error");
+    if (errs.length) return report(source, errs, args);
+    const r = taste(source, { profile, world });
+    if (args.json) emitJson(r);
+    else if (!args.quiet) printTaste(r);
+    // The meter always exits 0 on a successful measurement: taste never gates.
+    return EXIT.OK;
+  });
+}
+
+/** The human taste report: one summary line on stdout, one line per criterion on stderr. */
+function printTaste(r: TasteReport): void {
+  const w = r.coverage.weight;
+  const score =
+    r.score === null ? "not assessable" : `${r.score}${r.capped ? ` (capped; uncapped ${r.uncapped})` : ""}`;
+  process.stdout.write(`taste ${r.profile}: ${score} · judged ${w.assessable}/${w.total} of the weight\n`);
+  if (!r.validity.pass)
+    process.stderr.write(
+      `  validity: ${r.validity.warnings} warning${r.validity.warnings === 1 ? "" : "s"} (${r.validity.codes.join(", ")}) cap the score at 0.5\n`,
+    );
+  if (r.validity.drafting.warnings > 0)
+    process.stderr.write(`  drafting (does not cap): ${r.validity.drafting.codes.join(", ")}\n`);
+  for (const c of r.criteria) {
+    const head = `${c.id} ${c.name} ${c.score === null ? "—" : c.score}${c.advice ? ` ${c.advice}` : ""}`;
+    process.stderr.write(`  ${head}: ${c.message}\n`);
+  }
 }
 
 export function cmdLint(args: Args): number {

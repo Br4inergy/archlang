@@ -19,7 +19,7 @@
 import { buildingRoomReach, DEFAULT_TOL, resolvePlan, roomUses, storeyGrounded } from "./analyze.js";
 import type { ResolvedLevel, ResolvedPlan, RRoom } from "./ir.js";
 import type { Diagnostic, Span } from "./diagnostics.js";
-import { type BuildingContext, buildLintContext, NO_BUILDING } from "./lint/context.js";
+import { type BuildingContext, buildLintContext, type LintLayer, NO_BUILDING } from "./lint/context.js";
 import { dwellingReading } from "./analyze/dwelling.js";
 import { foldCoverage, type LintCoverage, type LintUnclassifiedRoom, type SkipNote } from "./lint/coverage.js";
 import { MAX_ATTRIBUTION_MEASURES } from "./lint/rules/circulation-facts.js";
@@ -36,7 +36,15 @@ export {
   type LintOptions,
   type LintRuleset,
 } from "./lint/ruleset.js";
-export type { BuildingContext, DiagnosticSite, LintContext, LintRule } from "./lint/context.js";
+export type { BuildingContext, DiagnosticSite, LintContext, LintLayer, LintRule } from "./lint/context.js";
+
+/**
+ * Each lint code's {@link LintLayer}, read off the rule that declares it in its `codes` (ADR
+ * 0032). Built once from `LINT_RULES`, in rule order; frozen. A code no rule declares is absent.
+ */
+export const LINT_CODE_LAYERS: Readonly<Record<string, LintLayer>> = Object.freeze(
+  Object.fromEntries(LINT_RULES.flatMap((r) => r.codes.map((c) => [c, r.layer] as const))),
+);
 export type {
   LintCoverage,
   LintCoverageFamily,
@@ -72,17 +80,19 @@ export function lint(source: string, opts: LintOptions = {}): Diagnostic[] {
  * families ran, which skipped and why, and the rooms with no classified use. One run of the
  * rules produces both. `diagnostics` is exactly what `lint()` returns, element for element;
  * the report sits beside it and never inside it, so nothing that reads diagnostics can see a
- * difference. `coverage` is `null` when the plan does not resolve (nothing ran). Pure.
+ * difference. `coverage` is `null` when the plan does not resolve (nothing ran). `layers` is
+ * {@link LINT_CODE_LAYERS}, each code's soundness layer (ADR 0032), beside the diagnostics and
+ * never inside them: `taste()` reads it to cap on validity warnings only. Pure.
  */
 export function lintWithCoverage(
   source: string,
   opts: LintOptions = {},
-): { diagnostics: Diagnostic[]; coverage: LintCoverage | null } {
+): { diagnostics: Diagnostic[]; coverage: LintCoverage | null; layers: Readonly<Record<string, LintLayer>> } {
   // Ruleset cascade: defaults → named profile → explicit per-call overrides.
   const profileRules = opts.profile ? (LINT_PROFILES[opts.profile] ?? {}) : {};
   const rules: LintRuleset = resolveRuleset(profileRules, opts.ruleset);
   const { ir, levels } = resolvePlan(source, opts);
-  if (!ir) return { diagnostics: [], coverage: null };
+  if (!ir) return { diagnostics: [], coverage: null, layers: LINT_CODE_LAYERS };
 
   const notes: SkipNote[] = [];
   const unclassified: LintUnclassifiedRoom[] = [];
@@ -102,6 +112,7 @@ export function lintWithCoverage(
     return {
       diagnostics: reconcileSharedFixes(out, levels),
       coverage: foldCoverage(LINT_RULES, notes, unclassified, levels.length),
+      layers: LINT_CODE_LAYERS,
     };
   }
   unclassified.push(...unclassifiedRooms(ir));
@@ -111,6 +122,7 @@ export function lintWithCoverage(
       [{ ir }],
     ),
     coverage: foldCoverage(LINT_RULES, notes, unclassified, 1),
+    layers: LINT_CODE_LAYERS,
   };
 }
 

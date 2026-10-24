@@ -279,6 +279,24 @@ export type {
   LintUnclassifiedRoom,
   EnclosureBudgetCap,
 } from "./lint.js";
+// Each lint code's soundness layer (ADR 0032): validity or drafting, read off its rule.
+export { LINT_CODE_LAYERS } from "./lint.js";
+export type { LintLayer } from "./lint.js";
+// The taste layer (ADR 0032, PS5.1): a separate, sourced score that never gates. `lint()` and
+// `describe()` never read it.
+export { taste, TASTE_ADVICE, TASTE_BUDGET, TASTE_PROFILE_NAMES, TASTE_SUBSCORES } from "./taste/index.js";
+export type {
+  TasteAdviceRow,
+  TasteAdvisory,
+  TasteCriterion,
+  TasteEvidence,
+  TasteOptions,
+  TasteReport,
+  TasteSkip,
+  TasteSkipReason,
+  TasteSubscore,
+  TasteVerified,
+} from "./taste/index.js";
 // Explicit opt-in source-to-source corrector (ADR 0006): never part of compile().
 export { repair } from "./repair.js";
 export type { RepairResult, RepairChange, RepairNote } from "./repair.js";

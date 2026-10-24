@@ -325,6 +325,11 @@ const PAGE_META = [
     "ADR 29 — furniture relations",
     "Furniture states what it is for: facing derives a piece's quarter-turn from its target, against backs it onto a room edge, and clear declares free depth that lint checks.",
   ],
+  [
+    "/adr/0032-taste-separate-score",
+    "ADR 32 — taste is a separate score",
+    "Taste is a separate, sourced score in [0, 1] that never gates: integer arithmetic, capped at 0.5 while a validity lint warning stands, never read by lint or describe.",
+  ],
 ] as const;
 
 type PageMeta = { readonly title: string; readonly description: string };
