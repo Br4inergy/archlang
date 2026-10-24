@@ -13,10 +13,11 @@ export type TasteSubscore = (typeof TASTE_SUBSCORES)[number];
 /**
  * Why a criterion (or one storey of it) was not judged. The lint words are reused
  * (`LintSkipReason`); the rest are taste's own: `too-few-items` (nothing to measure, or fewer
- * items than the criterion needs), `upper-storey` (an upper storey's depths are unreliable
- * until PS0.3), `taste-budget` (the call's counted budget would be exceeded).
+ * items than the criterion needs), `too-small` (a room whose floor area rounds to 0 m², filed
+ * with the room), `upper-storey` (an upper storey's depths are unreliable until PS0.3),
+ * `taste-budget` (the call's counted budget would be exceeded).
  */
-export type TasteSkipReason = "no-entrance" | "too-few-items" | "upper-storey" | "taste-budget";
+export type TasteSkipReason = "no-entrance" | "too-few-items" | "too-small" | "upper-storey" | "taste-budget";
 
 /** How a criterion's source was checked: read in the source [V], second-hand [S], remembered [M]. */
 export type TasteVerified = "V" | "S" | "M";
@@ -62,6 +63,8 @@ export const MAX_EVIDENCE = 8;
 export interface TasteSkip {
   criterion: string;
   reason: TasteSkipReason;
+  /** The room's id, for a skip about one room (data, like `coverage.unclassified[].id`). */
+  room?: string;
   level?: number;
 }
 

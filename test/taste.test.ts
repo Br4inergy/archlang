@@ -17,7 +17,10 @@ import { fmtPermyriad } from "../src/num-format.js";
 import { fmtRatio, meanPermyriad, ramp, roundHalfUp } from "../src/taste/arith.js";
 import { TASTE_CRITERIA } from "../src/taste/criteria.js";
 import {
+  compile,
   describe as describePlan,
+  LINT_CODE_LAYERS,
+  lint,
   taste,
   TASTE_ADVICE,
   TASTE_PROFILE_NAMES,
@@ -170,8 +173,14 @@ describe("the report", () => {
   room id=a at (0,0) size 3000x3000 label "Living Room" uses living
   room id=b at (2000,0) size 3000x3000 label "Store" uses storage
 }`;
+    // The plan really carries the compile-channel warning…
+    expect(compile(src).diagnostics.some((d) => d.code === "W_ROOM_OVERLAP" && d.severity === "warning")).toBe(true);
+    // …and the cap counts exactly default lint()'s validity-layer warnings, nothing from compile().
     const t = taste(src);
+    const validity = lint(src).filter((d) => LINT_CODE_LAYERS[d.code ?? ""] === "validity");
     expect(t.validity.codes).not.toContain("W_ROOM_OVERLAP");
+    expect(t.validity.warnings).toBe(validity.length);
+    expect(t.validity.pass).toBe(validity.length === 0);
   });
 
   it("a plan that does not resolve is not scored, and the call does not throw", () => {
@@ -217,6 +226,38 @@ describe("each criterion's acceptance line (design §3)", () => {
     const narrow = crit(taste(read("test/taste-corpus/r7-small-window.arch")), "R7");
     expect(narrow.score).toBe(0.75);
     expect(narrow.measured).toEqual({ num: 0, den: 1 });
+  });
+
+  it("R7 says `heights default` per room: only a room whose own windows stand at 900/2100", () => {
+    const src = `plan "Two rooms" {
+  units mm
+  grid 100
+  room id=r_a at (0,0) size 3200x4200 label "Living Room" uses living
+  room id=r_b at (3200,0) size 3200x4200 label "Bedroom" uses bedroom
+  walls from rooms exterior 200 partition 100
+  door id=d_front on r_a.bottom at center width 900 swing into r_a
+  door id=d_ab between r_a and r_b at center width 900 swing into r_b
+  window id=w_a on r_a.top at center width 1200 sill 300 head 2400
+  window id=w_b on r_b.top at center width 1200
+}`;
+    const facts = crit(taste(src), "R7").evidence.map((e) => e.fact);
+    expect(facts[0]).not.toContain("heights default");
+    expect(facts[0]).toContain("glazing 2.52 m²");
+    expect(facts[1]).toContain("; heights default");
+  });
+
+  it("R7 files a habitable room whose area rounds to 0 m² as a `too-small` skip, never silently", () => {
+    const src = `plan "Speck" {
+  units mm
+  room id=r_a at (0,0) size 4000x3000 label "Living Room" uses living
+  room id=r_s at (4000,0) size 40x40 label "Bedroom" uses bedroom
+  wall id=shell exterior thickness 200 { (0,0) (4000,0) (4000,3000) (0,3000) close }
+  door id=d_front on shell at 60% width 900
+  window id=w_n on shell at 10% width 1500
+}`;
+    const t = taste(src);
+    expect(t.coverage.skipped).toContainEqual({ criterion: "R7", reason: "too-small", room: "r_s" });
+    expect(crit(t, "R7").measured?.den).toBe(1);
   });
 
   it("R14: two-bed-chain ranks 3 of 5 (0.6667), its twin 1 of 5 (1)", () => {

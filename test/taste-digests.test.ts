@@ -11,6 +11,13 @@
  * values before and after, not just the hashes) and never re-pins to green (AGENTS.md). A new
  * criterion moves every row it assesses; a new corpus file adds a row; a new profile adds a block.
  * The table is checked both ways: a row whose file is gone and a file with no row both fail.
+ *
+ * Re-measured once, in PR #244's review round 1: R7's evidence now says `heights default` per
+ * room (only when that room's own windows stand at 900/2100), where the first table said it for
+ * every room of a plan that authored no heights. 21 rows moved, and in every one the only change
+ * is that suffix: dropped from a windowless room, or added to a room whose windows stand at the
+ * defaults in a plan that authors heights elsewhere (checked by stripping it from both reports
+ * and comparing the rest byte for byte); no score, message or skip moved.
  */
 
 import { describe, expect, it } from "vitest";
@@ -19,7 +26,7 @@ import { TASTE_SOURCES, tasteDigest } from "./taste-sources.js";
 
 const TABLE: ReadonlyArray<[string, string, string]> = [
   ["9f71ca5025784398ad739b30fd2c365c6b5a152b78c8ae7c32f714d79d07dbec", "generic", "examples/accessible.arch"],
-  ["f3b5723dd23acbd701536175ee552fc70bb0e5338a9840df50439f1616656c7c", "generic", "examples/aquarium.arch"],
+  ["888688981e20c41a42bf923b13c9579c731c6db4139e7eceef1728bdca3254b9", "generic", "examples/aquarium.arch"],
   ["1cd60870b371b8090e160cc76eac970f11cfdec5533c7f401409dc6c0a9d94b5", "generic", "examples/attached.arch"],
   ["619c6b48bcc381c08e27dee315547814e8fa788f45acb60155fa1dfd69d22574", "generic", "examples/bungalow.arch"],
   ["8d6c976087f2c8ed6120933f8491babf949d1184cac9294129a7056be64d10f7", "generic", "examples/classroom-block.arch"],
@@ -49,9 +56,9 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
   ["bacc4f7e1c5ce51fffacbc22e6ca72e9ba5ea786fee9399d33efb41c2d09476f", "generic", "examples/themed.arch"],
   ["769e8ec6c246a8f92f23b897f95baadca9afe719e074fdd60dd72c41dfae8a88", "generic", "examples/tiny-house.arch"],
   ["4b4059db72f85817389d56609b1263ffe474c3015fb2b9e7159aefcbcc5d7b26", "generic", "examples/townhouse.arch"],
-  ["6fabd3bcb67e4308956bbac972596cfe68ae894cc04173298e089777707e77ea", "generic", "examples/transit-hall.arch"],
+  ["2b6b7247ec4b15a249bfd5a6f859279d704df083d3b55b0ea766e881da884f27", "generic", "examples/transit-hall.arch"],
   ["981fddedf62d95bb7dd54d5584b95e1425ce08f40812069f9af6cedaa442e686", "generic", "examples/two-bed.arch"],
-  ["9276c6c3c46a1788888aa97b43abe00ee5af59251004775d391ea75890a3fd4a", "generic", "examples/two-storey.arch"],
+  ["5e90949eb5009020d90c58a411def7131913ab18da74fb6336e2cd710b17434e", "generic", "examples/two-storey.arch"],
   [
     "ac964ce4da062fb46c67c572ec45469ef61976dec087e91b4298f05268d9e13f",
     "generic",
@@ -173,12 +180,12 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/circulation-privacy/fire-door-inward.clean.arch",
   ],
   [
-    "445f6ad4f5be0638206a04bd10777cb7fda2bcb2ff9914ba0ef71f606a79cc64",
+    "19c1f9171749725a9c93c9547cb3f70e2f32ecd7496b14327eb0862f3d118ab3",
     "generic",
     "test/defect-corpus/circulation-privacy/living-via-bedrooms.arch",
   ],
   [
-    "d541b97058b21fc346436683f07e782b5844bf968087478b8011ae8676e04dbf",
+    "d99662fbcdf3ce1d2a62376ddced0c236e3bb009620b46458ee81bbee68b1394",
     "generic",
     "test/defect-corpus/circulation-privacy/living-via-bedrooms.clean.arch",
   ],
@@ -403,7 +410,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/wc-side-clearance.clean.arch",
   ],
   [
-    "4ec05a6ca59e62d0b3d5804c70afb6630b8375241e71f2ac5632fabb1df51f14",
+    "4c2835c249c2ab2c8db5df27b7316a8a85fe61a5e0f0988bd47fa15b5e170458",
     "generic",
     "test/defect-corpus/daylight/accessible-living-no-window.arch",
   ],
@@ -413,7 +420,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/daylight/accessible-living-no-window.clean.arch",
   ],
   [
-    "fe53e1805fdab4ed3f0f97e5f9298d7bc778ebda73fc006bbe51c098a2e7a07c",
+    "fefae5c055bd4b3578f352d41592b3dd964f8923bdaf0722ed35fc503a0229e1",
     "generic",
     "test/defect-corpus/daylight/bedroom-no-window.arch",
   ],
@@ -423,7 +430,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/daylight/bedroom-no-window.clean.arch",
   ],
   [
-    "b9cc8907f15f52cd2db9e40eeb811923c71a4e52ced5f011db111219fe6a3e84",
+    "3b756214e0d90254432404701500ec52017de330cfb404171a6577a63e0790ea",
     "generic",
     "test/defect-corpus/daylight/living-bay-no-window.arch",
   ],
@@ -433,7 +440,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/daylight/living-bay-no-window.clean.arch",
   ],
   [
-    "9083c722b122777ca3d7cab9a47fcbc6f7ab23d613e259829ec9f69b989f530b",
+    "8946c565ddb999a1d010868a3052509145169fee5664f5cfaee7e306efc42098",
     "generic",
     "test/defect-corpus/daylight/living-label-no-window.arch",
   ],
@@ -533,12 +540,12 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/openings-ignore-walls/door-near-l-corner.clean.arch",
   ],
   [
-    "8a722513e449af22b2b7000b2f3e3b691c83ffd8dc5ebad041a4ecb90f617a51",
+    "e07323318782a31723444dafe6c085a997887c1d69ae7c69247ffe0cc32eb4c6",
     "generic",
     "test/defect-corpus/openings-ignore-walls/door-notches-tee-wall.arch",
   ],
   [
-    "6ca4a362cda82348d7018fcf943448f5f23d99e8148231cf2e574a3bac285992",
+    "d977a07966a318f7a912ce7af86e6fcf5786f39c74887cfd9f2d71e9c78f057b",
     "generic",
     "test/defect-corpus/openings-ignore-walls/door-notches-tee-wall.clean.arch",
   ],
@@ -593,22 +600,22 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/openings-ignore-walls/fa-window-overlaps-entry.clean.arch",
   ],
   [
-    "e3c06672c30ad3f27b9dfb7687a483d879ca23a1010f729a2b9a707be49ad24c",
+    "bb8ecbf5b9a6261ae3f63d32606c757b87ea547bed3773cea02c031219f8a58b",
     "generic",
     "test/defect-corpus/openings-ignore-walls/opening-between-two-tees.arch",
   ],
   [
-    "ca51b7e02c90c27997743def51e0dea23b7e238a35cce4c8322506ce048d013b",
+    "bf62e288cbc4f3f7d47f6d9a3a7c04d339f079efd5eaa2dc189e5e9adcd2268b",
     "generic",
     "test/defect-corpus/openings-ignore-walls/opening-between-two-tees.clean.arch",
   ],
   [
-    "d33a96b8e925472a1c0d0a375896263e71a655e73bb566f6ddf9cda19dfb4bf7",
+    "8e301450248cb19006397cf7fc97b5cf5f88b2a0b6e0c06287d1eb3ae0dbf4ea",
     "generic",
     "test/defect-corpus/openings-ignore-walls/opening-crossed-by-partition.arch",
   ],
   [
-    "cd0f526e5555ba6d1a2ac853a538d1d0a8cae96352c2bbd5d49067ec0f95aee9",
+    "4ece7b1d10d104087cc7bc4e4e9394a0b8f86a246457f23a7c8385a75f85b067",
     "generic",
     "test/defect-corpus/openings-ignore-walls/opening-crossed-by-partition.clean.arch",
   ],
@@ -663,12 +670,12 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/space-not-enclosed/bath-open-side.clean.arch",
   ],
   [
-    "f450dd84e87ce0d6a90a1e051e6de68d3c467310b174646297fedb03f2daa192",
+    "6dd8dc1868c7207957e660391e644e26ae4bfb94e6fce3159d5b47a2879030a1",
     "generic",
     "test/defect-corpus/space-not-enclosed/bow-strip-unassigned.arch",
   ],
   [
-    "e79b17bc10f125062440671b9be9ef5383ea5d26cdce68ea25cae8c8ff98f38c",
+    "2688065543ec369b36707e6a4dd7082f7f1a5688a7568e03edd1d6743a9500db",
     "generic",
     "test/defect-corpus/space-not-enclosed/bow-strip-unassigned.clean.arch",
   ],
@@ -693,22 +700,22 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/space-not-enclosed/room-past-shell.clean.arch",
   ],
   [
-    "d40d1cb3d52e04dc54355bca3ecfa57d91b0f0b678442235f292309caf36c2bd",
+    "620ada2f73192a9ae5ad7dbd343aec876af363be9f722cbc7d82ce17972f0cf7",
     "generic",
     "test/defect-corpus/space-not-enclosed/round-snug-unassigned.arch",
   ],
   [
-    "8a96a162e0ae1c672b0da7e2757ea5089cc56c495bca2cc6aa3197f7890a9a2d",
+    "73f3c053316ef0ac4febcb0d0ae62e805fea782a24cab3b962cfeaf9d38c838e",
     "generic",
     "test/defect-corpus/space-not-enclosed/round-snug-unassigned.clean.arch",
   ],
   [
-    "ea08fc8f8ca9db15df5cef94b173343238d7e0fcd3880795983a26bfba99bd96",
+    "e3b6673d5cca76da6c7ce0c090c476d7e8e608bfba179dbfb9793bd10ed13f1b",
     "generic",
     "test/defect-corpus/space-not-enclosed/widen-after-outside-shell.arch",
   ],
   [
-    "894d9c9ba75c5e18d3cc0e4e5d77d5b670106dfae8255f5a395c4fcfa114a242",
+    "6268fa0bebbf16b80d40b75c22b1bfaa99ab51b96e47bb1a6e8e0ddf43c5d7f8",
     "generic",
     "test/defect-corpus/space-not-enclosed/widen-after-outside-shell.clean.arch",
   ],

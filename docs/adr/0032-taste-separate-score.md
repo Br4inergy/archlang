@@ -60,7 +60,8 @@ already separate the corpus's circulation and daylight pairs.
    explain`.
 7. **Bounded by counts.** One `TASTE_BUDGET` per call, charged before each criterion's work at
    its declared cost; a criterion that would exceed it reports `taste-budget`. The budget was set
-   by measurement: 1,000,000 units, 1,470 times the largest corpus charge (680, `terrace-row`).
+   by measurement: 2,000,000 units, 1,282 times the largest corpus charge (1,559, `terrace-row`).
+   Each cost bounds the work its criterion counts, held by test on the corpus and a probe plan.
 8. **Every threshold cites a source**; a value remembered rather than read ([M]) is verified
    before it ships. Profiles are advisory names (ADR 0005). PS5.1a ships `generic` only.
 9. **Calibration is deterministic over the repository's corpora**: the separation law
@@ -79,6 +80,12 @@ already separate the corpus's circulation and daylight pairs.
 - A valid plan with poor taste can score below a capped invalid one (a pair in the separation
   law's ledger shows it: the fix that clears a lint warning narrowed a window). The cap bounds the
   invalid plan from above; it does not lift the valid one.
-- `LintRule` gains two required fields. A rule written outside the repository must declare them.
+- `LintRule` gains two required fields, so a rule cannot be added without a layer.
+- **An unknown profile throws.** `taste()` raises a `RangeError` for a profile name it does not
+  know, where `lint()` ignores an unknown profile and runs the defaults. A taste report names its
+  profile and takes its thresholds from it, so a silent fallback would report a score under a
+  profile nobody asked for. The profile is the caller's argument, not user source, so the
+  never-throws contract on source stands; `arch score --taste` checks the name first and exits 3
+  with a did-you-mean.
 
 *Reverse if:* agents measurably ignore a separate score (D2's own trigger).

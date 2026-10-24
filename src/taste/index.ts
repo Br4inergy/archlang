@@ -31,7 +31,6 @@ import { adviceOf } from "./advice.js";
 import { meanPermyriad, ONE } from "./arith.js";
 import { type CriterionResult, TASTE_CRITERIA, notJudged, type TasteProfile, type TasteStorey } from "./criteria.js";
 import {
-  MAX_EVIDENCE,
   TASTE_SUBSCORES,
   type TasteCriterion,
   type TasteReport,
@@ -64,16 +63,18 @@ export const TASTE_PROFILES: Readonly<Record<string, TasteProfile>> = Object.fre
 export const TASTE_PROFILE_NAMES: readonly string[] = Object.keys(TASTE_PROFILES);
 
 /**
- * The counted budget of one `taste()` call, in criterion cost units (each criterion's declared
- * upper bound on its work: R3 public × bedroom rooms, R7 windows + rooms, R14 V·(V + E) on the
- * access graph). Set by measurement (PS5.1a): the largest charge over the examples, the defect
- * corpus and the taste corpus is 680 units (`examples/terrace-row.arch`; re-measured by
- * `test/taste-budget.test.ts`), and the budget, 1,000,000, is 1,470 times that (at least 1,000 times,
- * as the step budget was). A plan at the
- * 5,000-elements-per-storey cap (`MAX_ELEMENTS`) can exceed it: the criterion then reports
- * `taste-budget` instead of running.
+ * The counted budget of one `taste()` call, in work units: each criterion declares a cost that
+ * bounds the loop steps its judge counts (R3 about rooms + P·B pairs, R7 about elements +
+ * windows + rooms, R14 about V·(V + 2E) on the access graph; `src/taste/criteria.ts`), and the
+ * cost is charged before the judge runs. Set by measurement (PS5.1a): the largest charge over
+ * the examples, the defect corpus and the taste corpus is 1,559 units
+ * (`examples/terrace-row.arch`; re-measured by `test/taste-budget.test.ts`, which also holds
+ * every judge's counted work at or under its cost), and the budget, 2,000,000, is 1,282 times
+ * that (at least 1,000 times, as the step budget was). A plan near the 5,000-elements-per-storey
+ * cap (`MAX_ELEMENTS`) can exceed it: the criterion then reports `taste-budget` instead of
+ * running.
  */
-export const TASTE_BUDGET = 1_000_000;
+export const TASTE_BUDGET = 2_000_000;
 
 export interface TasteOptions {
   /** A name from {@link TASTE_PROFILE_NAMES}; default `"generic"`. */
@@ -87,8 +88,14 @@ const num = (p: number): number => Number(fmtPermyriad(p));
 
 /**
  * Score `source` under a taste profile. Never throws on user source: a plan that does not
- * resolve returns `ok: false` with nothing scored. An unknown `profile` is a caller error and
- * throws a `RangeError` naming the available profiles.
+ * resolve returns `ok: false` with nothing scored.
+ *
+ * **An unknown `profile` throws a `RangeError`** naming the available profiles
+ * ({@link TASTE_PROFILE_NAMES}). This differs from `lint()`, which ignores an unknown profile
+ * and runs the defaults: a taste report names its profile and its thresholds come from it, so a
+ * silent fallback would report a score under a profile the caller did not ask for. The profile
+ * is the caller's argument, never user source, and `arch score --taste` validates it first
+ * (exit 3 with a did-you-mean). ADR 0032, Consequences.
  */
 export function taste(source: string, opts: TasteOptions = {}): TasteReport {
   return tasteWithBudget(source, opts, TASTE_BUDGET);
@@ -145,11 +152,12 @@ export function tasteWithBudget(source: string, opts: TasteOptions, budget: numb
         p: null,
         message: notJudged(def.id, "taste-budget"),
         evidence: [],
+        evidenceMore: 0,
         skips: [],
       };
     } else {
       left -= cost;
-      result = def.judge(storeys, profile);
+      result = def.judge(storeys, profile, { n: 0 });
     }
     skipped.push(...result.skips);
     if (result.reason) skipped.push({ criterion: def.id, reason: result.reason });
@@ -174,8 +182,8 @@ export function tasteWithBudget(source: string, opts: TasteOptions, budget: numb
       verified: row.verified,
       advice: result.p !== null && result.p < ONE ? row.code : null,
       message: result.message,
-      evidence: result.evidence.slice(0, MAX_EVIDENCE),
-      ...(result.evidence.length > MAX_EVIDENCE ? { evidence_more: result.evidence.length - MAX_EVIDENCE } : {}),
+      evidence: result.evidence,
+      ...(result.evidenceMore > 0 ? { evidence_more: result.evidenceMore } : {}),
     });
   }
 
@@ -232,11 +240,27 @@ function storeysOf(summary: SceneSummary, ir: ResolvedPlan, levels: readonly Res
  * resolve. The measurement {@link TASTE_BUDGET} was set from (`test/taste-budget.test.ts`).
  */
 export function tasteCharges(source: string, opts: Pick<TasteOptions, "world"> = {}): number[] {
+  return tasteWork(source, opts).map((w) => w.cost);
+}
+
+/**
+ * @internal Each criterion's declared cost beside the work its judge actually counted, run
+ * unbudgeted, in R-number order; `[]` when the plan does not resolve. The probe behind the
+ * law that a cost is an upper bound on the work (`test/taste-budget.test.ts`).
+ */
+export function tasteWork(
+  source: string,
+  opts: Pick<TasteOptions, "world"> = {},
+): Array<{ id: string; cost: number; work: number }> {
   const world = opts.world ? { world: opts.world } : {};
   const { ir, levels } = resolvePlan(source, world);
   if (!ir) return [];
   const storeys = storeysOf(describe(source, world), ir, levels);
-  return TASTE_CRITERIA.map((def) => Math.max(1, def.cost(storeys)));
+  return TASTE_CRITERIA.map((def) => {
+    const work = { n: 0 };
+    def.judge(storeys, TASTE_PROFILES.generic!, work);
+    return { id: def.id, cost: Math.max(1, def.cost(storeys)), work: work.n };
+  });
 }
 
 /** The report of a plan that does not resolve: nothing measured, nothing scored. */

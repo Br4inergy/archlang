@@ -19,10 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lint warning stands. Taste never gates: a measurement exits 0; `--taste` with `--brief`, or an
   unknown profile, exits 3; compile errors exit 2. `lint()`, `describe()` and the SVG are
   unchanged.
-- Every lint rule declares its layer, `validity` or `drafting`, and the codes it raises
-  (`LintRule.layer`, `LintRule.codes`; `LINT_CODE_LAYERS`). `lintWithCoverage()` returns the
-  code → layer map as `layers`, beside the diagnostics; `lint()` output is unchanged. The
-  annotation rules (`W_DIM_INSIDE`, `W_DIM_OVERLAP`, `W_OPENING_NOT_DIMENSIONED`) are drafting.
+- `LINT_CODE_LAYERS` maps every lint `W_*` code to its layer, `validity` or `drafting`, and
+  `lintWithCoverage()` returns the map as `layers`, beside the diagnostics; `lint()` output is
+  unchanged. The annotation codes (`W_DIM_INSIDE`, `W_DIM_OVERLAP`,
+  `W_OPENING_NOT_DIMENSIONED`) are drafting.
 - Segment selectors (plan card PS3.5). `segment north|south|east|west` and `segment containing
   <room>.<edge>` can be written wherever `segment <n>` is, and resolve to that number:
   `against wall … segment`, and `dim radius … segment`, where a selector is refused because it

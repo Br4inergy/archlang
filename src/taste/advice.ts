@@ -2,13 +2,14 @@
  * The taste criteria's advice codes, names and sources (ADR 0032). `A_*` codes are advice, not
  * diagnostics: they never enter `lint()`, `describe()` or `src/error-catalog.ts`, and `arch
  * explain` does not know them yet. Every criterion has exactly one row here, with a code, a
- * source and the words its message is built from (`test/taste-advice.test.ts`).
+ * source and the words its message is built from (the guard is in `test/taste.test.ts`).
  */
 
 import type { TasteSubscore, TasteVerified } from "./report.js";
 
 export interface TasteAdviceRow {
-  /** The criterion id, `R<n>` as numbered in `docs/plans/plan-soundness/research/design-taste.md`. */
+  /** The criterion id, `R<n>` as numbered in
+   *  `docs/plans/plan-soundness/research/2026-10-24-ps5-taste-design.md` §3. */
   id: string;
   name: string;
   subscore: TasteSubscore;
