@@ -100,6 +100,67 @@ function eatOffset(node: DimNode, ctx: ParseCtx): void {
   }
 }
 
+/**
+ * The NUMBER a dimension draws: its value, where it sits, its size and its turn — the text
+ * primitive {@link dim}'s `render` emits, factored out so a reader of the drawing that does not
+ * build a Scene node by node (the annotation-collision lint, `src/lint/rules/annotations.ts`)
+ * places it with this very arithmetic rather than a copy of it. `fmt` is the render context's
+ * number formatter (`fmtMm` in `toScene`).
+ */
+export function dimTextPrim(
+  dm: RDim,
+  sizes: RenderCtx["sizes"],
+  fmt: RenderCtx["fmt"],
+): Extract<SceneNode["prim"], { t: "text" }> {
+  const dir = unit(sub(dm.to, dm.from));
+  const n = normal(dir);
+  const off = mul(n, dm.offset);
+  const p1 = add(dm.from, off);
+  const p2 = add(dm.to, off);
+  const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+  let angle = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+  if (angle > 90) angle -= 180;
+  if (angle < -90) angle += 180;
+  // No explicit text → the measured length |to−from|, formatted once via the
+  // shared mm formatter so SVG and DXF show the same value (T3.6).
+  const label = dm.text ?? fmt(length(sub(dm.to, dm.from)));
+  // The number rides `dimFont * 0.7` off its own line, on the side the offset points
+  // (away from the building, for an auto chain, whose offsets are never negative).
+  // `stagger` flips it to the other side — the GB/T remedy for a chain of narrow spans,
+  // decided per span in `scene-build.ts` and never set on a hand-written `dim`. `W_DIM_OVERLAP`
+  // models the same side (`Band.m` in `lint/rules/dims.ts`). Flipping INWARD (rather than out to a second row)
+  // is what keeps the annotation band exactly as deep as `DIM_BAND_FONTS` reserves.
+  //
+  // …unless the number cannot fit BETWEEN the stations at all, in which case it goes
+  // past them ({@link outsideStations}) — the ISO 129-1 / GB/T 50001 remedy for a
+  // measurement too small to letter, and the one that keeps a wall-thickness call-out
+  // out of its own poché.
+  // Pushed out, the number sits ON the dimension line's own extension rather than
+  // standing off it: past the station nothing is drawn, so there is no line to clear, and
+  // aligning it with the line is what makes `|↔| 100` read as one call-out. WHICH station
+  // is `calloutFrom`'s job — chosen by the caller, never by swapping the endpoints, whose
+  // order also decides the text's reading direction (a vertical number reads bottom-to-top
+  // in one order and top-to-bottom in the other).
+  const push = outsideStations(dm, label, sizes.dimFont);
+  // "The side the offset points" is `sign(offset) · n`: a NEGATIVE offset draws its line on
+  // the right normal, and its number must ride outside that line too, never between the
+  // line and what it measures.
+  const side = pointsRight(dm) !== (dm.stagger === true) ? -1 : 1;
+  const tp =
+    push === 0
+      ? add(mid, mul(n, side * sizes.dimFont * 0.7))
+      : add(dm.calloutFrom ? p1 : p2, mul(dir, dm.calloutFrom ? -push : push));
+  return {
+    t: "text",
+    at: tp,
+    value: label,
+    size: sizes.dimFont,
+    anchor: "middle",
+    baseline: "central",
+    rotate: angle,
+  };
+}
+
 export const dim: ElementDef = {
   kind: "dim",
   keyword: "dim",
@@ -324,52 +385,7 @@ export const dim: ElementDef = {
       const t2 = add(p, mul(unit({ x: dir.x + n.x, y: dir.y + n.y }), -tick));
       nodes.push({ layer: "dims", prim: { t: "line", a: t1, b: t2 }, paint: thinPaint });
     }
-    const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-    let angle = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
-    if (angle > 90) angle -= 180;
-    if (angle < -90) angle += 180;
-    // No explicit text → the measured length |to−from|, formatted once via the
-    // shared mm formatter so SVG and DXF show the same value (T3.6).
-    const label = dm.text ?? fmt(length(sub(dm.to, dm.from)));
-    // The number rides `dimFont * 0.7` off its own line, on the side the offset points
-    // (away from the building, for an auto chain, whose offsets are never negative).
-    // `stagger` flips it to the other side — the GB/T remedy for a chain of narrow spans,
-    // decided per span in `scene-build.ts` and never set on a hand-written `dim`. `W_DIM_OVERLAP`
-    // models the same side (`Band.m` in `lint/rules/dims.ts`). Flipping INWARD (rather than out to a second row)
-    // is what keeps the annotation band exactly as deep as `DIM_BAND_FONTS` reserves.
-    //
-    // …unless the number cannot fit BETWEEN the stations at all, in which case it goes
-    // past them ({@link outsideStations}) — the ISO 129-1 / GB/T 50001 remedy for a
-    // measurement too small to letter, and the one that keeps a wall-thickness call-out
-    // out of its own poché.
-    // Pushed out, the number sits ON the dimension line's own extension rather than
-    // standing off it: past the station nothing is drawn, so there is no line to clear, and
-    // aligning it with the line is what makes `|↔| 100` read as one call-out. WHICH station
-    // is `calloutFrom`'s job — chosen by the caller, never by swapping the endpoints, whose
-    // order also decides the text's reading direction (a vertical number reads bottom-to-top
-    // in one order and top-to-bottom in the other).
-    const push = outsideStations(dm, label, sizes.dimFont);
-    // "The side the offset points" is `sign(offset) · n`: a NEGATIVE offset draws its line on
-    // the right normal, and its number must ride outside that line too, never between the
-    // line and what it measures.
-    const side = pointsRight(dm) !== (dm.stagger === true) ? -1 : 1;
-    const tp =
-      push === 0
-        ? add(mid, mul(n, side * sizes.dimFont * 0.7))
-        : add(dm.calloutFrom ? p1 : p2, mul(dir, dm.calloutFrom ? -push : push));
-    nodes.push({
-      layer: "dims",
-      prim: {
-        t: "text",
-        at: tp,
-        value: label,
-        size: sizes.dimFont,
-        anchor: "middle",
-        baseline: "central",
-        rotate: angle,
-      },
-      paint: { fill: theme.dim },
-    });
+    nodes.push({ layer: "dims", prim: dimTextPrim(dm, sizes, fmt), paint: { fill: theme.dim } });
     return nodes;
   },
   /** The frame's action on a dimension (`frame.ts`'s `transformElement` calls this). */

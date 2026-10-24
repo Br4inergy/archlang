@@ -219,7 +219,7 @@ plan "Hillside Villa" {
       # being carved from a plain rectangle.
       room id=r_master polygon
         (4800,4200) (12000,4200) (12000,6800) (13800,6800) (13800,10200) (4800,10200)
-        label "Master Suite" at (7000,7500) uses bedroom
+        label "Master Suite" at (8600,5900) uses bedroom
       place ensuite() as en_m at (12000,4200)
     }
 

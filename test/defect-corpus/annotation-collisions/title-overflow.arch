@@ -1,7 +1,7 @@
 # class: annotation-collisions
 # origin: audits/showcase-and-examples.md D1, E1, V1, W1, X29 (title-block project value overprints its caption and runs out of the frame)
 # expect: W_TITLE_OVERFLOW
-# status: todo
+# status: done
 # fact: the title block is 1700 wide (x 12050-13750); the 69-character project value is right-aligned at 13665 in
 #   95-unit text, about 3300 wide at 0.5 em per character, so it starts near x 10400: over the PROJECT caption
 #   (x 12135) and about 1650 outside the frame (seen in `arch preview`)

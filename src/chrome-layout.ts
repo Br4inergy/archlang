@@ -34,6 +34,19 @@ const TITLE_W_F = 0.34;
 const TITLE_ROW_F = 0.046;
 const TITLE_FS_F = 0.019;
 
+/**
+ * The title block's size, row height, value font size and side padding for a drawing of
+ * reference dimension `refDim` — the one formula {@link layoutChrome} lays the block out
+ * with and every backend draws it from (each row: the caption left-aligned at `pad`, the
+ * value right-aligned at `w - pad`, at `fs`; the caption at `0.8 * fs`). Exported so
+ * `W_TITLE_OVERFLOW` (`src/lint/rules/annotations.ts`) measures a row against the geometry
+ * that is drawn rather than a retyped copy of it.
+ */
+export function titleBlockMetrics(refDim: number): { w: number; rowH: number; fs: number; pad: number } {
+  const w = refDim * TITLE_W_F;
+  return { w, rowH: refDim * TITLE_ROW_F, fs: refDim * TITLE_FS_F, pad: w * 0.05 };
+}
+
 /** Standard scale-bar lengths (mm); the bar shows the largest that fits the target. */
 const NICE_LENGTHS = [500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
 export function niceBarLength(target: number): number {
@@ -218,8 +231,7 @@ export function layoutChrome(input: ChromeInput): ChromeLayout {
   let titleBlock: TitleBlockBox | null = null;
   let titleBottom = bandTop;
   if (rows.length > 0) {
-    const w = refDim * TITLE_W_F;
-    const rowH = refDim * TITLE_ROW_F;
+    const { w, rowH, fs, pad } = titleBlockMetrics(refDim);
     const h = rowH * rows.length;
     titleBlock = {
       x0: b.maxX - w,
@@ -227,8 +239,8 @@ export function layoutChrome(input: ChromeInput): ChromeLayout {
       w,
       h,
       rowH,
-      fs: refDim * TITLE_FS_F,
-      pad: w * 0.05,
+      fs,
+      pad,
       rows,
     };
     titleBottom = bandTop + h;

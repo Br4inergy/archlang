@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**134 errors** · **67 warnings**
+**134 errors** · **69 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -144,6 +144,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`E_WHILE_LIMIT`](#e_while_limit) | error | `while` exceeded its iteration cap. |
 | [`E_WINDOW_WIDTH`](#e_window_width) | error | Window must have a positive width. |
 | [`W_ALIAS_MATCH`](#w_alias_match) | warning | A room's use was inferred from an indirect alias, not stated. |
+| [`W_ANNOTATION_OVERLAP`](#w_annotation_overlap) | warning | A label or a `dims auto` number is printed over a symbol or another label. |
 | [`W_BALCONY_NO_DOOR`](#w_balcony_no_door) | warning | A balcony with no way onto it. |
 | [`W_BATH_VIA_BEDROOM`](#w_bath_via_bedroom) | warning | Bathroom is reachable only through a bedroom. |
 | [`W_BEDROOM_NO_WINDOW`](#w_bedroom_no_window) | warning | Bedroom has no window. |
@@ -204,6 +205,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_STAIR_UNMATCHED`](#w_stair_unmatched) | warning | A run of vertical circulation appears on only one storey. |
 | [`W_SWING_OBSTRUCTED`](#w_swing_obstructed) | warning | Door swing is obstructed. |
 | [`W_SWING_ROOM_NOT_ADJACENT`](#w_swing_room_not_adjacent) | warning | `swing into <room>` names a room the door does not border. |
+| [`W_TITLE_OVERFLOW`](#w_title_overflow) | warning | A title-block value is wider than its row. |
 | [`W_UNKNOWN_MATERIAL`](#w_unknown_material) | warning | Unknown wall material; using the default hatch. |
 | [`W_UNKNOWN_STYLE_KEY`](#w_unknown_style_key) | warning | Unknown style key. |
 | [`W_UNKNOWN_THEME_KEY`](#w_unknown_theme_key) | warning | Unknown theme key. |
@@ -1926,6 +1928,21 @@ window at (0,0) width 0   # error
 room at (0,0) size 2000x1500 label "Powder"   # warning: WC inferred from the alias "powder"; add `uses wc`
 ```
 
+## W_ANNOTATION_OVERLAP
+
+*warning* — A label or a `dims auto` number is printed over a symbol or another label.
+
+**Cause.** Read off the drawing itself, after the label placer has moved every room label it could: a room's name or area figure lies over a furniture, fixture or stair symbol, or a number `dims auto` writes (a wall-thickness figure, an `R` or `φ` call-out, a chain figure) lies over such a symbol or over a room's name or area figure. "Over" means the text's box (its estimated width at its drawn size, turned with it) shares more than 2 % of its area with one of the symbol's drawn shapes, the same threshold at which the label placer moves a label; a rug is floor finish and does not count. Drafting only: `describe()`, Plan JSON and the drawing are unchanged by it. A `dims auto` number lettered on a room floor is not itself a fault: the thickness figure is written beside its wall on the side with floor, and the `R` and `φ` call-outs inside the curve they measure, by convention.
+
+**Fix.** For a room label: give it a clear point with `label "…" at (x,y)`, move the pinned point if it already has one, or move the piece. For a `dims auto` number: move the piece or the pinned label clear of it; a wall-thickness figure is lettered on the longest straight wall of its thickness at a run no crossing wall, opening, piece of furniture or stair stands on, so moving the piece off that wall frees one, or use `dims auto rooms` and state the thickness with a hand `dim`. There is no machine-applicable fix: where the label or the piece should go is a drafting decision with no unique answer.
+
+```arch static
+paper A4 landscape
+scale 1:100
+room id=bed at (0,0) size 3250x3000 label "Bedroom 4" at (2400,1900) uses bedroom
+furniture bed at (1650,900) size 1500x2000   # lint: the pinned name is printed over the bed
+```
+
 ## W_BALCONY_NO_DOOR
 
 *warning* — A balcony with no way onto it.
@@ -2700,6 +2717,20 @@ door at (4000,1500) width 900 swing in   # lint: leaf sweeps onto the bed
 
 ```arch static
 door on w1 at 50% width 800 swing into faraway   # warning: not on this wall
+```
+
+## W_TITLE_OVERFLOW
+
+*warning* — A title-block value is wider than its row.
+
+**Cause.** The title block is drawn at a fixed fraction of the drawing's size, each row its caption at the left and its value right-aligned at the right, and it neither wraps nor shrinks a value. This value's estimated width at the size it is drawn (characters × size × 0.62, the one width model the drawing uses) is more than the row holds between its two side pads, so it starts left of its own caption and prints over it, and past the block's frame when it is longer still. Both widths scale with the drawing, so the limit is a character count (about 25) on every sheet and at every scale. Only the authored `title { … }` rows are judged; on a multi-storey plan it is reported once.
+
+**Fix.** Shorten the value to the number of characters the warning quotes and move the rest to a `notes "…"` line. There is no machine-applicable fix: what to cut is the author's wording.
+
+```arch static
+title {
+  project "742 Evergreen Terrace, Springfield - Ground Floor General Arrangement"   # lint: 69 characters, the row holds about 25
+}
 ```
 
 ## W_UNKNOWN_MATERIAL

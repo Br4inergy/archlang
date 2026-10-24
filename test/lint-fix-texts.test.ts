@@ -817,6 +817,10 @@ describe("the four reworded hints' messages name things as a reader would; ids s
     "W_FLOOR_UNASSIGNED",
     "W_ROOM_OUTSIDE_SHELL",
     "W_DIM_TEXT_MISMATCH",
+    // The annotation collisions (PS2.12): rooms by label, pieces by category or label; a number
+    // or a title value is never quoted as if it were a name, and the ids are in the hints.
+    "W_ANNOTATION_OVERLAP",
+    "W_TITLE_OVERFLOW",
   ];
   type Storey = {
     rooms?: { id: string; label?: string }[];
@@ -838,7 +842,9 @@ describe("the four reworded hints' messages name things as a reader would; ids s
     const from = self.indexOf(`plan "${title}" {`);
     return { name: `inline: ${title}`, src: self.slice(from, self.indexOf("\n}\n", from) + 3), world: worldFor(".") };
   });
-  const cases = [...corpus(["examples", "test/fixtures"]), ...inline];
+  // The annotation-collision corpus is read too: after PS2.12 the shipped examples raise neither
+  // of its codes, so without it the two would be unexercised here.
+  const cases = [...corpus(["examples", "test/fixtures", "test/defect-corpus/annotation-collisions"]), ...inline];
 
   for (const p of PROFILES) {
     it(`${p ?? "default"} · every quoted name in the message is a room's or a piece's own name`, () => {
@@ -866,8 +872,39 @@ describe("the four reworded hints' messages name things as a reader would; ids s
       // wall between them, diff-a a strip of walled floor in no room.
       expect(seen.get("W_BOUNDARY_NO_WALL") ?? 0).toBeGreaterThan(0);
       expect(seen.get("W_FLOOR_UNASSIGNED") ?? 0).toBeGreaterThan(0);
+      // And the annotation collisions (PS2.12), from their defect-corpus cases.
+      expect(seen.get("W_ANNOTATION_OVERLAP") ?? 0).toBeGreaterThan(0);
+      expect(seen.get("W_TITLE_OVERFLOW") ?? 0).toBeGreaterThan(0);
     });
   }
+
+  it("an annotation collision's hint quotes an element's id only when the author wrote it", () => {
+    let authored = 0;
+    let assigned = 0;
+    for (const { name, src, world } of cases) {
+      const { ir } = resolvePlan(src, { world });
+      if (!ir) continue;
+      for (const d of lint(src, { world }).filter((x) => x.code === "W_ANNOTATION_OVERLAP")) {
+        // The element the warning sits on: its authored id is the handle an agent edits by; an
+        // assigned auto-id (`furniture_3`, `room_2`) shifts with an insertion, so it is never quoted.
+        const on = ir.elements.find((e) => e.span && d.span && e.span.start === d.span.start);
+        expect(on, `${name}: ${d.message}`).toBeDefined();
+        const hint = d.hints!.join(" ");
+        if ((on as { _idAuthored?: boolean })._idAuthored === true) {
+          expect(hint, `${name}: ${d.message}`).toContain(`\`${on!.id}\``);
+          authored++;
+        } else {
+          expect(hint, `${name}: ${d.message}`).not.toContain(on!.id);
+          assigned++;
+        }
+        expect(d.message).not.toContain(on!.id);
+      }
+    }
+    // Both cases are exercised: `radius-over-label` sits on an authored room, `radius-over-piece`
+    // on a table with an assigned id.
+    expect(authored).toBeGreaterThan(0);
+    expect(assigned).toBeGreaterThan(0);
+  });
 
   it("a named door's id is in a hint whenever the message names its rooms", () => {
     let checked = 0;

@@ -63,7 +63,7 @@ A statement is inserted only at a line boundary, in the file's own indentation a
 | Law | Statement |
 |---|---|
 | Fixpoint | `finish(finish(s).source).source === finish(s).source` |
-| Never worse | the result has no compile error, no diagnostic code (compile and lint, counted) that the input did not have, and no new furniture conflict |
+| Never worse | the result has no compile error, no diagnostic code (compile and lint, counted) that the input did not have, and no new furniture conflict (drafting-layer codes excepted, see the 2026-10-24 amendment) |
 | Fitted | when `finish` wrote `paper` or `scale`, the result raises neither `W_SCALE_OVERFLOW` nor `W_DRAWING_OVERFLOW` |
 | Untouched | a source that does not compile is returned byte-identical |
 
@@ -71,7 +71,8 @@ A result that breaks the never-worse law is not returned. The whole stage is rol
 the reason goes in `unresolved`. A plan that needs nothing comes back byte-identical with
 `changed: false`.
 
-> *Amended 2026-10.* The law is unchanged and still absolute; the roll-back is no longer all or
+> *Amended 2026-10.* The law is unchanged and still absolute (drafting-layer codes excepted, see
+> the 2026-10-24 amendment); the roll-back is no longer all or
 > nothing. `dims auto all` on a plan with an opening no chain reaches raises the advisory
 > `W_OPENING_NOT_DIMENSIONED`, and the stage then wrote no `paper`, `scale`, `title`, schedule or
 > legend either. The sheet stage now degrades. When the whole set of statements is refused it
@@ -82,6 +83,19 @@ the reason goes in `unresolved`. A plan that needs nothing comes back byte-ident
 > note with the `codes` it would have raised. The search is bounded: at most nine candidates are
 > checked after the input (`SHEET_MAX_CHECKS`, `src/finish.ts`). The stage is rolled back whole
 > only when no statement passes on its own. The law is checked under every lint profile.
+
+> *Amended 2026-10-24 (PR #245).* Drafting-layer codes (ADR 0032's `layer: "drafting"`: today
+> `W_ANNOTATION_OVERLAP`, `W_TITLE_OVERFLOW`, `W_DIM_INSIDE`, `W_DIM_OVERLAP`,
+> `W_OPENING_NOT_DIMENSIONED` and `W_DIM_TEXT_MISMATCH`, read from `LINT_CODE_LAYERS`) are excluded from the never-worse
+> comparison (`NOT_GATED_DRAFTING`, `src/furnish.ts`). A drafting-layer code reports the
+> annotation, not the plan, and the law protects the plan's soundness. So the sheet stage no
+> longer degrades `dims auto all` for an opening no chain reaches (the 2026-10 amendment above):
+> `W_OPENING_NOT_DIMENSIONED` reports that opening in the finished plan instead. `finish`'s
+> placement is unchanged, and the overprints it always drew are now named. Measured on the eval
+> goldens, the drafting-layer codes of `finish`'s output: `W_ANNOTATION_OVERLAP` `bungalow` 0 → 2,
+> `two-bath-flat` 0 → 2, `sized-bedrooms`, `three-bed-2bath`, `two-bed-hall` and `l-shaped-flat`
+> +1 each; no other drafting-layer code gained. Card PS2.40 makes `furnish` prefer a candidate
+> that raises no overlap.
 
 > **Superseded (2026-10).** The `furnish` stage exists: see
 > [ADR 0025](0025-furnish-as-explicit-transform.md). A full run is `furnish`, then `sheet`, and

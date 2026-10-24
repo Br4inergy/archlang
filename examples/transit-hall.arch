@@ -195,7 +195,7 @@ plan "Transit Hall" {
   furniture plant at (78800,20500) size 500x500  in r_lobby
 
   title {
-    project "Metro Interchange — concourse level"
+    project "Interchange concourse"
     drawn_by "ArchLang"
     date "2026-08-16"
   }

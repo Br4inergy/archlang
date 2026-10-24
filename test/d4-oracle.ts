@@ -365,7 +365,7 @@ export function wrapperSource(
 // ---------------------------------------------------------------------------
 
 /** Rule classes for the equivariance oracle, keyed by `LintRule.name`. */
-export type RuleClass = "raster" | "compass" | "scale" | "invariant";
+export type RuleClass = "raster" | "compass" | "scale" | "sheet" | "invariant";
 
 /**
  * How the group acts on each lint rule's output.
@@ -378,6 +378,12 @@ export type RuleClass = "raster" | "compass" | "scale" | "invariant";
  *    `scale` derives from the auto-fit denominator; a quarter-turn can legitimately change
  *    that denominator (the sheet does not turn), so it is compared whenever the scale is
  *    fixed or the element keeps the axes.
+ *  - `sheet` — the rule reads the DRAWN page (plan-soundness PS2.12, `annotation-overlap`): its
+ *    texts stay upright when the building turns, `dims auto` chains sit on the bottom and left
+ *    facades of whatever is drawn, and the label placer walks a lattice in page order, so where a
+ *    label or a number lands is a fact about the sheet, which the group does not act on. Never
+ *    compared under a turn or a flip (text stays upright); compared under the pure translation,
+ *    where every shipped example lints identically. Its own tests pin the rest.
  *  - `invariant` — every other rule: a diagnostic points into the component's own source,
  *    which is the same bytes on both sides, so code, span and every fix edit must match.
  *
@@ -425,6 +431,8 @@ export const RULE_CLASS: Readonly<Record<string, RuleClass>> = {
   "furn-clear-declared": "invariant",
   "seat-facing-away": "invariant",
   "dim-text-mismatch": "invariant",
+  "annotation-overlap": "sheet",
+  "title-overflow": "invariant",
 };
 
 /**
@@ -760,7 +768,7 @@ function sheetStatementSpans(src: string): Set<string> {
  */
 export function lintFacts(
   obs: Observation,
-  gate: { raster: boolean; compass: boolean; scale: boolean; entrance?: boolean },
+  gate: { raster: boolean; compass: boolean; scale: boolean; entrance?: boolean; translate?: boolean },
   src: string = obs.src,
 ): Facts {
   const f: Facts = new Map();
@@ -770,6 +778,8 @@ export function lintFacts(
     if (cls === "raster" && !gate.raster) continue;
     if (cls === "compass" && !gate.compass) continue;
     if (cls === "scale" && !gate.scale) continue;
+    // Text stays upright: a turn or a flip moves where a label lands relative to what it is over.
+    if (cls === "sheet" && gate.translate !== true) continue;
     f.set(`lint.${r.name}`, { kind: "inv", value: r.diags.map((d) => projectDiag(d, src)) });
     f.set(`lint.${r.name}.fixes`, { kind: "inv", value: r.diags.map((d) => projectFixes(d, src)) });
   }
@@ -1140,6 +1150,10 @@ export interface Comparison {
    *  FLOOR of the gate: no `site`, north co-rotated, or a translation. {@link compareObservations}
    *  also compares them when P₀ and gP name the same main entrance. */
   entrance: boolean;
+  /** Compare the `sheet`-class lint rules? Only under a pure translation: the drawn page's text
+   *  stays upright and its `dims auto` chains keep their facades when the building turns or
+   *  flips, so where a label or a number lands is equivariant under a translation alone. */
+  translate?: boolean;
 }
 
 /**
@@ -1159,6 +1173,7 @@ export function gateFor(
     sheet: !swapsAxes(f),
     scale: !swapsAxes(f) || opts.autoScale !== true,
     entrance: opts.site !== true || opts.coNorth === true || g.translate === true,
+    translate: g.translate === true,
   };
 }
 

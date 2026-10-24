@@ -28,6 +28,7 @@ import { siteBoundaryNodes } from "./site.js";
 import { groundMaterialsUsed, outdoorLabelAnchor, outdoorRing } from "./elements/outdoor.js";
 import { roomLabelAnchor } from "./elements/room.js";
 import { isUnderlay } from "./fixtures-catalog.js";
+import { isVertical } from "./vertical.js";
 import { rectRing } from "./geometry/polygon.js";
 import { CHAIN_BASE, CHAIN_STEP, DIM_TEXT_GAP, drawingBounds, renderSizes } from "./sheet.js";
 import { textWidth } from "./text-metrics.js";
@@ -98,6 +99,16 @@ function synthDims(ir: ResolvedPlan, sizes: RenderSizes, registry: Registry = BU
   }
   if (ir.autoDims === "walls" || ir.autoDims === "all") synthWallDims(ir, sizes, dims, registry);
   return dims;
+}
+
+/**
+ * The dimensions `dims auto` draws on this storey at `sizes`, in drawing order — exactly the
+ * list {@link toScene} renders, for a reader of the drawing that needs to know which number is
+ * which kind of call-out (the annotation-collision lint, `src/lint/rules/annotations.ts`).
+ * Pass the Scene's own `sizes` and the compile's registry to get the drawn positions.
+ */
+export function autoDimensions(ir: ResolvedPlan, sizes: RenderSizes, registry: Registry): RDim[] {
+  return ir.autoDims ? synthDims(ir, sizes, registry) : [];
 }
 
 /**
@@ -470,7 +481,8 @@ function segmentBand(s: WallSegment): Bounds {
  *    ± half its width, from the opening model. The dimension's ticks would cross the jambs
  *    and its number would sit in the doorway or across the door's swing (which spans the
  *    same run);
- *  - every piece of FURNITURE whose footprint reaches into the band the number occupies —
+ *  - every piece of FURNITURE, and every stair, lift or escalator, whose footprint reaches
+ *    into the band the number occupies —
  *    from the wall face out to `reach`, on the side the number is written (`side`, the unit
  *    normal {@link thicknessSideFlipped} chose). The footprint is the polygon the element's
  *    own `bounds()` reports; its vertices are projected onto the wall axis for the run it
@@ -543,17 +555,21 @@ function thicknessStation(
   const tip = c + out * reach;
   const bandLo = Math.min(face, tip);
   const bandHi = Math.max(face, tip);
-  // The footprint is whatever this compile's registry says furniture covers, so a plugin that
+  // The footprint is whatever this compile's registry says the element covers, so a plugin that
   // replaces the kind is honoured; a footprint with a non-finite vertex (a plugin piece
-  // resolved without a position or size) is not a footprint and blocks nothing.
-  const furniture = registry.byKind.get("furniture");
+  // resolved without a position or size) is not a footprint and blocks nothing. A STAIR, lift
+  // or escalator blocks the same way a piece of furniture does: its treads are drawn symbol
+  // ink a number cannot be read over (plan-soundness PS2.12, `W_ANNOTATION_OVERLAP`; the
+  // "300" printed over the townhouse stair on every storey was the case).
   for (const el of ir.elements) {
-    if (el.kind !== "furniture" || !furniture) continue;
+    if (el.kind !== "furniture" && !isVertical(el)) continue;
+    const def = registry.byKind.get(el.kind);
+    if (!def) continue;
     let aLo = Number.POSITIVE_INFINITY;
     let aHi = Number.NEGATIVE_INFINITY;
     let xLo = Number.POSITIVE_INFINITY;
     let xHi = Number.NEGATIVE_INFINITY;
-    for (const p of furniture.bounds(el)) {
+    for (const p of def.bounds(el)) {
       const along = horiz ? p.x : p.y;
       const across = horiz ? p.y : p.x;
       aLo = Math.min(aLo, along);

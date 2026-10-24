@@ -960,7 +960,7 @@
     {
       "id": "l-shaped-flat",
       "valid": true,
-      "lintWarnings": 3,
+      "lintWarnings": 4,
       "physicalWarnings": 0,
       "semanticPass": true,
       "failures": [],

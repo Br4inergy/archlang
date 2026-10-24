@@ -76,8 +76,9 @@ plan "Harbour Aquarium" {
   # `dims auto` puts the phi call-out ON the diameter, through the centre — which is where
   # GB/T wants it and where the room name would otherwise be. Moving the NAME is the
   # author's job (the compiler never relocates a dimension to make room for a label), so
-  # this one is pinned above the centre line with `label … at`.
-  room id=rotunda_r circle at (30000,14000) radius 8000 label "Ocean Rotunda" at (30000,10500) uses hall
+  # this one is pinned BELOW the centre line with `label … at`: above it, the `R8000` leader
+  # (drawn from the centre up to the arc's midpoint and lettered halfway) printed over it.
+  room id=rotunda_r circle at (30000,14000) radius 8000 label "Ocean Rotunda" at (30000,17000) uses hall
   room id=reef      at (0,0)         size 21000x22000 label "Reef Gallery"    uses living
   room id=kelp      at (39000,0)     size 21000x22000 label "Kelp Forest"     uses living
   room id=plant     at (21000,0)     size 18000x6000  label "Filtration"      uses utility

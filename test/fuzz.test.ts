@@ -12,6 +12,7 @@ import {
   type FixSuggestion,
 } from "../src/index.js";
 import { resolvePlan } from "../src/analyze.js";
+import { NOT_GATED_DRAFTING } from "../src/furnish.js";
 import { FURNITURE_ANCHORS } from "../src/ast.js";
 import type { RFurniture } from "../src/ir.js";
 import { DOOR_KINDS } from "../src/grammar/tokens.js";
@@ -452,7 +453,10 @@ describe("finish — round-trip", () => {
           `finish() turned a clean plan into one that does not compile:\n\n${r.source}`,
         ).toEqual([]);
         const before = codesOf(src);
-        const gained = [...codesOf(r.source)].filter(([c, n]) => n > (before.get(c) ?? 0)).map(([c]) => c);
+        // The drafting-layer codes the law exempts (`NOT_GATED_DRAFTING`, `src/furnish.ts`).
+        const gained = [...codesOf(r.source)]
+          .filter(([c, n]) => !NOT_GATED_DRAFTING.has(c) && n > (before.get(c) ?? 0))
+          .map(([c]) => c);
         expect(gained, `finish() added diagnostics to:\n\n${src}`).toEqual([]);
         // Fill-only: with no `reissue`, the input is a subsequence of the output.
         let i = 0;

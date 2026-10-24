@@ -94,15 +94,21 @@ The card that implements a check may rename its code; rename it here and in the 
 | `W_SWING_OVER_STAIR` | A door swing over a stair footprint or its landing | PS2.11 |
 | `W_STAIR_HEAD_VOID` | A void on a stair's arrival landing | PS2.11 |
 | `W_STAIR_TOO_STEEP` | A flight too short for its storey height (riser over the profile's limit) | PS2.11 |
-| `W_TITLE_OVERFLOW` | Title-block text wider than its row | PS2.12 |
-| `W_LABEL_COLLISION` | A room label over a furniture or fixture symbol | PS2.12 |
 | `W_LEAF_ACROSS_DOORWAY` | An open door leaf parked across another doorway's approach (door–door interference) | PS2.11 |
 | `W_FOOTPRINT_TRANSPOSED` | A directional piece written `at … size WxH` with its depth on the long axis and no `rotate`, so it draws turned and stretched | PS2.11 |
 | `W_EXIT_SWINGS_INWARD` | A hinged exterior door that is an exit of a non-residential plan, swinging into the floor against the escape direction | PS2.16 |
 
 Two checks extend existing codes instead of adding one: a desk in front of a leaf-less opening expects
 `W_DOORWAY_BLOCKED` (PS2.11), and wall-thickness labels from `dims auto` inside a room expect
-`W_DIM_INSIDE` (PS2.12). Both are `todo` until those rules widen.
+`W_DIM_INSIDE`. Both are `todo`. PS2.12 did not widen `W_DIM_INSIDE`: every `dims auto` number on a
+room floor is a thickness, `R` or `φ` call-out the renderer letters there by design, so the warning
+would fire on every `dims auto all` plan and could only be cleared by dropping the openings chains.
+Where the thickness tier writes its number is a drawing decision, card PS2.39; when that card moves
+the number off the floor, this case is resolved there or retired.
+
+PS2.12 shipped `W_TITLE_OVERFLOW` and `W_ANNOTATION_OVERLAP`. The second absorbed the proposed
+`W_LABEL_COLLISION` (a room label over a symbol): one code for any text printed over a symbol or a
+label, whether the text is a room label or a `dims auto` number.
 
 ## Notes from building it
 

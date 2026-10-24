@@ -1318,6 +1318,20 @@ export const ERROR_CATALOG: Readonly<Record<string, CatalogEntry>> = Object.free
     "Decide which side is wrong. If the number is right, the endpoints are not on what it dimensions (a common cause is endpoints rounded to the grid off a jamb on an angled or curved wall): move them so they span the number. If the line is right, letter it with the measured span, or drop the `text` clause and the drawing prints the measured length. A fix rewrites a literal text to the span in the text's own unit and precision; it is `maybe-incorrect` (`archlang fix --unsafe`), because rewriting the text of a line drawn between the wrong points would bake the error in. No fix is offered for an interpolated text or a statement that draws more than one dimension.",
     'dim (0,-100)->(4000,-100) offset -300 text "4500"   # lint: the line spans 4000 mm',
   ),
+  W_ANNOTATION_OVERLAP: W(
+    "W_ANNOTATION_OVERLAP",
+    "A label or a `dims auto` number is printed over a symbol or another label.",
+    "Read off the drawing itself, after the label placer has moved every room label it could: a room's name or area figure lies over a furniture, fixture or stair symbol, or a number `dims auto` writes (a wall-thickness figure, an `R` or `φ` call-out, a chain figure) lies over such a symbol or over a room's name or area figure. \"Over\" means the text's box (its estimated width at its drawn size, turned with it) shares more than 2 % of its area with one of the symbol's drawn shapes, the same threshold at which the label placer moves a label; a rug is floor finish and does not count. Drafting only: `describe()`, Plan JSON and the drawing are unchanged by it. A `dims auto` number lettered on a room floor is not itself a fault: the thickness figure is written beside its wall on the side with floor, and the `R` and `φ` call-outs inside the curve they measure, by convention.",
+    'For a room label: give it a clear point with `label "…" at (x,y)`, move the pinned point if it already has one, or move the piece. For a `dims auto` number: move the piece or the pinned label clear of it; a wall-thickness figure is lettered on the longest straight wall of its thickness at a run no crossing wall, opening, piece of furniture or stair stands on, so moving the piece off that wall frees one, or use `dims auto rooms` and state the thickness with a hand `dim`. There is no machine-applicable fix: where the label or the piece should go is a drafting decision with no unique answer.',
+    'paper A4 landscape\nscale 1:100\nroom id=bed at (0,0) size 3250x3000 label "Bedroom 4" at (2400,1900) uses bedroom\nfurniture bed at (1650,900) size 1500x2000   # lint: the pinned name is printed over the bed',
+  ),
+  W_TITLE_OVERFLOW: W(
+    "W_TITLE_OVERFLOW",
+    "A title-block value is wider than its row.",
+    "The title block is drawn at a fixed fraction of the drawing's size, each row its caption at the left and its value right-aligned at the right, and it neither wraps nor shrinks a value. This value's estimated width at the size it is drawn (characters × size × 0.62, the one width model the drawing uses) is more than the row holds between its two side pads, so it starts left of its own caption and prints over it, and past the block's frame when it is longer still. Both widths scale with the drawing, so the limit is a character count (about 25) on every sheet and at every scale. Only the authored `title { … }` rows are judged; on a multi-storey plan it is reported once.",
+    'Shorten the value to the number of characters the warning quotes and move the rest to a `notes "…"` line. There is no machine-applicable fix: what to cut is the author\'s wording.',
+    'title {\n  project "742 Evergreen Terrace, Springfield - Ground Floor General Arrangement"   # lint: 69 characters, the row holds about 25\n}',
+  ),
   W_OPENING_NOT_DIMENSIONED: W(
     "W_OPENING_NOT_DIMENSIONED",
     "An opening on the outside of the building is on no `dims auto all` chain.",

@@ -274,6 +274,8 @@ export function buildingContexts(levels: readonly ResolvedLevel[], tolMm: number
       arrivalShafts: runs.get(l.level) ?? [],
       attributionMeasures,
       ...(fromBelow.has(l.level) ? { enteredFromBelow: true } : {}),
+      // Levels arrive ascending, so the first is the lowest.
+      ...(l === levels[0] ? { lowestStorey: true as const } : {}),
     });
   }
   return out;

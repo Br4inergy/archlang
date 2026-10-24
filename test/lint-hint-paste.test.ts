@@ -25,6 +25,7 @@ import { lint, lintWithCoverage } from "../src/index.js";
 import type { RFurniture, RRoom } from "../src/ir.js";
 import { buildLintContext } from "../src/lint/context.js";
 import { pasteSet, roomDefiningItems } from "../src/lint/defining.js";
+import { NOT_GATED_DRAFTING } from "../src/furnish.js";
 import { DEFAULT_RULESET } from "../src/lint/ruleset.js";
 import { LINT_RULES } from "../src/lint/rules/index.js";
 
@@ -171,7 +172,11 @@ function* corpusMulti(seed0: number, n: number): Generator<string> {
 
 const append = (src: string, stmts: readonly string[]): string =>
   src.replace(/\n}\s*$/, `\n${stmts.map((s) => `  ${s}`).join("\n")}\n}\n`);
-const CONTENTS = new Set(["W_ROOM_NO_FIXTURE", "W_ROOM_MISSING_DEFINING"]);
+/** Not compared: the two contents codes the hint itself answers, and the drafting-layer codes
+ *  (ADR 0032), such as the collision a pasted piece raises by standing under the room's label —
+ *  where the label is drawn is the label's to move, and `finish`'s never-worse law exempts them
+ *  the same way (`NOT_GATED_DRAFTING`, `src/furnish.ts`). */
+const CONTENTS = new Set(["W_ROOM_NO_FIXTURE", "W_ROOM_MISSING_DEFINING", ...NOT_GATED_DRAFTING]);
 /** A finding as compared: a door attribution's text depends on a counted budget, not on the plan. */
 const finding = (d: { code?: string; message: string }): string =>
   `${d.code}|${d.message.replace(/ — the bottleneck.*$/s, "").replace(/\.$/, "")}`;

@@ -104,7 +104,7 @@ plan "Reading Room Library" {
 
   zone stacks "Stacks" {
     room id=r_stacks at (0,0)     size 17000x14500 label "Open Stacks" at (8500,12400) uses storage
-    room id=r_ref    at (17000,0) size 16000x8000  label "Reference Stacks" uses storage
+    room id=r_ref    at (17000,0) size 16000x8000  label "Reference Stacks" at (25000,7100) uses storage
   }
 
   zone staff "Staff" {

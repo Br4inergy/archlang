@@ -173,6 +173,7 @@ const ROOT = join(HERE, "..");
 // Re-measured 2026-10-23 (PS3.7): furnished-flat (both tables): chairs turned to the table they sit at, a real
 // defect `W_SEAT_FACING_AWAY` found (ADR 0029 §6); the cause and the proof that nothing else
 // moved are in `test/byte-identity-baseline.ts`'s header.
+// Re-measured 2026-10-24 (PS2.12): the annotation-collision examples (two-bed, both tables); why, and the swap-back proof, in `test/byte-identity-baseline.ts`'s header.
 const BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f",
   // laneway-house, bungalow and two-bed re-measured 2026-10-20 (PS2.17), a worktop in each kitchen;
@@ -193,7 +194,7 @@ const BASELINE: Readonly<Record<string, string>> = {
   // `describe()` moves (uses + room_type) and nothing else; see ./byte-identity-baseline.ts,
   // "the label classifier emits living", for the swap-back proof. Re-measured again the same day
   // (PS2.5): `lint()` gains three W_ROOM_VIA_PRIVATE; see "the circulation-and-privacy rules".
-  "two-bed.arch": "0ec613240e85fd5911f2d0c3e79d069f274d266b7d3555bc62e3ad49a44eced1", // PS3.6 source rewrite, see ./byte-identity-baseline.ts
+  "two-bed.arch": "cea88e622fc30ae874fcf59fc83f130f6f9fc3ae16c96048ae137493c9a710c1", // PS3.6 source rewrite, see ./byte-identity-baseline.ts
 };
 
 /**
@@ -226,7 +227,7 @@ const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
   // Re-measured 2026-10-20 (PS2.19), `describe()` only: see `byte-identity-baseline.ts`.
   "furnished-flat.arch": "6a19a52e6e702ead080c55100e93d69667627a7a586412db992ab65c5289ba24",
   // Re-measured 2026-10-18 (PS0.7, then PS2.5), the same causes as BASELINE's two-bed row.
-  "two-bed.arch": "39e8db9f7233fa438d2ca1c517d67af5a862561e80ca93878b6edb1ac0d9ad5a", // PS3.6 source rewrite, see ./byte-identity-baseline.ts
+  "two-bed.arch": "1f0dbc3a18d1bc55cd10aedb20306b55d458604a6dc0c2fc4e447e50cce87d45", // PS3.6 source rewrite, see ./byte-identity-baseline.ts
 };
 
 suite("the outdoor tranche — the byte-identity law", () => {

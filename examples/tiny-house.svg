@@ -153,8 +153,8 @@
 <polygon points="7100,1160 7140,1160 7140,1840 7100,1840" fill="none" stroke="#1b1b1b" stroke-width="12.8"/>
 </g>
 <g id="A-ANNO-TEXT" inkscape:groupmode="layer" inkscape:label="A-ANNO-TEXT">
-<text x="4240" y="1772" font-size="240" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Living / Sleep</text>
-<text x="4240" y="2036" font-size="176" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">14.8 m²</text>
+<text x="1500" y="1202" font-size="240" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Living / Sleep</text>
+<text x="1500" y="1466" font-size="176" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">14.8 m²</text>
 <text x="6150" y="1352" font-size="240" fill="#222222" text-anchor="middle" dominant-baseline="central" font-weight="600">Wet room</text>
 <text x="6150" y="1616" font-size="176" fill="#7a7a7a" text-anchor="middle" dominant-baseline="central">4.8 m²</text>
 </g>

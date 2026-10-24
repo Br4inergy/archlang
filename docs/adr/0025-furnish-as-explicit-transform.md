@@ -84,6 +84,18 @@ candidate. If a required piece cannot be placed, its use is left out; when no us
 room is left empty. Both are reported in `unresolved` with the blocking code. An optional
 piece that cannot be placed is left out.
 
+> *Amended 2026-10-24 (PR #245).* Drafting-layer codes (ADR 0032's `layer: "drafting"`: today
+> `W_ANNOTATION_OVERLAP`, `W_TITLE_OVERFLOW`, `W_DIM_INSIDE`, `W_DIM_OVERLAP`,
+> `W_OPENING_NOT_DIMENSIONED` and `W_DIM_TEXT_MISMATCH`, read from `LINT_CODE_LAYERS`) are excluded from this comparison
+> (`NOT_GATED_DRAFTING`, `src/furnish.ts`). A drafting-layer code reports the annotation, not the
+> plan, and the law protects the plan's soundness; counted, `W_ANNOTATION_OVERLAP` refused a
+> kitchen's fridge because the room's name would sit on it. The stage's placement is unchanged,
+> and the overprints it always drew are now named. Measured on the eval goldens, the
+> drafting-layer codes of `finish`'s output: `W_ANNOTATION_OVERLAP` `bungalow` 0 → 2,
+> `two-bath-flat` 0 → 2, `sized-bedrooms`, `three-bed-2bath`, `two-bed-hall` and `l-shaped-flat`
+> +1 each; no other drafting-layer code gained. Card PS2.40 makes the stage prefer a candidate
+> that raises no overlap.
+
 **8. This version furnishes rectangular rooms of single-storey plans.** A polygon or circular
 room, and every empty room of a plan with `level` blocks, is reported in `unresolved` and left
 as it is. A polygon room is not approximated by its bounding box or by a rectangle inscribed in
@@ -113,7 +125,7 @@ result a stage would edit again is not returned, and the source comes back untou
 | Law | Statement |
 |---|---|
 | Fixpoint | a second run changes nothing |
-| Never worse | no compile error, no new diagnostic code under any lint profile, no new furniture conflict |
+| Never worse | no compile error, no new diagnostic code under any lint profile, no new furniture conflict (drafting-layer codes excepted, see the 2026-10-24 amendment to §7) |
 | Run | a use's wall fixtures sit on one wall, each touching the next |
 | Fill only | a furnished room is untouched; an all-furnished plan is a byte no-op |
 | Pure insertion | the result is the source with one run of statements inserted |

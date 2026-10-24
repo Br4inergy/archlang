@@ -1,7 +1,7 @@
 # class: annotation-collisions
 # origin: evidence.md section 1 row 10; repro/family-apartment.arch Bedroom 4 (label over furniture, reduced, at 1:100 so the label keeps its size); audits/showcase-and-examples.md BE2
-# expect: W_LABEL_COLLISION
-# status: todo
+# expect: W_ANNOTATION_OVERLAP
+# status: done
 # fact: the 350 mm "Bedroom 4" label is centred at (1137.5, 2330), about 1730 mm wide at 0.55 em per
 #   character (x 270-2000), and the bed spans x 1650-3150, y 900-2900: about 350 x 350 mm of the label lies on the bed
 plan "Room label over the bed" {
