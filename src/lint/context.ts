@@ -160,12 +160,28 @@ export function judgesAsDwelling(ctx: LintContext): boolean {
   return ctx.rules.assumeDwelling || ctx.building.dwelling !== "non-residential";
 }
 
+/** The soundness layer a lint rule judges (ADR 0032): the plan itself, or only its annotation. */
+export type LintLayer = "validity" | "drafting";
+
 /** One architectural-soundness rule (or an order-preserving composite of several). */
 export interface LintRule {
   /** Stable name for tests/debugging (not user-facing). */
   name: string;
   /** The family the coverage report files this rule's runs and skips under. */
   family: LintFamily;
+  /**
+   * Which layer of plan soundness the rule judges (ADR 0032): `"validity"` for a defect of the
+   * plan itself, `"drafting"` for a defect of the drawing's annotation only (the `annotation`
+   * family). Required, so the compiler refuses a rule with no layer. `taste()` caps its score on
+   * validity-layer warnings only; nothing in `lint()`'s output reads it.
+   */
+  layer: LintLayer;
+  /**
+   * Every code the rule may emit. A diagnostic does not name the rule that raised it, so this is
+   * what maps a code to its {@link layer} (`lintWithCoverage().layers`). Each `W_*` code belongs
+   * to exactly one rule (`test/lint-layers.test.ts`).
+   */
+  codes: readonly string[];
   /**
    * The rule's output can move when furniture is added to a room in a way the per-piece
    * placement checks of a quoted fixture hint do not see (plan-soundness PS2.17): a hint's set

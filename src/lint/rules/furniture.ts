@@ -55,6 +55,8 @@ import { frontGapMm, mm, shortfall } from "../measure.js";
 export const furnitureOverlap: LintRule = {
   name: "furniture-overlap",
   family: "furniture",
+  layer: "validity",
+  codes: ["W_FURNITURE_OVERLAP"],
   check({ furniture, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (let i = 0; i < furniture.length; i++) {
@@ -94,6 +96,8 @@ export const furnitureOverlap: LintRule = {
 export const furnClearance: LintRule = {
   name: "furn-clearance",
   family: "furniture",
+  layer: "validity",
+  codes: ["W_FURN_CLEARANCE"],
   check({ furniture, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const f of furniture) {
@@ -145,6 +149,8 @@ export const furnClearance: LintRule = {
 export const fixtureFloating: LintRule = {
   name: "fixture-floating",
   family: "furniture",
+  layer: "validity",
+  codes: ["W_FIXTURE_FLOATING"],
   check({ furniture, ir, rules, wallSegs, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const f of furniture) {
@@ -214,6 +220,8 @@ function sizeTurnHint(
 export const fixtureBackToRoom: LintRule = {
   name: "fixture-back-to-room",
   family: "furniture",
+  layer: "validity",
+  codes: ["W_FIXTURE_BACK_TO_ROOM"],
   readsFurniture: true,
   check({ furniture, ir, rooms, rules, wallSegs, at, frameOf, skip }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
@@ -279,6 +287,8 @@ export const fixtureBackToRoom: LintRule = {
 export const fixtureWrongRoom: LintRule = {
   name: "fixture-wrong-room",
   family: "furniture",
+  layer: "validity",
+  codes: ["W_FIXTURE_WRONG_ROOM"],
   check({ furniture, roomRects, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const f of furniture) {
@@ -307,6 +317,8 @@ export const fixtureWrongRoom: LintRule = {
 export const furnitureWallCollision: LintRule = {
   name: "furniture-wall-collision",
   family: "furniture",
+  layer: "validity",
+  codes: ["W_FURNITURE_WALL_COLLISION"],
   check(ctx: LintContext): Diagnostic[] {
     const { furniture, wallSegs, wallOpenings, at } = ctx;
     const out: Diagnostic[] = [];

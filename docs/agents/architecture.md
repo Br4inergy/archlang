@@ -55,6 +55,8 @@ source (.arch)
 
 - `describe.ts` semantic summary · `lint.ts` + `lint/` soundness rules · `analyze.ts` +
   `analyze/` shared resolve + circulation/occupancy grids
+- `taste/` the taste score (ADR 0032): reads `describe()`, `lintWithCoverage()` and the IR, never
+  read by them; integer permyriads; the validity cap reads each rule's `layer`
 - `geometry.ts` `doorSwing` (the leaf's sector) shared by `door.render()` and `W_SWING_OBSTRUCTED`;
   `sectorsObstruct` is the exact two-sector test (separating axes, no sampling)
 - `geometry/` band, intersect, joinery (the wall outline); `union.ts`/`clipper.ts` are test oracles only;

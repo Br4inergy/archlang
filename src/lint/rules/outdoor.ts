@@ -46,6 +46,8 @@ function ringOf(o: ROutdoor): Point[] | null {
 export const outdoorOverlapsRoom: LintRule = {
   name: "outdoor-overlaps-room",
   family: "outdoor",
+  layer: "validity",
+  codes: ["W_OUTDOOR_OVERLAPS_ROOM"],
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const outdoors = ctx.ir.elements.filter((e): e is ROutdoor => e.kind === "outdoor");
@@ -93,6 +95,8 @@ export const outdoorOverlapsRoom: LintRule = {
 export const balconyNoDoor: LintRule = {
   name: "balcony-no-door",
   family: "outdoor",
+  layer: "validity",
+  codes: ["W_BALCONY_NO_DOOR"],
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const balconies = ctx.ir.elements.filter((e): e is ROutdoor => e.kind === "outdoor" && e.surface === "balcony");

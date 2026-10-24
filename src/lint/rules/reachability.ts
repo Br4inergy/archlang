@@ -29,6 +29,8 @@ import type { LintContext, LintRule } from "../context.js";
 export const reachability: LintRule = {
   name: "reachability",
   family: "reachability",
+  layer: "validity",
+  codes: ["W_BATH_VIA_BEDROOM", "W_ROOM_UNREACHABLE"],
   check({ rooms, connectors, roomRects, rules, labelOf, at, building, access, skip }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     // W_BATH_VIA_BEDROOM asks which rooms are bedrooms and which are wet rooms; a room with no

@@ -42,6 +42,7 @@ export const EXPORT_FORMATS = [
 export type ExportFormat = (typeof EXPORT_FORMATS)[number]["id"];
 import { ERROR_CODES, ERROR_CATALOG } from "./error-catalog.js";
 import { LINT_PROFILE_NAMES, LINT_PROFILES, DEFAULT_RULESET } from "./lint.js";
+import { TASTE_PROFILE_NAMES } from "./taste/index.js";
 import { FIXTURE_CATEGORIES } from "./elements/fixtures-glyphs.js";
 import { DESCRIBE_FACTS } from "./describe.js";
 import { FINISH_STAGE_ORDER, FINISH_STAGES, FINISH_STAGES_AVAILABLE } from "./finish.js";
@@ -244,7 +245,13 @@ const FEEDBACK_FLAG: ManifestFlag = {
 const BRIEF_FLAG: ManifestFlag = {
   flag: "--brief",
   arg: "<intent.json>",
-  description: "the intent JSON to measure satisfaction against (required)",
+  description: "the intent JSON to measure satisfaction against (this or --taste)",
+};
+const TASTE_FLAG: ManifestFlag = {
+  flag: "--taste",
+  arg: `<${TASTE_PROFILE_NAMES.join("|")}>`,
+  description:
+    "score taste instead (ADR 0032): sourced criteria in [0,1], capped at 0.5 while a validity lint warning stands; never gates (not with --brief)",
 };
 
 /**
@@ -650,15 +657,19 @@ const COMMANDS: ManifestCommand[] = [
   {
     name: "score",
     summary:
-      "continuous intent satisfaction (satisfied/total) as data — the refine-loop reward. Measures, never gates (validate --intent is the gate).",
-    flags: [BRIEF_FLAG, JSON_FLAG, QUIET_FLAG],
+      "continuous intent satisfaction (satisfied/total) as data — the refine-loop reward — or, with --taste, the plan's taste score. Measures, never gates (validate --intent is the gate).",
+    flags: [BRIEF_FLAG, TASTE_FLAG, JSON_FLAG, QUIET_FLAG],
     input: "<file.arch|->",
     output:
-      "{ ok, satisfied, total, score, subscores, violations } (exit 0 on a successful measurement, even when assertions fail)",
+      "--brief: { ok, satisfied, total, score, subscores, violations }; --taste: { profile, ok, score, uncapped, capped, validity, advisory, coverage, subscores, criteria } (exit 0 on a successful measurement, whatever the score)",
     examples: [
       {
         cmd: "archlang score plan.arch --brief brief.json --json",
         note: "continuous intent satisfaction as the refine-loop reward; always exits 0 on a measurement",
+      },
+      {
+        cmd: "archlang score plan.arch --taste generic --json",
+        note: "taste advice per criterion with its source and an A_* code; read after lint is clean, never a gate",
       },
     ],
   },

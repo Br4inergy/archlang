@@ -1244,6 +1244,76 @@ under the accessibility thresholds:
 > guarantee.** Real accessibility and code review depend on jurisdiction; treat these
 > as a helpful nudge, not a sign-off.
 
+## Taste — a separate score that never gates
+
+`lint` reports plain defects. Whether a plan is *good* — the living room at the heart, the
+bedrooms deeper than the public rooms, enough daylight — depends on the culture and the brief,
+so it is not a lint rule. It is a separate, sourced score:
+
+```
+archlang score plan.arch --taste generic          # one summary line, one line per criterion
+archlang score plan.arch --taste generic --json   # the report as data
+```
+
+`taste(source, { profile })` returns the same report from the library. **Taste never gates.**
+A measurement exits `0` whatever the score; only a plan with compile errors (exit `2`) or bad
+usage (exit `3`: an unknown profile, or `--taste` together with `--brief`) fails. Neither
+`describe()` nor `lint()` reads it, and it draws nothing. The decision is
+[ADR 0032](adr/0032-taste-separate-score.md).
+
+Each criterion reads the facts `describe` reports (room uses, access depths, windows, net
+areas) and cites its source:
+
+| Criterion | Subscore | Reads | Source |
+|---|---|---|---|
+| R3 intimacy gradient | zoning | the share of (living/dining/kitchen, bedroom) pairs where the public room is no deeper from the entrance | Alexander, *A Pattern Language*, 127 |
+| R7 daylight ratio | light | glazing (width × (head − sill)) over net floor area, per habitable room; generic target 8 % | IRC R303.1 |
+| R14 common area at the heart | circulation | the best rank, by total depth on the access graph, of a living or dining room | Alexander 129; Hanson 1998 |
+
+A criterion that cannot judge (no entrance, nothing to compare, an upper storey) says so with
+`assessable: false` and a `reason`, and is left out of the total, never counted as a pass;
+`coverage.weight` says how much of the profile was judged. A criterion below 1 carries an
+`A_*` advice code. Rooms are named by label in `message`; ids appear only in
+`evidence[].ids`. Scores are computed in integers and printed exactly.
+
+**The validity cap.** While default-profile `lint` reports a warning from a *validity* rule,
+the total is capped at 0.5 (`capped: true`, the value before the cap in `uncapped`), so a plan
+with a defect never scores above 0.5. Every lint rule declares its layer: the annotation rules
+(`W_DIM_INSIDE`, `W_DIM_OVERLAP`, `W_OPENING_NOT_DIMENSIONED`) are *drafting* and never cap;
+they are listed under `validity.drafting`. Compile-channel warnings such as `W_ROOM_OVERLAP`
+never cap.
+
+A hall → bath → bedroom → living chain, abridged to its first criterion:
+
+```json
+{
+  "profile": "generic",
+  "ok": true,
+  "score": 0.5,
+  "uncapped": 0.7222,
+  "capped": true,
+  "validity": { "pass": false, "warnings": 6,
+                "codes": ["W_ROOM_NO_FIXTURE", "W_CIRCUITOUS_PATH", "W_ROOM_VIA_PRIVATE"],
+                "drafting": { "warnings": 0, "codes": [] } },
+  "advisory": [],
+  "coverage": { "rooms": 5, "classified": 5, "unclassified": [],
+                "weight": { "assessable": 3, "total": 3 }, "skipped": [] },
+  "subscores": { "circulation": 0.6667, "zoning": 0.5, "light": 1,
+                 "geometry": null, "furnishing": null, "facade": null },
+  "criteria": [
+    { "id": "R3", "name": "intimacy-gradient", "subscore": "zoning", "kind": "taste",
+      "weight": 1, "assessable": true, "measured": { "num": 1, "den": 2 }, "score": 0.5,
+      "source": "Alexander, A Pattern Language, 127 (intimacy gradient)", "verified": "V",
+      "advice": "A_INTIMACY_INVERSION",
+      "message": "\"Kitchen / Living\" is 4 doors in from the entrance and \"Master Bedroom\" 3: 1 of 2 living-to-bedroom pairs puts the public room deeper than the bedroom.",
+      "evidence": [{ "ids": ["r_living", "r_master"], "fact": "depth 4 > depth 3" }] }
+  ]
+}
+```
+
+Read taste after `lint` is clean: it is advice for a sound plan, not a substitute for fixing
+one. Only `generic` ships today.
+
 ## The agent loop
 
 Together, `describe` and `lint` close the author → render → **verify** loop for an AI

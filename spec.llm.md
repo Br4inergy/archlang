@@ -130,7 +130,7 @@ arch link  # print a playground URL that opens the plan, rendered, with nothing 
 arch watch  # recompile on save (interactive)
 arch validate  # parse + resolve + lint, no render (is it valid & sound?)
 arch describe  # semantic facts: rooms, areas, adjacency, what doors connect
-arch score  # continuous intent satisfaction (satisfied/total) as data — the refine-loop reward
+arch score  # continuous intent satisfaction (satisfied/total) as data — the refine-loop reward — or, with --taste, the plan's taste score
 arch lint  # architectural soundness warnings
 arch ast  # parse only (no resolve/render) and print the span-bearing AST as JSON
 arch complete  # completion items in scope at a source byte offset (the LSP completion() core)

@@ -22,6 +22,8 @@ import type { LintContext, LintRule } from "../context.js";
 export const stairUnmatched: LintRule = {
   name: "stair-unmatched",
   family: "vertical",
+  layer: "validity",
+  codes: ["W_STAIR_UNMATCHED"],
   check({ verticals, building, at, skip }: LintContext): Diagnostic[] {
     if (!building.multiStorey) {
       // A run drawn on a one-storey plan: whether it meets its other end is not asked.

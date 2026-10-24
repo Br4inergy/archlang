@@ -371,6 +371,8 @@ const boxesNear = (a: RoomBox, b: RoomBox, tol: number): boolean =>
 export const boundaryNoWall: LintRule = {
   name: "boundary-no-wall",
   family: "enclosure",
+  layer: "validity",
+  codes: ["W_BOUNDARY_NO_WALL"],
   check(ctx: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const max = ctx.rules.maxBoundaryGapMm;
@@ -541,6 +543,8 @@ function nonRoomCover(ctx: LintContext): FaceRoom[] {
 export const floorUnassigned: LintRule = {
   name: "floor-unassigned",
   family: "enclosure",
+  layer: "validity",
+  codes: ["W_FLOOR_UNASSIGNED"],
   check(ctx: LintContext): Diagnostic[] {
     if (ctx.rooms.length === 0) return [];
     const wf = facesOf(ctx);
@@ -612,6 +616,8 @@ export const floorUnassigned: LintRule = {
 export const roomOutsideShell: LintRule = {
   name: "room-outside-shell",
   family: "enclosure",
+  layer: "validity",
+  codes: ["W_ROOM_OUTSIDE_SHELL"],
   check(ctx: LintContext): Diagnostic[] {
     if (ctx.rooms.length === 0) return [];
     const wf = facesOf(ctx);

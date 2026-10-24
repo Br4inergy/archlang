@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The taste score (plan card PS5.1a, ADR 0032). `archlang score plan.arch --taste generic
+  [--json]` and `taste(source, { profile })` report a separate, sourced score in [0, 1] from
+  three criteria: R3 (no living, dining or kitchen room deeper from the entrance than a bedroom),
+  R7 (glazing at least 8 % of each habitable room's net floor area) and R14 (a living or dining
+  room among the best-integrated third of the rooms). Each criterion carries its source, an
+  `A_*` advice code when below 1, a message that names rooms by label, and its evidence; one
+  that cannot judge says why and is left out. The total is capped at 0.5 while a validity-layer
+  lint warning stands. Taste never gates: a measurement exits 0; `--taste` with `--brief`, or an
+  unknown profile, exits 3; compile errors exit 2. `lint()`, `describe()` and the SVG are
+  unchanged.
+- `LINT_CODE_LAYERS` maps every lint `W_*` code to its layer, `validity` or `drafting`, and
+  `lintWithCoverage()` returns the map as `layers`, beside the diagnostics; `lint()` output is
+  unchanged. The annotation codes (`W_DIM_INSIDE`, `W_DIM_OVERLAP`,
+  `W_OPENING_NOT_DIMENSIONED`) are drafting.
 - Segment selectors (plan card PS3.5). `segment north|south|east|west` and `segment containing
   <room>.<edge>` can be written wherever `segment <n>` is, and resolve to that number:
   `against wall … segment`, and `dim radius … segment`, where a selector is refused because it

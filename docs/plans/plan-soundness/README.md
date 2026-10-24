@@ -526,6 +526,8 @@ into PS3.12)
   from the existing `--facts syntax`), R15 (day/night zoning), R16 (corner doors), R17 (axis economy)
   and R18 (regularity).
 - Calibrate on the corpus plus the ResPlan priors in that report (§4 has the method and caveats).
+- PS5.1a shipped: PR #244 (pending). `taste()`, `score --taste generic`, R3, R7, R14, the layer
+  field on lint rules, ADR 0032 (Proposed); R6, R9, R11, R12, R15, R16, R17, R18 remain (PS5.1b).
 
 **PS5.2 · Profiles.** `todo`
 - `cn-`, `uk-` and `us-residential-advisory`, each a partial ruleset with sourced numbers.

@@ -153,7 +153,7 @@ arch link  # print a playground URL that opens the plan, rendered, with nothing 
 arch watch  # recompile on save (interactive)
 arch validate  # parse + resolve + lint, no render (is it valid & sound?)
 arch describe  # semantic facts: rooms, areas, adjacency, what doors connect
-arch score  # continuous intent satisfaction (satisfied/total) as data — the refine-loop reward
+arch score  # continuous intent satisfaction (satisfied/total) as data — the refine-loop reward — or, with --taste, the plan's taste score
 arch lint  # architectural soundness warnings
 arch ast  # parse only (no resolve/render) and print the span-bearing AST as JSON
 arch complete  # completion items in scope at a source byte offset (the LSP completion() core)
@@ -713,9 +713,9 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
   - flags: `--room <id[,id…]>` keep only these rooms; doors/windows/openings/furniture narrow to the ones touching them (plan-level facts — bbox, totals, caption — stay whole-plan) · `--zone <path[,path…]>` keep only the rooms declared in these `zone` blocks (nested zones roll up; paths are dotted, e.g. west.galleries) — a DISPLAY filter: `ok` and the exit code still weigh the whole plan · `--select <key[,key…]>` emit only these top-level keys of the --json object (rooms, doors, totals, access, circulation, freedom, …); the ok/plan/units/diagnostics envelope is always kept · `--level <n>` report this storey of a multi-storey plan as the top-level facts (a DISPLAY filter — `ok` and the exit code still weigh the whole plan) · `--facts <symmetry|syntax|depends[,…]>` also compute these opt-in facts: `symmetry` (the plan's symmetry group per layer — shell, rooms, full — and its repeated rooms), `syntax` (space-syntax depth, mean depth, RA, integration and control on the access graph) and `depends` (per element, the ids it derives from and the `let`/parameter names it reads); absent by default · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
   - example: `archlang describe plan.arch --json` — rooms, areas, adjacency, door connections, caption, freedom — confirm the plan means what you intended
 
-**`archlang score`** — continuous intent satisfaction (satisfied/total) as data — the refine-loop reward. Measures, never gates (validate --intent is the gate).
-  - input: <file.arch|-> → output: { ok, satisfied, total, score, subscores, violations } (exit 0 on a successful measurement, even when assertions fail)
-  - flags: `--brief <intent.json>` the intent JSON to measure satisfaction against (required) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
+**`archlang score`** — continuous intent satisfaction (satisfied/total) as data — the refine-loop reward — or, with --taste, the plan's taste score. Measures, never gates (validate --intent is the gate).
+  - input: <file.arch|-> → output: --brief: { ok, satisfied, total, score, subscores, violations }; --taste: { profile, ok, score, uncapped, capped, validity, advisory, coverage, subscores, criteria } (exit 0 on a successful measurement, whatever the score)
+  - flags: `--brief <intent.json>` the intent JSON to measure satisfaction against (this or --taste) · `--taste <generic>` score taste instead (ADR 0032): sourced criteria in [0,1], capped at 0.5 while a validity lint warning stands; never gates (not with --brief) · `--json` structured result on stdout, messages on stderr · `--quiet|-q` suppress human messages on stderr
   - example: `archlang score plan.arch --brief brief.json --json` — continuous intent satisfaction as the refine-loop reward; always exits 0 on a measurement
 
 **`archlang lint`** — architectural soundness warnings
@@ -780,7 +780,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 
 **`archlang context`** — print the full bundled agent context (spec + workflow + CLI + errors)
   - input: none → output: the full agent context (llms-full.txt), or one --section of it
-  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 132 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 23 KB; errors = the diagnostic catalog, 50 KB) · `--json` structured result on stdout, messages on stderr
+  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 132 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 24 KB; errors = the diagnostic catalog, 50 KB) · `--json` structured result on stdout, messages on stderr
   - example: `archlang context` — the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 
 **`archlang new`** (aliases: `init`) — scaffold a starter .arch

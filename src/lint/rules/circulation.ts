@@ -13,6 +13,8 @@ import type { LintContext, LintRule } from "../context.js";
 export const roomNoClearPath: LintRule = {
   name: "room-no-clear-path",
   family: "circulation",
+  layer: "validity",
+  codes: ["W_ROOM_NO_CLEAR_PATH"],
   check({ rooms, furniture, doors, openings, ir, rules, labelOf, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const rc of computeRoomClearances(rooms, furniture, doors, openings, ir.walls, rules.tolMm)) {

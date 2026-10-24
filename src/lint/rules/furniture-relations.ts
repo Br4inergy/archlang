@@ -59,6 +59,8 @@ function obstaclePhrase(o: Obstacle, ctx: LintContext): { prose: string; hint: s
 export const furnClearDeclared: LintRule = {
   name: "furn-clear-declared",
   family: "furniture",
+  layer: "validity",
+  codes: ["W_FURN_CLEAR_FRONT", "W_FURN_CLEAR_SIDES"],
   check(ctx: LintContext): Diagnostic[] {
     const { furniture, ir, doors, at } = ctx;
     if (!furniture.some((f) => f._clear)) return [];
@@ -119,6 +121,8 @@ function gapMm(a: RFurniture, b: RFurniture): number {
 export const seatFacingAway: LintRule = {
   name: "seat-facing-away",
   family: "furniture",
+  layer: "validity",
+  codes: ["W_SEAT_FACING_AWAY"],
   check(ctx: LintContext): Diagnostic[] {
     const { furniture, rules, rooms, roomRects, at, frameOf } = ctx;
     const reach = rules.seatTableReachMm;

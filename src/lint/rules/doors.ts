@@ -45,6 +45,8 @@ import { approachGapMm, deficitMm, distPointToRect, mm, shortfall } from "../mea
 export const swingObstructed: LintRule = {
   name: "swing-obstructed",
   family: "doors",
+  layer: "validity",
+  codes: ["W_SWING_OBSTRUCTED"],
   check({ ir, doors, furniture, rules, at, frameOf }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     const swings: Array<{ d: RDoor; s: DoorSwing }> = [];
@@ -192,6 +194,8 @@ export function widestClearingWidth(
 export const doorwayBlocked: LintRule = {
   name: "doorway-blocked",
   family: "doors",
+  layer: "validity",
+  codes: ["W_DOORWAY_BLOCKED"],
   check({ doors, furniture, rules, at, skip }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const d of doors) {
@@ -257,6 +261,8 @@ export const doorwayBlocked: LintRule = {
 export const pocketRun: LintRule = {
   name: "pocket-run",
   family: "doors",
+  layer: "validity",
+  codes: ["W_POCKET_RUN"],
   check({ doors, ir, rules, at, skip }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const d of doors) {
@@ -341,6 +347,8 @@ function pocketRunMm(
 export const doorClearance: LintRule = {
   name: "door-clearance",
   family: "doors",
+  layer: "validity",
+  codes: ["W_DOOR_CLEARANCE"],
   check({ doors, rules, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const d of doors) {
@@ -419,6 +427,8 @@ export const doorClearance: LintRule = {
 export const doorNearCorner: LintRule = {
   name: "door-near-corner",
   family: "doors",
+  layer: "validity",
+  codes: ["W_DOOR_NEAR_CORNER"],
   check({ ir, doors, wallSegs, rules, at }: LintContext): Diagnostic[] {
     const out: Diagnostic[] = [];
     for (const d of doors) {

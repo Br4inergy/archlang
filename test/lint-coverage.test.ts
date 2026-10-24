@@ -3,7 +3,14 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { diagnosticToJson, lint, lintCoverage, lintWithCoverage, type LintCoverage } from "../src/index.js";
+import {
+  diagnosticToJson,
+  LINT_CODE_LAYERS,
+  lint,
+  lintCoverage,
+  lintWithCoverage,
+  type LintCoverage,
+} from "../src/index.js";
 import { LINT_RULES } from "../src/lint.js";
 import { coverageLine, FAMILY_NOUN, SKIP_WHY } from "../src/lint/coverage.js";
 
@@ -41,7 +48,12 @@ describe("lint coverage: beside lint(), never inside it", () => {
   // nothing. That its output did not move is pinned by the byte-identity digest tables
   // (`test/byte-identity-baseline.ts`), which hash `lint()` over the whole corpus.
   it("is null, with no diagnostics, on a plan that does not resolve", () => {
-    expect(lintWithCoverage(`plan "x" { room id=a at (0,0) size 1x }`)).toEqual({ diagnostics: [], coverage: null });
+    // `layers` is the static code → layer map (ADR 0032), returned whether or not the plan resolves.
+    expect(lintWithCoverage(`plan "x" { room id=a at (0,0) size 1x }`)).toEqual({
+      diagnostics: [],
+      coverage: null,
+      layers: LINT_CODE_LAYERS,
+    });
     expect(lintCoverage(`plan "x" { room id=a at (0,0) size 1x }`)).toBeNull();
   });
 });
