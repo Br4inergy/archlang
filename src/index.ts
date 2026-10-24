@@ -297,6 +297,10 @@ export type {
   TasteSubscore,
   TasteVerified,
 } from "./taste/index.js";
+// The one item to fix first (PS5.3): fixed precedence over what `validate` measured — errors,
+// validity, drafting, compile warnings, intent, profile, taste. Pure; reads results only.
+export { nextDiagnostic, NEXT_TIERS } from "./next.js";
+export type { NextInput, NextItem, NextTier } from "./next.js";
 // Explicit opt-in source-to-source corrector (ADR 0006): never part of compile().
 export { repair } from "./repair.js";
 export type { RepairResult, RepairChange, RepairNote } from "./repair.js";

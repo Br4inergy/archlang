@@ -1326,6 +1326,51 @@ agent with no eyes on the drawing — see
    the brief.
 3. `archlang lint --json` — clear the habitability warnings (each carries a `fix`).
 
+### `next`: the one thing to fix first
+
+`validate --json` ends with a `next` key: the one item to fix before anything else, or `null`
+when nothing is left. It is chosen by a fixed precedence, and within a tier the first in
+emission order wins:
+
+| Tier | What | Present when |
+|---|---|---|
+| `error` | a compile error | always |
+| `validity` | a default `lint()` warning from a validity-layer rule | always |
+| `drafting` | a default `lint()` warning from a drafting-layer rule (the annotation family) | always |
+| `warning` | a compile-channel warning (`W_DOOR_OFF_WALL`, `W_ROOM_OVERLAP`, a deprecation) | always |
+| `intent` | a failing gating assertion, then a `--graph` mismatch, then an advisory assertion | `--intent`, `--graph` |
+| `profile` | a warning only the named lint profile raises | `--profile <name>` |
+| `taste` | the lowest-scoring assessable taste criterion below 1 | `--taste <profile>` |
+
+```
+archlang validate plan.arch --json --taste generic
+```
+
+```json
+"next": {
+  "tier": "validity",
+  "code": "W_ROOM_VIA_PRIVATE",
+  "message": "\"Bedroom 4\" is reached only through \"Bedroom 3\" (access depth 3). A route through a bedroom takes away that room's privacy (…).",
+  "span": [735, 810],
+  "hint": "\"Living Room\" (r_living) shares a straight 3000 mm of edge with \"Bedroom 4\" (r_bed4), on centrelines: a door at least 900 mm wide there, with 100 mm of wall left at each jamb, reaches it at depth 2 without passing a bedroom, bathroom or WC."
+}
+```
+
+(`test/defect-corpus/circulation-privacy/bedroom-via-bedroom.arch`; the message is shortened.)
+
+`hint` is the diagnostic's first hint, else its catalogued `fix`; for an intent violation it is
+the correction prompt `--feedback` prints; for taste it names the criterion, its score and its
+source. `code` is the taste criterion's `A_*` advice code in the taste tier, and `null` for a
+`--graph` mismatch. `level` and `file` appear when the diagnostic carries them.
+
+`next` adds a key and changes nothing else: every byte before it, `ok` and the exit code are
+what they were, and a display filter (`--code`, `--severity`) never moves it. `--profile`
+reports the diagnostics `lint --profile` reports (so `--strict` gates on them); `--taste` only
+feeds the last tier and never gates. In human mode one `next (<tier>):` line goes to stderr,
+followed by its `= help:` line; `--quiet` drops it. In the library it is
+`nextDiagnostic({ diagnostics, lint, intent?, graph?, profileLint?, taste? })`, pure: it reads
+the results it is handed and measures nothing itself.
+
 ### Diagnostics as data, and seeing a failure
 
 The two feedback channels an agent relies on are both public, structured API:
