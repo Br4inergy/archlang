@@ -597,7 +597,7 @@ into PS3.12)
 | 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the 500 mm widening drill moves walls and doors with the room; the class-2 corpus cases are unwritable in the D5 form. *Status:* met 2026-10-23 by PS3.6 (PR #227), every bullet; catch rate then 46/68; dated status history verbatim: `research/2026-10-24-ps3-as-built.md` § §7 row 3 |
 | 3a | PS3.7, PS3.8, PS3.5, PS3.9 (and PS0.19) | Unplanned: done after row 3 was met, before row 4 (D7): PRs #228, #229, #230, #232; PS0.19 #231. First-contact re-run, PR #233 (`audits/2026-10-24-first-contact-rerun.md`): old six plans 17/57 caught (6 partially; 14/57 counting halves); cold re-authoring 6/6 rooms-first; defects 57 → 48, blockers 4 → 2; corpus catch rate 46/68 → 47/70 |
 | 4 | PS0.4, PS4.1, PS4.2 | The widening drill's `impact` names every moved, held and broken item correctly. *Status:* met in part 2026-10-24 by PS4.2 (PR #240): every moved and broken item of the drill is named correctly; `held` is empty because the drill's walls are fixed coordinates and depend on nothing (PS4.5). Merged 2026-10-24 (7954f252) |
-| 5 | PS5.1–PS5.3, PS2.10–PS2.12 | **Next.** The taste score separates the corpus's known-bad from known-good plans monotonically. D10: the row-3 first-contact figures are the baseline; re-measure after this row. PS5.1 complete; concordance 37 ordered / 0 tied / 0 reversed (0 ledgered) / 4 unjudged. |
+| 5 | PS5.1–PS5.3, PS2.10–PS2.12 | **Next.** The taste score separates the corpus's known-bad from known-good plans monotonically. D10: the row-3 first-contact figures are the baseline; re-measure after this row. PS5.1 complete; concordance 37 ordered / 0 tied / 0 reversed (0 ledgered) / 4 unjudged. *Re-measure:* `audits/2026-10-25-first-contact-rerun-row5.md` (PR #PRNUM): cold re-authoring 6/6 rooms-first, defects 48 → 49 (B 2 → 0), final lint 0; 0/6 authors ran `score --taste` or `validate`; taste 0.72–0.93 on the new plans and reaches 3/48 (+1 partial) and 2/49 audited defects; the row-5 codes caught 1.5/57 and 0/48 on the old plans (`W_ANNOTATION_OVERLAP` only, 12 true hits); concordance unchanged; corpus 53/72. |
 | 6 | PS4.3, PS4.4, PS3.5, PS3.6, PS5.4, PS7.x | — (PS3.6 landed in row 3, PS3.5 in row 3a) |
 | 7 | PS6.1 | — |
 
@@ -618,6 +618,7 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
    today's spec wrote rooms-first unprompted (6/6, 0 `wall` statements); class-1 defects fell 4 → 0
    and surviving defects 57 → 48 (area basis judged as in the baseline; 54 → 45 without it). There
    is no walls-first control arm yet.
+   *Measured 2026-10-25, see `audits/2026-10-25-first-contact-rerun-row5.md`:* 6/6 rooms-first again (31 `door between`, 0 `wall`); defects 48 → 49 (46 without area basis), blockers 2 → 0; still no walls-first arm.
 2. **Where is the boundary between a fact and taste in each culture?** For example, a kitchen as the
    entry room is normal in some housing stocks. Profiles may need a `residential-generic` that is
    deliberately quiet.
@@ -657,6 +658,7 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
    - Seats: 24/24 inverted before the lint loop, 0/24 after; `facing` used 0 times.
    - Sofas: 1/3 face their TV.
    - Exterior doors: 8/8 swing the intended way.
+   *Measured 2026-10-25, see `audits/2026-10-25-first-contact-rerun-row5.md`:* 49 defects (0 B), final lint 0; seats 18/24 inverted before the loop, 0/24 after, `facing` 0; sofas 0/3 face their TV and 3 of 5 are transposed footprints; exterior doors 8/8.
 9. **Should a `let` be able to hold a room-edge datum?** PS3.2 part B (PR #221) refuses it
    (`E_DATUM_BEFORE_ROOMS`: a `let` is evaluated once, at expansion, before any room is placed).
    The alternative considered and declined there was a deferred `let`, evaluated where it is read;
