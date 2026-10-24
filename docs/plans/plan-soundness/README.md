@@ -339,7 +339,7 @@ A done row's "record" is `research/2026-10-24-ps0-ps2-as-built.md`.
 - As built: record § PS1.1.
 
 **PS1.2 · Fold the first-contact instances into the corpus.** `done` (PR #203, 90ae6bfd; two more cases in PR #233, 1a1efd9e)
-- As built: record § PS1.2. The corpus is now 70 cases and the catch rate 47/70.
+- As built: record § PS1.2. The corpus is now 70 cases and the catch rate 48/70 (47/70 before PS2.10).
 - *Open (carried from PS1.1):* should the corpus also feed `eval:ci` as a non-gating metric? Read
   `.claude/rules/eval-dataset.md` first: the holdout rules apply.
 
@@ -350,7 +350,7 @@ Each is an advisory `W_*` appended to `LINT_RULES`, with catalogue entry, `expla
 owner's audit scratch. Re-derive them from this text rather than asking for them.
 
 Landed in three waves, 2026-10-19 to 2026-10-20 (landing notes verbatim: `research/2026-10-24-ps0-ps2-as-built.md` § PS2). Corpus catch
-rate now 47/70 (`audits/2026-10-24-first-contact-rerun.md`).
+rate 47/70 after the re-run (`audits/2026-10-24-first-contact-rerun.md`); 48/70 with PS2.10 (PR #243).
 
 A done row's "record" is `research/2026-10-24-ps0-ps2-as-built.md`.
 
@@ -365,7 +365,7 @@ A done row's "record" is `research/2026-10-24-ps0-ps2-as-built.md`.
 | PS2.7 | `W_ENTRANCE_INTO_PRIVATE` | As built: record § PS2.7 | done (PR #199, a7a1ac34) |
 | PS2.8 | `W_HABITABLE_NO_WINDOW` | As built: record § PS2.8 | done (PR #200, cc165f4c) |
 | PS2.9 | `W_ROOM_MISSING_DEFINING` | As built: record § PS2.9 | done (PR #200, cc165f4c) |
-| PS2.10 | `W_DIM_TEXT_MISMATCH` | A hand `dim … text "<number>"` whose number differs from the measured span beyond rounding. Non-numeric text is exempt | todo |
+| PS2.10 | `W_DIM_TEXT_MISMATCH` | As built: record § PS2.10 | done (PR #243, pending) |
 | PS2.11 | Clearance family | WC centreline to side obstacle (default 400, `us` 381, accessible 450–500); front of a wardrobe ≥ 600; hob-to-fridge gap; tall unit (fridge, wardrobe, bookcase) covering a window; a door swing over a stair footprint or its landing; a void at a stair's arrival; stair pitch versus storey height; `W_DOORWAY_BLOCKED` extended to leaf-less openings; a single hinged leaf over 1200 mm (and a double-leaf `door` kind, since authors fake one with two leaves that clash); door–door interference (an open leaf parked across another doorway's approach, which `W_SWING_OBSTRUCTED` does not compare); a transposed footprint on a directional piece (`size WxH` with the depth on the long axis instead of a `rotate`, drawn turned and stretched). Each is a separate code; split into cards as they start. Wardrobe front and bed sides are declarations or profile values, never defaults (PS3.7). Fresh instances: `audits/2026-10-18-first-contact.md` T1, T3, H2, C4, A1, K4. *Part landed:* `W_SEAT_FACING_AWAY` (PR #228, 0d2dbc04); as built: `research/2026-10-24-ps0-ps2-as-built.md` § PS2.11. The other bullets stay open | todo |
 | PS2.12 | Annotation collisions | Auto-dimension text inside a room floor, over a symbol or over a label; title-block text wider than its row. Extend `W_DIM_INSIDE` to `dims auto`; drafting only, never `describe()` | todo |
 | PS2.13 | Lint coverage report | As built: record § PS2.13 | done (PR #203, 90ae6bfd) |
