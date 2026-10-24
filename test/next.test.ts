@@ -279,6 +279,14 @@ describe("nextDiagnostic · the defect corpus table", () => {
     expect(done.length).toBeGreaterThan(40);
   });
 
+  it("the table reaches both lint tiers (drafting is not carried by one pinned row alone)", () => {
+    const byTier = (t: string): number => rows.filter((r) => r.next?.tier === t).length;
+    expect(byTier("validity")).toBeGreaterThan(0);
+    expect(byTier("drafting")).toBeGreaterThan(0);
+    // Rows whose expect code is drafting-layer: the drafting tier's population in the corpus.
+    expect(done.filter((r) => r.layers[r.expect] === "drafting").length).toBeGreaterThan(0);
+  });
+
   it("every done case's expect code is a lint code with a layer (no vacuous row)", () => {
     expect(done.filter((r) => r.layers[r.expect] === undefined).map((r) => `${r.name}: ${r.expect}`)).toEqual([]);
   });
