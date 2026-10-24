@@ -1263,15 +1263,27 @@ usage (exit `3`: an unknown profile, or `--taste` together with `--brief`) fails
 [ADR 0032](adr/0032-taste-separate-score.md).
 
 Each criterion reads the facts `describe` reports (room uses, access depths, windows, net
-areas) and cites its source:
+areas) and, where `describe` rounds, the exact room rings, door positions and wall
+centrelines; each cites its source. A ramp `a → b` scores 0 at `a` and 1 at `b`, linear between.
+Marks: [V] read in the source, [S] second-hand, [prior] a ResPlan dataset prior used only as a
+ramp anchor.
 
-| Criterion | Subscore | Reads | Source |
-|---|---|---|---|
-| R3 intimacy gradient | zoning | the share of (living/dining/kitchen, bedroom) pairs where the public room is no deeper from the entrance | Alexander, *A Pattern Language*, 127 |
-| R7 daylight ratio | light | glazing (width × (head − sill)) over net floor area, per habitable room; generic target 8 % | IRC R303.1 |
-| R14 common area at the heart | circulation | the best rank, by total depth on the access graph, of a living or dining room | Alexander 129; Hanson 1998 |
+| Criterion | Subscore | Reads | Ramp | Source |
+|---|---|---|---|---|
+| R3 intimacy gradient | zoning | the share of (living/dining/kitchen, bedroom) pairs where the public room is no deeper from the entrance | 0 → 1 | Alexander, *A Pattern Language*, 127 [V] |
+| R6 furniture–use match | furnishing | the share of plumbing fixtures, kitchen fittings and beds standing in a room of their use (a counter or worktop is not judged; homes only) | 0 → 1 | the fixture catalogue's zones and a bedroom's defining piece |
+| R7 daylight ratio | light | glazing (width × (head − sill)) over net floor area, per habitable room; generic target 8 % | 0 → 8 % | IRC R303.1 [S] |
+| R9 proportion | geometry | per habitable, bath or WC room, long ÷ short side of the minimum-area rectangle enclosing its floor (from the shape, never the bounding box; a circle reads 1) | habitable 3 → 2, bath or WC 3.5 → 2.5 | Palladio, *Quattro Libri* I.xxi [S]; ResPlan aspect p95 [prior] |
+| R11 kitchen–dining link | zoning | the share of kitchens with a living or dining use, or a door or opening to such a room (homes only) | 0 → 1 | Alexander 139 [V]; ResPlan 99 % [prior] |
+| R12 dwelling aspect | light | the number of compass sides the habitable windows face: none 0, one 0.5 (0 if it is the pole side of a `site`), two or more 1 (homes only) | — | London Plan D6, LPG C4.1 [S] |
+| R14 common area at the heart | circulation | the best rank, by total depth on the access graph, of a living or dining room | rank n → ⌈n/3⌉ | Alexander 129; Hanson 1998 |
+| R15 night-zone contiguity | zoning | the share of bedroom pairs (joined without going outside) that open onto a common hall or corridor | 0 → 1 | 动静分区; Alexander 136 [V] |
+| R16 corner doors | circulation | per door into a room under 15 m² (not a hall), whether the nearer jamb is within max(wall thickness, 600 mm) of the room's corner; rectilinear rooms only | 0 → 1 | Alexander 196 [V]; ResPlan jamb-to-corner p50 [prior] |
+| R17 axis economy | geometry | distinct x and y lines of room and wall edges (lines within 100 mm are one) per room that is not circulation; four rooms or more | 2.5 → 1.5 | Ching, *Form, Space and Order*, ch. 7 [S]; Brandão 2008 [S] |
+| R18 shape regularity | geometry | per bedroom, bath or kitchen, floor area ÷ the area of its minimum enclosing rectangle (a circle is skipped) | 0.75 → 0.9 | Alexander 191 [V]; ResPlan rectangularity p10 [prior] |
 
-A criterion that cannot judge (no entrance, nothing to compare, an upper storey) says so with
+A criterion that cannot judge (no entrance, nothing to compare, an upper storey, a building that
+reads as non-residential for R6, R11 and R12) says so with
 `assessable: false` and a `reason`, and is left out of the total, never counted as a pass;
 `coverage.weight` says how much of the profile was judged. A criterion below 1 carries an
 `A_*` advice code. Rooms are named by label in `message`; ids appear only in
@@ -1291,16 +1303,17 @@ A hall → bath → bedroom → living chain, abridged to its first criterion:
   "profile": "generic",
   "ok": true,
   "score": 0.5,
-  "uncapped": 0.7222,
+  "uncapped": 0.6875,
   "capped": true,
   "validity": { "pass": false, "warnings": 6,
                 "codes": ["W_ROOM_NO_FIXTURE", "W_CIRCUITOUS_PATH", "W_ROOM_VIA_PRIVATE"],
                 "drafting": { "warnings": 0, "codes": [] } },
   "advisory": [],
   "coverage": { "rooms": 5, "classified": 5, "unclassified": [],
-                "weight": { "assessable": 3, "total": 3 }, "skipped": [] },
-  "subscores": { "circulation": 0.6667, "zoning": 0.5, "light": 1,
-                 "geometry": null, "furnishing": null, "facade": null },
+                "weight": { "assessable": 10, "total": 11 },
+                "skipped": [{ "criterion": "R6", "reason": "too-few-items" }] },
+  "subscores": { "circulation": 0.3334, "zoning": 0.5, "light": 1,
+                 "geometry": 0.9167, "furnishing": null, "facade": null },
   "criteria": [
     { "id": "R3", "name": "intimacy-gradient", "subscore": "zoning", "kind": "taste",
       "weight": 1, "assessable": true, "measured": { "num": 1, "den": 2 }, "score": 0.5,

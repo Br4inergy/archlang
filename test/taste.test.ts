@@ -97,6 +97,8 @@ describe("the advice table (A_* codes are advice, not diagnostics)", () => {
       expect(ERROR_CATALOG[row.code], `${row.code} must not be in the error catalogue`).toBeUndefined();
       expect(row.source.length).toBeGreaterThan(10);
       expect(["V", "S", "M"]).toContain(row.verified);
+      // A remembered value is verified before it ships (ADR 0032): no criterion ships on [M].
+      expect(row.verified, `${row.id} ships on a remembered source`).not.toBe("M");
       expect(row.asks.length).toBeGreaterThan(10);
       expect(TASTE_SUBSCORES).toContain(row.subscore);
     }
@@ -138,7 +140,19 @@ describe("the report", () => {
       "message",
       "evidence",
     ]);
-    expect(r.criteria.map((c) => c.id)).toEqual(["R3", "R7", "R14"]);
+    expect(r.criteria.map((c) => c.id)).toEqual([
+      "R3",
+      "R6",
+      "R7",
+      "R9",
+      "R11",
+      "R12",
+      "R14",
+      "R15",
+      "R16",
+      "R17",
+      "R18",
+    ]);
   });
 
   it("caps at 0.5 while a validity warning stands, and says what it was before", () => {
@@ -146,7 +160,7 @@ describe("the report", () => {
     expect(r.validity.codes).toContain("W_ROOM_VIA_PRIVATE");
     expect(r.capped).toBe(true);
     expect(r.score).toBe(0.5);
-    expect(r.uncapped).toBe(0.7222);
+    expect(r.uncapped).toBe(0.6875);
   });
 
   it("a drafting-layer warning is listed and never caps", () => {
@@ -164,7 +178,9 @@ describe("the report", () => {
     expect(t.validity.drafting.warnings).toBe(1);
     expect(t.validity.pass).toBe(true);
     expect(t.capped).toBe(false);
-    expect(t.score).toBe(1);
+    // Not capped: the score is the uncapped total (0.875: R12 reads the one window as single aspect).
+    expect(t.score).toBe(t.uncapped);
+    expect(t.score).toBe(0.875);
   });
 
   it("a compile-channel warning never caps", () => {
@@ -200,8 +216,8 @@ describe("the report", () => {
     const t = tasteWithBudget(read(`${CHAIN}.arch`), {}, 0);
     expect(t.score).toBeNull();
     expect(t.criteria.every((c) => !c.assessable && c.reason === "taste-budget")).toBe(true);
-    expect(t.coverage.skipped.map((s) => s.reason)).toEqual(["taste-budget", "taste-budget", "taste-budget"]);
-    expect(t.coverage.weight).toEqual({ assessable: 0, total: 3 });
+    expect(t.coverage.skipped.map((s) => s.reason)).toEqual(Array(11).fill("taste-budget"));
+    expect(t.coverage.weight).toEqual({ assessable: 0, total: 11 });
   });
 });
 
@@ -267,10 +283,176 @@ describe("each criterion's acceptance line (design §3)", () => {
     expect(crit(good, "R14").score).toBe(1);
   });
 
+  // ---- PS5.1b: the eight remaining criteria (design §3 acceptance lines) ----
+
+  const corpus = (name: string): TasteReport => taste(read(`test/taste-corpus/${name}.arch`));
+  /** A bare plan of rooms (no walls, no openings): what the geometry criteria read. */
+  const roomsOnly = (rooms: string[], extra: string[] = []): string =>
+    [
+      'plan "Rooms" {',
+      "  units mm",
+      "  grid 10",
+      ...rooms.map((r) => `  ${r}`),
+      ...extra.map((e) => `  ${e}`),
+      "}",
+    ].join("\n");
+
+  it("R6: a bed in a room typed `uses kitchen` is 1 mismatch of 3 judged pieces; in the bedroom, 0", () => {
+    const bad = crit(corpus("r6-bed-in-kitchen"), "R6");
+    expect(bad.measured).toEqual({ num: 2, den: 3 });
+    expect(bad.score).toBe(0.6667);
+    expect(bad.advice).toBe("A_FURNITURE_USE_MISMATCH");
+    expect(bad.evidence).toHaveLength(1);
+    expect(bad.evidence[0]!.ids[1]).toBe("r_kitchen");
+    expect(bad.message).toContain('"Kitchen"');
+    const good = crit(corpus("r6-bed-in-kitchen.good"), "R6");
+    expect(good.measured).toEqual({ num: 3, den: 3 });
+    expect(good.advice).toBeNull();
+  });
+
+  it("R6 judges a home only, and never a bare work surface", () => {
+    // A clinic's consulting-room basins are not bath fittings out of place.
+    expect(crit(taste(read("examples/clinic.arch")), "R6").reason).toBe("non-dwelling");
+    // The bungalow's laundry counter is a bench, not a kitchen fitting: every judged piece fits.
+    const b = crit(taste(read("examples/bungalow.arch"), { world: TASTE_WORLD }), "R6");
+    expect(b.score).toBe(1);
+  });
+
+  it("R9: a 2000 × 5000 bedroom (aspect 2.5) scores 0.5; a squarer twin scores 1", () => {
+    const bad = crit(corpus("r9-long-bedroom"), "R9");
+    expect(bad.score).toBe(0.5);
+    expect(bad.evidence[0]!.fact).toContain("aspect 2.5 of the minimum enclosing rectangle");
+    expect(crit(corpus("r9-long-bedroom.good"), "R9").score).toBe(1);
+  });
+
+  it("R9 reads the minimum rectangle of the SHAPE, never the bounding box", () => {
+    // A 45°-turned square: its bounding box and its shape both say 1.
+    const square = roomsOnly([
+      'room id=r_a polygon (0,3000) (3000,0) (6000,3000) (3000,6000) label "Bedroom" uses bedroom',
+    ]);
+    expect(crit(taste(square), "R9").score).toBe(1);
+    // A 45°-turned 2828 × 7071 rectangle: the bounding box (7000 × 7000) would say 1; the shape says 2.5.
+    const turned = roomsOnly([
+      'room id=r_a polygon (0,2000) (2000,0) (7000,5000) (5000,7000) label "Bedroom" uses bedroom',
+    ]);
+    const r9 = crit(taste(turned), "R9");
+    expect(r9.score).toBe(0.5);
+    expect(r9.evidence[0]!.fact).toContain("aspect 2.5 ");
+    // An L reads its convex hull's rectangle: 4000 × 6000 here, aspect 1.5.
+    const l = roomsOnly([
+      'room id=r_a polygon (0,0) (4000,0) (4000,1000) (1000,1000) (1000,6000) (0,6000) label "Bedroom" uses bedroom',
+    ]);
+    expect(crit(taste(l), "R9").evidence[0]!.fact).toContain("aspect 1.5 ");
+  });
+
+  it("R11: living-via-bedrooms 0/1, its twin 1/1; the corpus pair 0/1 → 1/1", () => {
+    const lvb = "test/defect-corpus/circulation-privacy/living-via-bedrooms";
+    expect(crit(taste(read(`${lvb}.arch`)), "R11").measured).toEqual({ num: 0, den: 1 });
+    expect(crit(taste(read(`${lvb}.clean.arch`)), "R11").measured).toEqual({ num: 1, den: 1 });
+    const bad = crit(corpus("r11-kitchen-off-hall"), "R11");
+    expect(bad.score).toBe(0);
+    expect(bad.advice).toBe("A_KITCHEN_APART");
+    expect(crit(corpus("r11-kitchen-off-hall.good"), "R11").score).toBe(1);
+  });
+
+  it("R12: every habitable window on one side scores 0.5; with `site` and that side the pole side, 0", () => {
+    const one = read("test/taste-corpus/r12-single-aspect.arch");
+    expect(crit(taste(one), "R12").score).toBe(0.5);
+    expect(crit(corpus("r12-single-aspect.good"), "R12").score).toBe(1);
+    // Northern hemisphere: the equator side is S, so the pole side is N, which both windows face.
+    const north = one.replace("  grid 100\n", "  grid 100\n  site { street south hemisphere north }\n");
+    const r12 = crit(taste(north), "R12");
+    expect(r12.score).toBe(0);
+    expect(r12.evidence[0]!.fact).toBe("habitable windows face N; the pole side is N");
+    // Southern hemisphere: N is the equator side, so the same plan is 0.5 again.
+    const south = one.replace("  grid 100\n", "  grid 100\n  site { street south hemisphere south }\n");
+    expect(crit(taste(south), "R12").score).toBe(0.5);
+    expect(crit(taste(read("examples/clinic.arch")), "R12").reason).toBe("non-dwelling");
+  });
+
+  it("R15: bedroom-via-bedroom scores 0 on both twins; two bedrooms off one hall score 1; terrace-row pairs no two houses", () => {
+    const bvb = "test/defect-corpus/circulation-privacy/bedroom-via-bedroom";
+    expect(crit(taste(read(`${bvb}.arch`)), "R15").measured).toEqual({ num: 0, den: 1 });
+    expect(crit(taste(read(`${bvb}.clean.arch`)), "R15").measured).toEqual({ num: 0, den: 1 });
+    expect(crit(corpus("r15-bedroom-off-living"), "R15").score).toBe(0);
+    expect(crit(corpus("r15-bedroom-off-living.good"), "R15").measured).toEqual({ num: 1, den: 1 });
+    // Each house's bedrooms are joined only through the street: no pair is judged.
+    expect(crit(taste(read("examples/terrace-row.arch"), { world: TASTE_WORLD }), "R15").reason).toBe("too-few-items");
+  });
+
+  it("R16: a small bedroom's door 350 mm from its corner passes; centred on the 3000 mm edge (1050 mm) fails", () => {
+    const bad = crit(corpus("r16-door-mid-wall"), "R16");
+    expect(bad.measured).toEqual({ num: 0, den: 1 });
+    expect(bad.evidence[0]!.fact).toContain("jamb 1050 mm");
+    expect(bad.advice).toBe("A_DOOR_OFF_CORNER");
+    const good = crit(corpus("r16-door-mid-wall.good"), "R16");
+    expect(good.measured).toEqual({ num: 1, den: 1 });
+    expect(good.evidence[0]!.fact).toContain("jamb 350 mm");
+    // The hall side of the door is circulation and not judged: one item, the bedroom's.
+    expect(good.evidence.map((e) => e.ids[1])).toEqual(["r_bed"]);
+  });
+
+  it("R16 skips a non-rectilinear room as `non-rectangular-room`", () => {
+    const src = roomsOnly(
+      [
+        'room id=r_h at (0,0) size 2000x3000 label "Hall" uses hall',
+        'room id=r_a polygon (2000,0) (5000,0) (4000,3000) (2000,3000) label "Bedroom" uses bedroom',
+      ],
+      ["wall id=w partition thickness 100 { (2000,0) (2000,3000) }", "door id=d on w at 1500 width 900"],
+    );
+    expect(taste(src).coverage.skipped).toContainEqual({
+      criterion: "R16",
+      reason: "non-rectangular-room",
+      room: "r_a",
+    });
+  });
+
+  it("R17: four rooms on 7 axes read 7/4 (0.75); a partition 40 mm off its neighbour clusters with it, 600 mm does not", () => {
+    expect(crit(corpus("r17-staggered-partition.good"), "R17").measured).toEqual({ num: 7, den: 4 });
+    expect(crit(corpus("r17-staggered-partition.good"), "R17").score).toBe(0.75);
+    expect(crit(corpus("r17-staggered-partition"), "R17").measured).toEqual({ num: 8, den: 4 });
+    const grid = (offset: number): string =>
+      roomsOnly([
+        'room id=a at (0,0) size 4000x3500 label "Living Room" uses living',
+        'room id=b at (4000,0) size 3000x3500 label "Dining Room" uses dining',
+        `room id=c at (0,3500) size ${4000 + offset}x3500 label "Bedroom 1" uses bedroom`,
+        `room id=d at (${4000 + offset},3500) size ${3000 - offset}x3500 label "Bedroom 2" uses bedroom`,
+      ]);
+    expect(crit(taste(grid(40)), "R17").measured).toEqual({ num: 6, den: 4 });
+    expect(crit(taste(grid(40)), "R17").score).toBe(1);
+    expect(crit(taste(grid(600)), "R17").measured).toEqual({ num: 7, den: 4 });
+  });
+
+  it("R17 needs four counted rooms: below that no plan can reach 1.5 axes per room (design's 3-room strip)", () => {
+    // The design's acceptance line reads a 3-room strip as 6/3; three rooms can never reach the
+    // ramp's 1.5, so R17 does not judge them (R17_MIN_ROOMS).
+    const strip = roomsOnly([
+      'room id=a at (0,0) size 3000x4000 label "Bedroom 1" uses bedroom',
+      'room id=b at (3000,0) size 3000x4000 label "Bedroom 2" uses bedroom',
+      'room id=c at (6000,0) size 3000x4000 label "Living Room" uses living',
+    ]);
+    expect(crit(taste(strip), "R17").reason).toBe("too-few-items");
+  });
+
+  it("R18: a 3000 × 3000 room scores 1; an L at 0.75 of its hull rectangle scores 0; a circle is skipped", () => {
+    const sq = roomsOnly(['room id=a at (0,0) size 3000x3000 label "Bedroom" uses bedroom']);
+    expect(crit(taste(sq), "R18").score).toBe(1);
+    const l = crit(corpus("r18-l-shaped-bedroom"), "R18");
+    expect(l.score).toBe(0);
+    expect(l.evidence[0]!.fact).toContain("= 0.75 ");
+    expect(l.advice).toBe("A_ROOM_IRREGULAR");
+    expect(crit(corpus("r18-l-shaped-bedroom.good"), "R18").score).toBe(1);
+    const circle = roomsOnly(['room id=a circle at (3000,3000) radius 2000 label "Bedroom" uses bedroom']);
+    const t = taste(circle);
+    expect(t.coverage.skipped).toContainEqual({ criterion: "R18", reason: "curved-room", room: "a" });
+    // R9 reads a circle as aspect 1.
+    expect(crit(t, "R9").score).toBe(1);
+  });
+
   it("an upper storey is skipped for the depth readers, filed with its level", () => {
     const t = taste(read("examples/townhouse.arch"), { world: TASTE_WORLD });
     const upper = t.coverage.skipped.filter((s) => s.reason === "upper-storey");
-    expect(upper.map((s) => `${s.criterion}@${s.level}`)).toEqual(["R3@2", "R3@3", "R14@2", "R14@3"]);
+    expect(upper.map((s) => `${s.criterion}@${s.level}`)).toEqual(["R3@2", "R3@3", "R14@2", "R14@3", "R15@2", "R15@3"]);
   });
 });
 
@@ -315,7 +497,7 @@ describe("arch score --taste (the CLI contract)", () => {
   it("prints a human summary line and exits 0", () => {
     const r = run(["score", `${CHAIN}.arch`, "--taste", "generic"]);
     expect(r.status).toBe(0);
-    expect(r.stdout).toBe("taste generic: 0.5 (capped; uncapped 0.7222) · judged 3/3 of the weight\n");
+    expect(r.stdout).toBe("taste generic: 0.5 (capped; uncapped 0.6875) · judged 10/11 of the weight\n");
     expect(r.stderr).toContain("A_INTIMACY_INVERSION");
   }, 30000);
 
