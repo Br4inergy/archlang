@@ -94,6 +94,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The authoring loop is taught where cold authors read (plan card PS7.4): `spec.llm.md`'s
+  self-correction paragraph, the workflow skill's step 7 and the `arch-author` agent role now say
+  the same loop, compile → `validate --json` (fix its `next` first) → lint → `score --taste
+  generic` → repair, and that taste is advice that never gates, its 0.5 cap meaning a validity
+  lint warning stands. To stay under the spec's 30,000-character cap, the spec's "Place furniture
+  so it's physically sound" paragraph is folded into the lint sentence before it (each clause
+  restated a lint flag or the furniture row of "Common mistakes"), and the `score --taste` flag
+  line drops the loop its comment repeated. The spec is 29,864 characters (was 29,970).
 - `finish`'s never-worse law no longer counts drafting-layer codes (plan card PS2.12, ADR 0024
   and ADR 0025 amended; `W_ANNOTATION_OVERLAP`, `W_TITLE_OVERFLOW`, `W_DIM_INSIDE`,
   `W_DIM_OVERLAP`, `W_OPENING_NOT_DIMENSIONED`, `W_DIM_TEXT_MISMATCH`): they report the annotation, not the plan, and

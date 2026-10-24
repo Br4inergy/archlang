@@ -588,6 +588,13 @@ into PS3.12)
   sources, and draft/verified-on-corpus state.
 - Only if PS5 shows the rule count outgrowing code-defined profiles.
 
+**PS7.4 · Teach the taste step where cold authors read.** `done (PR #250, pending)`
+- *Intent:* 0 / 6 authors ran `score --taste` or `validate`. The `arch-author` role's loop (compile →
+  describe → lint) predates the SKILL's step 7, and `spec.llm.md` names the step only in a CLI-list
+  comment. Align the role text and the spec's loop paragraph with the SKILL, or decide that taste is
+  a reviewer's tool, not an author's.
+- *Acceptance:* the next first-contact re-measure, on the same protocol, counts the calls.
+
 ## 7. Suggested order and acceptance
 
 | Order | Cards | Done when |

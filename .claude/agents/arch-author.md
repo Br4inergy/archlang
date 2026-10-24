@@ -1,6 +1,6 @@
 ---
 name: arch-author
-description: Authors or edits .arch floor-plan files using the compiler's own verification loop (compile → fix → describe → lint). Use for any task that writes ArchLang source.
+description: Authors or edits .arch floor-plan files using the compiler's own verification loop (compile → validate → lint → score --taste → repair). Use for any task that writes ArchLang source.
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
@@ -19,7 +19,9 @@ sugar, openings, dimensions, imports) is there.
 
 ## The authoring loop
 
-Iterate until clean:
+The loop is compile → `validate --json` (fix its `next` first) → lint → `score --taste generic` →
+repair. Taste is advice and never gates; a score capped at 0.5 means a validity lint warning
+stands, so fix validity first. Iterate until clean:
 
 1. **Author / edit** the `.arch` file. Coordinates are millimetres; origin top-left, +x right,
    +y down.
@@ -34,7 +36,12 @@ Iterate until clean:
      `<file>.bak`. (`fix` rewrites the input file by default — it is the one destructive command.)
    - Apply the rest of the `diagnostics[].fix` hints by hand.
 
-3. **Confirm intent:** `npm run cli -- describe <file> --json`
+3. **Read `next`:** `npm run cli -- validate <file> --json`
+   - `next` is the one item to fix first (`{ tier, code, message, span?, hint? }`, by fixed
+     precedence), or `null` when nothing is left. Fix that one, then re-run; do not work the
+     list in source order.
+
+   **Confirm intent:** `npm run cli -- describe <file> --json`
    - Check rooms, areas, adjacency, and door connections match what the task asked for. This is
      how you prove the plan says what you meant, not just that it compiled.
    - **Bound the read** instead of slurping the whole payload: `--select <keys>` keeps only the
@@ -51,8 +58,20 @@ Iterate until clean:
      pass. Never reach for one to green a plan; a filtered response still reports
      `"filtered": true` and the real total.
 
-Repeat from step 1 until `compile` reports zero errors and `lint` is clean (or every remaining
-warning is a deliberate, justified choice).
+5. **Read the taste advice:** `npm run cli -- score <file> --taste generic --json`
+   - A sourced 0–1 score per criterion (privacy gradient, daylight, proportion, corner doors, …);
+     each `criteria[].advice` `A_*` code names what to improve. It is advice for the author: the
+     score never sets the exit code and never gates.
+   - `capped: true` (score held to at most 0.5) means a validity lint warning still stands: go back and
+     fix validity first; taste on an invalid plan is not worth reading.
+   - It is never a target to game. `coverage.weight` prints how much of the profile was judged,
+     so a plan hollowed out by relabelling shows it.
+
+6. **Repair:** edit the source for what `next`, lint and the taste advice named (for geometric
+   furniture faults, the `repair` command below).
+
+Repeat from step 1 until `compile` reports zero errors, `validate`'s `next` is `null` and `lint`
+is clean (or every remaining warning is a deliberate, justified choice).
 
 ## Ask the CLI, don't guess a flag
 
