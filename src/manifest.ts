@@ -577,6 +577,17 @@ const COMMANDS: ManifestCommand[] = [
       GRAPH_FLAG,
       INTENT_FLAG,
       FEEDBACK_FLAG,
+      {
+        flag: "--profile",
+        arg: `<${LINT_PROFILE_NAMES.join("|")}>`,
+        description:
+          "lint under this advisory ruleset too (as `lint --profile`); its own warnings rank as `next` tier profile",
+      },
+      {
+        flag: "--taste",
+        arg: `<${TASTE_PROFILE_NAMES.join("|")}>`,
+        description: "let `next` fall back to the lowest-scoring taste criterion (ADR 0032); never gates",
+      },
       CODE_FLAG,
       SEVERITY_FLAG,
       JSON_FLAG,
@@ -584,7 +595,7 @@ const COMMANDS: ManifestCommand[] = [
     ],
     input: "<file.arch|->",
     output:
-      "diagnostics (plus a graph{} report with --graph and an intent{ ok, satisfied, total, subscores, violations } block with --intent)",
+      "diagnostics (plus a graph{} report with --graph and an intent{ ok, satisfied, total, subscores, violations } block with --intent), then `next`: the one item to fix first { tier, code, message, span?, hint? } or null (tiers: error, warning, validity, drafting, intent, profile, taste)",
     examples: [
       {
         cmd: "archlang validate plan.arch --strict --json",
@@ -597,6 +608,10 @@ const COMMANDS: ManifestCommand[] = [
       {
         cmd: "archlang validate plan.arch --graph rooms.json --json",
         note: "check interior-door adjacency against an intended room graph",
+      },
+      {
+        cmd: "archlang validate plan.arch --json --taste generic",
+        note: "read `next` first: the one diagnostic to fix before anything else, by fixed precedence",
       },
       {
         cmd: "archlang validate plan.arch --severity error --json",

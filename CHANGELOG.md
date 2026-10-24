@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `validate --json` ends with `next` (plan card PS5.3): the one item to fix first, `{ tier,
+  code, message, span?, hint? }` or `null`, chosen by a fixed precedence: compile errors, then
+  compile-channel warnings (upstream causes, such as a door off its wall), then validity-layer
+  lint warnings, then drafting-layer ones, then the brief (`--intent` gating, `--graph`,
+  advisory), then the lint profile, then taste; within a tier, emission order. `validate` gains `--profile <name>` (the `lint --profile` names; its diagnostics
+  are the profile's) and `--taste <profile>` (feeds only the last tier, never gates). Every byte
+  before `next`, `ok` and every exit code are unchanged; human mode prints one `next (<tier>):`
+  line on stderr unless `--quiet`. In the library: `nextDiagnostic()`, `NEXT_TIERS`. The MCP
+  `validate` tool does not return `next` yet.
 - The taste score (plan card PS5.1a, ADR 0032). `archlang score plan.arch --taste generic
   [--json]` and `taste(source, { profile })` report a separate, sourced score in [0, 1] from
   three criteria: R3 (no living, dining or kitchen room deeper from the entrance than a bedroom),

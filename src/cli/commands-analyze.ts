@@ -24,6 +24,8 @@ import {
   applyLetOverride,
   taste,
   TASTE_PROFILE_NAMES,
+  nextDiagnostic,
+  offsetToLineCol,
 } from "../index.js";
 import type {
   DescribeFact,
@@ -38,6 +40,8 @@ import type {
   FreedomReport,
   LintCoverage,
   TasteReport,
+  NextInput,
+  NextItem,
 } from "../index.js";
 // Internal (not part of the public surface): parse → link → resolve without
 // rendering — validate/lint need only the diagnostics, never the SVG.
@@ -468,6 +472,7 @@ function report(
   args: Args,
   filter: DiagFilter = {},
   coverage?: LintCoverage,
+  next?: NextItem | null,
 ): number {
   const e = diags.filter((d) => d.severity === "error").length;
   const w = diags.length - e;
@@ -483,6 +488,8 @@ function report(
       ...(active ? { filtered: true, total_diagnostics: diags.length } : {}),
       diagnostics: shown.map((d) => diagnosticToJson(source, d)),
       ...(coverage ? { coverage } : {}),
+      // `validate` only (PS5.3): appended LAST, so every byte before it is what it was.
+      ...(next !== undefined ? { next } : {}),
     });
   } else {
     emitDiagnosticsHuman(source, shown, args.quiet);
@@ -490,6 +497,7 @@ function report(
       if (active) process.stderr.write(`  (display filter: showing ${shown.length} of ${diags.length} diagnostics)\n`);
       const skipped = coverage ? coverageLine(coverage) : null;
       if (skipped) process.stderr.write(`  ${skipped}\n`);
+      if (next) process.stderr.write(`${nextLine(source, next)}\n`);
       if (ok) process.stdout.write(`✓ ok${w ? ` (${w} warning${w === 1 ? "" : "s"})` : ""}\n`);
       else if (e === 0) process.stdout.write(`✗ ${w} warning${w === 1 ? "" : "s"} (--strict)\n`);
       else process.stdout.write(`✗ ${e} error${e === 1 ? "" : "s"}, ${w} warning${w === 1 ? "" : "s"}\n`);
@@ -498,7 +506,33 @@ function report(
   return ok ? EXIT.OK : EXIT.USER;
 }
 
+/**
+ * The human `next:` line (PS5.3), for stderr: tier, code, where, and what is wrong, then the
+ * hint on a second, indented `= help:` line when there is one.
+ */
+function nextLine(source: string, n: NextItem): string {
+  let where = "";
+  if (n.file !== undefined) where = ` in ${n.file}`;
+  else if (n.span) {
+    const { line, col } = offsetToLineCol(source, n.span[0]);
+    where = ` at ${line}:${col}`;
+  }
+  const head = `next (${n.tier}): ${n.code === null ? "" : `${n.code}${where}: `}${n.message}`;
+  return n.hint ? `${head}\n  = help: ${n.hint}` : head;
+}
+
 export function cmdValidate(args: Args): number {
+  // Unknown profile names are bad usage (exit 3) before any work, as on `lint` and `score`.
+  if (args.profile !== undefined && !LINT_PROFILE_NAMES.includes(args.profile)) {
+    return usageError(
+      `unknown lint profile "${args.profile}"${didYouMean(args.profile, LINT_PROFILE_NAMES)} (available: ${echoList(LINT_PROFILE_NAMES)})`,
+    );
+  }
+  if (args.taste !== undefined && !TASTE_PROFILE_NAMES.includes(args.taste)) {
+    return usageError(
+      `unknown taste profile "${args.taste}"${didYouMean(args.taste, TASTE_PROFILE_NAMES)} (available: ${echoList(TASTE_PROFILE_NAMES)})`,
+    );
+  }
   const filter = parseDiagFilter(args);
   if (isCheckError(filter)) return filter.exit;
   return withSource(args, (source, input) => {
@@ -508,13 +542,27 @@ export function cmdValidate(args: Args): number {
     // parse/resolve stage memos, so the whole command resolves once, renders never.
     const { diagnostics } = resolvePlan(source, { world });
     const lintDiags = lint(source, { world });
-    const diags = [...diagnostics, ...lintDiags];
+    // `--profile` lints under the named advisory ruleset too, and its warnings are the ones
+    // reported (as `lint --profile` reports them); the default run still ranks `next`.
+    const profileLint = args.profile !== undefined ? lint(source, { world, profile: args.profile }) : undefined;
+    const diags = [...diagnostics, ...(profileLint ?? lintDiags)];
+    // `--taste` feeds `next` its last tier only; a plan with compile errors is never scored.
+    const tasteReport =
+      args.taste !== undefined && !diagnostics.some((d) => d.severity === "error")
+        ? taste(source, { profile: args.taste, world })
+        : undefined;
+    const nextInput: NextInput = {
+      diagnostics,
+      lint: lintDiags,
+      ...(profileLint ? { profileLint } : {}),
+      ...(tasteReport ? { taste: tasteReport } : {}),
+    };
     // `--graph` and/or `--intent` layer an intent check onto plain validate; both
     // blocks may appear in one call, and either failing gates the exit code. Plain
-    // validate (neither flag) stays byte-identical via `report`.
+    // validate (neither flag) is `report`, byte-identical to before but for `next`.
     if (args.graph !== undefined || args.intent !== undefined)
-      return reportWithChecks(source, diags, args, world, filter);
-    return report(source, diags, args, filter);
+      return reportWithChecks(source, diags, args, world, filter, nextInput);
+    return report(source, diags, args, filter, undefined, nextDiagnostic(nextInput));
   });
 }
 
@@ -605,7 +653,8 @@ function reportWithChecks(
   diags: Diagnostic[],
   args: Args,
   world: World,
-  filter: DiagFilter = {},
+  filter: DiagFilter,
+  nextInput: NextInput,
 ): number {
   const graph = args.graph !== undefined ? loadGraphCheck(source, args.graph, args, world) : undefined;
   if (isCheckError(graph)) return graph.exit;
@@ -628,6 +677,12 @@ function reportWithChecks(
 
   const active = filterActive(filter);
   const shown = active ? applyDiagFilter(diags, filter) : diags;
+  // Weighs everything, like `ok`: a display filter never changes what comes next.
+  const next = nextDiagnostic({
+    ...nextInput,
+    ...(intentResult ? { intent: intentResult } : {}),
+    ...(graph ? { graph } : {}),
+  });
 
   if (args.json) {
     const o: Record<string, unknown> = {
@@ -655,6 +710,8 @@ function reportWithChecks(
       if (feedback) block.feedback = feedback;
       o.intent = block;
     }
+    // PS5.3: appended LAST, so every byte before it is what it was.
+    o.next = next;
     emitJson(o);
   } else {
     emitDiagnosticsHuman(source, shown, args.quiet);
@@ -671,6 +728,7 @@ function reportWithChecks(
         for (const v of intentResult.violations) process.stderr.write(`  ${v.code}: ${v.message}\n`);
         if (feedback) for (const f of feedback) process.stderr.write(`  ${f}\n`);
       }
+      if (next) process.stderr.write(`${nextLine(source, next)}\n`);
       if (ok) {
         const extras: string[] = [];
         if (graph) extras.push("graph matches");

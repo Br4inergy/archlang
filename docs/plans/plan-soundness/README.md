@@ -538,11 +538,20 @@ into PS3.12)
 - R4 (area and short side by use), R8 (corridor width by destination), R10 (WC clearances) and R37
   (bedroom escape window, `us`).
 
-**PS5.3 · `validate --json` gains `next`.** `todo`
+**PS5.3 · `validate --json` gains `next`.** `done (PR #246, pending)`
 - The one diagnostic to fix first, chosen by fixed precedence: errors, then validity, then intent,
   then profile, then taste.
 - Prior art: a checker that returns the most important specific critique works about as well as
   returning all of them, and far better than "try again".
+- Shipped tiers: `error`, `warning`, `validity`, `drafting`, `intent` (gating, then a `--graph`
+  mismatch, then advisory), `profile`, `taste`; `validate --profile` and `validate --taste` added.
+  Deviation from the card's wording (lead ruling, PR #246): compile-channel warnings precede
+  validity because they are upstream causes.
+
+**PS5.3a · MCP `validate` returns `next` (version bump).** `todo`
+- The MCP `validate` tool returns the same `next` key, with `--profile`/`--taste` parameters.
+- A tool-surface change: bump `packages/mcp`'s version and both `server.json` fields (iron law);
+  the hosted worker inherits it. Deferred from PS5.3 by lead ruling.
 
 **PS5.4 · `arch preview --review`.** `todo`
 - A review sheet: the plan with the access graph overlaid, each flagged element ringed with its code,
