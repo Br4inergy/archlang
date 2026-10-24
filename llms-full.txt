@@ -180,6 +180,7 @@ arch validate plan.arch --strict --json  # ship-gate: --strict fails on warnings
 arch fix plan.arch --dry-run --json  # preview/apply the machine-applicable diagnostics[].fixes
 arch validate plan.arch --intent brief.json --feedback --json  # gate on a brief's intent contract (miss → exit 2)
 arch score plan.arch --brief brief.json --json  # satisfied/total — measures, never gates
+arch score plan.arch --taste generic --json  # taste advice (A_* codes): compile → lint → score --taste → repair
 ```
 
 **Self-correction loop:** compile/validate → if `ok` is false, read each `diagnostics[].fix` (and
@@ -319,6 +320,10 @@ owns that name, so the shell runs the wrong program.
    generation pipeline runs before it ships. Add `--graph g.json` to also assert the intended
    room-to-room adjacency (`{ "living": ["kitchen","hall"], … }`); a mismatch fails. Read each
    `diagnostics[].fix`, edit, and re-run until it passes — or, if a warning is deliberate, say so.
+   Then read the taste advice, `archlang score plan.arch --taste generic --json`: a sourced 0–1 score
+   (privacy gradient, daylight, proportion, corner doors, …) capped at 0.5 while a validity-layer
+   lint warning stands, whose `criteria[].advice` `A_*` codes name what to improve; it never gates.
+   The loop is compile → lint → score --taste → repair.
 8. **Check the plan against the brief.** Write the user's brief as an `intent.json` — its checkable
    expectations as data (room count, per-room concepts with area/window bands, total area, optional
    adjacency/reachability). Two disciplines keep it brief-grounded: assert an area band only where the
@@ -780,7 +785,7 @@ from a file or stdin (`-`). This CLI is the primary agent interface; an optional
 
 **`archlang context`** — print the full bundled agent context (spec + workflow + CLI + errors)
   - input: none → output: the full agent context (llms-full.txt), or one --section of it
-  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 135 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 24 KB; errors = the diagnostic catalog, 52 KB) · `--json` structured result on stdout, messages on stderr
+  - flags: `--section <spec|workflow|cli|errors>` print only one section of the bundle instead of all 135 KB of it (spec = the language, 30 KB; workflow = the agent loop, 28 KB; cli = every command, 24 KB; errors = the diagnostic catalog, 52 KB) · `--json` structured result on stdout, messages on stderr
   - example: `archlang context` — the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 
 **`archlang new`** (aliases: `init`) — scaffold a starter .arch

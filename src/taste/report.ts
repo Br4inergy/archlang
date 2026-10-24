@@ -15,9 +15,21 @@ export type TasteSubscore = (typeof TASTE_SUBSCORES)[number];
  * (`LintSkipReason`); the rest are taste's own: `too-few-items` (nothing to measure, or fewer
  * items than the criterion needs), `too-small` (a room whose floor area rounds to 0 m², filed
  * with the room), `upper-storey` (an upper storey's depths are unreliable until PS0.3),
- * `taste-budget` (the call's counted budget would be exceeded).
+ * `taste-budget` (the call's counted budget would be exceeded), `curved-room` (a circular room
+ * R18 cannot read as a rectangle), `door-off-ring` (R16: a door whose centre is on no edge of
+ * the side room's floor ring). From lint: `non-dwelling` (R6, R11 and R12, PS2.18's reading) and
+ * `non-rectangular-room` (R16).
  */
-export type TasteSkipReason = "no-entrance" | "too-few-items" | "too-small" | "upper-storey" | "taste-budget";
+export type TasteSkipReason =
+  | "no-entrance"
+  | "too-few-items"
+  | "too-small"
+  | "upper-storey"
+  | "taste-budget"
+  | "non-dwelling"
+  | "non-rectangular-room"
+  | "curved-room"
+  | "door-off-ring";
 
 /** How a criterion's source was checked: read in the source [V], second-hand [S], remembered [M]. */
 export type TasteVerified = "V" | "S" | "M";

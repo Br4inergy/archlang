@@ -5,8 +5,8 @@
  *
  * Three sets of pairs, each a weaker plan and its better twin:
  *
- *  - **Set A**: defect-corpus pairs a PS5.1a criterion reads, compared on the OWNING subscore
- *    (zoning = R3, circulation = R14, light = R7). Each row is pinned with its relation; `<`
+ *  - **Set A**: defect-corpus pairs a PS5.1 criterion reads, compared on the OWNING subscore
+ *    (zoning = R3, R11, R15; circulation = R14, R16; light = R7, R12). Each row is pinned with its relation; `<`
  *    rows are the pairs the design measured as separated, `=` rows are defects owned by lint
  *    that no taste criterion reads, and `n/a` is a subscore neither twin can judge. No row may
  *    read `>`.
@@ -24,15 +24,25 @@
  * rate: ordered, tied (only set A's non-strict rows may tie, design §4 rule 4), reversed (with
  * how many are in the ledger) and unjudged, each counted apart. **Reversed = 0** outside the
  * ledger is the acceptance. A moved row is a finding to explain, never a table to edit to green.
+ *
+ * PS5.1b (the eight remaining criteria) re-read every set: no row of set A moved, one row was
+ * added (`bath-via-bedroom` · circulation, `<`: the twin's bath door opens from the living room 600 mm
+ * from the bath's corner, so R16 reads 1 of 2 corner doors against the case's 0 of 3; pinned), the ledger EMPTIED
+ * (`door-window-overlap-chamfer`'s twin now scores 0.7303 > 0.5: R9 judges its one room 1, which
+ * lifts the geometry subscore, while R7 still reads the twin's narrower window as less light,
+ * 0.4606 against the case's 0.7677 — the order of the totals is the cap's, not R7's) and two
+ * pairs left the UNJUDGED list (`wc-utility-passage`, `wc-window-crossed-by-partition`: R9 now judges their
+ * bath/WC, and both twins out-score their capped cases).
  */
 
 import { describe, expect, it } from "vitest";
 import { LINT_CODE_LAYERS, lint, taste, type TasteReport, type TasteSubscore } from "../src/index.js";
+import { TASTE_CRITERIA } from "../src/taste/criteria.js";
 import { defectPairs, type TastePair, tasteCorpusPairs, TASTE_WORLD } from "./taste-sources.js";
 
 type Rel = "<" | "=" | ">" | "n/a";
 
-/** Set A, pinned (design §4 set A, restricted to the subscores PS5.1a's criteria fill). */
+/** Set A, pinned (design §4 set A). */
 const SET_A: ReadonlyArray<[string, TasteSubscore, Rel]> = [
   ["circulation-privacy/two-bed-chain", "zoning", "<"],
   ["circulation-privacy/two-bed-chain", "circulation", "<"],
@@ -45,6 +55,8 @@ const SET_A: ReadonlyArray<[string, TasteSubscore, Rel]> = [
   ["circulation-privacy/bedroom-via-bedroom", "zoning", "="],
   // The defect is a bath behind a bedroom; R3 reads public-to-bedroom depths only.
   ["circulation-privacy/bath-via-bedroom", "zoning", "="],
+  // R16: the twin's bath door, off the living room, sits 600 mm from the bath's corner (R14 is equal).
+  ["circulation-privacy/bath-via-bedroom", "circulation", "<"],
   ["daylight/accessible-living-no-window", "light", "<"],
   ["daylight/bedroom-no-window", "light", "<"],
   ["daylight/living-bay-no-window", "light", "<"],
@@ -55,23 +67,17 @@ const SET_A: ReadonlyArray<[string, TasteSubscore, Rel]> = [
  * Set B pairs whose twin does not out-score the case, each with its reason. A finding, not an
  * exemption: the reason says why the order is right or what would fix the calibration.
  */
-const LEDGER: Readonly<Record<string, string>> = {
-  "openings-ignore-walls/door-window-overlap-chamfer":
-    "the fix narrows the cafe's window, so the twin's daylight ratio (3.68 %) is lower than the case's (6.14 %); " +
-    "the case is capped at 0.5 and the twin scores 0.4606 on R7 alone. The order is a true taste reading of a " +
-    "valid but under-lit room, not a reversal of the defect",
-};
+const LEDGER: Readonly<Record<string, string>> = {};
 
 /**
- * Set B pairs nothing in PS5.1a can score on either side, each with its reason: no criterion
+ * Set B pairs nothing in PS5.1 can score on either side, each with its reason: no criterion
  * has anything to read, so the pair says nothing about taste. Listed, never counted as a tie.
  */
 const UNJUDGED: Readonly<Record<string, string>> = {
-  "circulation-privacy/wc-utility-passage": "hall, utility+WC and garage: no habitable, public or common room",
-  "clearances/bench-across-opening": "a concourse and an unclassified gallery: no classified habitable room",
+  "clearances/bench-across-opening":
+    "a concourse and an unclassified gallery: no classified habitable, wet or kitchen room, and too few rooms for R17",
   "openings-ignore-walls/door-jamb-50-from-tee": "a store and an unclassified staff room: no classified habitable room",
   "openings-ignore-walls/door-on-exterior-tee": "two unclassified rooms",
-  "openings-ignore-walls/wc-window-crossed-by-partition": "a staff WC, a store and a hall: no habitable room",
   "openings-ignore-walls/window-overlaps-door": "one unclassified studio",
 };
 
@@ -182,8 +188,8 @@ describe("set B: pairs lint separates", () => {
 describe("set C: the taste corpus", () => {
   const pairs = tasteCorpusPairs();
 
-  it("has a pair for every PS5.1a criterion", () => {
-    expect([...new Set(pairs.map((p) => p.criterion))].sort()).toEqual(["R14", "R3", "R7"]);
+  it("has a pair for every PS5.1 criterion", () => {
+    expect([...new Set(pairs.map((p) => p.criterion))].sort()).toEqual([...TASTE_CRITERIA.map((c) => c.id)].sort());
   });
 
   for (const p of pairs) {

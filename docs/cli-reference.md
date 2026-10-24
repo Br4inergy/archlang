@@ -644,7 +644,7 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 
 | Flag | Does |
 | --- | --- |
-| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 135 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 24 KB; errors = the diagnostic catalog, 52 KB) |
+| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 135 KB of it (spec = the language, 30 KB; workflow = the agent loop, 28 KB; cli = every command, 24 KB; errors = the diagnostic catalog, 52 KB) |
 | `--json` | structured result on stdout, messages on stderr |
 
 **Examples**

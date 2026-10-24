@@ -157,6 +157,7 @@ arch validate plan.arch --strict --json  # ship-gate: --strict fails on warnings
 arch fix plan.arch --dry-run --json  # preview/apply the machine-applicable diagnostics[].fixes
 arch validate plan.arch --intent brief.json --feedback --json  # gate on a brief's intent contract (miss → exit 2)
 arch score plan.arch --brief brief.json --json  # satisfied/total — measures, never gates
+arch score plan.arch --taste generic --json  # taste advice (A_* codes): compile → lint → score --taste → repair
 ```
 
 **Self-correction loop:** compile/validate → if `ok` is false, read each `diagnostics[].fix` (and

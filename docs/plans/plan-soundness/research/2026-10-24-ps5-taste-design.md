@@ -265,6 +265,24 @@ law-row move (§4).
 - R17: a 3-room strip (4 x-lines, 2 y-lines) reads 6/3; a 40 mm offset partition clusters with its neighbour.
 - R18: a 3000 × 3000 room scores 1; an L at 0.75 of its hull rectangle scores 0.
 
+> **Note, 2026-10-24 (PS5.1b, PR #247; lead rulings on the measured deviations).**
+> - R6 and R11 skip a non-residential plan (`non-dwelling`, plan-wide by `dwellingReading`):
+>   `clinic` read 10 of 12 consulting-room basins as misplaced, `corner-cafe`'s kitchen read as
+>   unlinked. Gap: a use-scoped rule would judge only the office rooms; card PS5.5 "use-scoped
+>   R6/R11".
+> - R6 does not judge `counter`/`worktop`: laundry and workshop benches and a desk written as a
+>   counter read as misplaced kitchen fittings (`bungalow`, `materials`, `hexagon-pavilion`). Gap:
+>   a counter in a bath or bedroom goes unjudged; same card.
+> - R16 does not judge a hall or corridor side: a corridor's doors cannot all sit at corners
+>   (`bungalow`'s hall side read 4,100 mm). Accepted. Under Q9: relabelling a small room as
+>   circulation removes it from R16, a gaming path the coverage weight does not show.
+> - R17 needs at least four classified rooms: 1, 2 and 3 rooms reach at best 4, 2.5 and 2 axes
+>   per room, so a 3-room plan is capped at 0.5 whatever its order. Accepted; the R17 line above
+>   ("a 3-room strip reads 6/3") is replaced by a four-room grid in the tests.
+> - The separation ledger emptied: `door-window-overlap-chamfer` now orders by total because R9
+>   lifts the twin's geometry subscore, while R7 still prefers the case (0.7677 against 0.4606).
+>   A calibration note for PS5.2.
+
 ## 4. Calibration and the row-5 law
 
 **What "known-bad" and "known-good" mean.** §0.2 shows the defect corpus is a validity yardstick:

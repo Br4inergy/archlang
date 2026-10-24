@@ -33,6 +33,16 @@ export const TASTE_ADVICE: readonly TasteAdviceRow[] = [
     asks: "no living, dining or kitchen room deeper from the entrance than a bedroom",
   },
   {
+    id: "R6",
+    name: "furniture-use-match",
+    subscore: "furnishing",
+    code: "A_FURNITURE_USE_MISMATCH",
+    source:
+      "ArchLang fixture catalogue: the wet and kitchen zones and a bedroom's defining piece (catalogue semantics; no external threshold)",
+    verified: "V",
+    asks: "every plumbing fixture, kitchen fitting and bed in a room of its use",
+  },
+  {
     id: "R7",
     name: "daylight-ratio",
     subscore: "light",
@@ -42,6 +52,36 @@ export const TASTE_ADVICE: readonly TasteAdviceRow[] = [
     asks: "glazing of at least 8 % of the floor area in every habitable room",
   },
   {
+    id: "R9",
+    name: "proportion",
+    subscore: "geometry",
+    code: "A_ROOM_ELONGATED",
+    source:
+      "Palladio, I Quattro Libri I.xxi (preferred room shapes, the longest 2:1), as read in Mitrović, Nexus Network Journal 6(2), 2004; ResPlan aspect priors (design-taste.md §4)",
+    verified: "S",
+    asks: "rooms no longer than 2:1 (2.5:1 for a bathroom or WC) by their minimum enclosing rectangle",
+  },
+  {
+    id: "R11",
+    name: "kitchen-dining-link",
+    subscore: "zoning",
+    code: "A_KITCHEN_APART",
+    source:
+      "Alexander, A Pattern Language, 139 (farmhouse kitchen); ResPlan: kitchen and living touch in 99 % of plans",
+    verified: "V",
+    asks: "every kitchen opening onto a living or dining room, or sharing one",
+  },
+  {
+    id: "R12",
+    name: "dwelling-aspect",
+    subscore: "light",
+    code: "A_SINGLE_ASPECT",
+    source:
+      "London Plan Policy D6 and London Plan Guidance, housing design C4.1 (dual aspect; no single-aspect home facing north)",
+    verified: "S",
+    asks: "habitable windows on at least two sides of the dwelling",
+  },
+  {
     id: "R14",
     name: "common-area-at-heart",
     subscore: "circulation",
@@ -49,6 +89,43 @@ export const TASTE_ADVICE: readonly TasteAdviceRow[] = [
     source: "Alexander, A Pattern Language, 129 (common areas at the heart); Hanson 1998 (integration)",
     verified: "V",
     asks: "a living or dining room among the best-integrated third of the rooms",
+  },
+  {
+    id: "R15",
+    name: "night-zone-contiguity",
+    subscore: "zoning",
+    code: "A_NIGHT_ZONE_SPLIT",
+    source: "动静分区 (day/night zoning, residential practice); Alexander, A Pattern Language, 136 (couple's realm)",
+    verified: "V",
+    asks: "bedrooms that open off a common hall or corridor",
+  },
+  {
+    id: "R16",
+    name: "corner-doors",
+    subscore: "circulation",
+    code: "A_DOOR_OFF_CORNER",
+    source: "Alexander, A Pattern Language, 196 (corner doors); ResPlan jamb-to-corner priors (design-taste.md §4)",
+    verified: "V",
+    asks: "doors into rooms under 15 m² within max(wall thickness, 600 mm) of a corner",
+  },
+  {
+    id: "R17",
+    name: "axis-economy",
+    subscore: "geometry",
+    code: "A_AXES_SCATTERED",
+    source: "Brandão 2008 (wall segments)",
+    verified: "S",
+    asks: "room and wall edges on at most 1.5 shared axes per room",
+  },
+  {
+    id: "R18",
+    name: "shape-regularity",
+    subscore: "geometry",
+    code: "A_ROOM_IRREGULAR",
+    source:
+      "Alexander, A Pattern Language, 191 (the shape of indoor space); ResPlan rectangularity priors (design-taste.md §4)",
+    verified: "V",
+    asks: "bedrooms, bathrooms and kitchens that fill at least 90 % of their enclosing rectangle",
   },
 ];
 
