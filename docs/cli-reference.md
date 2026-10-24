@@ -262,7 +262,7 @@ $ archlang watch plan.arch -o plan.svg
 
 parse + resolve + lint, no render (is it valid & sound?)
 
-**Input:** `<file.arch|->` · **Output:** diagnostics (plus a graph{} report with --graph and an intent{ ok, satisfied, total, subscores, violations } block with --intent)
+**Input:** `<file.arch|->` · **Output:** diagnostics (plus a graph{} report with --graph and an intent{ ok, satisfied, total, subscores, violations } block with --intent), then `next`: the one item to fix first { tier, code, message, span?, hint? } or null (tiers: error, warning, validity, drafting, intent, profile, taste)
 
 | Flag | Does |
 | --- | --- |
@@ -270,6 +270,8 @@ parse + resolve + lint, no render (is it valid & sound?)
 | `--graph <graph.json>` | also check the plan's interior-door adjacency against an intended graph (bare dict or {input_graph:{…}}); mismatch → exit 2 |
 | `--intent <intent.json>` | gate the plan against a brief's intent JSON; a failing gating assertion (room count/existence/area/windows) → exit 2. Adjacency/reachability score but never gate. Composes with --graph. |
 | `--feedback` | with --intent, append a deterministic per-violation correction prompt (advisory data, never applied) |
+| `--profile <residential-basic\|accessibility-advisory>` | lint under this advisory ruleset too (as `lint --profile`); its own warnings rank as `next` tier profile |
+| `--taste <generic>` | let `next` fall back to the lowest-scoring taste criterion (ADR 0032); never gates |
 | `--code <CODE[,CODE…]>` | show only diagnostics with these codes — a DISPLAY filter: the exit code and `ok` still come from the unfiltered set |
 | `--severity <error\|warning>` | show only diagnostics of this severity — a DISPLAY filter, like --code (never changes the exit code) |
 | `--json` | structured result on stdout, messages on stderr |
@@ -286,6 +288,9 @@ $ archlang validate plan.arch --intent brief.json --feedback --json
 
 # check interior-door adjacency against an intended room graph
 $ archlang validate plan.arch --graph rooms.json --json
+
+# read `next` first: the one diagnostic to fix before anything else, by fixed precedence
+$ archlang validate plan.arch --json --taste generic
 
 # read only the blocking errors; `ok` and the exit code still weigh every diagnostic
 $ archlang validate plan.arch --severity error --json
@@ -639,7 +644,7 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 
 | Flag | Does |
 | --- | --- |
-| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 134 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 24 KB; errors = the diagnostic catalog, 52 KB) |
+| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 135 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 24 KB; errors = the diagnostic catalog, 52 KB) |
 | `--json` | structured result on stdout, messages on stderr |
 
 **Examples**
@@ -648,7 +653,7 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 # the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 $ archlang context
 
-# just the diagnostic catalog (52 KB) — read one section instead of paying for the whole 134 KB bundle
+# just the diagnostic catalog (52 KB) — read one section instead of paying for the whole 135 KB bundle
 $ archlang context --section errors
 ```
 
