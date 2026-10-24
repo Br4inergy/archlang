@@ -538,7 +538,7 @@ into PS3.12)
 - R4 (area and short side by use), R8 (corridor width by destination), R10 (WC clearances) and R37
   (bedroom escape window, `us`).
 
-**PS5.3 · `validate --json` gains `next`.** `done (PR #n, pending)`
+**PS5.3 · `validate --json` gains `next`.** `done (PR #246, pending)`
 - The one diagnostic to fix first, chosen by fixed precedence: errors, then validity, then intent,
   then profile, then taste.
 - Prior art: a checker that returns the most important specific critique works about as well as
