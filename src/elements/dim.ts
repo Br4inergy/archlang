@@ -263,6 +263,12 @@ export const dim: ElementDef = {
     // Unlike the swap this is a sub-span edit, so a CURVE call-out gets it too — the
     // `offset` clause means the same thing on both forms.
     if (n.offsetSpan) r._offsetSpan = n.offsetSpan;
+    // Carried for the `W_DIM_TEXT_MISMATCH` lint fix: where the written text literal is. Only a
+    // single literal part qualifies — replacing an interpolated `"{L / 1000} m"` with the
+    // number it evaluated to would silently cut the dimension loose from the plan's `let`s.
+    if (n.text?.t === "str" && n.text.span && n.text.parts.every((p) => typeof p === "string")) {
+      r._textSpan = n.text.span;
+    }
     return r;
   },
 

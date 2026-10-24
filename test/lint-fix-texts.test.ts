@@ -816,6 +816,7 @@ describe("the four reworded hints' messages name things as a reader would; ids s
     "W_BOUNDARY_NO_WALL",
     "W_FLOOR_UNASSIGNED",
     "W_ROOM_OUTSIDE_SHELL",
+    "W_DIM_TEXT_MISMATCH",
   ];
   type Storey = {
     rooms?: { id: string; label?: string }[];
@@ -946,4 +947,35 @@ describe("the opening rules (PS2.1–PS2.3) — a quoted move clears the warning
     }
     expect(seen).toBeGreaterThan(10);
   });
+});
+
+describe("W_DIM_TEXT_MISMATCH (PS2.10) — the quoted text clears the warning and raises nothing new", () => {
+  // Every defect case of the code in the corpus, read from it (never retyped). The `text "…"`
+  // clause the hint quotes replaces the dimension's own clause: the warning on it is gone and
+  // nothing new appears, under both profiles. The message quotes nothing at all (no id, no
+  // name), so an app may show it as is; the dimension's id is in the hint.
+  const DIR = resolvePath("test/defect-corpus/annotation-collisions");
+  const cases = readdirSync(DIR)
+    .filter((f) => f.endsWith(".arch") && !f.endsWith(".clean.arch"))
+    .map((f) => ({ name: f, src: readFileSync(join(DIR, f), "utf8") }))
+    .filter(({ src }) => /^# expect: W_DIM_TEXT_MISMATCH$/m.test(src));
+  for (const p of PROFILES) {
+    it(`${p ?? "default"} · the quoted text clears it and raises nothing new`, () => {
+      let applied = 0;
+      for (const { name, src } of cases) {
+        for (const d of of(src, "W_DIM_TEXT_MISMATCH", p)) {
+          expect(d.message, name).not.toMatch(/"/);
+          const clause = quoted(d.hints![0]!, /^text "/);
+          const stmt = src.slice(d.span!.start, d.span!.end);
+          const after = src.slice(0, d.span!.start) + stmt.replace(/text "[^"]*"/, clause) + src.slice(d.span!.end);
+          expect(after, name).not.toBe(src);
+          expect(errorsOf(after), name).toEqual([]);
+          expect(of(after, "W_DIM_TEXT_MISMATCH", p), name).toEqual([]);
+          expect(gained(src, after, p), name).toEqual([]);
+          applied++;
+        }
+      }
+      expect(applied).toBeGreaterThan(0); // the corpus case fires, so the check ran
+    });
+  }
 });

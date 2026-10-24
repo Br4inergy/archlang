@@ -639,7 +639,7 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 
 | Flag | Does |
 | --- | --- |
-| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 132 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 24 KB; errors = the diagnostic catalog, 50 KB) |
+| `--section <spec\|workflow\|cli\|errors>` | print only one section of the bundle instead of all 133 KB of it (spec = the language, 30 KB; workflow = the agent loop, 27 KB; cli = every command, 24 KB; errors = the diagnostic catalog, 51 KB) |
 | `--json` | structured result on stdout, messages on stderr |
 
 **Examples**
@@ -648,7 +648,7 @@ print the full bundled agent context (spec + workflow + CLI + errors)
 # the cold-start bundle: spec + workflow + CLI reference + every diagnostic
 $ archlang context
 
-# just the diagnostic catalog (50 KB) — read one section instead of paying for the whole 132 KB bundle
+# just the diagnostic catalog (51 KB) — read one section instead of paying for the whole 133 KB bundle
 $ archlang context --section errors
 ```
 

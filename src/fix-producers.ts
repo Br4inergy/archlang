@@ -456,6 +456,31 @@ export function dimBumpFix(dm: { id: string; _offsetSpan?: Span }, newOffset: nu
 }
 
 /**
+ * The fix for `W_DIM_TEXT_MISMATCH`: rewrite the dimension's `text "…"` literal to the
+ * measured span, in the author's own unit and to the author's own precision (the rule
+ * computes `newText`, so it always satisfies the rule it answers).
+ *
+ * `maybe-incorrect`, not `machine-applicable`: a text that disagrees with its line is either a
+ * wrong text or a line drawn between the wrong points, and only the author knows which. A
+ * dimension whose endpoints were rounded off the jambs it claims to measure is the second
+ * kind, and rewriting its text would bake the rounding into the drawing. `archlang fix
+ * --unsafe` applies it. Returns `null` when there is no literal to rewrite: `_textSpan` is set
+ * only for a single literal with no interpolation, so a parametric text is never flattened.
+ */
+export function dimTextFix(dm: { _textSpan?: Span }, newText: string): FixSuggestion[] | null {
+  const span = dm._textSpan;
+  if (!span) return null;
+  return [
+    {
+      title: `letter the dimension with its measured span, \`text "${newText}"\``,
+      applicability: "maybe-incorrect",
+      fixId: "dim-text-mismatch",
+      edits: [{ span, newText: `"${newText}"` }],
+    },
+  ];
+}
+
+/**
  * The fix for `E_{DOOR,WINDOW,OPENING}_WIDTH` (width ≤ 0): rewrite the element with
  * a `width <positive-number>` placeholder. `has-placeholders`, so it is surfaced
  * in the editor but never auto-applied (the placeholder is not valid source). The

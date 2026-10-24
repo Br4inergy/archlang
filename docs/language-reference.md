@@ -1898,6 +1898,13 @@ The number rides just outside its line, on the side the offset points, so a nega
 `offset` puts the line *and* its number on the right normal: `dim a->b offset -k` draws
 exactly what `dim b->a offset k` draws.
 
+**A `text` that reads as a length must agree with the line.** When the whole text is a
+number with an optional `mm`, `cm` or `m` (`4000`, `4,000`, `3.5 m`), lint reads it at its
+own written precision and warns when the measured span, rounded to that last digit, is a
+different number ([`W_DIM_TEXT_MISMATCH`](error-codes.md)). So `4000` stands for
+3999.5–4000.5 mm and `3.5 m` for 3450–3550 mm, and copying the number the drawing would print
+never warns. Any other text (`VARIES`, `EQ`, `2300 clear`, `R9000`) is not checked.
+
 #### `faces` / `clear` — let the walls place the endpoints
 
 A room rectangle's edges are wall **centerlines**, so a hand-written overall dim

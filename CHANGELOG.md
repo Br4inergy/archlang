@@ -47,6 +47,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `let`, with a numeric literal; anything else is refused with the new `E_SET_OVERRIDE`.
   `applyLetOverride()` is exported beside `impact()`. `compile()`, `describe()`, `lint()`, the SVG
   and Plan JSON are unchanged.
+- `W_DIM_TEXT_MISMATCH` (plan card PS2.10): a hand-written `dim … text "…"` whose text reads as a
+  length (a number with an optional `mm`, `cm` or `m`; comma-grouped thousands when no unit is
+  written) and is not the span its line measures. The text is read at its own written precision
+  and compared on the 0.001 mm lattice, so `4000` covers 3999.5–4000.5 mm, `3.5 m` covers
+  3450–3550 mm, and the number the drawing prints with no `text` never warns. Any other text
+  (`VARIES`, `EQ`, `2300 clear`, `R9000`) is not checked. A literal text gets a `maybe-incorrect`
+  fix (`archlang fix --unsafe`) that letters the measured span in the text's own unit and
+  precision. `examples/gallery-l.arch` and `examples/aquarium.arch` had three such dimensions,
+  drawn off the jambs they claimed to measure; their endpoints now sit on the jambs, and
+  aquarium's two window dims, which state the width along the arc, now read `2.0m`. Their
+  SVGs move; `describe()` and every other plan's output are unchanged.
 
 ### Changed
 

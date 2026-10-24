@@ -424,6 +424,7 @@ export const RULE_CLASS: Readonly<Record<string, RuleClass>> = {
   "room-outside-shell": "invariant",
   "furn-clear-declared": "invariant",
   "seat-facing-away": "invariant",
+  "dim-text-mismatch": "invariant",
 };
 
 /**

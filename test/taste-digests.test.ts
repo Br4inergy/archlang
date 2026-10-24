@@ -18,6 +18,15 @@
  * is that suffix: dropped from a windowless room, or added to a room whose windows stand at the
  * defaults in a plan that authors heights elsewhere (checked by stripping it from both reports
  * and comparing the rest byte for byte); no score, message or skip moved.
+ *
+ * Re-measured in PR #243 (plan-soundness PS2.10, `W_DIM_TEXT_MISMATCH`, a drafting-layer rule):
+ * one row, `generic · defect-corpus/annotation-collisions/dim-text-lies.arch`. Its report gains
+ * `validity.drafting` = `{ warnings: 1, codes: ["W_DIM_TEXT_MISMATCH"] }` (was `{ warnings: 0,
+ * codes: [] }`); with that block emptied again the report equals its clean twin's byte for byte,
+ * which is the row's previous digest (`04f26bd5…`, the twin's row). `score` (0.5, capped by the
+ * validity-layer `W_ROOM_NO_FIXTURE`), `uncapped`, every criterion and skip are unchanged: a
+ * drafting code never caps. No other row moved; the two examples PS2.10 fixed (`aquarium`,
+ * `gallery-l`) changed only their drawing, which no taste criterion reads.
  */
 
 import { describe, expect, it } from "vitest";
@@ -70,7 +79,8 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/annotation-collisions/auto-dims-in-room.clean.arch",
   ],
   [
-    "04f26bd572a5a8b01f3257d1d57e818b92498e036ea76a476bda582c6ad21361",
+    // PR #243 (PS2.10): `validity.drafting` gains W_DIM_TEXT_MISMATCH; see the header.
+    "1bd6155a22e9d063954d782bed8a26bc9fc80b16ca5b3e555ac22bc11ca01baa",
     "generic",
     "test/defect-corpus/annotation-collisions/dim-text-lies.arch",
   ],

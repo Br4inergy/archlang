@@ -536,7 +536,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
     (
       [
         ["50bfe2d1d4955f0399834c0e436ef5f6308a109552a22a7df3aea13f93cdfdd9", "accessible"], // PS2.9 source edit, see above
-        ["18dea04729485aa19e0632272fb4f3a00e90ed631b7695ac4ef621a119188d74", "aquarium"], // PS2.4 source edit, see above
+        ["3ef3f9e68707af4ac51383b6108f97c2ef51efeb5d41cf74d3d3eac2e9e42ba9", "aquarium"], // PS2.4 source edit, see above; PS2.10 source edit (byte-identity-baseline.ts)
         ["8894023b744a155aad52d1ca28b7836ad1c9d63d1665e82f6b835c8d8e480f3b", "attached"],
         ["68042a31d598b906bf022a88135afd0c68c12886f9432f6fd6b2172345b32324", "bungalow"], // PS2.17 source edit (a worktop), see above
         ["cbf505c9f38de1bce32a5f6256b035a3a5cb35df068f411621db590234da0685", "classroom-block"], // first measurement, added with the example
@@ -544,7 +544,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["35c8741f367876f8ad1f7c2111485959f1151cb54da5c015d8bcdc9aea130682", "corner-cafe"], // first measurement with the example; PS2.9 source edit; PS2.17 source edit (a worktop), see above
         ["67d8b7c380698ba23ed28b911e7517d89a5fbe4e80a6a169ded2c486cbb100dd", "courtyard-house"], // PS2.4 source edit, see above
         ["b02e775d074211c381f4b0a6886f16382f6005d585e4dcfee8450a28146be415", "furnished-flat"],
-        ["4c2687efd5332a3c820042f4a2dd8b84373e4131a2d9877c74c5cff86918ce0b", "gallery-l"],
+        ["28de43eec459b35b62afdf83bb2762f8a1d2146ee3f310e4c0e8f65f7d006cf6", "gallery-l"], // PS2.10 source edit (byte-identity-baseline.ts)
         // Re-measured 2026-10-18 (plan-soundness PS2.6): the example's SOURCE changed, one door
         // re-hosted (`d_gar` onto the kitchen, +3 bytes), and `source` is part of this digest. The
         // pre-edit source still gives the previous row; see ./byte-identity-baseline.ts.

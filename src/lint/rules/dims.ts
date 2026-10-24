@@ -47,9 +47,9 @@ import { det } from "../../algebra/d4.js";
 import type { Point } from "../../ast.js";
 import type { RDim, RDoor, ROpening, RWindow } from "../../ir.js";
 import { unchainedOpenings } from "../../facade.js";
-import { dimBumpFix, dimSwapFix, fixesFrom } from "../../fix-producers.js";
+import { dimBumpFix, dimSwapFix, dimTextFix, fixesFrom } from "../../fix-producers.js";
 import { CHAIN_STEP, SHEET_MM } from "../../sheet.js";
-import { fmt2 } from "../../num-format.js";
+import { fmt2, fmt3 } from "../../num-format.js";
 import { textWidth } from "../../text-metrics.js";
 import type { LintContext, LintRule } from "../context.js";
 
@@ -255,6 +255,156 @@ export const openingNotDimensioned: LintRule = {
     return out;
   },
 };
+
+/* ---------------------------------------------------------------------------
+ * W_DIM_TEXT_MISMATCH — a hand-written dimension whose number contradicts its span.
+ * ------------------------------------------------------------------------- */
+
+/** Micrometres per written unit: the 0.001 mm lattice every length is decided on (ADR 0022). */
+const UNIT_UM: Readonly<Record<string, number>> = { "": 1000, mm: 1000, cm: 10_000, m: 1_000_000 };
+
+/**
+ * A dimension text read as a length, or `null` when it is not one.
+ *
+ * Accepted, as the WHOLE text (surrounding spaces allowed): digits, an optional decimal part,
+ * and an optional unit `mm`, `cm` or `m` (one space before it allowed) — `4000`, `4000mm`,
+ * `3.5m`, `3.5 m`, `350 cm`. A bare number is millimetres, the plan's unit. Thousands may be
+ * grouped with commas in strict groups of three (`4,000`, `12,500.5`). The printer never groups
+ * (`fmt2` prints `String(n)`), but authors copy numbers from schedules that do, and a strict
+ * group cannot be misread as a decimal comma unless the text also carries a unit, which is why
+ * a grouped number with a unit is not read at all (`1,500 m` may be a European 1.5 m). The
+ * mirror case is not read either: one to three digits, a dot and exactly three decimals with NO
+ * unit (`4.000`, `12.500`) may be a European thousands dot or metres without the `m`; with a
+ * unit (`4.000 m`) it is read. For a leading-zero text such as `0.500` only the metres reading
+ * applies (no thousands group starts with 0), but it is still not read: 0.5 m and 0.5 mm are
+ * both possible.
+ *
+ * Everything else is exempt, because it is not a claim this rule can check: a word (`VARIES`,
+ * `EQ`), a prefix or suffix (`R9000`, `φ5000`, `~4000`, `2300 clear`, `4000 min`), a sign, an
+ * interpolation that evaluated to prose. A number written finer than the lattice (more than
+ * three decimals in mm, four in cm, six in m) is exempt too: it states a precision the
+ * language does not have, so no decision about it would be exact. So is one past 2^53 µm
+ * (`Number.isSafeInteger`), a length beyond the modelling range no plan can draw.
+ *
+ * `um` is the written length in micrometres, `stepUm` the precision it is written to (one unit
+ * in its last written digit), both integers. `fmt` re-letters a micrometre length in the same
+ * unit, precision and grouping, with the author's own spacing.
+ */
+export function readDimText(
+  text: string,
+): { um: number; stepUm: number; unit: string; fmt: (um: number) => string } | null {
+  const m = /^(\s*)(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d+))?(?:( ?)(mm|cm|m))?(\s*)$/.exec(text);
+  if (!m) return null;
+  const [, lead, intPart, frac = "", gap = "", unit = "", trail] = m;
+  const grouped = intPart!.includes(",");
+  if (grouped && unit !== "") return null;
+  // `4.000`, `1.500`, `12.500` with no unit: a European thousands dot (4000 mm) or metres
+  // written without the `m` (4 m)? Neither reading is safe, so it is not read; with a unit
+  // (`4.000 m`) it is unambiguous and checked.
+  if (unit === "" && !grouped && intPart!.length <= 3 && frac.length === 3) return null;
+  const perUnit = UNIT_UM[unit]!;
+  const scale = 10 ** frac.length;
+  if (perUnit % scale !== 0) return null; // finer than the 0.001 mm lattice
+  const stepUm = perUnit / scale;
+  const digits = Number(intPart!.replaceAll(",", "") + frac);
+  const um = digits * stepUm;
+  if (!Number.isSafeInteger(um)) return null;
+  const fmt = (len: number): string => {
+    const raw = String(Math.round(len / stepUm)).padStart(frac.length + 1, "0");
+    let whole = raw.slice(0, raw.length - frac.length);
+    if (grouped) {
+      // Comma every three digits from the right, by a plain loop (no regex over the digits).
+      const groups: string[] = [];
+      for (let end = whole.length; end > 0; end -= 3) groups.unshift(whole.slice(Math.max(0, end - 3), end));
+      whole = groups.join(",");
+    }
+    const dec = frac.length > 0 ? `.${raw.slice(raw.length - frac.length)}` : "";
+    return `${lead}${whole}${dec}${gap}${unit}${trail}`;
+  };
+  return { um, stepUm, unit, fmt };
+}
+
+/**
+ * `W_DIM_TEXT_MISMATCH` — a hand-written `dim … text "<number>"` whose number is not the span
+ * its line measures (plan-soundness PS2.10; the annotation rung of the hold-fixed ladder: a
+ * dimension follows what it measures and never holds anything).
+ *
+ * **The rounding rule.** The text is read at its OWN written precision: it agrees with the
+ * span when the span, rounded to the last digit the author wrote, is that number — i.e. when
+ * `2 · |span − written| ≤ one unit of the last written digit`, decided in integers on the
+ * 0.001 mm lattice (the span is snapped to whole micrometres first; ADR 0022: no floating
+ * tolerance). So `4000` stands for any span in [3999.5, 4000.5] mm, `4 m` for [3500, 4500] mm
+ * and `3.5 m` for [3450, 3550] mm; a tie is accepted either way. This contains the printer's
+ * own rounding: a dim with no `text` letters `fmt2(span)` (two decimals, trailing zeros
+ * dropped), which is within half a unit of its own last digit by construction, so a text that
+ * copies what the drawing would have printed never fires — nor does any coarser rounding of
+ * it. A text that does not read as a length ({@link readDimText}) is exempt.
+ *
+ * The measured span is `|to − from|` of the RESOLVED dim — after `faces`/`clear` pushed its
+ * endpoints onto the walls, and for a `dim radius|diameter` the radius or diameter the call-out
+ * draws — the same length the renderer letters when there is no text. `dims auto` chains never
+ * enter the IR and letter their own measured spans, so only source dims are judged.
+ *
+ * Reported once per resolved element: a `for` that draws one literal text at several spans can
+ * be right at some and wrong at others. The fix ({@link dimTextFix}) is offered only when the
+ * text is a single literal and the statement draws this one element, since one rewrite of a
+ * statement drawn at several spans cannot be right for all of them (`reconcileSharedFixes`
+ * applies the same reasoning to `place`d instances).
+ */
+export const dimTextMismatch: LintRule = {
+  name: "dim-text-mismatch",
+  family: "annotation",
+  layer: "drafting",
+  codes: ["W_DIM_TEXT_MISMATCH"],
+  check(ctx: LintContext): Diagnostic[] {
+    const dims = ctx.ir.elements.filter((e): e is RDim => e.kind === "dim" && !!e.span && e.text !== undefined);
+    if (dims.length === 0) return [];
+    // How many resolved elements each source statement draws in this storey (per placement:
+    // `reconcileSharedFixes` arbitrates between placements).
+    const drawn = new Map<string, number>();
+    for (const dm of dims) drawn.set(reportKey(dm), (drawn.get(reportKey(dm)) ?? 0) + 1);
+    const out: Diagnostic[] = [];
+    for (const dm of dims) {
+      const read = readDimText(dm.text!);
+      if (!read) continue;
+      const span = length(sub(dm.to, dm.from));
+      const spanUm = Math.round(span * 1000);
+      if (2 * Math.abs(spanUm - read.um) <= read.stepUm) continue;
+      const lettered = read.fmt(spanUm);
+      const writtenMm = fmt3(read.um / 1000);
+      const shown = dm.text!.trim();
+      // A text in millimetres is quoted as written; one in cm or m also gives its millimetres.
+      const reads = read.unit === "cm" || read.unit === "m" ? `${shown}, ${writtenMm} mm` : shown;
+      // The quoted numbers must subtract: the span is printed to two decimals (the printer's own
+      // `fmt2`), or to the micrometre when the text is written finer than that, and the
+      // difference is taken from the two PRINTED values, in whole micrometres. Since the rule
+      // fired, the printed span is still on the same side of the written number (it lies within
+      // 5 µm of the span, and the span is more than 5 µm off), so the difference is never 0.
+      const spanShown = read.stepUm < 10 ? fmt3(spanUm / 1000) : fmt2(span);
+      const shownUm = Math.round(Number(spanShown) * 1000);
+      const diff = fmt3(Math.abs(read.um - shownUm) / 1000);
+      const single = (drawn.get(reportKey(dm)) ?? 0) === 1;
+      const fix = single ? dimTextFix(dm, lettered) : null;
+      const remedy = !single
+        ? "This statement draws more than one dimension, so no fix is offered: one rewrite of its text cannot be right for every span it draws."
+        : dm._textSpan
+          ? `Letter dim "${dm.id}" with what it measures, \`text "${lettered}"\` (or drop the \`text\` clause and the drawing prints ${fmt2(span)}); if the number is right, the endpoints are wrong: move them so they span ${writtenMm} mm.`
+          : `Make dim "${dm.id}"'s text evaluate to what it measures, ${lettered.trim()} (or drop the \`text\` clause and the drawing prints ${fmt2(span)}); if the number is right, the endpoints are wrong: move them so they span ${writtenMm} mm.`;
+      out.push({
+        severity: "warning",
+        code: "W_DIM_TEXT_MISMATCH",
+        ...ctx.at(dm),
+        message: `The dimension from ${pointWords(dm.from)} to ${pointWords(dm.to)} is lettered ${reads}, but its line spans ${spanShown} mm: the text is ${diff} mm ${read.um > shownUm ? "longer" : "shorter"} than what it measures.`,
+        hints: [remedy],
+        ...fixesFrom(fix),
+      });
+    }
+    return out;
+  },
+};
+
+/** A plan point as the message quotes it: `(x,y)` in whole-hundredth millimetres. */
+const pointWords = (p: Point): string => `(${fmt2(p.x)},${fmt2(p.y)})`;
 
 /** A hand-written dim with a drawn band worth testing: it came from source, it is offset
  *  off its measured segment, and that segment has a direction (a failed `dim radius` ref
