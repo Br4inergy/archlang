@@ -612,8 +612,8 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
 - `cards.md`: every card of §6, with its table, id and status (D16).
 - `research/2026-10-25-ps211ab-as-built.md`, `research/2026-10-25-ps211cd-as-built.md`: the four
   clearance rules as built, their first-contact hits, corpus movements and the `finish` sweep.
-- `audits/first-contact-protocol.md`: the six briefs, the dispatch prompt, the rubric and the arm A
-  role-text pointer that D15 needs (PR in flight on 2026-10-25).
+- `audits/first-contact-protocol.md`: the six briefs, the dispatch prompts, the rubric, the arm A
+  role-text pointer and the re-measure checklist that D15 needs (PR #257, 053ba3f8).
 - `evidence.md`: what was measured, the bug list and the defect taxonomy.
 - `research/checks-inventory.md`: every current check, the authoring-model facts, governing ADRs,
   and the gap list with code locations.
