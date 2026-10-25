@@ -2412,14 +2412,12 @@ The state of each listing is the table in `docs/seo.md` § 8. These are what is 
 Readings of the agent-reach E1/E2 metrics must discount the 2026-10-14 burst traffic (the owner's
 own ~1,500 hosted-MCP requests; `docs/seo.md` section 8).
 
-### O.1 · Glama's quality score, then awesome-mcp-servers #14383 merges — `todo` (BLOCKED on a third party)
+### O.1 · awesome-mcp-servers #14383 waits on its maintainer — `todo` (BLOCKED on a third party)
 
-`punkpeye/awesome-mcp-servers` #14383 cannot merge until Glama has evaluated the server's quality
-score (any grade). Glama's auto-generated build had failed (it ran the CLI, not the MCP server); on
-2026-10-25 its Dockerfile settings were set to install `@chanmeng666/archlang-mcp` and run
-`archlang-mcp` behind `mcp-proxy`, the build test passed and release 0.1.0 was published. Tool
-discovery and the score are Glama's asynchronous step. The score badge is already on the entry in
-#14383. Left: once the score shows, reply on #14383 that it is evaluated.
+The merge condition, a Glama quality score of any grade, is met: on 2026-10-25 Glama's Dockerfile
+settings were set to install `@chanmeng666/archlang-mcp` and run `archlang-mcp` behind `mcp-proxy`
+(its auto-generated build had run the CLI, not the MCP server), release 0.1.0 built and was rated A.
+The score badge is on the entry in #14383 and the maintainer was told there. Left: the merge.
 
 ### O.2 · The release workflow's bundle step has never run on a tag — `done`
 
