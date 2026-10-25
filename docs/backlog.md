@@ -2412,13 +2412,12 @@ The state of each listing is the table in `docs/seo.md` § 8. These are what is 
 Readings of the agent-reach E1/E2 metrics must discount the 2026-10-14 burst traffic (the owner's
 own ~1,500 hosted-MCP requests; `docs/seo.md` section 8).
 
-### O.1 · Glama is in review, and the awesome-mcp-servers pull request waits on it — `todo` (BLOCKED on a third party)
+### O.1 · awesome-mcp-servers #14383 waits on its maintainer — `todo` (BLOCKED on a third party)
 
-The server was submitted to Glama on 2026-10-10 and is pending its review; the result arrives by
-e-mail to the owner. `punkpeye/awesome-mcp-servers` #14383 cannot merge without a Glama badge on the
-entry — its triage bot has asked twice. Once Glama approves: give it a Dockerfile for the stdio
-server, claim the server from the owner's account, then add the badge to the entry in #14383. The
-owner logs in; an agent may drive the rest on request.
+The merge condition, a Glama quality score of any grade, is met: on 2026-10-25 Glama's Dockerfile
+settings were set to install `@chanmeng666/archlang-mcp` and run `archlang-mcp` behind `mcp-proxy`
+(its auto-generated build had run the CLI, not the MCP server), release 0.1.0 built and was rated A.
+The score badge is on the entry in #14383 and the maintainer was told there. Left: the merge.
 
 ### O.2 · The release workflow's bundle step has never run on a tag — `done`
 
@@ -2442,12 +2441,13 @@ policy review, and may ask for a privacy-policy page. The OpenAI plugin director
 needs a privacy-policy page and a terms page too; both now exist, at https://archlang.uk/privacy and
 https://archlang.uk/terms. The OpenAI submission's state is O.7 and `docs/seo.md` section 8.
 
-### O.4 · Open VSX trusted publishing after #14189 — `todo` (BLOCKED on a third party)
+### O.4 · Open VSX trusted publishing — `todo`
 
-The namespace ownership claim is EclipseFdn/open-vsx.org#14189. Open VSX offers Trusted Publishing
-(OIDC from CI, no token), but its page requires a verified namespace. After #14189: add a publish
-workflow and register the trusted publisher (a human step). Until then the token path in
-`editors/vscode/DEVELOPMENT.md` is the way.
+The namespace `ChanMeng` is verified (EclipseFdn/open-vsx.org#14189 closed 2026-10-15) and
+`archlang` 0.31.0 is live. `.github/workflows/publish-openvsx.yml` publishes by manual dispatch with
+`ovsx publish --trusted-publishing` (no token). Left: the owner registers it as a trusted publisher
+on open-vsx.org (repository `ChanMeng666/archlang`, workflow `publish-openvsx.yml`), then a first
+dispatch proves it.
 
 ### O.5 · `@chanmeng666/arch-plan` publishing in `release.yml` — `done`
 
