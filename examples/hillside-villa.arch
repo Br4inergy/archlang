@@ -45,11 +45,8 @@ plan "Hillside Villa" {
     # running along the same line as this component's own 100 mm wall — `flush` reads the
     # nearer face and collides with the far one. The shower goes top-RIGHT: every
     # instance's bedroom door lands on the LEFT edge (`at 7500` below), and a shower there
-    # would leave it no swing room. The WC backs onto the EAST wall below the shower, its
-    # centreline 550 mm from the tray and clear of the south door's swing. It is placed from
-    # the room's own edges and stands 100 mm off this component's wall, because en_m backs
-    # that edge onto the 300 mm shell too: `against room.right` would sit on the thin wall's
-    # face and run into the shell, and an anchor cannot say "550 mm below the tray".
+    # would leave it no swing room. The WC sits below it on the EAST wall, 100 mm off (en_m's
+    # shell is thicker).
     furniture shower in room anchor top-right   inset 150 size 900x900
     furniture basin  in room anchor top-left    inset 150 size 600x450
     furniture wc     at (room.right - 900, room.top + 1400) size 700x400 rotate 90 in room
@@ -245,20 +242,11 @@ plan "Hillside Villa" {
     door id=d_master_corr on w_l2_band at 10500 width 1000 swing into r_master
     opening id=o_gallery on w_l2_band at 1500 width 1800
 
-    # en2 and en3 also open directly onto the landing (their own SOUTH wall, local
-    # run-length 5300), so each reads as a shared/guest bath as well as an ensuite. `en_m`
-    # deliberately keeps its ONE door, into the master bedroom only: it sits in the
-    # building's far corner with no wall on circulation, and a master ensuite reached only
-    # through its own bedroom is the conventional case, not a defect — and `arch lint` does
-    # not flag it (`W_BATH_VIA_BEDROOM`), because en2 and en3 are bathrooms on this storey
-    # reached off the landing without passing through a bedroom. `arch lint` raises eight
-    # warnings in all: `W_ROOM_NOT_EQUATOR_FACING` on bedrooms 2 and 3, whose only windows face
-    # north; and six `W_PATH_TOO_NARROW` on this floor, each a real 700 mm door (640 mm
-    # clear). Five are walks from the top of the stair: each bed's clearance covers its
-    # bedroom's own door, so bedrooms 2 and 3 are walked into through their ensuites, and
-    # each ensuite's way in is one of these 700 mm doors. The sixth is the Master Suite's
-    # route to its ensuite, through `d_enm`; the walk to the Master Suite itself is 700 mm at
-    # its narrowest, which meets the minimum, so the room is flagged for that route instead.
+    # en2 and en3 also open onto the landing (their SOUTH wall, run-length 5300), so each is
+    # a guest bath too; `en_m` keeps one door, into the master bedroom, the conventional
+    # case (en2/en3 are reached off the landing, so `W_BATH_VIA_BEDROOM` does not fire).
+    # `arch lint` warns seven times: `W_ROOM_NOT_EQUATOR_FACING` on bedrooms 2 and 3
+    # (north windows only) and five `W_PATH_TOO_NARROW`, each a real 700 mm door.
     door id=d_en2_corr on en2.wall at 5300 width 700 swing out
     door id=d_en3_corr on en3.wall at 5300 width 700 swing out
 

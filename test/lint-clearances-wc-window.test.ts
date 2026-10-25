@@ -106,18 +106,34 @@ describe("W_WC_SIDE_CLEARANCE: what counts beside the pan", () => {
     expect(of(shut, WC)[0]?.message).toContain("250 mm from a partition wall");
   });
 
-  it("a WC beside a curved wall is not judged and files `curved-wc-wall`", () => {
-    const src = `plan "Curved" {
+  // The east side is a half circle bulging west into the square: centre (3000,1500), radius 1500,
+  // so its 200 mm body's west face passes x 1400 at y 1500.
+  const curved = (pieces: string): string => `plan "Curved" {
   units mm
   wall id=shell exterior thickness 200 { (0,0) (3000,0) arc (3000,3000) radius 1500 (0,3000) close }
   room id=r at (0,0) size 3000x3000 label "Bath" uses bath
   door id=d_in at (1500,0) width 800 wall shell
-  furniture wc at (2500,1300) size 700x400 rotate 90
+  ${pieces}
 }`;
-    const r = lintWithCoverage(src);
-    expect(r.diagnostics.filter((d) => d.code === WC)).toEqual([]);
-    const skips = (r.coverage?.families ?? []).flatMap((f) => f.skipped ?? []).map((s) => s.reason);
-    expect(skips).toContain("curved-wc-wall");
+  const skipsOf = (src: string): string[] =>
+    (lintWithCoverage(src).coverage?.families ?? []).flatMap((f) => f.skipped ?? []).map((s) => s.reason);
+
+  it("a WC whose side strip reaches a curved wall's body is not judged and files `curved-wc-wall`", () => {
+    // Pan x 850–1250, y 1200–1900: its east strip runs to x 1450 at y 1230–1900, and the arc's body
+    // (radius 1400–1600 about (3000,1500)) reaches x 1400 there.
+    const src = curved("furniture wc at (850,1200) size 400x700");
+    expect(of(src, WC)).toEqual([]);
+    expect(skipsOf(src)).toContain("curved-wc-wall");
+  });
+
+  it("control: a pan far from the curve beside a basin is judged, with no skip (the shape, not its box)", () => {
+    // Pan x 2300–2700, y 1200–1900, inside the half circle's bounding box (x 1400–3100): every
+    // point of its strips (x 2100–2900, y 1230–1900) lies within 940 mm of the circle's centre, so
+    // at least 460 mm clear of the wall's body (radius 1400–1600). A bin from x 2750 stands 50 mm
+    // off the pan's east side. A bounding-box test would have skipped this pan.
+    const src = curved("furniture wc at (2300,1200) size 400x700\n  furniture bin at (2750,1300) size 200x300");
+    expect(of(src, WC)).toHaveLength(1);
+    expect(skipsOf(src)).not.toContain("curved-wc-wall");
   });
 });
 

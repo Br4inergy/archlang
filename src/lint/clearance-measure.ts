@@ -24,6 +24,7 @@ import {
   type Strip,
 } from "../furniture-relation.js";
 import type { WallSegment } from "../geometry.js";
+import { type Arc, arcContainsRay, distPointToArc } from "../geometry/arc.js";
 import type { BBox } from "../geometry/rect.js";
 import type { RFurniture, RWindow } from "../ir.js";
 import type { LintContext } from "./context.js";
@@ -43,7 +44,19 @@ export type WcWorldSource = Pick<LintContext, "wallSegs" | "doors" | "openings">
  * left out (their body is not a polygon here; {@link curvedNear} says when one is near).
  */
 function cutSegments(src: WcWorldSource): WallSegment[] {
-  const cached = CUT.get(src.wallSegs);
+  // Keyed on all three arrays, so a context copied with other doors or openings never reads
+  // another's cut (a copy that shares the three arrays, as `pasteSet`'s do, shares the cut).
+  let byDoors = CUT.get(src.wallSegs);
+  if (!byDoors) {
+    byDoors = new WeakMap();
+    CUT.set(src.wallSegs, byDoors);
+  }
+  let byOpenings = byDoors.get(src.doors);
+  if (!byOpenings) {
+    byOpenings = new WeakMap();
+    byDoors.set(src.doors, byOpenings);
+  }
+  const cached = byOpenings.get(src.openings);
   if (cached) return cached;
   const out: WallSegment[] = [];
   for (const s of src.wallSegs) {
@@ -80,10 +93,13 @@ function cutSegments(src: WcWorldSource): WallSegment[] {
     }
     piece(at, len);
   }
-  CUT.set(src.wallSegs, out);
+  byOpenings.set(src.openings, out);
   return out;
 }
-const CUT = new WeakMap<readonly WallSegment[], WallSegment[]>();
+const CUT = new WeakMap<
+  readonly WallSegment[],
+  WeakMap<readonly object[], WeakMap<readonly object[], WallSegment[]>>
+>();
 
 /** The obstacles a WC's sides are measured against: the pieces at the cut plane (a mirror or a
  *  wall cabinet above, a rug below, are not beside the pan), every straight wall body with its
@@ -98,38 +114,68 @@ export function wcWorld(furniture: readonly RFurniture[], src: WcWorldSource): C
 }
 
 /**
- * Does a curved wall come near either side strip of a pan? The extent of each arc (its ends and
- * the axis extremes its sweep passes), grown by half its thickness, against the strips' bounds.
- * The WC rule then declines the pan with a `curved-wc-wall` coverage skip rather than measure
- * one side and not the other.
+ * Does a curved wall's body reach into either side strip of a pan? The exact distance from the
+ * strip's rectangle to each arc's centreline ({@link rectToArc}), against half the wall's
+ * thickness: the shape, never its bounding box. The WC rule then declines the pan with a
+ * `curved-wc-wall` coverage skip rather than measure one side and not the other.
  */
 export function curvedNear(wallSegs: readonly WallSegment[], strips: readonly Strip[]): boolean {
   const arcs = wallSegs.filter((s) => s.arc);
   if (arcs.length === 0) return false;
   const boxes = strips.map(stripBox);
-  for (const s of arcs) {
-    const a = s.arc!;
-    const pts = [a.a, a.b];
-    for (const k of [0, 1, 2, 3]) {
-      const ang = (k * Math.PI) / 2;
-      if (withinSweep(ang, a.start, a.sweep))
-        pts.push({ x: a.center.x + a.r * Math.cos(ang), y: a.center.y + a.r * Math.sin(ang) });
-    }
-    const h = s.thickness / 2;
-    const x0 = Math.min(...pts.map((p) => p.x)) - h;
-    const x1 = Math.max(...pts.map((p) => p.x)) + h;
-    const y0 = Math.min(...pts.map((p) => p.y)) - h;
-    const y1 = Math.max(...pts.map((p) => p.y)) + h;
-    if (boxes.some((b) => b.x < x1 && x0 < b.x + b.w && b.y < y1 && y0 < b.y + b.h)) return true;
-  }
-  return false;
+  return arcs.some((s) => boxes.some((b) => rectToArc(b, s.arc!) < s.thickness / 2));
 }
 
-/** Is the angle `ang` on the arc that starts at `start` and sweeps `sweep` (signed) radians? */
-function withinSweep(ang: number, start: number, sweep: number): boolean {
-  const tau = 2 * Math.PI;
-  const rel = (((sweep >= 0 ? ang - start : start - ang) % tau) + tau) % tau;
-  return rel <= Math.abs(sweep) + 1e-12;
+/**
+ * The least distance from an axis-aligned rectangle (closed) to an arc, `0` when they meet. The
+ * nearest pair lies at an arc endpoint, a rectangle corner (its distance to the arc), a crossing of
+ * the circle with a rectangle edge inside the sweep, or the circle's nearest approach to an edge
+ * (the edge outside the circle, along the radial through the edge's point nearest the centre,
+ * when that radial is inside the sweep). Closed form, no tessellation.
+ */
+function rectToArc(r: BBox, arc: Arc): number {
+  const inRect = (p: Point): boolean => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+  if (inRect(arc.a) || inRect(arc.b)) return 0;
+  const corners: Point[] = [
+    { x: r.x, y: r.y },
+    { x: r.x + r.w, y: r.y },
+    { x: r.x + r.w, y: r.y + r.h },
+    { x: r.x, y: r.y + r.h },
+  ];
+  let best = Math.min(...corners.map((p) => distPointToArc(p, arc)), distToRect(arc.a, r), distToRect(arc.b, r));
+  const { center: c, r: R } = arc;
+  for (let i = 0; i < 4; i++) {
+    const p = corners[i]!;
+    const q = corners[(i + 1) % 4]!;
+    const dx = q.x - p.x;
+    const dy = q.y - p.y;
+    const len2 = dx * dx + dy * dy;
+    // The foot of the perpendicular from the centre on the edge's line, and the edge's point
+    // nearest the centre (the foot clamped to the edge).
+    const t0 = ((c.x - p.x) * dx + (c.y - p.y) * dy) / len2;
+    const t = Math.max(0, Math.min(1, t0));
+    const m = { x: p.x + dx * t, y: p.y + dy * t };
+    const dm = Math.hypot(m.x - c.x, m.y - c.y);
+    if (dm >= R && arcContainsRay(arc, m)) best = Math.min(best, dm - R);
+    // The circle's crossings with the edge's line, kept when on the edge and inside the sweep.
+    const dLine = Math.hypot(p.x + dx * t0 - c.x, p.y + dy * t0 - c.y);
+    if (dLine <= R) {
+      const along = Math.sqrt(Math.max(0, R * R - dLine * dLine) / len2);
+      for (const s of [t0 - along, t0 + along]) {
+        if (s < 0 || s > 1) continue;
+        const x = { x: p.x + dx * s, y: p.y + dy * s };
+        if (arcContainsRay(arc, x)) return 0;
+      }
+    }
+  }
+  return best;
+}
+
+/** Distance from a point to a closed axis-aligned rectangle (0 inside). */
+function distToRect(p: Point, r: BBox): number {
+  const nx = Math.min(Math.max(p.x, r.x), r.x + r.w);
+  const ny = Math.min(Math.max(p.y, r.y), r.y + r.h);
+  return Math.hypot(p.x - nx, p.y - ny);
 }
 
 /** A strip as a plan rectangle. */

@@ -1411,7 +1411,10 @@
  * same footprint as before, so its drawing and `describe()` did not move and its `lint()` moved only
  * by the spans the longer statement and comment shift. The deprecated iso/axon view of
  * `hillside-villa` (`test/__snapshots__/iso-snapshot.test.ts.snap`) draws the moved WCs and fridge;
- * both snapshots were re-taken. No other row moved in that round.
+ * both snapshots were re-taken. No other row moved in that round. Round 2 shortened
+ * `hillside-villa`'s comments only (its `claude.ai` prefilled link had fallen under the 80
+ * characters `playground/test/llm-prompt.test.ts` keeps spare), so its rows moved by `lint()`
+ * spans alone; its drawing and `describe()` are unchanged.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -1429,7 +1432,7 @@ export const BASELINE: [string, string][] = [
   ["garden-house", "8dc93639c9a34a961d0864530394d40af97b17840cd0fb883d80dd714bb8f339"], // re-measured, see header
   ["garden-loft", "19d5cb4a8c197905cbb588d0a18d859d121c7edcc65f62176c62b78424084715"],
   ["hexagon-pavilion", "92d343afbb62315ad0014b95de9f4a8b26ccffbc14093b04c5956b689f850252"],
-  ["hillside-villa", "2d3ec7fd76e4828fba643b2bac09a159cbf13b2fe84e268051ebc3209fbf8324"], // re-measured, see header
+  ["hillside-villa", "93adefd18737138987723854fe482bda2c9e8756b3570d404ddc6dc513aa8646"], // re-measured, see header
   ["imports", "4b0151513963a656e52ac84c6fd80eb35c9820ae101921420cb8d5c9c13c0b70"],
   ["laneway-house", "efd11c408cc1c0ab1c23ef1ef054b63ce3c86bd7024c06b3fc69654b602dcfff"],
   ["library", "3482b924cb35a47f09dec06bf46b3d0155bc2f7b07630fb76a1747c3456167e9"],
@@ -1477,7 +1480,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["garden-house", "e5682c530681829e8b70a578429909629d24e4c6dbbee5017a3154f91280b5d2"], // re-measured, see header
   ["garden-loft", "82868ee4b98cfc0e45872c803153a34fc90cc699b022e6f8a12bcad0bdef2010"],
   ["hexagon-pavilion", "6e8005c3a0af9b80598574e77141301a957b4a293ba8d5de6cc1effb00693494"],
-  ["hillside-villa", "19ec8513ff74b96ee4a7707001232cc6c12fbd376176cbef1189d85d33d9fe06"], // re-measured, see header
+  ["hillside-villa", "1699f2b83c7c6448e7fedf3034039943ffdc6de9d25dabda6356f3ba9209fcfb"], // re-measured, see header
   ["imports", "183bf4ec261e6650b21c4771b64fe924bf5c6eabd3ea1b8d3bbdac71b2900ac3"],
   ["laneway-house", "c8b08b3f3a1b0fc9f390a7be6f9e16a6bcd512df54db8fce74f06cf3fbd6e679"],
   ["library", "a17af1b3b0ac53ba1c8acf2a83b0f9556aa790ff23008c3cd149d501b8ff02c3"],
