@@ -46,20 +46,12 @@ errors/warnings appear inline (squiggles + Problems panel).
 > language-configuration in `../`. For `vsce package`, copy those two files into
 > this folder (or adjust the paths) so they're included in the `.vsix`.
 
-## Open VSX (owner step)
+## Open VSX
 
-The namespace `ChanMeng` was created from the owner's Open VSX account (@ChanMeng666), and the
-ownership claim is filed as EclipseFdn/open-vsx.org#14189 (option 1: a Marketplace publisher whose
-repository is owned by the requesting GitHub account). `archlang` 0.31.0 was published with the
-token path below but shows "Under review / Deactivated", and the public API answers "Extension not
-found", until the namespace is verified. Trusted Publishing (OIDC from CI, no token) is offered by
-Open VSX, but its page requires a verified namespace, so it follows #14189 (`docs/backlog.md` O.4);
-keep the token path until then.
-
-Publish the packaged `.vsix` (built in the PRIMARY checkout). ovsx reads the token from the
-`OVSX_PAT` environment variable (set it in the shell, so it is never in argv), never from a file in
-the repo; `ovsx` is pinned to 1.2.0 (the npm latest on 2026-10-13):
-
-```bash
-npx ovsx@1.2.0 publish archlang-<version>.vsix
-```
+The namespace `ChanMeng` is verified (EclipseFdn/open-vsx.org#14189) and `archlang` is live there.
+Publishing is the `publish-openvsx.yml` workflow: dispatch it after the Marketplace upload of the
+same version. It packages this folder and runs `ovsx publish --trusted-publishing`, so no token
+exists anywhere, and it skips a version Open VSX already has. It works only once the owner has
+registered it as a trusted publisher (open-vsx.org → Settings → Trusted publishers: repository
+`ChanMeng666/archlang`, workflow `publish-openvsx.yml`); an auth failure means redo that
+registration, never add an `OVSX_PAT` secret.
