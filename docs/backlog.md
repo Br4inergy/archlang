@@ -2412,14 +2412,14 @@ The state of each listing is the table in `docs/seo.md` § 8. These are what is 
 Readings of the agent-reach E1/E2 metrics must discount the 2026-10-14 burst traffic (the owner's
 own ~1,500 hosted-MCP requests; `docs/seo.md` section 8).
 
-### O.1 · Glama has no quality score, and the awesome-mcp-servers pull request waits on it — `todo` (owner step)
+### O.1 · Glama's quality score, then awesome-mcp-servers #14383 merges — `todo` (BLOCKED on a third party)
 
-The server is listed and claimed on Glama, but its page reports "This server cannot be deployed", so
-Glama has never run it and has no quality score. `punkpeye/awesome-mcp-servers` #14383 cannot merge
-until the score exists (any grade) and the entry carries the Glama badge; its maintainer asked again
-on 2026-10-15. Next: the owner logs in to Glama and gives the server a Dockerfile under its Admin tab
-that installs and runs the stdio shim (`npm i -g @chanmeng666/archlang-mcp`, command
-`archlang-mcp`); once the score appears, an agent adds the badge to the entry in #14383.
+`punkpeye/awesome-mcp-servers` #14383 cannot merge until Glama has evaluated the server's quality
+score (any grade). Glama's auto-generated build had failed (it ran the CLI, not the MCP server); on
+2026-10-25 its Dockerfile settings were set to install `@chanmeng666/archlang-mcp` and run
+`archlang-mcp` behind `mcp-proxy`, the build test passed and release 0.1.0 was published. Tool
+discovery and the score are Glama's asynchronous step. The score badge is already on the entry in
+#14383. Left: once the score shows, reply on #14383 that it is evaluated.
 
 ### O.2 · The release workflow's bundle step has never run on a tag — `done`
 
