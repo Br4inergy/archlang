@@ -263,7 +263,11 @@ describe("repair — `in <room>` placements", () => {
     expect(move.reason).toContain("could not express the move as an `inset`");
     expect(move.reason).toContain("`rotate 180` is now written out");
     expect(r.source).toContain("furniture wc at (2100, 4200) size 400x700 rotate 180 in r");
-    expect(lint(r.source)).toEqual([]);
+    // Repair clears hard conflicts by the smallest shift, so the pan now stands flush beside the
+    // chest: its centreline 200 mm from it, which the clearance rule reports (PS2.11a). Repair
+    // does not judge clearances (its no-worse law is over the four hard codes), so that one
+    // advisory is all the repaired plan raises.
+    expect(lint(r.source).map((d) => d.code)).toEqual(["W_WC_SIDE_CLEARANCE"]);
   });
 });
 

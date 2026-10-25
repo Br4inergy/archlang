@@ -174,11 +174,12 @@ const ROOT = join(HERE, "..");
 // defect `W_SEAT_FACING_AWAY` found (ADR 0029 §6); the cause and the proof that nothing else
 // moved are in `test/byte-identity-baseline.ts`'s header.
 // Re-measured 2026-10-24 (PS2.12): the annotation-collision examples (two-bed, both tables); why, and the swap-back proof, in `test/byte-identity-baseline.ts`'s header.
+// Re-measured 2026-10-25 (PS2.11a/b): furnished-flat, laneway-house and two-bed, fixed for WC side clearance and tall units over windows; why, and the proof that nothing else moved, in `test/byte-identity-baseline.ts`'s header.
 const BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f",
   // laneway-house, bungalow and two-bed re-measured 2026-10-20 (PS2.17), a worktop in each kitchen;
   // see `byte-identity-baseline.ts`, "a worktop in every example kitchen", for the swap-back proof.
-  "laneway-house.arch": "78dddfdf45d0dd82e6e98f8bc270060421ab7361080a18be74fdd3558e28e348",
+  "laneway-house.arch": "efd11c408cc1c0ab1c23ef1ef054b63ce3c86bd7024c06b3fc69654b602dcfff",
   "bungalow.arch": "7e4b4f8e97cd44c1f03f2fa8aa9ae85ee1568a17dc5743c384e55590196eb1e5",
   // Re-measured for the `overhead` flag. Its SOURCE gained two statements —
   // a `range_hood` over the stove and a `mirror` over the basin, the two correct drawings
@@ -189,12 +190,12 @@ const BASELINE: Readonly<Record<string, string>> = {
   // 50 mm nib beside the partition, so only the SVG moved; the previous SVG with the new
   // describe() + lint() reproduces the previous row (./byte-identity-baseline.ts, "Six examples").
   // Re-measured 2026-10-20 (PS2.19): "Utility" now classifies as `utility`; see `byte-identity-baseline.ts`.
-  "furnished-flat.arch": "530e546cb90a685d9fb1244b68e181bb8a739912f399ceee58797307ffa94641",
+  "furnished-flat.arch": "1d3a98c3cf3eff0bec89ee54b0c3acbbb24cf799caa771efbf66a2aa45b8b5d7",
   // Re-measured 2026-10-18 (PS0.7): "Kitchen / Living" now classifies as `kitchen living`, so
   // `describe()` moves (uses + room_type) and nothing else; see ./byte-identity-baseline.ts,
   // "the label classifier emits living", for the swap-back proof. Re-measured again the same day
   // (PS2.5): `lint()` gains three W_ROOM_VIA_PRIVATE; see "the circulation-and-privacy rules".
-  "two-bed.arch": "cea88e622fc30ae874fcf59fc83f130f6f9fc3ae16c96048ae137493c9a710c1", // PS3.6 source rewrite, see ./byte-identity-baseline.ts
+  "two-bed.arch": "2dc668dc93aa6dd7e114715e593a87ec91b208ff60255b2d41bf20c585b3fa05", // PS3.6 source rewrite, see ./byte-identity-baseline.ts
 };
 
 /**
@@ -207,7 +208,7 @@ const BASELINE: Readonly<Record<string, string>> = {
 const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
   "studio.arch": "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a",
   // laneway-house, bungalow and two-bed re-measured 2026-10-20 (PS2.17), as above.
-  "laneway-house.arch": "b1598f1cb7da5fad1a7ba74837d904e2ad5c7aa22d61e28356ecb16cb982344e",
+  "laneway-house.arch": "c8b08b3f3a1b0fc9f390a7be6f9e16a6bcd512df54db8fce74f06cf3fbd6e679",
   "bungalow.arch": "f655bb711665281ce3440d10cb38dc2ca4cdb80343e0a4580d2ca89947078351",
   // `furnished-flat.arch` is the ONE value in this table that is not the original `5298b99`
   // measurement, and the exception proves the rule rather than bending it. Its SOURCE keeps
@@ -227,7 +228,7 @@ const SEMANTIC_BASELINE: Readonly<Record<string, string>> = {
   // Re-measured 2026-10-20 (PS2.19), `describe()` only: see `byte-identity-baseline.ts`.
   "furnished-flat.arch": "6a19a52e6e702ead080c55100e93d69667627a7a586412db992ab65c5289ba24",
   // Re-measured 2026-10-18 (PS0.7, then PS2.5), the same causes as BASELINE's two-bed row.
-  "two-bed.arch": "1f0dbc3a18d1bc55cd10aedb20306b55d458604a6dc0c2fc4e447e50cce87d45", // PS3.6 source rewrite, see ./byte-identity-baseline.ts
+  "two-bed.arch": "8c3bc146d49582bf1438d0b075c40f5aa80d24d9e8a5b9b52e9a75cc4d4b1cae", // PS3.6 source rewrite, see ./byte-identity-baseline.ts
 };
 
 suite("the outdoor tranche — the byte-identity law", () => {

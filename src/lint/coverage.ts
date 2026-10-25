@@ -96,7 +96,13 @@ export type LintSkipReason =
   /** A bedroom holds no `bed` or `double_bed`, so whether it is a single or a double bedroom is
    *  not known and a profile's double-bedroom threshold is not applied (PS5.2; never read from
    *  the label, ADR 0005). Filed only under a profile that sets one. */
-  | "no-bed";
+  | "no-bed"
+  /** A window stands on a curved wall, whose span `W_FURNITURE_OVER_WINDOW` does not measure
+   *  (PS2.11b): no tall unit is judged against it. */
+  | "curved-window-host"
+  /** A curved wall stands near a WC's side, which `W_WC_SIDE_CLEARANCE` does not measure
+   *  (PS2.11a): that WC is not judged. */
+  | "curved-wc-wall";
 
 /** What each family checks, as the human coverage line names it. */
 export const FAMILY_NOUN: Readonly<Record<LintFamily, string>> = {
@@ -137,6 +143,8 @@ export const SKIP_WHY: Readonly<Record<LintSkipReason, string>> = {
   "non-dwelling": "the plan reads as non-residential",
   "annotation-budget": "the drawing is too large to measure for collisions",
   "no-bed": "the bedroom holds no bed to tell a single from a double",
+  "curved-window-host": "a window stands on a curved wall, which the rule does not measure",
+  "curved-wc-wall": "a curved wall stands beside a WC, which the rule does not measure",
 };
 
 /**

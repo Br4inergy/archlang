@@ -49,6 +49,7 @@ import { type BBox, doorLandingRect, rectsOverlap } from "./geometry/rect.js";
 import type { RDoor, RFurniture, ROpening, ResolvedPlan, RRoom, RWall, RWindow } from "./ir.js";
 import { lex } from "./lexer.js";
 import { ADVISORY_CODE_PROFILES, DEFAULT_RULESET, LINT_CODE_LAYERS, LINT_PROFILES } from "./lint.js";
+import { isWc } from "./lint/clearance-measure.js";
 import { buildLintContext } from "./lint/context.js";
 import { definingItems, pasteSet, useNoun } from "./lint/defining.js";
 import { fmtSource } from "./num-format.js";
@@ -139,6 +140,8 @@ const RULESETS = [
 const LANDING_MM = Math.max(...RULESETS.map((r) => r.doorwayLandingMm));
 /** How far off a door's swing a piece is kept. */
 const SWING_MM = Math.max(...RULESETS.map((r) => r.swingClearanceMm));
+/** How far a WC's centreline stands off a side face when it is placed at a corner. */
+const WC_SIDE_MM = Math.max(...RULESETS.map((r) => r.wcSideClearanceMm ?? 0));
 /** How far off a room edge an opening's point may sit and still be on that edge. */
 const ON_EDGE_MM = 200;
 /** How far off a wall a `centre` piece stands when the middle of the room is not free. */
@@ -920,7 +923,11 @@ class Site {
                 if (this.anchors) offer(this.anchored(item, category, e, slot, along, depth, 0), true);
                 return;
               }
-              const c = slot === 0 ? e.segLo + along / 2 : slot === 2 ? e.segHi - along / 2 : (e.segLo + e.segHi) / 2;
+              // A WC's corner stands its centreline the strictest ruleset's side clearance off the
+              // side face (`W_WC_SIDE_CLEARANCE`, PS2.11a), so the stage never proposes a pan the
+              // never-worse law would refuse for that alone.
+              const off = isWc(category) ? Math.max(along / 2, WC_SIDE_MM) : along / 2;
+              const c = slot === 0 ? e.segLo + off : slot === 2 ? e.segHi - off : (e.segLo + e.segHi) / 2;
               offer(this.against(item, category, e, c, along, depth), true);
             };
             // A `middle` piece tries the middle of every wall before any corner.

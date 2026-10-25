@@ -77,6 +77,8 @@ Two classes from `evidence.md` §3 have no cases, because no core lint rule can 
 | `W_HABITABLE_NO_WINDOW` | PS2.8 |
 | `W_ROOM_MISSING_DEFINING` | PS2.9 |
 | `W_DIM_TEXT_MISMATCH` | PS2.10 |
+| `W_WC_SIDE_CLEARANCE` | PS2.11a |
+| `W_FURNITURE_OVER_WINDOW` | PS2.11b |
 
 ## Proposed codes
 
@@ -86,9 +88,7 @@ The card that implements a check may rename its code; rename it here and in the 
 | Code | Check | Card |
 |---|---|---|
 | `W_FLOOR_UNASSIGNED` | A walled face less than 95 % covered by rooms (PS2.4's dual) | PS2.4 |
-| `W_WC_SIDE_CLEARANCE` | WC centreline to the nearest side wall or fixture under 400 mm | PS2.11 |
 | `W_WARDROBE_FRONT_CLEARANCE` | Clear depth in front of a wardrobe under 600 mm | PS2.11 |
-| `W_FURNITURE_OVER_WINDOW` | A tall unit (fridge, wardrobe, bookcase) standing over a window's span | PS2.11 |
 | `W_HOB_FRIDGE_GAP` | A hob closer than 300 mm to a fridge or tall unit along the run | PS2.11 |
 | `W_LEAF_TOO_WIDE` | A single hinged leaf over 1200 mm | PS2.11 |
 | `W_SWING_OVER_STAIR` | A door swing over a stair footprint or its landing | PS2.11 |

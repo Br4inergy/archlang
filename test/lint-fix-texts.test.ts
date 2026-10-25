@@ -821,6 +821,10 @@ describe("the four reworded hints' messages name things as a reader would; ids s
     // or a title value is never quoted as if it were a name, and the ids are in the hints.
     "W_ANNOTATION_OVERLAP",
     "W_TITLE_OVERFLOW",
+    // The clearance family (PS2.11a/b): a WC and a tall unit by their label or category, the room
+    // by its label (an unlabelled room is left out, never named by its id); ids in the hints.
+    "W_WC_SIDE_CLEARANCE",
+    "W_FURNITURE_OVER_WINDOW",
   ];
   type Storey = {
     rooms?: { id: string; label?: string }[];
@@ -844,7 +848,17 @@ describe("the four reworded hints' messages name things as a reader would; ids s
   });
   // The annotation-collision corpus is read too: after PS2.12 the shipped examples raise neither
   // of its codes, so without it the two would be unexercised here.
-  const cases = [...corpus(["examples", "test/fixtures", "test/defect-corpus/annotation-collisions"]), ...inline];
+  // The clearance cases likewise: the shipped examples raise neither PS2.11a/b code after the fixes
+  // that landed with them.
+  const cases = [
+    ...corpus([
+      "examples",
+      "test/fixtures",
+      "test/defect-corpus/annotation-collisions",
+      "test/defect-corpus/clearances",
+    ]),
+    ...inline,
+  ];
 
   for (const p of PROFILES) {
     it(`${p ?? "default"} · every quoted name in the message is a room's or a piece's own name`, () => {
@@ -875,6 +889,9 @@ describe("the four reworded hints' messages name things as a reader would; ids s
       // And the annotation collisions (PS2.12), from their defect-corpus cases.
       expect(seen.get("W_ANNOTATION_OVERLAP") ?? 0).toBeGreaterThan(0);
       expect(seen.get("W_TITLE_OVERFLOW") ?? 0).toBeGreaterThan(0);
+      // And the clearance family (PS2.11a/b), from its defect-corpus cases and the fixtures.
+      expect(seen.get("W_WC_SIDE_CLEARANCE") ?? 0).toBeGreaterThan(0);
+      expect(seen.get("W_FURNITURE_OVER_WINDOW") ?? 0).toBeGreaterThan(0);
     });
   }
 

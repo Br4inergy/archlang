@@ -36,6 +36,19 @@
  * caps). The four new rows are the radius pairs; each defect case lists one
  * `W_ANNOTATION_OVERLAP` under `validity.drafting`, each twin none.
  *
+ * PS2.11a/b (2026-10-25) moved 15 rows, under `generic`, `cn-` and `us-residential-advisory`
+ * alike, each checked key by key against the report on `origin/main`. Three defect-corpus cases
+ * gained one validity warning (`W_WC_SIDE_CLEARANCE` or `W_FURNITURE_OVER_WINDOW`) in
+ * `validity.warnings`/`codes` and nothing else, being capped already (`fridge-over-window`,
+ * `fridge-over-window-end`, `wc-side-clearance`); `wc-centre-to-basin` was uncapped and is now
+ * capped (`score` 0.9375 → 0.5, `validity.pass` false), the one new cap. `wc-off-servery` and
+ * `bath-open-side` (both twins) had the defect too and were fixed in their source (the basin, or
+ * the pan, moved clear), so their rows read as on `origin/main` again. `examples/hillside-villa` moved in its criteria: its
+ * east kitchen window was narrowed (1200 → 1000 mm) and moved clear of the fridge, so R7's
+ * daylight ratio for the kitchen falls (`light` 0.9091 → 0.9035 under `cn`); its WCs moved, which no
+ * criterion reads. No other example's report moved: the other eleven fixes move a fixture or a
+ * window that no criterion of these rows reads at the precision it changed.
+ *
  * Re-measured in PS5.1b (the eight remaining criteria: R6, R9, R11, R12, R15, R16, R17, R18):
  * EVERY row moved, because every report gains eight `criteria` entries, and with them its
  * `subscores`, `score`, `uncapped`, `coverage.weight` and `coverage.skipped` (the new criteria's
@@ -105,7 +118,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
   ["5f9e6dabf2962f4c3a90f5b879232b5d05c7af6babbee8766980f59551833cbb", "generic", "examples/garden-house.arch"],
   ["0f60f5a9f68e6b7ea2eaf1128531449141831248dd7c90f9c8b56e4072072fa4", "generic", "examples/garden-loft.arch"],
   ["b47f84f6b6b3d23388dac71a8fe7820a9df4fc6d767b35aaef612ed7b9c04aef", "generic", "examples/hexagon-pavilion.arch"],
-  ["df708fd3992a25134c166bbb24a6d4e63be1177df544a131e398a25cc39e2bba", "generic", "examples/hillside-villa.arch"],
+  ["6d27dd9e61fd114a5a5216f9af01a61a64be0fc0025feadaf6da39e0199d4d7f", "generic", "examples/hillside-villa.arch"],
   ["791d5c50b474f2c187df63940ccd669a68761d5d6b081dab90f361ddbbb10735", "generic", "examples/imports.arch"],
   ["38d6e8eb4c8aa81addd4190e6d9b80dd525cc62d3d4c4e77c32827f173ae0e03", "generic", "examples/laneway-house.arch"],
   ["c28f1b6c03abceb451d14cdb946f4168ea07b005415d3010ae0e76778864c180", "generic", "examples/library.arch"],
@@ -367,7 +380,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/fridge-in-swing.clean.arch",
   ],
   [
-    "b82b308c3e358259eceea6a84df49ac59005101fb5ef89c4d5b893b98d73f1a4",
+    "661bd3eeb7364bead533c4697526a587aa361099abfccfacfe08cb8ff3ef61fa",
     "generic",
     "test/defect-corpus/clearances/fridge-over-window-end.arch",
   ],
@@ -377,7 +390,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/fridge-over-window-end.clean.arch",
   ],
   [
-    "13cf4d1ba44c02634638aab2e2ca18a62d8924e8b496819c719d45bf5c6f0342",
+    "279c430ba493ac0b813cc531adb7f422a786a07de1e3c93d1a16dd56b6075653",
     "generic",
     "test/defect-corpus/clearances/fridge-over-window.arch",
   ],
@@ -477,7 +490,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/wardrobe-front-550.clean.arch",
   ],
   [
-    "1ea29b64340d269d69c671d54e051b4742ed87178770463a0c1a2d34b0058271",
+    "cb04e7c239e5913f321860143b776cb44d703c27730f357f6eaf416cbaa321ca",
     "generic",
     "test/defect-corpus/clearances/wc-centre-to-basin.arch",
   ],
@@ -487,7 +500,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/wc-centre-to-basin.clean.arch",
   ],
   [
-    "baa8149777216a242ccc7a7dfbfd16b84040ba237b821668dc2fe72e94b1c28b",
+    "09e7a179d40d0c4e15ca5f191aaa8b4a6b67abd060b3f528c9507f6c6c68f744",
     "generic",
     "test/defect-corpus/clearances/wc-side-clearance.arch",
   ],
@@ -1022,7 +1035,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "examples/hexagon-pavilion.arch",
   ],
   [
-    "522f33dc1d1aa8076d3a9ff38941b724d0d5f898553e62a66881a9a8dd571bb8",
+    "3cbe726eaca8764b80b039911ec834e4d8fa0688fd6f3a233c46c62c6902273e",
     "cn-residential-advisory",
     "examples/hillside-villa.arch",
   ],
@@ -1367,7 +1380,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/fridge-in-swing.clean.arch",
   ],
   [
-    "b69e4e9d284eb7364b9467fe9b9a9510e4208079f2f3eebb100900e015023756",
+    "0673584bb209228b9adb8e03b49368c8eaa8d67c7b6b3b34fd403c82f13bbb06",
     "cn-residential-advisory",
     "test/defect-corpus/clearances/fridge-over-window-end.arch",
   ],
@@ -1377,7 +1390,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/fridge-over-window-end.clean.arch",
   ],
   [
-    "4fadeb074a260a9583fbd6bf94aaeb8a36d5dfe496e099141d140c4f11603244",
+    "4ac1dd3bc7e30b993beb1f284f182c9c61e1bf9e014539620059c27ddf338a1e",
     "cn-residential-advisory",
     "test/defect-corpus/clearances/fridge-over-window.arch",
   ],
@@ -1477,7 +1490,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/wardrobe-front-550.clean.arch",
   ],
   [
-    "4a7aa7ea370391600280a5f2952843aded17c586fbc3d5983935bb4fffd442b2",
+    "cdf8e9dd11d257fdc31fde61150f60e9c254f729463905b6711fe03d48d58310",
     "cn-residential-advisory",
     "test/defect-corpus/clearances/wc-centre-to-basin.arch",
   ],
@@ -1487,7 +1500,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/wc-centre-to-basin.clean.arch",
   ],
   [
-    "d98ff1b14268af63b7e07554ef85c877d1cacaf7d3b2debfe212111400f34f8f",
+    "de97ba84a1ebf17eec2ea7ddcdf49ec02fc42df07295a0582973a8dd1b0b5a85",
     "cn-residential-advisory",
     "test/defect-corpus/clearances/wc-side-clearance.arch",
   ],
@@ -2022,7 +2035,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "examples/hexagon-pavilion.arch",
   ],
   [
-    "058b6b820883cca12a1246e598be93b75be38386ccbf069e1ca7790b67ddcdd4",
+    "3d73f688ac68d9b806e6aaf23ef269ab06e4c41782386387704d1ee71f0bb0cc",
     "us-residential-advisory",
     "examples/hillside-villa.arch",
   ],
@@ -2367,7 +2380,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/fridge-in-swing.clean.arch",
   ],
   [
-    "8eba379bddd61b2756420dda0f03661feb9fb233b7a7be6dca14e8a31fef39d1",
+    "a3274df3e5d87287b3d9e8338586b5cda431baa7b0002aa67d7f42bc3f12b164",
     "us-residential-advisory",
     "test/defect-corpus/clearances/fridge-over-window-end.arch",
   ],
@@ -2377,7 +2390,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/fridge-over-window-end.clean.arch",
   ],
   [
-    "001232fd665044aec7762eba337fbf6f37c848f3212e3c1fffb1bd005c538a79",
+    "db5fd5e1a4bb012a5c6aa60107d073c4cd0db03d37f716f0acc4c997b9d69143",
     "us-residential-advisory",
     "test/defect-corpus/clearances/fridge-over-window.arch",
   ],
@@ -2477,7 +2490,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/wardrobe-front-550.clean.arch",
   ],
   [
-    "a1c388db9b07c0bed282985987bd4d3000648a6961aa50c5ad489d72f5c62e46",
+    "0d5dc27547bf4f11fb794759d0bd1ab2d395e0b207940d9cab23b1c672d2ff6d",
     "us-residential-advisory",
     "test/defect-corpus/clearances/wc-centre-to-basin.arch",
   ],
@@ -2487,7 +2500,7 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/clearances/wc-centre-to-basin.clean.arch",
   ],
   [
-    "e3c990729a7152dde89f5721c85434392c6c07b52eb8019b35dc04d55d7fa728",
+    "07f82b06af0eb2f796d0cb941fcf65db43eff9bf009f3cbaefeee5294dcda3a4",
     "us-residential-advisory",
     "test/defect-corpus/clearances/wc-side-clearance.arch",
   ],

@@ -24,7 +24,7 @@ plan "R14 living off to one side" {
   window id=w_bed2 on r_bed2.bottom at center width 1500
   furniture bed in r_bed1 anchor bottom-left flush inset 300 size 1400x2000 label "Bed"
   furniture bed in r_bed2 anchor bottom-right flush inset 300 size 1400x2000 label "Bed"
-  furniture wc in r_bath anchor bottom-right flush size 400x700
+  furniture wc against r_bath.bottom offset 1450 size 400x700
   furniture basin in r_bath anchor right flush size 450x600
   furniture shower in r_bath anchor bottom-left flush size 900x900
 }

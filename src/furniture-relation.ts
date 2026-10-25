@@ -154,7 +154,7 @@ function stripRect(s: Strip): BBox {
 }
 
 /** Clip a convex polygon to an axis-aligned rectangle (Sutherland–Hodgman). */
-function clipToRect(poly: Point[], r: BBox): Point[] {
+export function clipToRect(poly: Point[], r: BBox): Point[] {
   const edges: Array<[(p: Point) => number, number]> = [
     [(p) => p.x - r.x, 0],
     [(p) => r.x + r.w - p.x, 0],
@@ -182,7 +182,7 @@ function clipToRect(poly: Point[], r: BBox): Point[] {
 }
 
 /** Twice the signed area of a polygon. */
-function area2(poly: readonly Point[]): number {
+export function area2(poly: readonly Point[]): number {
   let a = 0;
   for (let i = 0; i < poly.length; i++) {
     const p = poly[i]!;
@@ -342,7 +342,7 @@ export function clearWorldOf(
 }
 
 /** The clear depth of one strip, capped at its declared depth and floored at 0. */
-function measureStrip(s: Strip, world: ClearWorld, self: RFurniture): ClearMeasure {
+export function measureStrip(s: Strip, world: ClearWorld, self: RFurniture): ClearMeasure {
   let best = s.depth;
   let by: Obstacle | null = null;
   const take = (v: number | null, o: Obstacle): void => {

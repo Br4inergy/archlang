@@ -452,8 +452,8 @@ suite("doors — W_POCKET_RUN", () => {
     // The two furniture-relation rules (ADR 0029 §6) follow those: a declared `clear` measured
     // short, and PS2.11's undeclared seat check, whose corpus movement is listed there too.
     // PS2.10's dimension-text rule follows those, for the same reasons.
-    // The two annotation-collision rules (PS2.12) follow those: drafting only, appended last,
-    // their corpus movement listed in the same header.
+    // The two annotation-collision rules (PS2.12) follow those: drafting only, their corpus
+    // movement listed in the same header. The two clearance rules (PS2.11a/b) come last.
     expect(names.slice(i + 1)).toEqual([
       "outdoor-overlaps-room",
       "balcony-no-door",
@@ -475,6 +475,8 @@ suite("doors — W_POCKET_RUN", () => {
       "dim-text-mismatch",
       "annotation-overlap",
       "title-overflow",
+      "wc-side-clearance",
+      "furniture-over-window",
     ]);
   });
 
@@ -487,9 +489,10 @@ suite("doors — W_POCKET_RUN", () => {
     // here (a door at a corner is `W_DOOR_NEAR_CORNER`'s alone); the two room-contents rules
     // follow those, and this plan has no room for them to read either; nor do the three
     // space-enclosure rules after them, nor the two furniture-relation rules after those, nor
-    // the dimension-text rule (no `dim` here), nor the two annotation-collision rules last of all
-    // (no furniture, no `dims auto`, no title).
-    expect(LINT_RULES.map((r) => r.name).slice(-18)).toEqual([
+    // the dimension-text rule (no `dim` here), nor the two annotation-collision rules (no
+    // furniture, no `dims auto`, no title), nor the two clearance rules last of all (no WC, no
+    // tall unit).
+    expect(LINT_RULES.map((r) => r.name).slice(-20)).toEqual([
       "door-near-corner",
       "opening-not-dimensioned",
       "room-via-private",
@@ -508,6 +511,8 @@ suite("doors — W_POCKET_RUN", () => {
       "dim-text-mismatch",
       "annotation-overlap",
       "title-overflow",
+      "wc-side-clearance",
+      "furniture-over-window",
     ]);
     // A plan carrying an unrelated pre-existing warning (a sub-passable door width) AND
     // tripping the new rule: the old diagnostic must still be first, byte-for-byte.

@@ -36,7 +36,7 @@ plan "Two-Bedroom Flat" {
 
   window on w_ring at 2000  width 2000
   window on w_ring at 30500 width 1500
-  window on w_ring at 8000  width 2400
+  window on w_ring at 7400  width 2400
   window on w_ring at 19800 width 1400
 
   # The open pair: the 1400 run less the two 50 mm half-partitions at its ends.
@@ -55,7 +55,7 @@ plan "Two-Bedroom Flat" {
   furniture table at (800,5800)  size 1200x800 label "Table" in r_living
 
   furniture shower in r_bath anchor bottom-left flush size 900x900
-  furniture wc     in r_bath anchor bottom flush size 400x700
+  furniture wc     against r_bath.bottom offset 1600 size 400x700
   furniture basin  in r_bath anchor right flush size 450x600
 
   roof overhang 500

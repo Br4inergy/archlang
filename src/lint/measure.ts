@@ -25,6 +25,16 @@ import { fmt2 } from "../num-format.js";
  */
 export const mm = (n: number): string => fmt2(Math.round(n));
 
+/**
+ * Minimum intrusion (mm) into a wall solid that counts as a collision. Above plausible
+ * grid-snap noise from `against wall` placement, below any real penetration (a piece
+ * straddling even a 100 mm partition intrudes far more), so flush/anchored fixtures
+ * stay quiet while a sofa drawn through a wall is caught. (Re-exported by `fixture-paste.ts`,
+ * where it was first stated; it lives here so the clearance measures can share it without a
+ * cycle.)
+ */
+export const WALL_COLLISION_SLACK_MM = 30;
+
 /** How far `required` exceeds what is `available` — never negative. */
 export const shortfall = (required: number, available: number): number => Math.max(0, required - available);
 

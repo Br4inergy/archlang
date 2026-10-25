@@ -92,7 +92,7 @@ plan "Townhouse" {
     furniture media in r_living anchor top-left flush size 1200x400 label "Media"
     furniture sofa  in r_living anchor bottom    flush size 2000x850 label "Sofa"
 
-    furniture wc    in r_wc anchor bottom-left  flush size 400x700
+    furniture wc    against r_wc.bottom offset 650 size 400x700
     furniture basin in r_wc anchor bottom-right flush size 600x450
 
     # The kitchen run rides the shell's WEST segment (index 3, walked from (0,10700)
@@ -134,7 +134,7 @@ plan "Townhouse" {
     # The three pieces go round the three walls the door is not on, so the leaf opens onto
     # bare floor: bath under the back wall, WC beside it on the spine, basin by the window.
     furniture bathtub in r_bath anchor bottom-left  flush size 1700x700
-    furniture wc      in r_bath anchor bottom-right flush size 400x700
+    furniture wc      against r_bath.bottom offset 2500 size 400x700
     furniture basin   in r_bath anchor top-left     flush size 600x450
 
     furniture bed      in r_bed2 anchor bottom-left flush size 1500x2000 label "Double"
@@ -169,7 +169,7 @@ plan "Townhouse" {
     # The same three walls as the bathroom below, and a shower where the bath is — the
     # drain, the vent and the door all stay where the storey under them put them.
     furniture shower in r_bath anchor bottom-left  flush size 900x900
-    furniture wc     in r_bath anchor bottom-right flush size 400x700
+    furniture wc     against r_bath.bottom offset 2300 size 400x700
     furniture basin  in r_bath anchor top-left     flush size 600x450
 
     furniture bed      in r_master anchor bottom-left flush size 1600x2100 label "Double"

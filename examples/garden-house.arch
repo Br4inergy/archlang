@@ -250,14 +250,14 @@ plan "Garden House" {
     furniture nightstand at (12600,9500) size 450x400 in r_bed1
 
     furniture bed      against wall shell segment 3 offset 6700 size 1400x2000 in r_bed2
-    furniture wardrobe in r_bed2 anchor top flush size 1400x600
+    furniture wardrobe in r_bed2 anchor top-right flush size 1400x600
 
     furniture bed      against wall shell segment 3 offset 2300 size 1400x2000 in r_bed3
     furniture desk     in r_bed3 anchor top flush size 1400x600
 
     furniture bathtub in r_bath anchor top-right    flush size 1700x700
     furniture basin   in r_bath anchor bottom-left  flush size 600x450
-    furniture wc      in r_bath anchor bottom-right flush size 400x700
+    furniture wc      against r_bath.bottom offset 4200 size 400x700
 
     # The eaves, on the top storey only — this level's `shell` is the plan's one closed
     # exterior ring on THIS page, so no `wall` clause is needed. The garage is single

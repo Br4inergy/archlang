@@ -1092,7 +1092,7 @@ What it cannot tell you:
 | Reachability | `W_ROOM_UNREACHABLE`, `W_BATH_VIA_BEDROOM` |
 | Wet rooms | `W_ROOM_NOT_ENCLOSED`, `W_ROOM_NO_FIXTURE` |
 | Garage | `W_GARAGE_TOO_NARROW` |
-| Furniture / fixtures | `W_FIXTURE_FLOATING`, `W_FIXTURE_BACK_TO_ROOM`, `W_FIXTURE_WRONG_ROOM`, `W_FURNITURE_OVERLAP`, `W_FURN_CLEARANCE` |
+| Furniture / fixtures | `W_FIXTURE_FLOATING`, `W_FIXTURE_BACK_TO_ROOM`, `W_FIXTURE_WRONG_ROOM`, `W_FURNITURE_OVERLAP`, `W_FURN_CLEARANCE`, `W_WC_SIDE_CLEARANCE`, `W_FURNITURE_OVER_WINDOW` |
 | Circulation quality | `W_ROOM_NO_CLEAR_PATH`, `W_PATH_TOO_NARROW`, `W_CIRCUITOUS_PATH` |
 | Circulation and privacy | `W_ROOM_VIA_PRIVATE`, `W_WET_ROOM_DOOR`, `W_ENTRANCE_INTO_PRIVATE` |
 | Enclosure | `W_BOUNDARY_NO_WALL`, `W_FLOOR_UNASSIGNED`, `W_ROOM_OUTSIDE_SHELL` |
@@ -1131,6 +1131,16 @@ the boundary between two rooms when its body stands on their shared edge, not me
 it. `W_ROOM_OUTSIDE_SHELL` fires when part of a room lies outside every wall, and only for a
 room most of whose floor is inside walls: with no closed shell around it, it says nothing. All three measure the shapes themselves, so curved walls and circular rooms are
 measured exactly.
+
+Two clearance rules read furniture against its surroundings, from the drawn shapes.
+`W_WC_SIDE_CLEARANCE` fires when a WC's centreline is nearer than the ruleset's
+`wcSideClearanceMm` (400 mm by default) to a wall face or a piece standing beside the pan, measured
+square to the centreline over the pan's depth; a mirror above it, a rug under it and a door's
+swing do not count. `W_FURNITURE_OVER_WINDOW` fires when a tall unit (a fridge, wardrobe,
+bookcase or locker) stands against a window's wall across part of its span, on either side of
+the wall; a window whose sill is at or above 2100 mm is a high window over the unit and is not
+judged. Both give the measured figure and a slide that clears it in the hint, and neither offers a
+machine fix.
 
 Narrow a noisy report with `--code` or `--severity` — on `lint` and on `validate`:
 
@@ -1210,7 +1220,7 @@ A **profile** is a named bundle of thresholds, applied with `--profile` (CLI) or
 |---------|-----------|
 | *(default, no profile)* | doors ≥ 700 mm, rooms ≥ 4 m², walk clear ≥ 700 mm, detour ≤ 3.0×, no swing-clearance buffer; the home-only checks skip a plan that reads as non-residential (`non-dwelling`) |
 | `residential-basic` | the default's thresholds, with every plan judged as a dwelling |
-| `accessibility-advisory` | doors ≥ 850 mm, rooms ≥ 5 m², walk clear ≥ 900 mm, detour ≤ 3.0×, 150 mm swing clearance |
+| `accessibility-advisory` | doors ≥ 850 mm, rooms ≥ 5 m², walk clear ≥ 900 mm, detour ≤ 3.0×, 150 mm swing clearance, WC centreline ≥ 450 mm from a side wall or fixture |
 | `cn-residential-advisory` | the default's, plus room areas and passage widths read from China's residential design code (table below) |
 | `uk-residential-advisory` | the default's, plus bedroom areas and widths from England's space standard and hall widths (table below) |
 | `us-residential-advisory` | the default's, plus habitable-room areas and widths and hallway widths from the US model residential code (table below) |
@@ -1227,6 +1237,7 @@ reachable); nothing remembered ships:
 | Room width (`W_ROOM_TOO_NARROW`) | — | bedroom 2150 mm (NDSS 10(c) [V]); double 2550 mm, one double per home 2750 mm (NDSS 10(e) [V]) | living, dining, bedroom 2134 mm (IRC R304.2 [S]) |
 | Passage width (`W_ROOM_TOO_NARROW`) | entry passage 1200 mm (宜, should); to a bedroom or living room 1000 mm; to a kitchen, bath, WC or store 900 mm (GB 5.7.1 [V]) | hall, circulation, entry 900 mm (Approved Document M4(2) [S]) | hall, circulation, entry 914 mm (IRC R311.6 [S]) |
 | Daylight target (taste R7) | 1/7 (GB 7.1.5 [V]) | 8 %, the generic target (no English figure read) | 8 % (IRC R303.1 [S]) |
+| WC centreline to a side wall or fixture (`W_WC_SIDE_CLEARANCE`) | 400 mm, the default (GB 50096-2011 gives none) | 400 mm (Approved Document M4(2) Diagram 2.5, 400–500 mm [V]) | 381 mm, 15 in (IRC P2705.1 [S]) |
 
 How they measure:
 
@@ -1246,10 +1257,10 @@ How they measure:
 - **Single or double** comes from the bedroom's bed, never its label: a `double_bed`, a `bed`
   wider than 1200 mm, or two beds (a twin room, held to the double's figures) make a double. A
   bedroom with no bed is held to the single figure and files `no-bed`.
-- Not yet: WC side and front clearances (IRC P2705.1, R307.1) land with the WC-clearance rule,
-  and the bedroom escape window (IRC R310; Approved Document B 2.10) with the escape-window
-  checks. Their numbers are kept, unused, with their sources (`DEFERRED_PROFILE_NUMBERS` in
-  `src/lint/ruleset.ts`; noted 2026-10-24).
+- Not yet: the WC's front clearance (IRC R307.1) and the bedroom escape window (IRC R310;
+  Approved Document B 2.10) wait for their rules. Their numbers are kept, unused, with their
+  sources (`DEFERRED_PROFILE_NUMBERS` in `src/lint/ruleset.ts`; noted 2026-10-24). The WC's side
+  clearance landed with `W_WC_SIDE_CLEARANCE` (2026-10-25).
 
 ```
 archlang lint plan.arch                                  # the default ruleset

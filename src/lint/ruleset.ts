@@ -307,6 +307,21 @@ export interface LintRuleset {
    * `"net"` (plan-soundness PS5.2, red-team round 1).
    */
   roomAreaMeasure: "drawn" | "net";
+  /**
+   * The least distance (mm) from a WC's centreline to a side obstacle: the face of a wall, or a
+   * fixture or piece of furniture standing beside the pan (`W_WC_SIDE_CLEARANCE`, plan-soundness
+   * PS2.11a). Measured square to the centreline from the pan's drawn footprint to the drawn
+   * shapes beside it, over the pan's depth, never from bounding boxes. `null` turns the rule off.
+   *
+   * **Default 400:** the low end of the 400–500 mm Approved Document M Vol 1 (2015) Diagram 2.5
+   * gives for an accessible-and-adaptable dwelling's WC centreline to the adjacent wall (M4(2);
+   * read in the gov.uk PDF, "all dimensions are minimum except where noted" [V]; it superseded
+   * Lifetime Homes criterion 10's same 400–500), between the US code minimum of 15 in (381 mm, IRC P2705.1)
+   * and the NKBA's recommended 18 in (457 mm) [S] (`docs/plans/plan-soundness/research/
+   * prior-art.md` §3.3, `design-taste.md` R10). The `us`, `uk` and accessibility profiles set
+   * their own figures; `cn` keeps this one, since GB 50096-2011 gives none.
+   */
+  wcSideClearanceMm: number | null;
 }
 
 /**
@@ -358,6 +373,7 @@ export const DEFAULT_RULESET: LintRuleset = {
   minPathClearWidthByUseMm: Object.freeze({}),
   minEntryPassageWidthMm: null,
   roomAreaMeasure: "drawn",
+  wcSideClearanceMm: 400,
 };
 
 /**
@@ -384,14 +400,19 @@ export const LINT_PROFILES: Readonly<Record<string, Partial<LintRuleset>>> = Obj
     swingClearanceMm: 150,
     doorwayLandingMm: 450, // a deeper clear approach in front of each door
     minPathClearWidthMm: 900, // a continuous clear width for wheelchair passage
+    // A WC centreline 450 mm from a side wall or fixture: the low end of the 450–500 mm that
+    // Approved Document M Vol 1 (2015, 2016 corrections) Diagrams 3.11 and 3.16 give for a
+    // wheelchair-user dwelling's WC, read in the corrections document; inside the ADA's 16–18 in
+    // (406–457 mm, 2010 Standards 604.2) [V for ADM, S for the ADA].
+    wcSideClearanceMm: 450,
   },
   /**
    * Room sizes and passage widths read from China's residential design code, as ADVICE (ADR
    * 0005: the name is not the standard's, and passing is not compliance). Source: GB 50096-2011
    * 住宅设计规范, full text read (`docs/plans/plan-soundness/research/prior-art.md` §3.1) [V].
    * Areas are net floor (使用面积, the clauses' measure; {@link LintRuleset.roomAreaMeasure}), and
-   * widths are clear, between wall faces (净宽). The design sets no `cn` number for R10 (WC
-   * clearances) or R37 (escape window).
+   * widths are clear, between wall faces (净宽). GB 50096-2011 gives no WC side clearance, so R10
+   * keeps the default {@link LintRuleset.wcSideClearanceMm}; and no number for R37 (escape window).
    */
   "cn-residential-advisory": {
     roomAreaMeasure: "net", // GB 50096-2011 5.2–5.4 give room areas as 使用面积, the usable floor inside the walls [V]
@@ -436,6 +457,7 @@ export const LINT_PROFILES: Readonly<Record<string, Partial<LintRuleset>>> = Obj
     },
     minDoubleBedroomShortSideMm: 2550, // NDSS 10(e): every other double (or twin) bedroom at least 2.55 m wide [V]
     minMainDoubleBedroomShortSideMm: 2750, // NDSS 10(e): one double (or twin) bedroom at least 2.75 m wide [V]
+    wcSideClearanceMm: 400, // Approved Document M Vol 1 (2015) M4(2) Diagram 2.5: WC centreline 400–500 mm from the adjacent wall; the low end [V]
   },
   /**
    * Room sizes and hallway widths read from the US model residential code, as ADVICE (ADR
@@ -443,8 +465,9 @@ export const LINT_PROFILES: Readonly<Record<string, Partial<LintRuleset>>> = Obj
    * come from jurisdiction handouts (`prior-art.md` §3.2) [S]. "Habitable" is the IRC's own
    * definition (living, sleeping, eating or cooking), so `living`, `dining` and `bedroom`: the
    * kitchen is excepted from both R304 limits and keeps the default floor, and an `office` is
-   * not in the definition and is not asked. R10 (WC clearances) waits for PS2.11's WC rule and
-   * R37 (the escape opening) for PS2.16; their numbers are in {@link DEFERRED_PROFILE_NUMBERS}.
+   * not in the definition and is not asked. R10's side clearance is `W_WC_SIDE_CLEARANCE`'s
+   * figure (PS2.11a); its front clearance and R37 (the escape opening, PS2.16) wait, their numbers
+   * in {@link DEFERRED_PROFILE_NUMBERS}.
    */
   "us-residential-advisory": {
     roomAreaMeasure: "net", // IRC R304.1: a habitable room's net floor area [S, the PS5.2 review, PR #248]
@@ -461,21 +484,22 @@ export const LINT_PROFILES: Readonly<Record<string, Partial<LintRuleset>>> = Obj
       circulation: 914, // IRC R311.6 [S]
       entry: 914, // IRC R311.6: an entry foyer is walked as a hallway [S]
     },
+    wcSideClearanceMm: 381, // IRC P2705.1: a water closet's centreline at least 15 in (381 mm) from a side wall or obstruction [S, prior-art.md §3.3]
   },
 });
 
 /**
  * Sourced numbers for residential-advisory checks whose RULES do not exist yet, kept so their
- * sources are not lost (plan-soundness PS5.2, 2026-10-24). Nothing reads them: R10 lands with
- * PS2.11's WC-clearance rule and R37 with PS2.16's escape-window rule, each of which moves its
- * numbers into the profile as ruleset fields. Design:
- * `docs/plans/plan-soundness/research/2026-10-24-ps5-taste-design.md` §5.
+ * sources are not lost (plan-soundness PS5.2, 2026-10-24). Nothing reads them: R10's front
+ * clearance and R37 (PS2.16's escape-window rule) each move their numbers into the profile as
+ * ruleset fields when their rule lands, as R10's side clearance did (`wcSideClearanceMm`,
+ * PS2.11a). Design: `docs/plans/plan-soundness/research/2026-10-24-ps5-taste-design.md` §5.
  */
 export const DEFERRED_PROFILE_NUMBERS = Object.freeze({
-  /** R10, `us`: a WC's centreline at least 15 in (381 mm) from a side wall, and 21 in (533 mm)
-   *  clear in front of it (IRC P2705.1, R307.1) [S, `prior-art.md` §3.3; clause numbers from the
-   *  design's §5 table]. */
-  usWc: Object.freeze({ centreToSideMm: 381, clearInFrontMm: 533 }),
+  /** R10, `us`: 21 in (533 mm) clear in front of a WC (IRC R307.1) [S, `prior-art.md` §3.3; clause
+   *  number from the design's §5 table]. Its side figure, 15 in (381 mm, P2705.1), is
+   *  `us-residential-advisory`'s `wcSideClearanceMm`. */
+  usWc: Object.freeze({ clearInFrontMm: 533 }),
   /** R37, `us`: an emergency escape and rescue opening at least 20 in (508 mm) clear wide and
    *  24 in (610 mm) clear high, its sill at most 44 in (1118 mm) above the floor, and at least
    *  5.7 ft² (0.53 m²) net clear, or 5.0 ft² (0.46 m²) at grade (IRC R310) [S, `prior-art.md`
