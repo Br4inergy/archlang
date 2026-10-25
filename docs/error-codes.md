@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**134 errors** · **72 warnings**
+**134 errors** · **74 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -168,6 +168,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_FIXTURE_FLOATING`](#w_fixture_floating) | warning | A plumbing/kitchen fixture is not against a wall. |
 | [`W_FIXTURE_WRONG_ROOM`](#w_fixture_wrong_room) | warning | Fixture is not inside its declared room. |
 | [`W_FLOOR_UNASSIGNED`](#w_floor_unassigned) | warning | Walled floor is in no room. |
+| [`W_FOOTPRINT_TRANSPOSED`](#w_footprint_transposed) | warning | A piece is drawn turned a quarter: its long side is on the wrong axis. |
 | [`W_FURNITURE_OVERLAP`](#w_furniture_overlap) | warning | Two pieces of furniture overlap. |
 | [`W_FURNITURE_OVER_WINDOW`](#w_furniture_over_window) | warning | A tall unit stands in front of a window. |
 | [`W_FURNITURE_WALL_COLLISION`](#w_furniture_wall_collision) | warning | Furniture penetrates a wall. |
@@ -179,6 +180,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_HABITABLE_NO_WINDOW`](#w_habitable_no_window) | warning | A living room, dining room or kitchen has no window. |
 | [`W_HATCH_SCALE`](#w_hatch_scale) | warning | Hatch scale must be positive; using 1. |
 | [`W_IMPORT_EMPTY_FILE`](#w_import_empty_file) | warning | Whole-file import binds an empty component. |
+| [`W_LEAF_ACROSS_DOORWAY`](#w_leaf_across_doorway) | warning | A door's open leaf parks across another doorway's approach. |
 | [`W_NO_ENTRANCE`](#w_no_entrance) | warning | The plan has no exterior door. |
 | [`W_OPENING_AT_JUNCTION`](#w_opening_at_junction) | warning | An opening runs into a wall junction, or leaves too short a nib of wall beside a jamb. |
 | [`W_OPENING_NOT_DIMENSIONED`](#w_opening_not_dimensioned) | warning | An opening on the outside of the building is on no `dims auto all` chain. |
@@ -2244,6 +2246,19 @@ wall exterior thickness 200 { (0,0) (3800,0) (3800,2400) (0,2400) close }
 room circle at (2500,1200) radius 1200 label "Snug" uses living   # lint: the corners are in no room
 ```
 
+## W_FOOTPRINT_TRANSPOSED
+
+*warning* — A piece is drawn turned a quarter: its long side is on the wrong axis.
+
+**Cause.** A piece's symbol is drawn back-on-top in a frame `size` gives (its two sides swapped under `rotate 90` or `270`; along × depth for `against`), and this frame has its long side where the catalogue footprint has its short one, by at least 5:4 (`4 × long ≥ 5 × short`, exact). A `sofa_l` (2600 × 1600, wider than deep) written `size 900x2400` with no `rotate` draws a thin L one seat deep, its long side become its depth; a `bed` (1500 × 2000, deeper than wide) written `size 1900x700` draws a bed lying across its own length, its long side along its back. Judged only for the families that come in one shape, which the catalogue marks `fixedAspect`: bed, bunk bed, crib, bath, WC, bidet, `sofa_l`, loveseat, bar counter, TV, mirror and treadmill. A chaise longue is not: its back is at a short end or along a long side, by model. A family sold in both shapes (a wardrobe, a filing cabinet, a locker, a shed, a sink, a desk) is never judged, nor is a piece with no catalogued footprint (a plain `sofa`).
+
+**Fix.** Swap the two sides of `size`, or keep it and turn the symbol a quarter (add 90 to `rotate` or take 90 from it, whichever puts its back where it belongs; an `against` piece takes its turn from the wall, so only the swap applies). When `size` is one literal (`900x2400`) and the swapped size, as drawn on the plan's grid, is exactly the catalogue footprint, a fix swaps it; it is `maybe-incorrect` (`archlang fix --unsafe`), because the swap changes which floor the piece covers.
+
+```arch static
+room id=lounge at (0,0) size 5000x4000 label "Lounge"
+furniture sofa_l at (500,500) size 900x2400   # lint: a sofa_l is 2600 wide and 1600 deep; this one is drawn 900 wide and 2400 deep
+```
+
 ## W_FURNITURE_OVERLAP
 
 *warning* — Two pieces of furniture overlap.
@@ -2381,6 +2396,23 @@ wall exterior thickness 200 material brick scale 0 { (0,0) (1,0) }
 
 ```arch static
 import "lib.arch" as lib   # warning when lib.arch only declares components
+```
+
+## W_LEAF_ACROSS_DOORWAY
+
+*warning* — A door's open leaf parks across another doorway's approach.
+
+**Cause.** A hinged door's leaf, open where it is drawn (from the hinge to the open tip), stands in the approach of another door in the room both open onto: the zone `doorwayLandingMm` deep (300 mm; 450 under `accessibility-advisory`) in front of that door's wall face, jamb to jamb. (`W_DOORWAY_BLOCKED` keeps the same depth clear but measures it from the wall's centreline; read from there, a leaf 250 mm in front of a 100 mm wall's face sits exactly on the zone's edge, so this rule reads from the face, where a person in the doorway stands.) What is left is the longest stretch of that doorway the leaf does not cover; it warns when that is under the narrowest door the ruleset passes (`minDoorWidthMm`, 700 mm), or under the doorway's own width if it is narrower. One door must then be shut to use the other. Two doors whose swings collide are `W_SWING_OBSTRUCTED`'s report, not this one's. Leaf-less openings are not judged, nor is a door on an angled or curved wall, whether its own leaf or its approach.
+
+**Fix.** Hang the leaf on its other jamb (flip its `hinge`; the hint says when that clears the doorway), open it to the other side of its wall (flip its `swing`), move either door along its wall until the open leaf stands at least the approach depth clear of the doorway's face or beside it, or make it a `sliding` or `pocket` door. There is no machine-applicable fix: which door moves or turns is a design decision.
+
+```arch static
+wall id=shell exterior thickness 200 { (0,0) (6000,0) (6000,5000) (0,5000) close }
+wall id=mid partition thickness 100 { (3000,0) (3000,5000) }
+room id=bed at (0,0) size 3000x5000 label "Bedroom"
+room id=hall at (3000,0) size 3000x5000 label "Hall"
+door id=front at (3700,0) width 900 wall shell hinge near start swing into hall   # lint: its open leaf stands 200 mm in front of the bedroom door
+door id=bed_door at (3000,650) width 800 wall mid swing into bed
 ```
 
 ## W_NO_ENTRANCE

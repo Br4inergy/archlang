@@ -79,6 +79,8 @@ Two classes from `evidence.md` §3 have no cases, because no core lint rule can 
 | `W_DIM_TEXT_MISMATCH` | PS2.10 |
 | `W_WC_SIDE_CLEARANCE` | PS2.11a |
 | `W_FURNITURE_OVER_WINDOW` | PS2.11b |
+| `W_FOOTPRINT_TRANSPOSED` | PS2.11c |
+| `W_LEAF_ACROSS_DOORWAY` | PS2.11d |
 
 ## Proposed codes
 
@@ -94,8 +96,6 @@ The card that implements a check may rename its code; rename it here and in the 
 | `W_SWING_OVER_STAIR` | A door swing over a stair footprint or its landing | PS2.11 |
 | `W_STAIR_HEAD_VOID` | A void on a stair's arrival landing | PS2.11 |
 | `W_STAIR_TOO_STEEP` | A flight too short for its storey height (riser over the profile's limit) | PS2.11 |
-| `W_LEAF_ACROSS_DOORWAY` | An open door leaf parked across another doorway's approach (door–door interference) | PS2.11 |
-| `W_FOOTPRINT_TRANSPOSED` | A directional piece written `at … size WxH` with its depth on the long axis and no `rotate`, so it draws turned and stretched | PS2.11 |
 | `W_EXIT_SWINGS_INWARD` | A hinged exterior door that is an exit of a non-residential plan, swinging into the floor against the escape direction | PS2.16 |
 
 Two checks extend existing codes instead of adding one: a desk in front of a leaf-less opening expects
@@ -136,6 +136,9 @@ label, whether the text is a room label or a `dims auto` number.
   Instances outside the eight classes, and those in a class with no check a card
   names (A6, S2 bed sides; A7 hob against a side wall; C6, C7, K8 accessible WC layout), are left
   out for the planner.
+- `clearances/sofa-transposed` stays `todo` after PS2.11c: `W_FOOTPRINT_TRANSPOSED` judges a piece
+  against its catalogued footprint, and a plain `sofa` has none until PS3.11. The rule's own case is
+  `sofa-l-transposed` (RK4, RS4), whose `sofa_l` has one.
 - The balcony masked-route case (PS0.10) is reported since the walk is judged from the main
   entrance (`describe().access.mainEntrance`): the balcony door is no candidate. The patio case stays
   `todo`: with no `site` its main entrance is refused, because the patio door opens into a public room

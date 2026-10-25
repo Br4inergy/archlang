@@ -31,7 +31,7 @@ plan "Relational 1BR" {
 
   # Ring positions run along the ring: the east edge starts at 8000, the south at 15500,
   # the west at 23500.
-  door on w_ring at 26400 width 900 swing into hall
+  door on w_ring at 26400 width 900 hinge right swing into hall
   door on w_hb   at 1000  width 800 swing into bed
   door on w_hba  at 600   width 800 swing into bath
 

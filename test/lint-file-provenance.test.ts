@@ -148,8 +148,10 @@ const IMPORT_FREE = `plan "many" {
 
 describe("the fix-provenance weld holds for every rule, not just the one that broke", () => {
   /** One imported component tripping several fix-bearing rules at once:
-   *  `W_ALIAS_MATCH` (alias-uses), `W_DIM_INSIDE` (dim-inside) and
-   *  `W_FIXTURE_BACK_TO_ROOM` (fixture-back-to-room). */
+   *  `W_ALIAS_MATCH` (alias-uses), `W_DIM_INSIDE` (dim-inside),
+   *  `W_FIXTURE_BACK_TO_ROOM` (fixture-back-to-room) and, since PS2.11c, `W_FOOTPRINT_TRANSPOSED`
+   *  (footprint-transposed: the 700x400 WC is a 400 × 700 one written the wrong way round; its
+   *  fix is `maybe-incorrect`, so the refusal below is asked at that threshold). */
   const MULTI_LIB = `plan "lib" {
   component wing() {
     wall id=shell exterior thickness 200 { (0,0) (6000,0) (6000,5000) (0,5000) close }
@@ -167,12 +169,13 @@ describe("the fix-provenance weld holds for every rule, not just the one that br
 }`;
   const world = () => makeVirtualWorld({ "lib.arch": MULTI_LIB });
 
-  it("three distinct fix-bearing rules fire from inside the module", () => {
+  it("four distinct fix-bearing rules fire from inside the module", () => {
     const withFixes = lint(MULTI_MAIN, { world: world() }).filter((d) => (d.fixes ?? []).length > 0);
     expect([...new Set(withFixes.map((d) => d.code))].sort()).toEqual([
       "W_ALIAS_MATCH",
       "W_DIM_INSIDE",
       "W_FIXTURE_BACK_TO_ROOM",
+      "W_FOOTPRINT_TRANSPOSED",
     ]);
   });
 
@@ -184,7 +187,9 @@ describe("the fix-provenance weld holds for every rule, not just the one that br
 
   it("every one of those fixes is refused, and the importer is byte-identical", () => {
     const suggestions = lint(MULTI_MAIN, { world: world() }).flatMap((d) => d.fixes ?? []);
-    const report = applyFixes(MULTI_MAIN, suggestions);
+    // At the `maybe-incorrect` threshold every suggestion is admissible, so each one is refused
+    // for its provenance alone, never filtered out for its applicability.
+    const report = applyFixes(MULTI_MAIN, suggestions, { maxApplicability: "maybe-incorrect" });
     expect(report.applied).toEqual([]);
     expect(report.skipped).toHaveLength(suggestions.length);
     expect(report.output).toBe(MULTI_MAIN);

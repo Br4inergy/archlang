@@ -625,6 +625,7 @@ furniture and fixture rules (each documented in the [error catalog](error-codes.
 | `W_SWING_OBSTRUCTED` | a door leaf or swing arc sweeping onto a fixture |
 | `W_FURN_CLEAR_FRONT` / `W_FURN_CLEAR_SIDES` | a declared `clear front` / `clear sides` depth with a solid piece, a wall body or a door swing inside it |
 | `W_SEAT_FACING_AWAY` | a chair, office chair or outdoor chair within 600 mm of a table or desk whose front faces away from every one of them (`seatTableReachMm`) |
+| `W_FOOTPRINT_TRANSPOSED` | a piece of a family that comes in one shape (bed, bunk bed, crib, bath, WC, bidet, `sofa_l`, loveseat, bar counter, TV, mirror, treadmill) whose symbol frame has its long side where the catalogue footprint has its short one, by at least 5:4, so it draws turned a quarter: `sofa_l … size 900x2400` with no `rotate`. A family sold in both shapes (wardrobe, filing cabinet, locker, sink) is not judged |
 
 These are **advisory** — facts and warnings, never an auto-arranger (see
 [ADR 0005](adr/0005-no-invisible-architect.md)). See

@@ -26,7 +26,7 @@ import { mm } from "../measure.js";
 
 /** The room a piece is in, as a person names it: its declared room, else the room whose floor
  *  holds its centre; `""` when none does. */
-function inRoomPhrase(f: RFurniture, ctx: LintContext): string {
+export function inRoomPhrase(f: RFurniture, ctx: LintContext): string {
   const room =
     (f.room !== undefined ? ctx.rooms.find((r) => r.id === f.room) : undefined) ??
     ctx.rooms.find((r) => {

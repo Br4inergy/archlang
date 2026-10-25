@@ -23,6 +23,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   naming the code, where it was furnished before. Twelve examples whose WC
   stood in a corner or whose fridge, wardrobe or bookcase stood across a window were fixed; their
   drawings move. `describe()` and the drawing of every other plan are unchanged.
+
+- Two clearance lint rules (plan cards PS2.11c, PS2.11d), validity layer, on by default.
+  `W_FOOTPRINT_TRANSPOSED`: a piece of a family that comes in one shape (bed, bunk bed, crib, bath,
+  WC, bidet, `sofa_l`, loveseat, bar counter, TV, mirror, treadmill; the catalogue's new
+  `fixedAspect` flag, each with its reason) whose symbol frame has its long side where the
+  catalogue footprint has its short one, by at least 5:4, so it draws turned a quarter
+  (`sofa_l … size 900x2400` with no `rotate`; `bed … size 1900x700`). The frame is the one the
+  symbol is drawn in, so `rotate 90` counts. A family sold in both shapes (wardrobe, filing
+  cabinet, locker, shed, sink, desk) is never judged, nor is a plain `sofa`, which has no catalogued
+  footprint yet. When `size` is one literal and its swap, as drawn on the grid, is the catalogue
+  footprint, a `maybe-incorrect` fix swaps it. `W_LEAF_ACROSS_DOORWAY`: a hinged door whose open
+  leaf parks in another door's approach (`doorwayLandingMm` in front of its wall face, jamb to jamb)
+  in the room both open onto and leaves less of that doorway clear than `minDoorWidthMm`; a pair
+  whose swings collide stays `W_SWING_OBSTRUCTED`'s report, and doors on angled walls are not
+  judged. Hints quote an id only when the author wrote one. Examples redrawn: `tiny-house` (a bed
+  drawn 2 m wide, now turned lengthwise), `hillside-villa` (two wardrobes drawn one door wide and
+  1.8 m deep, now turned) and `relational` (the front door's leaf parked across the bedroom door,
+  now hung on its other jamb); the first two now raise `W_FIXTURE_BACK_TO_ROOM` for a piece whose
+  side or end touches a wall (card PS2.50).
+
 - Three residential-advisory profiles (plan card PS5.2): `cn-residential-advisory`,
   `uk-residential-advisory` and `us-residential-advisory`, each a lint profile and a taste
   profile, so `lint --profile`, `score --taste` and `validate --profile/--taste` take the same
@@ -121,6 +141,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   SVGs move; `describe()` and every other plan's output are unchanged.
 
 ### Changed
+
+- `archlang ast --json` reports a `sizeSpan` on a furniture statement whose `size` is one literal
+  (`900x2400`): the byte span `W_FOOTPRINT_TRANSPOSED`'s fix rewrites, beside the `rotateSpan` it
+  already reports.
 
 - The authoring loop is taught where cold authors read (plan card PS7.4): `spec.llm.md`'s
   self-correction paragraph, the workflow skill's step 7 and the `arch-author` agent role now say

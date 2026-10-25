@@ -575,6 +575,13 @@ export interface FurnitureNode extends NodeBase {
   /** In `at` mode: plan-axis width×height. In `against` mode: wall-relative along×depth.
    *  Optional only with `against` + a fixture that has a catalogued default footprint. */
   size?: { w: Expr; h: Expr };
+  /**
+   * Byte span of the `size` clause's value when it is ONE literal dimension token
+   * (`900x2200`), absent for an expression pair (`w x h`). Recorded so `W_FOOTPRINT_TRANSPOSED`
+   * can offer to swap the two numbers. It carries no semantics and never reaches the drawing,
+   * `describe()` or Plan JSON; like {@link rotateSpan} it does appear in `archlang ast --json`.
+   */
+  sizeSpan?: Span;
   /** Label as a string-interpolation template, evaluated at resolve. */
   label?: Expr;
   /** Quarter-turn rotation of the drawn symbol (0|90|180|270 degrees), evaluated at resolve. */

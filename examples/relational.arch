@@ -27,7 +27,9 @@ plan "Relational 1BR" {
     open between living and hall width 1200
   }
 
-  door on hall.left at center width 900 swing into hall
+  # Hung on its north jamb: on the south one the open leaf parked 100 mm in front of the
+  # bedroom door (W_LEAF_ACROSS_DOORWAY).
+  door on hall.left at center width 900 hinge right swing into hall
   door between hall and bed  at 1000 from start width 800 swing into bed
   door between hall and bath at 600 from start width 800 swing into bath
 

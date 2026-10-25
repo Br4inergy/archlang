@@ -420,6 +420,9 @@ export interface RDoor extends RBase {
   hinge: DoorHinge;
   swing: DoorSwingDir;
   host: WallSegment | null;
+  /** The author wrote this door's `id=` (set only then). Read by lint's door–door hint, which
+   *  quotes an id only when the author wrote one. Internal. */
+  _idAuthored?: true;
   /**
    * The door's kind, present ONLY when it is not the default `hinged` — so every
    * kind-free door (and every explicit `door hinged …`) carries no field
@@ -543,6 +546,11 @@ export interface RFurniture extends RBase {
    *  can be inserted — copied from {@link import("./ast.js").FurnitureNode.rotateSpan}
    *  so an orientation lint fix can rewrite it. Internal; never reaches the Scene. */
   _rotateSpan?: Span;
+  /** The literal `size` token's byte span and its two numbers swapped (`2200x900` for
+   *  `900x2200`), from {@link import("./ast.js").FurnitureNode.sizeSpan}, so
+   *  `W_FOOTPRINT_TRANSPOSED` can offer the swap. Absent for an expression size or none.
+   *  Internal; never reaches the Scene, `describe()` or Plan JSON. */
+  _sizeSwap?: { span: Span; text: string };
   /**
    * This piece's instance frame REFLECTS (`place … mirror`), so its drawn symbol is the
    * mirror image of the one the catalogue draws. Set by `frame.ts`'s `transformElement`
@@ -2691,6 +2699,9 @@ function resolveBody(
         } else if (r.kind === "furniture") {
           // Only when authored, so a plan's IR gains no key: lint's seat hint (ADR 0029 §6)
           // names a piece by id only when the author gave it one.
+          if (e.idAuthored === true) r._idAuthored = true;
+        } else if (r.kind === "door") {
+          // The same, for `W_LEAF_ACROSS_DOORWAY`'s hints (plan-soundness PS2.11d).
           if (e.idAuthored === true) r._idAuthored = true;
         } else if (def.yieldsWalls) {
           // Derived walls join the group's wall list at once, before any opening resolves

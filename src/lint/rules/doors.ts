@@ -8,7 +8,14 @@ import { isDerivedWall, wallRef } from "../../wall-ref.js";
 import { relationText } from "../../opening-relation.js";
 import { det } from "../../algebra/d4.js";
 import { CLI_NAME } from "../../command-name.js";
-import { connectorClearWidth, DEFAULT_CLEAR_ALLOWANCE_MM, rectOf } from "../../analyze.js";
+import {
+  type AccessEdge,
+  connectorClearWidth,
+  DEFAULT_CLEAR_ALLOWANCE_MM,
+  EXTERIOR_NODE,
+  pointInRoomBox,
+  rectOf,
+} from "../../analyze.js";
 import type { Point } from "../../ast.js";
 import type { Diagnostic } from "../../diagnostics.js";
 import { doorHingeFlipFix, fixesFrom, pocketRunFix } from "../../fix-producers.js";
@@ -571,4 +578,174 @@ export function isCorner(seg: WallSegment, end: "a" | "b", all: readonly WallSeg
     }
   }
   return turns;
+}
+
+/**
+ * Door–door interference (plan-soundness PS2.11d): a hinged door whose OPEN leaf, parked where
+ * it is drawn (hinge to the fully open tip, `doorSwing`'s `hinge`→`leafEnd`), stands across
+ * another door's approach in the room the two share, so one door must be shut to use the
+ * other (the first-contact audits' A1, K4, NH5, RA6).
+ *
+ * The approach is the other door's opening span (jamb to jamb) by `doorwayLandingMm` (300; 450
+ * under `accessibility-advisory`) into the room, measured from the FACE of its host wall on the
+ * side the leaf is on. That is the depth `W_DOORWAY_BLOCKED` keeps clear, but not its datum:
+ * `doorLandingRect` (`src/geometry/rect.ts`) measures its landing from the wall's CENTRELINE.
+ * Read from the centreline, the audits' A1 and NH5 (a leaf 250 mm in front of a 100 mm wall's
+ * face) would sit exactly on the zone's edge; a person standing in a doorway stands past the
+ * face, so the face is the datum here (card PS2.54 unifies the two). The leaf's run inside that zone casts a shadow on the span; what is left is
+ * the longest stretch of the span the leaf does not cover. The rule fires when that is under
+ * `min(the other door's width, minDoorWidthMm)`: the leaf leaves less of the doorway free than
+ * a passable door (or, for a door already narrower than that, any less than its own width). A
+ * leaf parked flat against the wall beside a doorway, or standing on its jamb line, covers none
+ * of it. Both doors must open onto the room the leaf parks in (the access graph's `between`,
+ * the mid-point of the leaf's run in the zone on that room's floor), so a leaf behind a
+ * partition never counts.
+ *
+ * Not `W_SWING_OBSTRUCTED`: that rule compares the two leaves' swept quarter-discs, and a pair
+ * whose swings collide is its report, never this one's. This one compares the parked leaf with
+ * the other doorway's approach, which no swing test sees (a sliding or pocket door has no
+ * swing and still has a doorway). Both doors' hosts must be orthogonal (the zone is axis-aligned,
+ * as `W_DOORWAY_BLOCKED`'s landing is): neither a leaf from a door on an angled or curved wall
+ * nor an approach to one is measured, and `W_DOORWAY_BLOCKED` already files the coverage skip
+ * for such doors. Leaf-less openings are not
+ * judged (PS2.11e extends `W_DOORWAY_BLOCKED` to them). No fix: which door moves, or which way
+ * a leaf turns, is a design decision (ADR 0005).
+ */
+export const leafAcrossDoorway: LintRule = {
+  name: "leaf-across-doorway",
+  family: "doors",
+  layer: "validity",
+  codes: ["W_LEAF_ACROSS_DOORWAY"],
+  check(ctx: LintContext): Diagnostic[] {
+    const { doors, rules, rooms, roomRects, at } = ctx;
+    const swings: Array<{ d: RDoor; s: DoorSwing }> = [];
+    for (const d of doors) {
+      const s = doorSwing(d);
+      if (s) swings.push({ d, s });
+    }
+    if (swings.length === 0 || doors.length < 2) return [];
+    const edgeOf = new Map(ctx.access().edges.map((e) => [e.doorId, e] as const));
+    const roomById = new Map(rooms.map((r) => [r.id, r] as const));
+    const depth = rules.doorwayLandingMm;
+    const out: Diagnostic[] = [];
+    for (const { d: a, s: sa } of swings) {
+      const ea = edgeOf.get(a.id);
+      if (!ea || !orthogonalHost(a)) continue;
+      for (const b of doors) {
+        if (b === a) continue;
+        const eb = edgeOf.get(b.id);
+        if (!eb) continue;
+        const sb = doorSwing(b);
+        if (sb && swingsCollide(sa, sb, rules.swingClearanceMm)) continue;
+        const hit = leafOverApproach(sa, b, depth);
+        if (!hit) continue;
+        const need = Math.min(b.width, rules.minDoorWidthMm);
+        if (hit.free >= need) continue;
+        const shared = ea.between.find((id) => {
+          const box = roomRects.get(id);
+          return id !== EXTERIOR_NODE && eb.between.includes(id) && box !== undefined && pointInRoomBox(hit.mid, box);
+        });
+        const room = shared === undefined ? undefined : roomById.get(shared);
+        if (room === undefined) continue;
+        const to = (e: AccessEdge): string => {
+          const other = e.between[0] === room.id ? e.between[1] : e.between[0];
+          const r = roomById.get(other);
+          return r === undefined ? "the door from outside" : `the door to "${ctx.labelOf(r)}"`;
+        };
+        // Does the leaf hung on its other jamb (same side of the wall) still stand in this
+        // doorway's approach? Recomputed, never assumed.
+        const flipped = doorSwing({ ...a, hinge: a.hinge === "left" ? "right" : "left" });
+        const flipHit = flipped ? leafOverApproach(flipped, b, depth) : null;
+        const flipClears = flipped !== null && (flipHit === null || flipHit.free >= need);
+        // A door is quoted by id only when the author wrote one (ADR 0029 §6): an assigned id
+        // renumbers the moment an earlier door is named. Otherwise by the rooms it joins.
+        // Two doors from the same room to the same place read alike; the second is "the other".
+        const toA = to(ea);
+        const toB = to(eb) === toA ? toA.replace(/^the door/, "the other door") : to(eb);
+        const refA = a._idAuthored === true ? `door "${a.id}"` : toA;
+        const refB = b._idAuthored === true ? `door "${b.id}"` : toB;
+        out.push({
+          severity: "warning",
+          code: "W_LEAF_ACROSS_DOORWAY",
+          ...at(a),
+          message:
+            `In "${ctx.labelOf(room)}", the open leaf of ${toA} parks ${mm(hit.depth)} mm in front of ${toB} ` +
+            `and leaves ${mm(hit.free)} mm of its ${mm(b.width)} mm doorway clear (${mm(need)} mm needed), ` +
+            "so one door must be shut to use the other.",
+          hints: [
+            `Hang ${refA} on its other jamb (flip its \`hinge\`)${flipClears ? ", which parks the leaf clear of this doorway" : ""}, or open it to the other side of its wall (flip its \`swing\`).`,
+            `Or move ${refA} or ${refB} along its wall until the open leaf stands at least ${mm(depth)} mm clear of the doorway's face, or beside it.`,
+            `Or make ${refA} a \`sliding\` or \`pocket\` door, which parks no leaf in the room.`,
+          ],
+        });
+      }
+    }
+    return out;
+  },
+};
+
+/**
+ * Where the parked leaf of `s` stands in door `b`'s approach, or `null` when it does not:
+ * `depth` is the leaf's nearest approach to `b`'s wall face (mm), `free` the longest stretch of
+ * `b`'s span (jamb to jamb) the leaf's shadow leaves uncovered, `mid` the mid-point of the
+ * leaf's run inside the zone (the room probe). The zone is closed on the face and the jambs and
+ * open at `depth` (a leaf exactly `depth` from the face stands outside it). `null` for a door
+ * with no orthogonal host. The leaf is axis-parallel (its own door's host is orthogonal, which
+ * the caller checks), so the clip is an interval intersection: exact, no division.
+ */
+function leafOverApproach(s: DoorSwing, b: RDoor, depth: number): { depth: number; free: number; mid: Point } | null {
+  const seg = b.host;
+  if (!seg || !orthogonalHost(b)) return null;
+  const horiz = seg.a.y === seg.b.y;
+  // Into b's frame: u along its wall, w across it (signed, from the centreline).
+  const toUW = (p: Point): { u: number; w: number } =>
+    horiz ? { u: p.x, w: p.y - b.at.y } : { u: p.y, w: p.x - b.at.x };
+  const fromUW = (u: number, w: number): Point => (horiz ? { x: u, y: w + b.at.y } : { x: w + b.at.x, y: u });
+  const p = toUW(s.hinge);
+  const q = toUW(s.leafEnd);
+  const u0 = (horiz ? b.at.x : b.at.y) - b.width / 2;
+  const u1 = u0 + b.width;
+  const half = seg.thickness / 2;
+  let best: { depth: number; free: number; mid: Point } | null = null;
+  for (const side of [1, -1] as const) {
+    // Distance from the face on this side: v = side·w − half; the zone is v ∈ [0, depth).
+    const clip = clipToBox(p.u, side * p.w - half, q.u, side * q.w - half, u0, u1, 0, depth);
+    if (clip === null) continue;
+    const [ua, va, ub, vb] = clip;
+    const near = Math.min(va, vb);
+    if (near >= depth) continue;
+    const free = Math.max(Math.min(ua, ub) - u0, u1 - Math.max(ua, ub));
+    const mid = fromUW((ua + ub) / 2, side * ((va + vb) / 2 + half));
+    if (best === null || free < best.free) best = { depth: near, free, mid };
+  }
+  return best;
+}
+
+/** A door hosted on a straight, axis-aligned wall segment. */
+function orthogonalHost(d: RDoor): boolean {
+  const seg = d.host;
+  if (!seg || seg.arc) return false;
+  return (seg.a.y === seg.b.y) !== (seg.a.x === seg.b.x);
+}
+
+/**
+ * The part of the axis-parallel segment (ua,va)→(ub,vb) inside the closed box [u0,u1] × [v0,v1],
+ * as its two end points, or `null` when it misses: an interval intersection on each axis.
+ */
+function clipToBox(
+  ua: number,
+  va: number,
+  ub: number,
+  vb: number,
+  u0: number,
+  u1: number,
+  v0: number,
+  v1: number,
+): [number, number, number, number] | null {
+  const ul = Math.max(Math.min(ua, ub), u0);
+  const uh = Math.min(Math.max(ua, ub), u1);
+  const vl = Math.max(Math.min(va, vb), v0);
+  const vh = Math.min(Math.max(va, vb), v1);
+  if (ul > uh || vl > vh) return null;
+  return [ul, vl, uh, vh];
 }

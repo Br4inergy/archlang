@@ -6378,12 +6378,25 @@ exports[`golden SVG snapshots > renders hillside-villa.arch as one page per leve
 <circle cx="950" cy="336" r="36" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
 <line x1="728" y1="480" x2="1172" y2="480" stroke="#a8a29a" stroke-width="6.5"/>
 <line x1="880" y1="540" x2="1020" y2="540" stroke="#a8a29a" stroke-width="6.5"/>
-<path d="M 2906,300 L 3494,300 A 6 6 0 0 1 3500,306 L 3500,2094 A 6 6 0 0 1 3494,2100 L 2906,2100 A 6 6 0 0 1 2900,2094 L 2900,306 A 6 6 0 0 1 2906,300 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
-<line x1="2900" y1="2028" x2="3500" y2="2028" stroke="#a8a29a" stroke-width="6.5"/>
-<line x1="2936" y1="1200" x2="3464" y2="1200" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
-<line x1="3024" y1="975" x2="3024" y2="1425" stroke="#a8a29a" stroke-width="6.5"/>
-<line x1="3200" y1="975" x2="3200" y2="1425" stroke="#a8a29a" stroke-width="6.5"/>
-<line x1="3376" y1="975" x2="3376" y2="1425" stroke="#a8a29a" stroke-width="6.5"/>
+<path d="M 2900,2094 L 2900,306 A 6 6 0 0 1 2906,300 L 3494,300 A 6 6 0 0 1 3500,306 L 3500,2094 A 6 6 0 0 1 3494,2100 L 2906,2100 A 6 6 0 0 1 2900,2094 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
+<line x1="3476" y1="2100" x2="3476" y2="300" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="2900" y1="1500" x2="3500" y2="1500" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="2900" y1="900" x2="3500" y2="900" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="3200" y1="2064" x2="3200" y2="1536" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
+<line x1="2990" y1="1998" x2="3410" y2="1998" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="2990" y1="1866" x2="3410" y2="1866" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="2990" y1="1734" x2="3410" y2="1734" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="2990" y1="1602" x2="3410" y2="1602" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="3200" y1="1464" x2="3200" y2="936" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
+<line x1="2990" y1="1398" x2="3410" y2="1398" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="2990" y1="1266" x2="3410" y2="1266" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="2990" y1="1134" x2="3410" y2="1134" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="2990" y1="1002" x2="3410" y2="1002" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="3200" y1="864" x2="3200" y2="336" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
+<line x1="2990" y1="798" x2="3410" y2="798" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="2990" y1="666" x2="3410" y2="666" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="2990" y1="534" x2="3410" y2="534" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="2990" y1="402" x2="3410" y2="402" stroke="#a8a29a" stroke-width="6.5"/>
 <path d="M 11122.5,200 L 12577.5,200 A 22.5 22.5 0 0 1 12600,222.5 L 12600,2177.5 A 22.5 22.5 0 0 1 12577.5,2200 L 11122.5,2200 A 22.5 22.5 0 0 1 11100,2177.5 L 11100,222.5 A 22.5 22.5 0 0 1 11122.5,200 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
 <path d="M 11122.5,200 L 12577.5,200 A 22.5 22.5 0 0 1 12600,222.5 L 12600,290 L 11100,290 L 11100,222.5 A 22.5 22.5 0 0 1 11122.5,200 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
 <path d="M 11288,350 L 11702,350 A 108 108 0 0 1 11810,458 L 11810,602 A 108 108 0 0 1 11702,710 L 11288,710 A 108 108 0 0 1 11180,602 L 11180,458 A 108 108 0 0 1 11288,350 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="6.5"/>
@@ -6397,12 +6410,31 @@ exports[`golden SVG snapshots > renders hillside-villa.arch as one page per leve
 <circle cx="12850" cy="336" r="36" fill="none" stroke="#a8a29a" stroke-width="6.5"/>
 <line x1="12628" y1="480" x2="13072" y2="480" stroke="#a8a29a" stroke-width="6.5"/>
 <line x1="12780" y1="540" x2="12920" y2="540" stroke="#a8a29a" stroke-width="6.5"/>
-<path d="M 13105,300 L 13595,300 A 5 5 0 0 1 13600,305 L 13600,2095 A 5 5 0 0 1 13595,2100 L 13105,2100 A 5 5 0 0 1 13100,2095 L 13100,305 A 5 5 0 0 1 13105,300 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
-<line x1="13100" y1="2028" x2="13600" y2="2028" stroke="#a8a29a" stroke-width="6.5"/>
-<line x1="13130" y1="1200" x2="13570" y2="1200" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
-<line x1="13203.33" y1="1012.5" x2="13203.33" y2="1387.5" stroke="#a8a29a" stroke-width="6.5"/>
-<line x1="13350" y1="1012.5" x2="13350" y2="1387.5" stroke="#a8a29a" stroke-width="6.5"/>
-<line x1="13496.67" y1="1012.5" x2="13496.67" y2="1387.5" stroke="#a8a29a" stroke-width="6.5"/>
+<path d="M 13600,305 L 13600,2095 A 5 5 0 0 1 13595,2100 L 13105,2100 A 5 5 0 0 1 13100,2095 L 13100,305 A 5 5 0 0 1 13105,300 L 13595,300 A 5 5 0 0 1 13600,305 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
+<line x1="13120" y1="300" x2="13120" y2="2100" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13600" y1="750" x2="13100" y2="750" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13600" y1="1200" x2="13100" y2="1200" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13600" y1="1650" x2="13100" y2="1650" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13350" y1="327" x2="13350" y2="723" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
+<line x1="13518.75" y1="376.5" x2="13181.25" y2="376.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13518.75" y1="475.5" x2="13181.25" y2="475.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13518.75" y1="574.5" x2="13181.25" y2="574.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13518.75" y1="673.5" x2="13181.25" y2="673.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13350" y1="777" x2="13350" y2="1173" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
+<line x1="13518.75" y1="826.5" x2="13181.25" y2="826.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13518.75" y1="925.5" x2="13181.25" y2="925.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13518.75" y1="1024.5" x2="13181.25" y2="1024.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13518.75" y1="1123.5" x2="13181.25" y2="1123.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13350" y1="1227" x2="13350" y2="1623" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
+<line x1="13518.75" y1="1276.5" x2="13181.25" y2="1276.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13518.75" y1="1375.5" x2="13181.25" y2="1375.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13518.75" y1="1474.5" x2="13181.25" y2="1474.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13518.75" y1="1573.5" x2="13181.25" y2="1573.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13350" y1="1677" x2="13350" y2="2073" stroke="#a8a29a" stroke-width="6.5" stroke-dasharray="54 36"/>
+<line x1="13518.75" y1="1726.5" x2="13181.25" y2="1726.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13518.75" y1="1825.5" x2="13181.25" y2="1825.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13518.75" y1="1924.5" x2="13181.25" y2="1924.5" stroke="#a8a29a" stroke-width="6.5"/>
+<line x1="13518.75" y1="2023.5" x2="13181.25" y2="2023.5" stroke="#a8a29a" stroke-width="6.5"/>
 <path d="M 7127,7600 L 8873,7600 A 27 27 0 0 1 8900,7627 L 8900,9573 A 27 27 0 0 1 8873,9600 L 7127,9600 A 27 27 0 0 1 7100,9573 L 7100,7627 A 27 27 0 0 1 7127,7600 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
 <path d="M 7127,7600 L 8873,7600 A 27 27 0 0 1 8900,7627 L 8900,7690 L 7100,7690 L 7100,7627 A 27 27 0 0 1 7127,7600 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="9"/>
 <path d="M 7304,7750 L 7844,7750 A 108 108 0 0 1 7952,7858 L 7952,8002 A 108 108 0 0 1 7844,8110 L 7304,8110 A 108 108 0 0 1 7196,8002 L 7196,7858 A 108 108 0 0 1 7304,7750 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="6.5"/>
@@ -11931,8 +11963,8 @@ exports[`golden SVG snapshots > renders relational.arch deterministically 1`] = 
 </g>
 <g id="A-DOOR" inkscape:groupmode="layer" inkscape:label="A-DOOR">
 <polygon points="100,5050 100,4150 -100,4150 -100,5050" fill="none"/>
-<polygon points="0,5050 900,5050 899.11,5010 0,5010" fill="#ffffff" stroke="#555555" stroke-width="17.06"/>
-<path d="M 900,5050 A 900 900 0 0 0 0,4150" fill="none" stroke="#555555" stroke-width="9.48"/>
+<polygon points="0,4150 900,4150 899.11,4190 0,4190" fill="#ffffff" stroke="#555555" stroke-width="17.06"/>
+<path d="M 900,4150 A 900 900 0 0 1 0,5050" fill="none" stroke="#555555" stroke-width="9.48"/>
 <polygon points="600,5250 1400,5250 1400,5150 600,5150" fill="none"/>
 <polygon points="600,5200 600,6000 640,5999 640,5200" fill="#ffffff" stroke="#555555" stroke-width="17.06"/>
 <path d="M 600,6000 A 800 800 0 0 0 1400,5200" fill="none" stroke="#555555" stroke-width="9.48"/>
@@ -12811,13 +12843,13 @@ exports[`golden SVG snapshots > renders tiny-house.arch deterministically 1`] = 
 <circle cx="6848.25" cy="2400" r="15.75" fill="#a8a29a" stroke="#a8a29a" stroke-width="9.24"/>
 <line x1="6848.25" y1="2400" x2="6760.5" y2="2400" stroke="#a8a29a" stroke-width="9.24"/>
 <circle cx="6623.7" cy="2400" r="13.5" fill="#a8a29a" stroke="#a8a29a" stroke-width="9.24"/>
-<path d="M 2621,100 L 4579,100 A 21 21 0 0 1 4600,121 L 4600,1479 A 21 21 0 0 1 4579,1500 L 2621,1500 A 21 21 0 0 1 2600,1479 L 2600,121 A 21 21 0 0 1 2621,100 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="12.8"/>
-<path d="M 2621,100 L 4579,100 A 21 21 0 0 1 4600,121 L 4600,163 L 2600,163 L 2600,121 A 21 21 0 0 1 2621,100 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="12.8"/>
-<path d="M 2782.27,205 L 3471.07,205 A 75.6 75.6 0 0 1 3546.67,280.6 L 3546.67,381.4 A 75.6 75.6 0 0 1 3471.07,457 L 2782.27,457 A 75.6 75.6 0 0 1 2706.67,381.4 L 2706.67,280.6 A 75.6 75.6 0 0 1 2782.27,205 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="9.24"/>
-<path d="M 3728.93,205 L 4417.73,205 A 75.6 75.6 0 0 1 4493.33,280.6 L 4493.33,381.4 A 75.6 75.6 0 0 1 4417.73,457 L 3728.93,457 A 75.6 75.6 0 0 1 3653.33,381.4 L 3653.33,280.6 A 75.6 75.6 0 0 1 3728.93,205 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="9.24"/>
-<polygon points="2642,520 4558,520 4558,1234 4334,1458 2642,1458" fill="#f4f2ee" stroke="#a8a29a" stroke-width="9.24"/>
-<polygon points="2642,520 4558,520 4558,660 2642,660" fill="#ffffff" stroke="#a8a29a" stroke-width="9.24"/>
-<polygon points="4558,1234 4334,1458 4334,1234" fill="#ffffff" stroke="#a8a29a" stroke-width="9.24"/>
+<path d="M 4600,121 L 4600,1479 A 21 21 0 0 1 4579,1500 L 2621,1500 A 21 21 0 0 1 2600,1479 L 2600,121 A 21 21 0 0 1 2621,100 L 4579,100 A 21 21 0 0 1 4600,121 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="12.8"/>
+<path d="M 4600,121 L 4600,1479 A 21 21 0 0 1 4579,1500 L 4510,1500 L 4510,100 L 4579,100 A 21 21 0 0 1 4600,121 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="12.8"/>
+<path d="M 4450,282.67 L 4450,654.67 A 108 108 0 0 1 4342,762.67 L 4198,762.67 A 108 108 0 0 1 4090,654.67 L 4090,282.67 A 108 108 0 0 1 4198,174.67 L 4342,174.67 A 108 108 0 0 1 4450,282.67 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="9.24"/>
+<path d="M 4450,945.33 L 4450,1317.33 A 108 108 0 0 1 4342,1425.33 L 4198,1425.33 A 108 108 0 0 1 4090,1317.33 L 4090,945.33 A 108 108 0 0 1 4198,837.33 L 4342,837.33 A 108 108 0 0 1 4450,945.33 Z" fill="#ffffff" stroke="#a8a29a" stroke-width="9.24"/>
+<polygon points="4000,142 4000,1458 2866,1458 2642,1234 2642,142" fill="#f4f2ee" stroke="#a8a29a" stroke-width="9.24"/>
+<polygon points="4000,142 4000,1458 3800,1458 3800,142" fill="#ffffff" stroke="#a8a29a" stroke-width="9.24"/>
+<polygon points="2866,1458 2642,1234 2866,1234" fill="#ffffff" stroke="#a8a29a" stroke-width="9.24"/>
 <path d="M 3412,2100 L 4888,2100 A 12 12 0 0 1 4900,2112 L 4900,2688 A 12 12 0 0 1 4888,2700 L 3412,2700 A 12 12 0 0 1 3400,2688 L 3400,2112 A 12 12 0 0 1 3412,2100 Z" fill="#f4f2ee" stroke="#6c6864" stroke-width="12.8"/>
 <line x1="3400" y1="2200" x2="4900" y2="2200" stroke="#a8a29a" stroke-width="9.24"/>
 <line x1="3400" y1="2300" x2="4900" y2="2300" stroke="#a8a29a" stroke-width="9.24"/>

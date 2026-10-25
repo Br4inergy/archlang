@@ -477,6 +477,8 @@ suite("doors — W_POCKET_RUN", () => {
       "title-overflow",
       "wc-side-clearance",
       "furniture-over-window",
+      "footprint-transposed",
+      "leaf-across-doorway",
     ]);
   });
 
@@ -490,9 +492,9 @@ suite("doors — W_POCKET_RUN", () => {
     // follow those, and this plan has no room for them to read either; nor do the three
     // space-enclosure rules after them, nor the two furniture-relation rules after those, nor
     // the dimension-text rule (no `dim` here), nor the two annotation-collision rules (no
-    // furniture, no `dims auto`, no title), nor the two clearance rules last of all (no WC, no
-    // tall unit).
-    expect(LINT_RULES.map((r) => r.name).slice(-20)).toEqual([
+    // furniture, no `dims auto`, no title), nor the four clearance rules last of all (PS2.11a–d:
+    // no WC, no tall unit, no furniture, and one door has no other doorway to park its leaf across).
+    expect(LINT_RULES.map((r) => r.name).slice(-22)).toEqual([
       "door-near-corner",
       "opening-not-dimensioned",
       "room-via-private",
@@ -513,6 +515,8 @@ suite("doors — W_POCKET_RUN", () => {
       "title-overflow",
       "wc-side-clearance",
       "furniture-over-window",
+      "footprint-transposed",
+      "leaf-across-doorway",
     ]);
     // A plan carrying an unrelated pre-existing warning (a sub-passable door width) AND
     // tripping the new rule: the old diagnostic must still be first, byte-for-byte.
