@@ -29,7 +29,7 @@
 | The 57 caught by default `lint` on the 2026-10-18 plans | 0 | 17 (6 partial) | 19 (7 partial); 15.5 counting halves | **23 (6 partial)**; 20 counting halves | same run (Part 1 does not depend on the arm) |
 | The 48 caught by default `lint` on the 2026-10-24 plans | — | 1 | 1 | **7 (3 partial)**; 5.5 counting halves | same run |
 | The 49 caught by default `lint` on the 2026-10-25 plans | — | — | — | **5 (2 partial)**; 4 counting halves (0 before) | same run |
-| Row-5 drafting codes on the eighteen old plans | — | — | `W_ANNOTATION_OVERLAP` 12 (all true; 1 hit, 1 partial, 10 outside the audits); `W_DIM_TEXT_MISMATCH` 0; `W_TITLE_OVERFLOW` 0 | 0 new (the 25 new default warnings are all clearance codes) | same run |
+| Row-5 drafting codes on the eighteen old plans | — | — | (twelve old plans) `W_ANNOTATION_OVERLAP` 12 (all true; 1 hit, 1 partial, 10 outside the audits); `W_DIM_TEXT_MISMATCH` 0; `W_TITLE_OVERFLOW` 0 | 0 new (the 25 new default warnings are all clearance codes) | same run |
 | Clearance codes (PS2.11a–d) on the eighteen old plans | — | — | — | 25 new default warnings, 0 removed; 16 map to audited defects (11 caught, 5 partial), 9 new and true, 0 false positives | same run |
 | `score --taste generic`, cold plans | — | 0.5 (capped) – 0.90 | 0.72 – 0.93, none capped | **0.72 – 0.97**, none capped | **0.71 – 0.98**, none capped |
 | `score --taste generic`, the eighteen old plans, re-scored | — | — | — | 17 of 18 now score 0.5 (capped by the new validity codes) | same run |
@@ -75,7 +75,7 @@ npx vitest run test/lint-dwelling-reading.test.ts test/main-entrance.test.ts \
 | Built CLI | `archlang v1.43.1` (`npm run build` in a detached worktree; lockfile unchanged since 9cc29c7e) | the same |
 | Role text (`.claude/agents/arch-author.md`) | pre-#250: `git show 6e0aa520^1:.claude/agents/arch-author.md` written over the file in the arm's worktree, uncommitted (5 insertions, 24 deletions against main) | `main` as it stands (post-#250) |
 | Role as loaded (the dispatching session's own Agent-tool listing, the headless equivalent of `/agents`, copied before dispatching) | `compile → fix → describe → lint` | `compile → validate → lint → score --taste → repair` |
-| Dispatcher | one headless `claude -p` session per arm, started with the arm's worktree as its working directory (model sonnet, `--dangerously-skip-permissions`, `--output-format json`); session `89ce5d9c-2a49-439d-91ff-c8a45195b6fa` | session `bda05da9-2a02-4abe-a888-1c83c6691b70` |
+| Dispatcher | one headless `claude -p` session per arm, started with the arm's worktree as its working directory (model sonnet, `--dangerously-skip-permissions`, `--output-format json`) | the same |
 | Authors | six `arch-author` subagents, all six dispatched in one message, one per brief, model `claude-sonnet-5-5` (inherited; the role file sets none), no follow-up message, no nudge | the same |
 | Per-brief prompt | the protocol's 2026-10-24/25 prompt verbatim, `<repo>` the arm's worktree, `<run-folder>` `2026-10-26-rerun-armA`; it names `compile\|lint` only and says "stop when it compiles" | the same with `2026-10-26-rerun-armB` |
 | Files the authors read (from the transcripts) | `spec.llm.md` only, every author | `spec.llm.md` only; the house author also re-read its own plan |
@@ -420,7 +420,7 @@ partial coverage (see Tool facts). Final taste: no score is capped and every pla
 The criteria below 1 are: apartment R6 0.67 and R17 0.25; house R6 0.92; studio R17 0.75; café R11 0, R16 0.33 and
 R17 0.7; townhouse R14 0.67; clinic R16 0.33 and R17 0.67.
 
-The calls beyond compile and lint: the house author's `describe --select access`, `describe --select caption,rooms --room living` and `validate --json` (run after its plan was already lint-clean, and read as `next: null`), plus one `lint` of a scratch copy of the house with its sofa deleted, counted in the total (the 42 lint calls include it). Two authors wrote in their replies, unprompted, that they had not run `describe` (the house: "beyond a room-level check") or `score --taste` (apartment and house). The role text these authors held names `validate` as step 3 and `score --taste` as step 5: they knew the steps and skipped them.
+The calls beyond compile and lint: the house author's `describe --select access`, `describe --select caption,rooms --room living` and `validate --json` (run after its plan was already lint-clean, and read as `next: null`), plus one `lint` of a scratch copy of the house with its sofa deleted, counted in the total (the 42 lint calls include it). Two authors, the apartment's and the house's, wrote in their replies, unprompted, that they had not run `describe` (the house: "beyond a room-level check") or `score --taste`. The role text these authors held names `validate` as step 3 and `score --taste` as step 5: they knew the steps and skipped them.
 
 Final state of the six plans on the current CLI: default `lint` clean on all six; `validate --json` `next: null` on all six; `score --taste generic` 0.88 / 0.98 / 0.98 / 0.71 / 0.97 / 0.72 (apartment … clinic), none capped.
 
@@ -701,7 +701,7 @@ reviewer's tool (ADR 0032's consequence).
   evidence.
 - **Arm B shows the role text alone does not change that.** The current role names `validate` as step 3
   and `score --taste` as step 5 of its loop. Against arm A it added one `validate` and one `describe`
-  call and no `score` call. Two arm-B authors wrote, unprompted, that they had not run `describe` and
+  call and no `score` call. Two arm-B authors (the apartment's and the house's) wrote, unprompted, that they had not run `describe` and
   `score --taste`: they knew the steps and skipped them.
 - **Both arms read the taught loop and did not use it.** `spec.llm.md` at `747eed00` carries PR #250's
   self-correction paragraph, which names `validate --json` (fix its `next` first) and `score --taste
@@ -729,7 +729,7 @@ reviewer's tool (ADR 0032's consequence).
 
 **What the run says about the rest of the programme.**
 - **The surviving-defect count is flat: 48 → 49 → 52 / 54**, under two auditor instances and one draw
-  per author, so the arms differ by the noise of a draw, not by an effect of the role text.
+  per author, so the difference cannot be told from the noise of one draw per brief and two auditors.
 - **Blockers 0 → 1 in each arm, both on the townhouse stair** (OT1 enters the stair at its head with its
   foot in a 700 mm pocket; CT1 puts bedroom 2's only door on a 150 mm strip beside the stairwell). The
   2026-10-25 audit put its 0 blockers down to authoring chance, with no row-5 rule touching a stair;
@@ -755,7 +755,8 @@ reviewer's tool (ADR 0032's consequence).
 
 **Verdict (D15 applied).** Arm A shows no calls, so D2's reverse-if is met: taste is re-scoped as a
 reviewer's tool and PS7.4 is `done` as measured. The ruling, its consequences and its reverse-if are
-`../README.md` D20.
+`../README.md` D20. A third arm (walls-first, PS1.3, reported separately) made 0 `score` and 0
+`validate` calls in 66 under the same prompt: a third data point that supports D20 and does not change it.
 
 ## Candidate cards
 
@@ -771,7 +772,10 @@ New cards, filed in `../cards.md` with the next free ids (all `todo`):
 - **PS7.5 · Move the taste step out of the author loop** (D20's consequence (c)): the spec's
   self-correction paragraph, SKILL step 7 and the `arch-author` role.
 
-Evidence appended to existing cards (no new card), checked against each card's text before filing:
+Evidence lines were appended in `../cards.md` for PS0.25, PS2.11e, PS2.30, PS2.31, PS2.34 and PS2.41 only.
+The remaining bullets are recorded here as evidence for the cards they name. The stair-run-too-short
+candidate went into PS2.11e's existing stair-pitch bullet, not a new card. Checked against each card's
+text before filing:
 - **PS2.11e** (its stair bullets name pitch versus storey height, so OT2 goes there, not into a new card):
   OT2; the wardrobe front and the hob-to-fridge gap: OA4, CA4, OH3.
 - **PS2.28** (sofa against its TV): OH1, OT4, CT4.
@@ -779,7 +783,7 @@ Evidence appended to existing cards (no new card), checked against each card's t
   room's `uses kitchen` dropped and relabelled to clear `W_ROOM_MISSING_DEFINING`), CS4 and CA3
   (furniture deleted to clear warnings).
 - **PS2.31:** CA7, CT8, CK1, OK1 (a table or desk with no seat).
-- **PS2.32:** OA3, CS1, CK4, OK5 (a sofa facing a wall 200 to 500 mm away).
+- **PS2.32:** OA3, CS1, CK4, OK5 (a sofa facing a wall 0 to 500 mm away).
 - **PS2.33:** OC2, OK3 (a leaf across a corridor).
 - **PS2.34:** OT1, OT3, CT2, CT3 (stair foot, head and side entry; CT1 is PS2.56).
 - **PS2.36 / PS2.16:** OC5, OK2, CC3, CK2 (accessible WCs); OC7, OK6, CK5, CC6, CC7 (zoning); CK6 (both
@@ -841,9 +845,9 @@ taste concordance (A ∪ B ∪ C): 44 pairs — 40 ordered, 0 tied, 0 reversed (
 
 - `first-contact-plans/2026-10-26-rerun-armA/<n>-<brief>.arch` and
   `first-contact-plans/2026-10-26-rerun-armB/<n>-<brief>.arch`: the twelve final plans as the cold
-  authors left them. They are copies of the authors' files; the authors wrote CRLF line endings on
-  Windows and git stores LF (`.gitattributes`), so the committed bytes differ from the originals only in
-  line endings.
+  authors left them. Eleven are byte-identical to the authors' files; the arm-B café was written
+  with CRLF line endings (56 CR bytes) and git stores LF (`.gitattributes`), so its committed bytes
+  differ from the original only in line endings.
 - The lint, taste, validate, describe and Plan JSON outputs, the renders, the transcripts, the shim call
   logs and the scripts were kept outside the repository.
 

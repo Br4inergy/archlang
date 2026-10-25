@@ -1,4 +1,4 @@
-# Plan-soundness programme: handoff (state as of 2026-10-26, audit PR #261 at `619b7bde`)
+# Plan-soundness programme: handoff (state as of 2026-10-26, `main` after PR #261 merges)
 
 This page is the resume point for a new session. It says where the programme stands, what is open,
 in which order, and how the work is run. It is re-written at every stage end; the dated history is
@@ -131,8 +131,9 @@ on 2026-10-25. Each item names its card; the card holds goal, design, acceptance
 8. **PS2.11e** the clearance remainder (`W_DOORWAY_BLOCKED` over leaf-less openings, stair swings,
    hob under a window PS2.46, per-family depth ceiling PS2.53, face/centreline unification PS2.54).
 9. **PS1.3** walls-first control arm (§8 Q1) and **PS1.4** diagnostic-wording study (§8 Q3): owner asks
-   from 2026-10-18 found undone by the 2026-10-25 transcript audit; item 1 ran without it, so PS1.3
-   stays open (same harness).
+   from 2026-10-18 found undone by the 2026-10-25 transcript audit; PS1.3's walls-first arm ran on
+   2026-10-26 in item 1's harness (66 CLI calls, 0 `score`, 0 `validate`; six plans, hand-audited) and is
+   reported in its own audit and PR; PS1.4 is still open.
 10. Everything else in `cards.md` by family: PS0 15 todo, PS1 2, PS2 41 todo, PS3 4, PS4 5, PS5 4,
     PS7 4 (7.1, 7.2, 7.5, 7.6); pick by first-contact evidence, not by number.
 
@@ -161,7 +162,8 @@ items 3.1(b), M.8, M.9, M.14 and D.7 wait on the owner's answers and are not cov
 
 ## 5. Owner asks not yet carried out (from the 2026-10-25 transcript audit)
 
-- Walls-first vs rooms-first comparison (PS1.3) and diagnostic wording (PS1.4): cards filed, not run.
+- Walls-first vs rooms-first comparison (PS1.3): ran 2026-10-26 in item 1's harness and is reported in
+  its own audit and PR. Diagnostic wording (PS1.4): card filed, not run.
 - Id-free lint messages: PS2.22/PS2.29 open; the rule is in `README.md` §5.
 - Fuzz, timing and red-team probes were to run in the owner's prepaid `claude --cloud` sessions
   (owner, in conversation, 2026-10-20). One probe ran; the rest ran locally. Item 1's two arms ran as

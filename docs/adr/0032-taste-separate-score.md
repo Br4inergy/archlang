@@ -120,7 +120,7 @@ already separate the corpus's circulation and daylight pairs.
   (the current role, whose loop names `validate` as step 3 and `score --taste` as step 5) made 0
   `score` and 1 `validate` in 77 (32 `compile`, 42 `lint`, 2 `describe`); two of its authors wrote,
   unprompted, that they had skipped `describe` and `score --taste`. So arm A shows no calls, the
-  role text alone changes nothing, and this ADR's reverse-if is met. The dispatch prompt names
+  role text alone does not change that (arm B over arm A: +1 `validate`, +1 `describe`, 0 `score`), and this ADR's reverse-if is met. The dispatch prompt names
   `compile|lint` only and says to stop when it compiles, so the result measures that protocol, not
   an agent told to run the whole loop. Re-scoped by plan-soundness D20 (`docs/plans/plan-soundness/README.md`
   § 3): validity stays in `lint`; the taste score is read by the reviewer (the dispatching session,
