@@ -104,6 +104,165 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   did off furniture (`examples/townhouse` draws its "300" clear of the stair). Seven examples were
   fixed: `aquarium`, `hillside-villa`, `library`, `tiny-house` (a label moved), `two-bed` (a bed
   moved), and `museum-wings` and `transit-hall` (a shorter project title).
+- Three privacy and entrance lint rules, on by default. `W_ROOM_VIA_PRIVATE`: a room that can be
+  reached only through one bedroom, bathroom or WC (a bathroom or WC compartment, an ensuite, a
+  wardrobe or a storage room is not reported); one warning per such room, naming each private room
+  on its route and its access depth. `W_WET_ROOM_DOOR`: a bathroom or WC whose only connector is a
+  leaf-less opening to a habitable room, whose door opens onto a kitchen or dining room, or that
+  acts as a passage between two spaces; a bath door onto a room that is both kitchen and living
+  room counts only where it opens within `wetDoorKitchenProximityMm` (1500) of a kitchen fixture.
+  `W_ENTRANCE_INTO_PRIVATE`: every door from outside on a storey opens into a bedroom, bathroom or
+  WC. Routes are read from the main entrance (see `describe().access.mainEntrance` below), so a
+  patio door cannot mask a route through a private room. `garden-house` now swings its garage door
+  into the kitchen so the rules report nothing on it.
+- Three opening-versus-wall lint rules, on by default. `W_OPENING_AT_JUNCTION`: a door, window or
+  cased opening whose clear span crosses another wall's body, or whose jamb is nearer to a meeting
+  wall's face than the larger of `minJunctionNibMm` (100 mm) and the host's thickness times
+  `junctionNibThicknessRatio` (0.5); `W_DOOR_NEAR_CORNER` keeps its output, and a cased opening
+  flush with a meeting wall is exempt. `W_OPENING_OVERLAP`: two openings on one host run whose
+  spans intersect, or whose pier between them is thinner than `minMullionMm` (100); the two leaves
+  of a double door are exempt, and the move hints move them as a pair. `W_CONNECTOR_AMBIGUOUS`: a
+  door or opening whose clear span covers more than one room on a face, by at least the larger of
+  `minStraddleCoverMm` (100) and half the host's thickness, net of the meeting wall, so the rooms
+  it joins are not decided. None of the three has a machine fix.
+- `W_HABITABLE_NO_WINDOW` and `W_ROOM_MISSING_DEFINING`, on by default. The first extends
+  `W_BEDROOM_NO_WINDOW` to a living room, dining room or kitchen with no window on its walls (a
+  bedroom is still reported only by the older code; a room bounded by an arc wall whose window
+  cannot be attributed is skipped, not judged). The second: a room that holds some furniture but
+  lacks the piece its use is defined by, a bedroom without a bed, a dining room without a table, a
+  kitchen without a sink, a hob and a worktop (`counter`), a bathroom without a bath or shower, a
+  WC room without a WC. The defining pieces are read from the table `finish` furnishes by, so the
+  rule and `finish` cannot contradict. `finish` now judges each use on its finished pieces and
+  leaves a use out whole when it cannot complete it, so it never writes a use this rule would then
+  report; a kitchen's worktop goes beside the hob in a 600 mm module (else against any wall, else
+  the 400 mm module), and a kitchen where none fits is left out. An empty room is never reported
+  by the rule. `W_ROOM_NO_FIXTURE`'s hint quotes the defining set.
+- `lint --json` ends with a `coverage` block, and `lintWithCoverage()` and `lintCoverage()` return
+  it (the latter alone, or `null` when the plan does not resolve): which rule families ran, which
+  were skipped or ran only in part, with the reason (`no-uses`, `no-site`, `single-storey`,
+  `arc-window-unattributed`, `non-rectangular-room`, `no-entrance`, `balcony-only-entrance`,
+  `unsupported-host-geometry`, `no-kitchen-fixtures`, `enclosure-budget`, `no-main-entrance`,
+  `non-dwelling`, `hint-budget`, `no-dwelling` (filed since the residential-advisory profiles), and
+  the reserved `no-brief` and `no-operable-window-data`), and the rooms the vocabulary could not classify
+  (`unclassifiedRooms`). A human `lint` prints one line on stderr when something was skipped,
+  never under `--quiet`. `lint()` returns exactly what it did. The MCP server and the VS Code
+  extension do not show `coverage` yet.
+- Three space-enclosure lint rules, on by default. `W_BOUNDARY_NO_WALL`: two rooms share an edge
+  run with a stretch longer than `maxBoundaryGapMm` (900) that has no wall, door, opening or fixed
+  counter on it (two rooms that each have a kitchen, dining or living use are not judged).
+  `W_FLOOR_UNASSIGNED`: a walled face covered by rooms, `outdoor` surfaces, voids and stairs to
+  less than `minFaceCoverRatio` (0.95), leaving at least `minUnassignedM2` (0.5 m2) in no room; a
+  sealed face is not reported. `W_ROOM_OUTSIDE_SHELL`: at least `minOutsideShellM2` (0.1 m2) of a
+  room's floor lies outside every walled face, judged only when at least half of the room is
+  inside walled faces. The face work is charged to a budget first; a storey past it files the
+  coverage skip `enclosure-budget`. `aquarium`'s galleries were extended to its north wall and
+  `courtyard-house`'s courtyard is drawn as an `outdoor` surface.
+- The dwelling rules read whether the plan is one. A plan reads as non-residential when a room's
+  label carries a cafe, restaurant, retail, clinic, consulting, servery, staff room or classroom
+  word, or, on a plan with no bedroom or living room, an office use or a lobby, reception,
+  waiting, shop or meeting word. On such a plan, under every profile but `residential-basic`,
+  `W_HABITABLE_NO_WINDOW`'s kitchen arm, `W_WET_ROOM_DOOR`'s dining, leaf-less and passage arms and
+  `W_ENTRANCE_INTO_PRIVATE` decline and file the coverage skip `non-dwelling`;
+  `W_WET_ROOM_DOOR`'s kitchen arm judges every plan. `residential-basic` sets `assumeDwelling` and
+  judges every plan as a home, so it now differs from the default ruleset, and the playground's
+  profile selector starts on the default ruleset. A cafe audit plan, a cafe test fixture and
+  four eval office plans lose their dwelling-only warnings; no example moves.
+- `describe().access.mainEntrance` and `depthFromMainEntrance`, on a storey with more than one way
+  in: the one door the plan is entered by, with its `basis`. A door into a bedroom, bathroom or WC
+  is never a candidate, and width never decides: `entry-room` (the one door into an entry, hall or
+  circulation room, when every other door opens into a service room), `street` (the one hinged
+  door facing `site.street`) or `sole`. The fact refuses with `tie`, `no-candidate` or
+  `upper-storey`, which `lint --json` reports as the coverage skip `no-main-entrance`.
+  `W_PATH_TOO_NARROW`, `W_ROOM_VIA_PRIVATE` and `W_WET_ROOM_DOOR` judge routes from it; a garage
+  door, and a door into a room the main entrance cannot reach from inside, still count as ways in.
+- Rooms may be written first, and a room's edges and centre are numbers wherever a coordinate or
+  length is read: `hall.top`, `hall.bottom`, `hall.left`, `hall.right`, `hall.cx`, `hall.cy`
+  (`north|south|east|west` alias the first four only in the root of a plan whose `north` is `up`).
+  A plan written with datums draws, describes and lints byte for byte like the same plan written
+  with the numbers. Any statement that resolves after the rooms may read them; a `let`, a `place`,
+  a plan setting or a room's own `at`/`size` is evaluated earlier and raises
+  `E_DATUM_BEFORE_ROOMS`. New refusals: `E_DATUM_COMPASS`, `E_DATUM_NAME`, `E_ROOM_NOT_RECTANGLE`
+  (a polygon or circle room exposes no datum), `E_DATUM_UNPLACED`. A plan now resolves its rooms,
+  then relational placement, then walls and openings; a resolution that `E_STEP_LIMIT` stops
+  reports the diagnostics raised before the crossing in that order.
+- `walls from rooms exterior <mm> partition <mm>` derives every wall of a plan (or of a
+  `component`) from the rooms written beside it: an exterior ring on the outline of their union
+  and one partition on each edge two rooms share. The rooms must tile one connected floor exactly;
+  otherwise it refuses, naming the rooms: `E_ROOMS_OVERLAP`, `E_ROOMS_NOT_TILING`,
+  `E_PARTITION_TOO_SHORT`, `E_ROOM_NOT_RECTANGLE` (leave a polygon or circle room out with
+  `except <room> ...`), `E_WALLS_FROM_ROOMS_DUP`, `E_WALLS_FROM_NO_ROOMS`. A statement that would
+  pass the element budget is `E_ELEMENT_LIMIT` and derives nothing, and an authored wall beside it
+  may not take the id `exterior` (`E_WALL_ID_RESERVED`). A hole is legal when `outdoor` surfaces
+  or a `void` cover it exactly (a courtyard gets an inner ring). A derived wall has no id;
+  openings reach it by a relation, by position, or by category (`wall exterior`,
+  `wall partition`), and lint names it by its rooms. An authored wall exactly on a derived line takes
+  over that span. `describe --json` gains `derived_walls[]` and `freedom.walls`, and Plan JSON
+  carries the statement as `walls_from_rooms`, each only on a plan that uses it. `walls` is now a
+  statement keyword, so a `dims auto` with the statement on the next line no longer reads it as
+  its mode.
+- Two clauses inside `walls from rooms { ... }`. `between <A> and <B> thickness <mm>` gives one
+  partition its own thickness. `open [id=<name>] between <A> and <B> [width <mm>]` makes the two
+  rooms one open-plan space: the partition stays derived and a leaf-less opening spans the clear
+  run between the meeting walls' faces (centred, with `width`), joining the rooms in the access
+  graph. Its id is `<A>|<B>:open` unless the clause gives one. New refusals on the clause:
+  `E_WALL_BETWEEN_NOT_ADJACENT`, `E_WALL_BETWEEN_ROOM`, `E_WALL_BETWEEN_OPEN` (an authored wall,
+  or a door, window or opening hosted by position, across the voided span),
+  `E_WALL_BETWEEN_WIDTH`, `E_WALL_BETWEEN_DUP`. Plan JSON carries them as
+  `walls_from_rooms.open[]` and `between[]`.
+- Openings placed by the rooms. `door|opening [id=<name>] ... between <A> and <B> at <pos>` stands
+  in the one wall on the edge the two rooms share, and `door|window|opening ... on <room>.<edge>
+  [at <pos>]` in the one exterior wall on that edge, derived or authored, so it reaches a wall
+  that `walls from rooms` derived. `<pos>` is `center`, `<mm> from start|end`,
+  `<mm> from <room>.<edge>` or `axis <label>`, measured to the opening's centre along the run; a
+  door and a cased opening must write one, a window defaults to `center`, and `window ... between`
+  is a parse error. The nib is enforced, never slid: `E_OPENING_NIB` (its hint names the nearest
+  legal position), `E_OPENING_NO_SHARED_WALL`, `E_OPENING_HOST_AMBIGUOUS`, `E_OPENING_DATUM` for a
+  plain `at <mm>` or `at <pct>%` on these forms, and `E_WALL_BETWEEN_OPEN` across an `open` pair.
+  An opening on an ordinary wall may also be placed `at <mm> from start|end|<room>.<edge>` or
+  `at axis <label>`. `describe()` gains `relation` on the opening and `freedom.openings.relational`,
+  and Plan JSON carries `relation`. Lint's move hints quote the relational form.
+- Walls written by the rooms they stand between. `wall [id=<name>] <category> thickness <mm>
+  [material ...] [height <mm>] between <A> and <B>` stands on the edge run two rectangular rooms
+  share, and `... around [<A> <B> ...]` is one closed wall on the outline of the listed rooms'
+  union; the clause stands where the point list would, and the result is an ordinary authored wall
+  that keeps its id, category and thickness. Refusals: `E_ROOMS_OVERLAP`,
+  `E_WALL_BETWEEN_NOT_ADJACENT`, `E_PARTITION_TOO_SHORT`, `E_ROOMS_NOT_TILING`,
+  `E_ROOM_NOT_RECTANGLE`, `E_DATUM_UNPLACED`, and `around` refuses any hole. An opening `on` a
+  refused wall, furniture `against wall` it, or a `dim radius` of it still raises its own code,
+  saying the wall could not be placed (see its own error). `describe()` gains `derived_walls[]`
+  rows for them and `freedom.walls.relational`; Plan JSON exports their resolved points.
+- Furniture relations. `against <room>.<edge> [offset <mm>]` backs a piece onto a room's edge, on
+  the face of the one wall standing on that line (a derived wall too); `facing <id>` turns a piece
+  to the quarter-turn whose front ray first enters the target (furniture, a rectangular room or an
+  opening in its own group, in any source order), instead of `rotate`; `clear front <mm>` and
+  `clear sides <mm>` declare a clearance, measured against solid pieces, wall bodies and door
+  swings, and warn `W_FURN_CLEAR_FRONT` and `W_FURN_CLEAR_SIDES` when it is not free (a bad depth
+  is `E_FURN_CLEAR`). `facing` refuses with `E_FACING_TARGET`, `E_FACING_MISS`, `E_FACING_TIE`,
+  `E_FACING_CONFLICT`, `E_FACING_SYMMETRIC` and `E_FACING_TRANSPOSED`; `against <room>.<edge>`
+  reuses `E_FURN_AGAINST`. `describe()` gains `relation`, `facing` and `clear` on a furniture row,
+  and `freedom.furniture.relational`, only when written; Plan JSON gains `against_edge`, `facing`,
+  `clear_front` and `clear_sides`.
+- `W_SEAT_FACING_AWAY`, on by default: a chair, office chair or outdoor chair within
+  `seatTableReachMm` (600) of a table or desk in its room whose front ray enters no such table, so
+  it is drawn with its back to the table. A chair that declares `facing` is not judged. The hint
+  names the nearest table and the turn that faces it. Seventeen chairs on eight examples
+  (`aquarium`, `corner-cafe`, `furnished-flat`, `gallery-l`, `hillside-villa`, `materials`,
+  `museum`, `themed`) were turned or moved; their drawings move.
+- `swing inward|outward` on a door, relative to the building: `inward` opens towards the one face
+  of the host wall that has floor, `outward` away from it, whichever way the wall was drawn. It
+  resolves to the `in|out` it means, so a plan using it is byte-identical to that twin. A host with
+  floor on both faces or on neither is `E_SWING_SIDE`, on the word; the door keeps its default
+  swing. `in` is the right of the wall's drawn direction on the page and `out` the left, which
+  `spec.llm.md` now says. Plan JSON adds `swing_building` beside `swing`. The unknown-word parse
+  error now lists all four words. `set door(swing: ...)` does not take the new words.
+- Plan JSON carries a `place`d component that derives its walls. On a storey where an instance
+  holds `walls from rooms`, and only there, the payload gains `components: [{name, body}]` and
+  `instances: [{name, component, at, rotate?, mirror?}]`, and each flattened instance row gains
+  `instance`; a body keeps `relation`, `facing`, `swing_building`, `against_edge` and
+  `walls_from_rooms` as written, and the round trip prints a parameterless `component` per body
+  and a `place` per instance. `E_JSON_DERIVED_IN_INSTANCE` refuses only what the record cannot
+  hold: a nested `place`, two instances of one component with different bodies, an imported
+  component. Edits to a regenerated row are ignored.
 - Segment selectors (plan card PS3.5). `segment north|south|east|west` and `segment containing
   <room>.<edge>` can be written wherever `segment <n>` is, and resolve to that number:
   `against wall … segment`, and `dim radius … segment`, where a selector is refused because it
@@ -142,6 +301,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `W_ROOM_TOO_SMALL` reads the room's use. A WC is judged against 1.1 m2 and a bathroom against
+  2.0 m2 (GB 50096-2011 5.4.2, as advice), and a store, utility room, hall, circulation space or
+  entry has no area floor; a room with several uses takes the highest of its floors, and a use
+  with no entry keeps the generic `minRoomAreaM2` and its message. The ruleset knob is
+  `minRoomAreaByUseM2`, merged per use. A profile that sets the generic floor
+  (`accessibility-advisory`, 5 m2) holds every room to it. `describe()` and the drawing are
+  unchanged.
+- Room labels classify more rooms. `living` and `dining` were left out of the label vocabulary, so
+  a label-only "Living" or "Dining Room" now reads those uses in `describe()`, as `lint()` already
+  treated it, and its `room_type` is `LivingRoom` (as an authored `uses living` room already was).
+  A living alias (`family`, `sitting`) yields to any other kind the label matches, so "Family
+  Bathroom" is a bath and "Bed-sitting Room" a bedroom, while "Sitting / Dining" is living and
+  dining. A label that no word classifies falls back to a second vocabulary, read only then, so no
+  label that classified before changes: storage (store, closet, wardrobe, pantry, larder,
+  dressing, linen, cellar), office (office, study, consulting), utility (utility, laundry, plant,
+  boiler), bedroom (nursery, guest room, kids room, children's room, master suite, master), WC
+  (water closet) and living (great room, reception room, drawing room, snug, den). `room_type`
+  gains `LivingRoom`, `Storage` and `StudyRoom` for those rooms in `describe()` and Plan JSON (a
+  label-only nursery reads as a bedroom, `MasterRoom`), and `finish` furnishes label-only living
+  rooms, studies and nurseries. Rooms the vocabulary still
+  cannot read are listed in `lint --json`'s `coverage.unclassifiedRooms`.
+- The examples teach the room graph first. `spec.llm.md` and the `archlang` skill lead with a
+  three-room example (rooms, `walls from rooms ... { open between living and hall }`, a front
+  door `on hall.bottom`, `door between hall and bedroom`, windows `on <room>.<edge>`) in place of
+  the embedded `examples/attached.arch`, and the spec is shorter by about a thousand characters.
+  `examples/two-bed.arch` is redrawn with a hall that every room opens off (its three
+  `W_ROOM_VIA_PRIVATE` were real; it now lints clean), and `examples/relational.arch` is redrawn
+  with its walls and openings derived and a hall between the day rooms and the bedrooms (it had
+  seven warnings; it now lints clean). Their drawings move.
+- Examples redrawn so the new lint rules report nothing on them: `accessible`, `practice-office`,
+  `two-storey`, `corner-cafe`, `terrace-row`, `courtyard-house`, `furnished-flat`,
+  `hillside-villa` and `library`. Eleven examples, the gallery `two-bed` plan and the overview
+  plan also gained a kitchen `counter` for the worktop rule. Their drawings move.
 - `archlang ast --json` reports a `sizeSpan` on a furniture statement whose `size` is one literal
   (`900x2400`): the byte span `W_FOOTPRINT_TRANSPOSED`'s fix rewrites, beside the `rotateSpan` it
   already reports.
@@ -178,6 +370,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A door or opening's `between` is read off both faces of its host wall, at the centre and just
+  inside both jambs, so an exterior door centred on a T-junction, or within 200 mm of a
+  partition's end, is no longer given to the two rooms inside and no longer raises
+  `W_NO_ENTRANCE`. A connector whose span covers more than one room keeps its measured `between`,
+  and `describe()` lists the rooms it straddles in an additive `straddles` field.
+- A window on an arc wall edge is attributed to its room from the shape, through the face probes
+  or the arc's chord, so `W_HABITABLE_NO_WINDOW` no longer skips a glazed bay it can place
+  (`arc-window-unattributed` remains only where that fails).
+- `W_ROOM_NO_CLEAR_PATH` reads the same under every rotation and mirror. A doorway centre that sat
+  exactly on a cell line was seeded into one cell chosen by the sign of its coordinate, so
+  `mirror x` could change the answer; both cells are seeded now.
+- `describe()` can no longer run for minutes on one room with hundreds of vertices cut by hundreds
+  of free-standing walls. Its net-area walk is charged to a count per room (`MAX_NET_PROBE_WORK`,
+  20,000,000) before it runs; a room past it omits `net_area_m2`, as in the other cases where the
+  figure is not defined. A 125 by 300 comb room that took 52 to 97 seconds now returns in
+  milliseconds. The cap is per room, so a plan of very many such rooms is still not bounded.
+- A room placed relationally (`right-of`, `below`, ...) works with everything that reads it:
+  furniture `against wall ... in <room>` (it failed with `E_FURN_AGAINST`), furniture `in <room>`
+  (`E_PLACE_REF`) and a door's `swing into <room>` (`W_SWING_ROOM_NOT_ADJACENT`). Relational
+  rooms are now placed before anything that reads them, so a placed relational room draws byte for
+  byte as its absolute twin. A room that could not be placed, including an instance's room read
+  from the root, is refused naming its placement error, and the `E_FURN_AGAINST` and `E_PLACE_REF`
+  messages now say it "could not be placed (see its own error)".
 - `at <pct>%` resolves to the exact length (55 % of 6000 = 3300, not 3300.0000000000005); a window or door an ulp off a corner or threshold now lands on it.
 - `diffPlans` (plan card PS0.4) reports three changes it missed or misnamed, additively. A room that only changed position is `moved`, with an `offset` read off its own shape (`Moved Bed 500 mm right`), where it read `resized` with `+0.0 m²`. A door, window or opening whose host wall, `between`/`on` placement or joined spaces changed is `rehosted`, naming each host by its id as written or its automatic id, or by its rooms (`door door_2 joins a and b → nothing`), where it was not reported. A new `walls` section lists authored and `walls from rooms` walls added, removed, moved, resized or re-thickened; a derived wall that moved with its rooms names them in `follows`. Existing fields and sentences keep their meaning and order; the new sentences come before the trailing `Walk to` block. Plan JSON, SVG, `describe()` and `lint()` are unchanged. For consumers with an exhaustive `switch`: two unions widen, `RoomChange.change` gains `"moved"` and `OpeningChange.change` gains `"rehosted"`.
 
