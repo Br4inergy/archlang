@@ -129,7 +129,7 @@ plan "Furnished Flat" {
   furniture bed          against wall w_bath offset 2950  in r_bed2
   furniture desk         against wall w_bed  offset 1000 size 1200x700 in r_bed2
   furniture office_chair at (4450,8000) size 600x600 rotate 90 in r_bed2
-  furniture bookshelf    against wall w_bed  offset 3350 in r_bed2
+  furniture bookshelf    against wall w_bed  offset 3100 in r_bed2
 
   # --- Bath -------------------------------------------------------------------
   furniture shower  against wall w_bath  offset 1350 in r_bath

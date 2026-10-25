@@ -151,6 +151,23 @@ export interface FixtureSpec {
    * plane, and {@link cutPlaneLayer} would have to pick one.
    */
   overhead?: boolean;
+  /**
+   * The piece is a **tall unit**: full-height storage or an appliance that stands from the floor
+   * to about a door head (2100 mm, `DOOR_HEAD` in `src/datum.ts`), well above a window's 900 mm
+   * default sill. Read by exactly one rule, `W_FURNITURE_OVER_WINDOW` (plan-soundness PS2.11b): a
+   * tall unit standing against a window's wall across the window's span blocks the glass, which
+   * a low unit under the sill (a worktop, a chest of drawers, a washer) does not.
+   *
+   * The catalogue holds no heights, so the set is stated family by family rather than read off a
+   * number: the fridge (a fridge-freezer stands about 1800–2000 mm), the wardrobe (built to the
+   * door head), the bookcase (every word of the bookshelf family, `shelf` included, since a
+   * family's words carry the same flags) and the locker (a full-height bank). Deliberately NOT
+   * tall: the dresser and chest of drawers, the filing cabinet (a two- or four-drawer unit often
+   * stands under a sill), the shoe cabinet, the sideboard, the washer and dryer, the water heater
+   * and boiler (wall-hung or cupboard-housed), and every {@link overhead} piece, which hangs above
+   * the cut plane rather than standing in front of the glass.
+   */
+  tall?: boolean;
 }
 
 /** A room zone a fixture can satisfy (see {@link FixtureSpec.zones}). */
@@ -185,8 +202,20 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   stove: { requiresWall: true, clearanceMm: 550, footprint: { along: 600, depth: 600 }, zones: ["kitchen"] },
   hob: { requiresWall: true, clearanceMm: 550, footprint: { along: 600, depth: 600 }, zones: ["kitchen"] },
   cooktop: { requiresWall: true, clearanceMm: 550, footprint: { along: 600, depth: 600 }, zones: ["kitchen"] },
-  fridge: { requiresWall: true, clearanceMm: 550, footprint: { along: 600, depth: 650 }, zones: ["kitchen"] },
-  refrigerator: { requiresWall: true, clearanceMm: 550, footprint: { along: 600, depth: 650 }, zones: ["kitchen"] },
+  fridge: {
+    requiresWall: true,
+    clearanceMm: 550,
+    footprint: { along: 600, depth: 650 },
+    zones: ["kitchen"],
+    tall: true,
+  },
+  refrigerator: {
+    requiresWall: true,
+    clearanceMm: 550,
+    footprint: { along: 600, depth: 650 },
+    zones: ["kitchen"],
+    tall: true,
+  },
   // Zone-only entry: counts as a kitchen fixture but is free-standing (no wall,
   // clearance or footprint semantics — identical to having no catalog entry for
   // the other rules).
@@ -245,9 +274,9 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // small bedroom IS the normal layout, and a wardrobe is commonly approached from the side
   // or hung with sliding doors. The plumbed white goods below keep their 550, which no
   // shipped plan trips.
-  wardrobe: { requiresWall: false, directional: true, footprint: { along: 1800, depth: 600 } },
-  robe: { requiresWall: false, directional: true, footprint: { along: 1800, depth: 600 } },
-  closet: { requiresWall: false, directional: true, footprint: { along: 1800, depth: 600 } },
+  wardrobe: { requiresWall: false, directional: true, tall: true, footprint: { along: 1800, depth: 600 } },
+  robe: { requiresWall: false, directional: true, tall: true, footprint: { along: 1800, depth: 600 } },
+  closet: { requiresWall: false, directional: true, tall: true, footprint: { along: 1800, depth: 600 } },
 
   // Living. Free-standing: seating is arranged, not installed.
   sofa: { requiresWall: false },
@@ -273,9 +302,9 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   office_chair: { requiresWall: false },
   // NOT wall-requiring: a library's stacks are free-standing runs mid-floor
   // (`examples/library.arch` has twelve of them), which is what stacks are.
-  bookshelf: { requiresWall: false, directional: true, footprint: { along: 900, depth: 300 } },
-  bookcase: { requiresWall: false, directional: true, footprint: { along: 900, depth: 300 } },
-  shelf: { requiresWall: false, directional: true, footprint: { along: 900, depth: 300 } },
+  bookshelf: { requiresWall: false, directional: true, tall: true, footprint: { along: 900, depth: 300 } },
+  bookcase: { requiresWall: false, directional: true, tall: true, footprint: { along: 900, depth: 300 } },
+  shelf: { requiresWall: false, directional: true, tall: true, footprint: { along: 900, depth: 300 } },
 
   // Kitchen appliances & utility — the plumbed and vented pieces, and the only ones in this
   // block that are `requiresWall`. They share the 600 mm module the counter run above
@@ -577,7 +606,7 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   meeting_table: { requiresWall: false, symmetric: true, footprint: { along: 2400, depth: 1200 } },
   reception_desk: { requiresWall: false, directional: true, footprint: { along: 2400, depth: 900 }, serves: "desk" },
   filing_cabinet: { requiresWall: false, directional: true, clearanceMm: 600, footprint: { along: 450, depth: 600 } },
-  locker: { requiresWall: false, directional: true, footprint: { along: 1200, depth: 450 } },
+  locker: { requiresWall: false, directional: true, tall: true, footprint: { along: 1200, depth: 450 } },
   pool_table: { requiresWall: false, symmetric: true, footprint: { along: 2500, depth: 1400 } },
   treadmill: { requiresWall: false, directional: true, clearanceMm: 900, footprint: { along: 800, depth: 1800 } },
 });
@@ -688,6 +717,11 @@ export function cutPlaneLayer(category: string): CutPlaneLayer {
  */
 export function solidFurniture<T extends { category: string }>(furniture: readonly T[]): T[] {
   return furniture.filter((f) => !isUnderlay(f.category));
+}
+
+/** Is this category a tall unit ({@link FixtureSpec.tall}): full-height storage or a fridge? */
+export function isTallUnit(category: string): boolean {
+  return CATALOG[category]?.tall === true;
 }
 
 /** A fixture category's conventional wall-relative footprint (along × depth), or null. */

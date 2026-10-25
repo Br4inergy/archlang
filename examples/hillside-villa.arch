@@ -45,10 +45,12 @@ plan "Hillside Villa" {
     # running along the same line as this component's own 100 mm wall — `flush` reads the
     # nearer face and collides with the far one. The shower goes top-RIGHT: every
     # instance's bedroom door lands on the LEFT edge (`at 7500` below), and a shower there
-    # would leave it no swing room.
+    # would leave it no swing room. The WC backs onto the EAST wall below the shower, its
+    # centreline 550 mm from the tray and clear of the south door's swing; it stands 100 mm
+    # off this component's own wall so it clears the thicker shell that en_m backs onto.
     furniture shower in room anchor top-right   inset 150 size 900x900
     furniture basin  in room anchor top-left    inset 150 size 600x450
-    furniture wc     in room anchor bottom-left flush     size 400x700
+    furniture wc     at (900,1400) size 700x400 rotate 90 in room
   }
 
   # =====================================================================================
@@ -140,7 +142,7 @@ plan "Hillside Villa" {
     }
     window on shell at 11800 width 900                # pantry
     window on shell at 19000 width 1200                # kitchen (east wall)
-    window on shell at 21000 width 1200                # kitchen (east wall)
+    window on shell at 20400 width 1000                # kitchen (east wall)
     window on shell at 23000 width 1400                # terrace (east wall)
     window on shell at 17000 width 900                 # corridor (east wall)
     window at (6000,10200) width 1800 wall shell        # dining, south wall
@@ -175,7 +177,7 @@ plan "Hillside Villa" {
     furniture washer against wall w_wing_w offset 6800 in r_utility
     furniture dryer  against wall w_wing_w offset 7400 in r_utility
 
-    furniture wc    in r_powder anchor bottom-left flush size 400x700
+    furniture wc    against r_powder.left offset 1000 size 400x700
     furniture basin in r_powder anchor top-right   flush size 600x450
 
     furniture car at (-4800,700) size 1800x4600 in r_garage

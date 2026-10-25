@@ -101,7 +101,7 @@ plan "Laneway House" {
   furniture bed    in r_bed  anchor bottom-right flush inset 250 size 1500x2000 label "Bed"
   furniture robe   in r_bed  anchor top-left     flush inset 200 size 1800x600  label "Wardrobe"
   furniture shower in r_bath anchor top-right    flush size 900x900
-  furniture wc     in r_bath anchor bottom-left  flush size 400x700
+  furniture wc     against r_bath.bottom offset 750 size 400x700
   furniture basin  in r_bath anchor bottom-right flush size 600x450
 
   title { project "Laneway House" drawn_by "ArchLang" date "2026-08-16" }

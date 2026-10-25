@@ -1,7 +1,7 @@
 # class: clearances
 # origin: audits/showcase-and-examples.md M4 (mccallister fridge x 12050-12750 over win_kit_n2 x 11000-12400); CY2, TT1
 # expect: W_FURNITURE_OVER_WINDOW
-# status: todo
+# status: done
 # fact: the window spans x 1000-2400 on the north wall and the fridge against it x 2050-2650: 350 mm of glass behind the fridge
 plan "Fridge in front of a window" {
   units mm

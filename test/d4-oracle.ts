@@ -433,6 +433,10 @@ export const RULE_CLASS: Readonly<Record<string, RuleClass>> = {
   "dim-text-mismatch": "invariant",
   "annotation-overlap": "sheet",
   "title-overflow": "invariant",
+  // PS2.11a/b: both measure footprints, wall bodies and window spans in the piece's own frame
+  // (a WC's sides follow its `rotate`, which `place` carries), never a compass or the sheet.
+  "wc-side-clearance": "invariant",
+  "furniture-over-window": "invariant",
 };
 
 /**

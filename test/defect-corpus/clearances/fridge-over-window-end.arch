@@ -2,7 +2,7 @@
 # origin: audits/2026-10-18-first-contact.md T5 (first-contact-plans/5-townhouse.arch L0: the fridge x 150-750 covers
 #   150 mm of window_2 x 600-1800)
 # expect: W_FURNITURE_OVER_WINDOW
-# status: todo
+# status: done
 # fact: win_kit spans x 900-2100 on the north wall and the fridge against it x 1950-2550: 150 mm of glass behind the
 #   fridge
 plan "Fridge over the end of a window" {

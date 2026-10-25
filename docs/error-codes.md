@@ -5,7 +5,7 @@
 Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 (e.g. `arch explain E_ROOM_SIZE`). Errors abort rendering; warnings do not.
 
-**134 errors** · **70 warnings**
+**134 errors** · **72 warnings**
 
 | Code | Severity | Summary |
 | --- | --- | --- |
@@ -169,6 +169,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_FIXTURE_WRONG_ROOM`](#w_fixture_wrong_room) | warning | Fixture is not inside its declared room. |
 | [`W_FLOOR_UNASSIGNED`](#w_floor_unassigned) | warning | Walled floor is in no room. |
 | [`W_FURNITURE_OVERLAP`](#w_furniture_overlap) | warning | Two pieces of furniture overlap. |
+| [`W_FURNITURE_OVER_WINDOW`](#w_furniture_over_window) | warning | A tall unit stands in front of a window. |
 | [`W_FURNITURE_WALL_COLLISION`](#w_furniture_wall_collision) | warning | Furniture penetrates a wall. |
 | [`W_FURN_CLEARANCE`](#w_furn_clearance) | warning | A fixture's use-space is blocked. |
 | [`W_FURN_CLEAR_FRONT`](#w_furn_clear_front) | warning | A declared `clear front` is not free. |
@@ -210,6 +211,7 @@ Every diagnostic carries a stable code. Look one up with `arch explain <CODE>`
 | [`W_UNKNOWN_MATERIAL`](#w_unknown_material) | warning | Unknown wall material; using the default hatch. |
 | [`W_UNKNOWN_STYLE_KEY`](#w_unknown_style_key) | warning | Unknown style key. |
 | [`W_UNKNOWN_THEME_KEY`](#w_unknown_theme_key) | warning | Unknown theme key. |
+| [`W_WC_SIDE_CLEARANCE`](#w_wc_side_clearance) | warning | A WC's centreline is too close to a wall or fixture at its side. |
 | [`W_WET_ROOM_DOOR`](#w_wet_room_door) | warning | A bathroom or WC has no door, opens onto a kitchen, or is a passage. |
 | [`W_WHILE_DEPRECATED`](#w_while_deprecated) | warning | `while` is deprecated and will be removed in a future major version. |
 | [`W_WINDOW_OFF_WALL`](#w_window_off_wall) | warning | Window does not lie on any wall. |
@@ -2255,6 +2257,20 @@ furniture sofa at (300,300) size 2000x900
 furniture bed  at (1000,500) size 1500x2000   # lint: overlaps the sofa
 ```
 
+## W_FURNITURE_OVER_WINDOW
+
+*warning* — A tall unit stands in front of a window.
+
+**Cause.** A tall unit (a fridge, wardrobe, bookcase or shelf, or a locker: the catalogue's `tall` families) has a footprint that overlaps a window's span on its straight host wall, within the ruleset's `fixtureWallTolMm` (300 mm) of the wall's centreline on either side: it stands against the wall, across the glass, blocking the window's light and view. Measured from the drawn footprint and the window's span, never from bounding boxes. A window whose sill is at or above 2100 mm (a door head) is a high window over full-height storage and is not judged; a window on a curved wall is not measured (a `curved-window-host` coverage skip).
+
+**Fix.** Slide the unit along the wall clear of the window's span (the hint gives the shorter slide), move the window, or stand a unit no higher than the sill there instead: a worktop, a chest of drawers or a washer goes under a window, a fridge or a wardrobe beside it.
+
+```arch static
+wall id=w exterior thickness 200 { (0,0) (4000,0) }
+window at (2000,0) width 1200 wall w
+furniture fridge at (1700,100) size 600x650   # lint: in front of 600 mm of the window
+```
+
 ## W_FURNITURE_WALL_COLLISION
 
 *warning* — Furniture penetrates a wall.
@@ -2780,6 +2796,19 @@ style room { nope: "#000" }   # warning
 
 ```arch static
 theme { nope: "#000" }   # warning
+```
+
+## W_WC_SIDE_CLEARANCE
+
+*warning* — A WC's centreline is too close to a wall or fixture at its side.
+
+**Cause.** A `wc` (or `toilet`) has its centreline nearer than the ruleset's `wcSideClearanceMm` to a side obstacle: the face of a straight wall, or a fixture or piece of furniture beside the pan (a mirror or wall cabinet above it, a rug under it and a door's swing do not count). Its sides are the two edges beside its back (its `rotate`), measured square to the centreline over the pan's depth, from the drawn footprint to the drawn shape beside it, never from bounding boxes. A curved wall is not measured. The figure is 400 mm by default (the low end of Lifetime Homes criterion 10's 400–500 mm), 381 mm under `us-residential-advisory` (IRC P2705.1, 15 in), 400 under `uk-residential-advisory` and 450 under `accessibility-advisory` (Approved Document M Vol 1's 450–500 mm for a wheelchair user's WC), as advice, never compliance (ADR 0005). Set `wcSideClearanceMm: null` to turn it off.
+
+**Fix.** Slide the pan along its back wall away from the obstacle by the shortfall (the hint says whether its other side then still keeps the figure), move the obstacle, or move the pan to a run wide enough for twice the figure. There is no machine fix: the edit depends on how the pan was placed.
+
+```arch static
+furniture wc at (0,0) size 400x700
+furniture basin at (500,0) size 600x450   # lint: centreline 300 mm from the basin
 ```
 
 ## W_WET_ROOM_DOOR

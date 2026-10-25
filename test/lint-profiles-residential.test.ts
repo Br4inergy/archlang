@@ -64,7 +64,7 @@ describe("the residential-advisory profiles", () => {
     const text = readFileSync("src/lint/ruleset.ts", "utf8");
     const block = text.slice(text.indexOf(`"${CN}": {`), text.indexOf("export const DEFERRED_PROFILE_NUMBERS"));
     const numbered = block.split("\n").filter((l) => /:\s*\d/.test(l) && !l.trim().startsWith("*"));
-    expect(numbered.length).toBe(28); // cn 11, uk 8, us 9
+    expect(numbered.length).toBe(30); // cn 11, uk 9, us 10
     for (const l of numbered) {
       expect(l, l).toMatch(/\/\/ .*\[(V|S)[\],]/);
       expect(l, l).not.toContain("[M");
@@ -89,14 +89,17 @@ describe("the residential-advisory profiles", () => {
       minRoomShortSideByUseMm: { bedroom: 2150, hall: 900, circulation: 900, entry: 900 },
       minDoubleBedroomShortSideMm: 2550,
       minMainDoubleBedroomShortSideMm: 2750,
+      wcSideClearanceMm: 400,
     });
     expect(LINT_PROFILES[US]).toEqual({
       roomAreaMeasure: "net",
       minRoomAreaByUseM2: { living: 6.5, dining: 6.5, bedroom: 6.5 },
       minRoomShortSideByUseMm: { living: 2134, dining: 2134, bedroom: 2134, hall: 914, circulation: 914, entry: 914 },
+      wcSideClearanceMm: 381,
     });
-    // R10 and R37 wait for their rules (PS2.11, PS2.16); their numbers are kept, unread.
-    expect(DEFERRED_PROFILE_NUMBERS.usWc).toEqual({ centreToSideMm: 381, clearInFrontMm: 533 });
+    // R10's side figure is a ruleset field now (PS2.11a); its front figure and R37 (PS2.16) wait
+    // for their rules, kept unread.
+    expect(DEFERRED_PROFILE_NUMBERS.usWc).toEqual({ clearInFrontMm: 533 });
     expect(DEFERRED_PROFILE_NUMBERS.usEscape.minClearWidthMm).toBe(508);
     expect(DEFERRED_PROFILE_NUMBERS.ukEscape.minClearM2).toBe(0.33);
   });

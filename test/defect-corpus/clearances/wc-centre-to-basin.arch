@@ -2,7 +2,7 @@
 # origin: audits/2026-10-18-first-contact.md A8 (first-contact-plans/1-apartment.arch: WC centreline y 3500, basin to
 #   y 3200)
 # expect: W_WC_SIDE_CLEARANCE
-# status: todo
+# status: done
 # fact: the wc spans x 1100-1500 (centreline x 1300) and the basin beside it ends at x 1000: 300 mm from the WC
 #   centreline to the basin
 plan "WC too close to the basin" {

@@ -20,7 +20,8 @@ const DIGESTS: [string, string][] = [
   // Re-pinned for PS3.6: the twin is now the hand-typed twin of the rewritten two-bed (a
   // different plan); the previous twin under this compiler reproduces the previous row.
   // Re-measured 2026-10-24 (PS2.12): the annotation-collision examples (the twin follows two-bed's bed move); why, and the swap-back proof, in `test/byte-identity-baseline.ts`'s header.
-  ["two-bed-twin", "66e22252b90842aa605abbcacf96b9f099c2d9ffdf0eb63d625a9343f70afe1b"],
+  // Re-measured 2026-10-25 (PS2.11a/b): the twin follows two-bed's window and WC moves; why, and the proof that nothing else moved, in `test/byte-identity-baseline.ts`'s header.
+  ["two-bed-twin", "4fbad9ce863e4e2aca346556a7a728e2471670dcaf107dbda3568687335fa31e"],
   ["widen-4000", "8f10a20c86ffc919a72b6bb7912c7fffea0f953f46777d3f84a598582c67209e"],
   ["widen-4500", "c50d7c02d2f34d92da146950a02856fa53648b2d961314cc29db95d97e78012d"],
   ["courtyard", "7db77fbb50cf24659f402e0ef09e2e15ebffa9d5833b9d1a16513dedf6a5fb4e"],

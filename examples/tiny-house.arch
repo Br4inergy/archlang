@@ -106,10 +106,11 @@ plan "Tiny House" {
   furniture counter      against wall shell segment 3 offset 1900 size 400x600 in r_main
 
   # ---- wet room -------------------------------------------------------------
-  # Anchored to the room and `flush`, so each piece measures from the backing wall's
-  # inner face rather than from a half-thickness someone worked out by hand.
+  # Placed from the room, so each piece measures from the backing wall's inner face rather
+  # than from a half-thickness someone worked out by hand. The WC stands 500 mm along the
+  # south edge, its centreline 450 mm off the west wall's face: a pan needs elbow room.
   furniture shower in r_wet anchor top-left    flush size 900x900
-  furniture wc     in r_wet anchor bottom-left flush size 400x700
+  furniture wc     against r_wet.bottom offset 500 size 400x700
 
   # The basin is the one fixture placed by coordinate, and therefore the one that has to
   # state its own quarter-turn. `rotate 0` means "back to the north", so `rotate 90` puts

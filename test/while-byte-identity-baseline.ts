@@ -321,6 +321,7 @@
 // defect `W_SEAT_FACING_AWAY` found (ADR 0029 §6); the cause and the proof that nothing else
 // moved are in `test/byte-identity-baseline.ts`'s header.
 // Re-measured 2026-10-24 (PS2.12): the annotation-collision examples (seven fixed examples and townhouse); why, and the swap-back proof, in `test/byte-identity-baseline.ts`'s header.
+// Re-measured 2026-10-25 (PS2.11a/b): the twelve examples fixed for WC side clearance and tall units over windows, and test/fixtures/schedule-sheet (gains W_WC_SIDE_CLEARANCE, not edited); why, and the proof that nothing else moved, in `test/byte-identity-baseline.ts`'s header.
 export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/accessible.arch", "37750afda8d897db7e4e03b20db72ffe0873a840210eca21d494aaefa7cfc0a2"],
   ["examples/aquarium.arch", "58e77abe2d1295ae6fd8cdfbb6edc7ecb793987a7556c8438a579d6c62eab0aa"], // re-measured for PS2.4, see header; PS2.10 dims fixed (byte-identity-baseline.ts)
@@ -329,18 +330,18 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/classroom-block.arch", "48ee65709fc9f1b2875c7b96fd680d03a8012811d0bd18bc4a3a45422f19fe79"], // added with the example, re-measured for net area, see header
   ["examples/clinic.arch", "fac5d9fab49df93fe8cbff6cc0bf26b9e84b1a32c26128e155d0eeb5da99feb1"],
   ["examples/corner-cafe.arch", "d6f003e95916a1865e9acc794bf46a3e4d543260148f9d93047178e58f9acaf3"], // added with the example, re-measured for net area, see header
-  ["examples/courtyard-house.arch", "6ed177a87b487397decc32787c289ebaed4fa30108dd3be95d5cb87470dc6e14"], // re-measured for PS2.4, see header
+  ["examples/courtyard-house.arch", "0a8139dc57b28932244423f227f5ea3d2dc07039afe2664324931a6ef4307449"], // re-measured for PS2.4, see header
   // Re-measured 2026-10-20 (PS2.19), `describe()` only: "Utility" reads `utility` (`byte-identity-baseline.ts`).
-  ["examples/furnished-flat.arch", "4c12fe24953000aeb37a1698c5e6c35f3c7c8ad978c1d07e762a83bda36e420c"],
+  ["examples/furnished-flat.arch", "a8224a29788cfd4d004ff1b4d5ed651c21a3e712d288012e8bf08b5cf1f38f43"],
   ["examples/gallery-l.arch", "bdd079e16fb24fdd473e9ad39bd73b74fd3bf08e674f07de9401d5a0124f2009"], // PS2.10 dims fixed (byte-identity-baseline.ts)
-  ["examples/garden-house.arch", "61b1f27c03dd240fa9bb72a866c666970c5bd05d7f825ebb7d45cc360656a891"], // re-measured, see header
-  ["examples/garden-loft.arch", "c71a830b8dd98fa134a662c9ffd9a7138d84bafc086d56857e1c00f2ca935c94"],
+  ["examples/garden-house.arch", "ca301c92f83194527199e06d809ad2e2be11f317fe2570cea14eec9884f769a1"], // re-measured, see header
+  ["examples/garden-loft.arch", "eb6be0aa8496c054e6aad518d92f7603772b5740d6822bfcbad7a6d58ef4951d"],
   ["examples/hexagon-pavilion.arch", "edef621837ae7adb96218de65b346e231ffe0c006dcd72f70a7e8d3b14777858"],
-  ["examples/hillside-villa.arch", "cae3d8768492e129a96904b2cfa65a97ba558320703812fe706f56a910eb2e5e"], // re-measured, see header
+  ["examples/hillside-villa.arch", "2bf0d2aa4713fbaa44b42aec5f09f520235829fa2ea07a9a22f01ffdbbb24d30"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
-  ["examples/laneway-house.arch", "7ae6603a78b63faff8a5bf9b393226cfa5d32b428e5297821ea9db6599228b2a"],
+  ["examples/laneway-house.arch", "8d4c82f4eee8df75a460d87b9178701b88a3f655a2fa789fb11dcaeeb8e99052"],
   ["examples/library.arch", "85e0a65732f435bace56035fb5f1dc0cec529e5e9d86c19b4e57d12a7e4de86c"],
-  ["examples/materials.arch", "aa3b63a3273ccd3ac08872dff9d874ebc8bb807623d7cbfb5cc8e48321dad7f2"],
+  ["examples/materials.arch", "105c29274c00f439d77b07dfe2e035446019103e2a12cba3c43c1b3dd5aad9d4"],
   ["examples/museum-wing.arch", "6e01f37f15c674c544fac6651e9f3bd32d4d6e4865fdafba36ed97feca9ff33a"],
   ["examples/museum-wings.arch", "6c9d3bd413ac9b9c5cdc9404a68ff86930b763bec36bb902d208888a76a503f3"], // re-measured, see header
   ["examples/museum.arch", "06d8104e18fc14ab78c7a26227a8b7d7383119b853ff3f15438dcc60c7cc075d"],
@@ -350,13 +351,13 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["examples/relational.arch", "1e257bc0db623c4dd9e56be955e4ebea5d04908499e0b0112612a06234b723d4"], // re-measured for PS2.4, see header; PS3.6 source rewrite, see ./byte-identity-baseline.ts
   ["examples/sheet-notes.arch", "0104550fc3b3a39a71c1a005da79c3db5ea10ae21d9739e11a6d1f18ee7b7420"], // re-measured, see header
   ["examples/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
-  ["examples/terrace-row.arch", "2d5fba9f0db68736e8da81277cb775268e1d3f35cceeb8d4a75c8c12fe5649c0"],
+  ["examples/terrace-row.arch", "cd7287e9cf26264a47491dad7ee8a550bc665f28a57c0d4f1de9c4bd64a795fd"],
   ["examples/themed.arch", "4e7c2e8038077ad9698c3e654e15f88ee89bf3468fe8261082dafcc018f24776"],
-  ["examples/tiny-house.arch", "e5c8f8e51153c08d5383a7e15cf20c2bfe0686365df8d6933e1dbd92c8013f59"],
-  ["examples/townhouse.arch", "d40899d7bac220a2ce7526f96b6751eb983b3586f3f7f27ffc40f7f9ac91bdd1"],
+  ["examples/tiny-house.arch", "5dcc161bcc94b2812b95564bca9e61e3ad310576f7ffe020e5a4650b72504581"],
+  ["examples/townhouse.arch", "82df7bb4157fd9b4687a9e56aa3fc92fc185a21698e0072c2000ad847136360b"],
   ["examples/transit-hall.arch", "c9cd341de542893c026a75eab9251de869db96b405e334738ef535a170ff6a5d"],
-  ["examples/two-bed.arch", "fe9e4ae3c30c8f6c88864bf67a334b5f4619ab36ebc8a836a62213172c2b1e6e"], // PS3.6 source rewrite, see ./byte-identity-baseline.ts
-  ["examples/two-storey.arch", "76b5e43457bd8723b53bf77739de5083718f478b5fd29cf937b6eacf6fd91632"],
+  ["examples/two-bed.arch", "3eb3731a693055e708d480b93ab6309ae9b5ce7a4294643afa9639414dea5954"], // PS3.6 source rewrite, see ./byte-identity-baseline.ts
+  ["examples/two-storey.arch", "797409712aeeae0265027797b238233aea0024dd7603e0de84fb2fd9e0352375"],
   ["test/fixtures/axes-grid.arch", "a0a729cd0ec5bbfd90353f47e0fc9d3ee45601b66dbb67df459f54165465e8ff"],
   ["test/fixtures/chain30.arch", "858da6001d3d8032a10d372a3dac4c4eae453ad898c4f930ec4dd09ad4d9c54a"], // new fixture, see header
   ["test/fixtures/dense-bays.arch", "01ec7328bb74d5e67b80e9c2301db4bdf6734542b398ba714a3c19807b1bfa57"],
@@ -365,7 +366,7 @@ export const BASELINE: ReadonlyArray<readonly [string, string]> = [
   ["test/fixtures/diff-circ-a.arch", "272184ab44393f0f5cf74f5ad7a41c65ee2e16fbaf837dd9d0a1fb40ab71a335"],
   ["test/fixtures/diff-circ-b.arch", "68ba4e31f6e1bcb57fda4bc7eefc2afba407b1e0038497fb4a65079be210864d"],
   ["test/fixtures/off-path-bypass.arch", "b8123c5f00d6ce700209f6c5f6a479847f0e5218cf99c8bb2d4af66006289415"], // new fixture, see header
-  ["test/fixtures/schedule-sheet.arch", "a139fa2e1dcf9a045d5b58507882b29eac8a5156c70c48645f923f055748d975"], // re-measured, see header
+  ["test/fixtures/schedule-sheet.arch", "1c1db7bd1f88c8df4beb563913a2a7459800dde601c035c6158c9133d0dc5bf8"], // re-measured, see header
   ["test/fixtures/star30.arch", "eb21a2460d3cd302bc0b470184924cb46c947fa9ca95a7d8d7cbda839f791761"], // new fixture, see header
   ["test/fixtures/zones-levels.arch", "3a6f8bc7115bcd0a1471ce008b984f5c121cafc3e8b4a8269f0dcc94af18ecb8"], // re-measured for PS2.4, see header
   ["test/fixtures/zones-wings.arch", "f7ee2a2b343dee5164a308b00204c546f3f8cfcfde21a32f128f58d5e2a1f072"], // re-measured for PS2.4, see header

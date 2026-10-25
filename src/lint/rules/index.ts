@@ -10,6 +10,7 @@ import { annotationOverlap, titleOverflow } from "./annotations.js";
 import { roomNoClearPath } from "./circulation.js";
 import { dimInside, dimOverlap, dimTextMismatch, openingNotDimensioned } from "./dims.js";
 import { circuitousPath, pathTooNarrow } from "./circulation-facts.js";
+import { furnitureOverWindow, wcSideClearance } from "./clearances.js";
 import { doorClearance, doorNearCorner, doorwayBlocked, pocketRun, swingObstructed } from "./doors.js";
 import { noEntrance } from "./entrance.js";
 import {
@@ -127,6 +128,11 @@ export const LINT_RULES: readonly LintRule[] = [
   // no existing diagnostic moves within the array.
   annotationOverlap,
   titleOverflow,
+  // The clearance family (plan-soundness PS2.11a, PS2.11b): a WC whose centreline stands too near
+  // a side wall or fixture, and a tall unit standing in front of a window. Appended LAST, in this
+  // order, so no existing diagnostic moves within the array.
+  wcSideClearance,
+  furnitureOverWindow,
 ];
 
 export type { LintContext, LintRule } from "../context.js";

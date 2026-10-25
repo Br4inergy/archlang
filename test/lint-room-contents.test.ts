@@ -545,12 +545,17 @@ ${extra}}
   it("a bath where neither search finds a bathtub or shower position is left empty, and the note says so", () => {
     // From the review's fuzz corpus A: 1.95 x 2.25 m, its door swinging out. `main` wrote a WC
     // and a basin; neither the stage's candidates nor the lint's search place a bathtub or
-    // shower beside them without a new code.
+    // shower beside them without a new code. Since PS2.11a the room stops one piece earlier: no
+    // set the stage can offer stands its WC with the pan's centreline clear of a side wall or of
+    // the basin under both rulesets the never-worse law holds (the default's 400 mm and
+    // accessibility-advisory's 450 mm, `W_WC_SIDE_CLEARANCE`), so the WC is the piece the note
+    // names (card PS2.45 offers the stage a WC position off the corner). Either way the room is
+    // left empty and the note says why.
     const src = plan(1950, 2250, "bath", "door id=d_x at (1400,2250) width 800 wall w_mid swing out", "");
     expect(words(src)).toEqual([]);
     const r = finish(src, { only: "furnish" });
     expect(r.unresolved.map((u) => u.reason)).toEqual([
-      '"r_x" was left empty — furnish found no position for its `bathtub` or `shower`, the piece that defines a bathroom (`W_ROOM_MISSING_DEFINING`)',
+      'furnishing "r_x" would raise W_WC_SIDE_CLEARANCE, which the plan does not have now (the required `wc` has no position that avoids it) — the room was left empty',
     ]);
     expect(lint(r.source).map((d) => d.code)).toContain("W_ROOM_NO_FIXTURE");
   });

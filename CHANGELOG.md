@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Two clearance checks (plan cards PS2.11a, PS2.11b). `W_WC_SIDE_CLEARANCE`: a WC whose
+  centreline is nearer than the ruleset's new `wcSideClearanceMm` to a wall face or a piece
+  beside the pan, measured from the drawn shapes over the pan's depth (400 mm by default; 381 under
+  `us-residential-advisory`, IRC P2705.1; 400 under `uk-residential-advisory`; 450 under
+  `accessibility-advisory`). `W_FURNITURE_OVER_WINDOW`: a tall unit (fridge, wardrobe, bookcase,
+  locker; the catalogue's new `tall` flag) standing against a window's wall across part of its
+  span; a window whose sill is at or above 2100 mm is not judged, and one on a curved wall files
+  the new coverage reason `curved-window-host`. Both are validity-layer warnings with a hint and no
+  machine fix, and every position a lint hint quotes now respects them. Twelve examples whose WC
+  stood in a corner or whose fridge, wardrobe or bookcase stood across a window were fixed; their
+  drawings move. `describe()` and the drawing of every other plan are unchanged.
 - Three residential-advisory profiles (plan card PS5.2): `cn-residential-advisory`,
   `uk-residential-advisory` and `us-residential-advisory`, each a lint profile and a taste
   profile, so `lint --profile`, `score --taste` and `validate --profile/--taste` take the same

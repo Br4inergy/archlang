@@ -30,7 +30,7 @@ plan "Two-Bedroom Flat" {
 
   window on r_living.top width 2000
   window on r_living.left at 5500 from start width 1500
-  window on r_bed1.top at 2000 from end width 2400
+  window on r_bed1.top at 2600 from end width 2400
   window on r_bed2.bottom width 1400
 
   # Beds with their heads on a wall; `flush` measures from the wall's inner face.
@@ -49,7 +49,7 @@ plan "Two-Bedroom Flat" {
   furniture table at (800,5800)  size 1200x800 label "Table" in r_living
 
   furniture shower in r_bath anchor bottom-left flush size 900x900
-  furniture wc     in r_bath anchor bottom flush size 400x700
+  furniture wc     against r_bath.bottom offset 1600 size 400x700
   furniture basin  in r_bath anchor right flush size 450x600
 
   # The eaves: the derived shell is the plan's one closed exterior ring.

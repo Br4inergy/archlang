@@ -125,7 +125,7 @@ plan "Workshop" {
   furniture id=f_rug    rug   at (13000,300) size 2900x2400 in r_office
   furniture id=f_racks  racking at (12300,3300) size 3400x600 label "Racking"      in r_store
 
-  furniture id=f_wc    wc    in r_wc anchor bottom-right flush size 400x700
+  furniture id=f_wc    wc    against r_wc.bottom offset 3400 size 400x700
   furniture id=f_basin basin in r_wc anchor top-right    flush size 600x450
 
   title {

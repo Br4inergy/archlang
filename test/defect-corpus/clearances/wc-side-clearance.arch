@@ -1,7 +1,7 @@
 # class: clearances
 # origin: audits/showcase-and-examples.md M2, E2, X8, X15 (WC centreline 200 mm from a side wall, 20 instances); CA2
 # expect: W_WC_SIDE_CLEARANCE
-# status: todo
+# status: done
 # fact: the wc's centreline is y=2200 and the south wall's inner face is y=2400: 200 mm to the side wall
 plan "WC in the corner" {
   units mm
