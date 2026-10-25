@@ -14,6 +14,7 @@ import { type ClearWorld, measureStrip, type Obstacle } from "../../furniture-re
 import type { RFurniture, RRoom } from "../../ir.js";
 import { wallRef } from "../../wall-ref.js";
 import {
+  curvedNear,
   isShort,
   isWc,
   measureWcSides,
@@ -97,6 +98,11 @@ export const wcSideClearance: LintRule = {
     for (const f of wcs) {
       const m = measureWcSides(rectOf(f), f.rotate, need, world, f);
       if (m === null) continue; // a pan at least twice the figure wide clears it by itself
+      // A curved wall near either side is not measured: decline the pan and say so.
+      if (curvedNear(ctx.wallSegs, [m.sides[0].strip, m.sides[1].strip])) {
+        ctx.skip("curved-wc-wall");
+        continue;
+      }
       const short = m.sides.filter((s) => isShort(s, m.depth));
       if (short.length === 0) continue;
       const near = short.reduce((a, b) => (b.m.measured < a.m.measured ? b : a));

@@ -160,9 +160,10 @@ export interface FixtureSpec {
    *
    * The catalogue holds no heights, so the set is stated family by family rather than read off a
    * number: the fridge (a fridge-freezer stands about 1800–2000 mm), the wardrobe (built to the
-   * door head), the bookcase (every word of the bookshelf family, `shelf` included, since a
-   * family's words carry the same flags) and the locker (a full-height bank). Deliberately NOT
-   * tall: the dresser and chest of drawers, the filing cabinet (a two- or four-drawer unit often
+   * door head), the bookcase (`bookshelf`, `bookcase`) and the locker (a full-height bank).
+   * Deliberately NOT tall: the bare word `shelf`, though it shares the bookshelf's symbol (low open
+   * shelving under a sill is ordinary, and the word says nothing of height); the dresser and
+   * chest of drawers, the filing cabinet (a two- or four-drawer unit often
    * stands under a sill), the shoe cabinet, the sideboard, the washer and dryer, the water heater
    * and boiler (wall-hung or cupboard-housed), and every {@link overhead} piece, which hangs above
    * the cut plane rather than standing in front of the glass.
@@ -304,7 +305,7 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // (`examples/library.arch` has twelve of them), which is what stacks are.
   bookshelf: { requiresWall: false, directional: true, tall: true, footprint: { along: 900, depth: 300 } },
   bookcase: { requiresWall: false, directional: true, tall: true, footprint: { along: 900, depth: 300 } },
-  shelf: { requiresWall: false, directional: true, tall: true, footprint: { along: 900, depth: 300 } },
+  shelf: { requiresWall: false, directional: true, footprint: { along: 900, depth: 300 } },
 
   // Kitchen appliances & utility — the plumbed and vented pieces, and the only ones in this
   // block that are `requiresWall`. They share the 600 mm module the counter run above

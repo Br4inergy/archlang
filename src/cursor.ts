@@ -114,10 +114,13 @@ const STATEMENT_EXPRS: { [K in Statement["kind"]]: (s: Extract<Statement, { kind
       if (s.against.segment !== undefined) out.push(s.against.segment);
       if (s.against.offset !== undefined) out.push(s.against.offset);
     }
+    if (s.againstEdge?.offset !== undefined) out.push(s.againstEdge.offset);
     if (s.place?.mode === "anchor" && s.place.inset !== undefined) out.push(s.place.inset);
     if (s.size) out.push(s.size.w, s.size.h);
     if (s.label) out.push(s.label);
     if (s.rotate !== undefined) out.push(s.rotate);
+    if (s.clear?.front !== undefined) out.push(s.clear.front);
+    if (s.clear?.sides !== undefined) out.push(s.clear.sides);
   },
   dim: (s, out) => {
     // `from`/`to` are placeholders with no source position on the curve form — see the
@@ -222,21 +225,14 @@ export function statementExprs(s: Statement): Expr[] {
 }
 
 /**
- * Every expression a statement READS, for `describe --facts depends`: {@link statementExprs}
- * plus the furniture clauses PS3.7 added that the LSP table does not list yet
- * (`against <room>.<edge> offset <mm>`, `clear front|sides <mm>`). They are kept out of
- * {@link STATEMENT_EXPRS} here so that the LSP's rename and reference results stay byte for
- * byte what they were; folding them into the table is its own change, with the LSP tests
- * moved on purpose.
+ * Every expression a statement READS, for `describe --facts depends`: {@link statementExprs}.
+ * The furniture clauses PS3.7 added (`against <room>.<edge> offset <mm>`, `clear front|sides
+ * <mm>`) were once read here only, outside {@link STATEMENT_EXPRS}, so the LSP's rename and
+ * references missed a `let` used in them. They joined the table when the shipped examples first
+ * wrote `against <room>.<edge> offset` (PS2.11a), which `test/cursor-exhaustive.test.ts` reads.
  */
 export function statementReads(s: Statement): Expr[] {
-  const out = statementExprs(s);
-  if (s.kind === "furniture") {
-    if (s.againstEdge?.offset !== undefined) out.push(s.againstEdge.offset);
-    if (s.clear?.front !== undefined) out.push(s.clear.front);
-    if (s.clear?.sides !== undefined) out.push(s.clear.sides);
-  }
-  return out;
+  return statementExprs(s);
 }
 
 /** The nested statement blocks of a control-flow statement (empty otherwise). */

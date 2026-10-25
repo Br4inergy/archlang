@@ -515,7 +515,7 @@ const BASELINE: [string, string][] = [
   // Re-measured for the facade-probe fix (level 2's `dims auto` chains only), and again because
   // the EXAMPLE changed (backlog D.2, its piano turned and moved): the same row, with the same
   // digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
-  ["examples/hillside-villa.arch", "2bf0d2aa4713fbaa44b42aec5f09f520235829fa2ea07a9a22f01ffdbbb24d30"], // re-measured, see header
+  ["examples/hillside-villa.arch", "fe6fc7d28db2f7b3ba1cfebc2edf15300cdabcdc8759daf47d5a305aed3deabc"], // re-measured, see header
   ["examples/imports.arch", "f1b5ff9ee7189d217cd8df57d04a1af5d2876bbc69ec588be202f28c68f47a5b"],
   ["examples/laneway-house.arch", "8d4c82f4eee8df75a460d87b9178701b88a3f655a2fa789fb11dcaeeb8e99052"],
   ["examples/library.arch", "85e0a65732f435bace56035fb5f1dc0cec529e5e9d86c19b4e57d12a7e4de86c"],
@@ -534,7 +534,7 @@ const BASELINE: [string, string][] = [
   // as `./while-byte-identity-baseline.ts`, whose header has both.
   ["examples/sheet-notes.arch", "0104550fc3b3a39a71c1a005da79c3db5ea10ae21d9739e11a6d1f18ee7b7420"],
   ["examples/studio.arch", "ed8513998b1bc62fa08d73a67c0897777ab68f186609896ae491b868adf463d8"],
-  ["examples/terrace-row.arch", "cd7287e9cf26264a47491dad7ee8a550bc665f28a57c0d4f1de9c4bd64a795fd"],
+  ["examples/terrace-row.arch", "7899ea115baf2f835b336b3fa19811131b6806b238c65d8e9dcdfca0a4ca4de9"],
   // Re-measured 2026-10-18 (PS0.7, the label classifier emits living; `describe()` only): the
   // same row, with the same digest body, as `./while-byte-identity-baseline.ts`, whose header has the reasons.
   ["examples/themed.arch", "4e7c2e8038077ad9698c3e654e15f88ee89bf3468fe8261082dafcc018f24776"],

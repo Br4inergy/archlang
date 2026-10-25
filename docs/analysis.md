@@ -1237,7 +1237,7 @@ reachable); nothing remembered ships:
 | Room width (`W_ROOM_TOO_NARROW`) | — | bedroom 2150 mm (NDSS 10(c) [V]); double 2550 mm, one double per home 2750 mm (NDSS 10(e) [V]) | living, dining, bedroom 2134 mm (IRC R304.2 [S]) |
 | Passage width (`W_ROOM_TOO_NARROW`) | entry passage 1200 mm (宜, should); to a bedroom or living room 1000 mm; to a kitchen, bath, WC or store 900 mm (GB 5.7.1 [V]) | hall, circulation, entry 900 mm (Approved Document M4(2) [S]) | hall, circulation, entry 914 mm (IRC R311.6 [S]) |
 | Daylight target (taste R7) | 1/7 (GB 7.1.5 [V]) | 8 %, the generic target (no English figure read) | 8 % (IRC R303.1 [S]) |
-| WC centreline to a side wall or fixture (`W_WC_SIDE_CLEARANCE`) | 400 mm, the default (GB 50096-2011 gives none) | 400 mm (Lifetime Homes criterion 10, 400–500 mm [S]) | 381 mm, 15 in (IRC P2705.1 [S]) |
+| WC centreline to a side wall or fixture (`W_WC_SIDE_CLEARANCE`) | 400 mm, the default (GB 50096-2011 gives none) | 400 mm (Approved Document M4(2) Diagram 2.5, 400–500 mm [V]) | 381 mm, 15 in (IRC P2705.1 [S]) |
 
 How they measure:
 

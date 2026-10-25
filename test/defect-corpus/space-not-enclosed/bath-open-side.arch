@@ -16,6 +16,6 @@ plan "Bath with an open side" {
   door on p_mid at 1000 width 700
   door on p_mid at 3000 width 900
   window on shell at 4000 width 1500
-  furniture wc at (100,100) size 400x700
+  furniture wc at (350,100) size 400x700
   furniture basin at (1000,100) size 600x450
 }

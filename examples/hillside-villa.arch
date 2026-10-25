@@ -46,11 +46,13 @@ plan "Hillside Villa" {
     # nearer face and collides with the far one. The shower goes top-RIGHT: every
     # instance's bedroom door lands on the LEFT edge (`at 7500` below), and a shower there
     # would leave it no swing room. The WC backs onto the EAST wall below the shower, its
-    # centreline 550 mm from the tray and clear of the south door's swing; it stands 100 mm
-    # off this component's own wall so it clears the thicker shell that en_m backs onto.
+    # centreline 550 mm from the tray and clear of the south door's swing. It is placed from
+    # the room's own edges and stands 100 mm off this component's wall, because en_m backs
+    # that edge onto the 300 mm shell too: `against room.right` would sit on the thin wall's
+    # face and run into the shell, and an anchor cannot say "550 mm below the tray".
     furniture shower in room anchor top-right   inset 150 size 900x900
     furniture basin  in room anchor top-left    inset 150 size 600x450
-    furniture wc     at (900,1400) size 700x400 rotate 90 in room
+    furniture wc     at (room.right - 900, room.top + 1400) size 700x400 rotate 90 in room
   }
 
   # =====================================================================================

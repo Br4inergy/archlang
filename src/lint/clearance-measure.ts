@@ -23,6 +23,7 @@ import {
   measureStrip,
   type Strip,
 } from "../furniture-relation.js";
+import type { WallSegment } from "../geometry.js";
 import type { BBox } from "../geometry/rect.js";
 import type { RFurniture, RWindow } from "../ir.js";
 import type { LintContext } from "./context.js";
@@ -31,15 +32,113 @@ import { WALL_COLLISION_SLACK_MM } from "./measure.js";
 /** Is this category a WC (the `wc` family: `wc`, `toilet`)? */
 export const isWc = (category: string): boolean => canonicalFixture(category) === "wc";
 
+/** What {@link wcWorld} reads off a lint context. */
+export type WcWorldSource = Pick<LintContext, "wallSegs" | "doors" | "openings">;
+
+/**
+ * The straight wall bodies a WC's side can meet: every straight segment with the span of each
+ * door and cased opening it hosts cut out, so a pan beside a doorway is measured to the jamb, not
+ * to wall that is not there (the seam `W_FURNITURE_WALL_COLLISION` subtracts too). A window is
+ * not cut: the wall stands under its sill, at the height a pan's side is. Curved segments are
+ * left out (their body is not a polygon here; {@link curvedNear} says when one is near).
+ */
+function cutSegments(src: WcWorldSource): WallSegment[] {
+  const cached = CUT.get(src.wallSegs);
+  if (cached) return cached;
+  const out: WallSegment[] = [];
+  for (const s of src.wallSegs) {
+    if (s.arc) continue;
+    const len = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y);
+    if (len === 0) continue;
+    const d = { x: (s.b.x - s.a.x) / len, y: (s.b.y - s.a.y) / len };
+    const n = { x: -d.y, y: d.x };
+    const voids: Array<[number, number]> = [];
+    for (const o of [...src.doors, ...src.openings]) {
+      const across = (o.at.x - s.a.x) * n.x + (o.at.y - s.a.y) * n.y;
+      if (Math.abs(across) > s.thickness / 2 + 1) continue;
+      const along = (o.at.x - s.a.x) * d.x + (o.at.y - s.a.y) * d.y;
+      if (along + o.width / 2 <= 0 || along - o.width / 2 >= len) continue;
+      voids.push([along - o.width / 2, along + o.width / 2]);
+    }
+    if (voids.length === 0) {
+      out.push(s);
+      continue;
+    }
+    voids.sort((p, q) => p[0] - q[0]);
+    let at = 0;
+    const piece = (lo: number, hi: number): void => {
+      if (hi - lo <= 0) return;
+      out.push({
+        ...s,
+        a: { x: s.a.x + d.x * lo, y: s.a.y + d.y * lo },
+        b: { x: s.a.x + d.x * hi, y: s.a.y + d.y * hi },
+      });
+    };
+    for (const [lo, hi] of voids) {
+      piece(at, Math.min(lo, len));
+      at = Math.max(at, hi);
+    }
+    piece(at, len);
+  }
+  CUT.set(src.wallSegs, out);
+  return out;
+}
+const CUT = new WeakMap<readonly WallSegment[], WallSegment[]>();
+
 /** The obstacles a WC's sides are measured against: the pieces at the cut plane (a mirror or a
- *  wall cabinet above, a rug below, are not beside the pan), every straight wall, and no door
- *  swing (a door clears by closing; `W_SWING_OBSTRUCTED` judges the leaf). */
-export function wcWorld(furniture: readonly RFurniture[], ctx: Pick<LintContext, "wallSegs">): ClearWorld {
+ *  wall cabinet above, a rug below, are not beside the pan), every straight wall body with its
+ *  doorways cut out ({@link cutSegments}), and no door swing (a door clears by closing;
+ *  `W_SWING_OBSTRUCTED` judges the leaf). */
+export function wcWorld(furniture: readonly RFurniture[], src: WcWorldSource): ClearWorld {
   return {
     furniture: furniture.filter((f) => cutPlaneLayer(f.category) === "body"),
-    segments: ctx.wallSegs,
+    segments: cutSegments(src),
     swings: [],
   };
+}
+
+/**
+ * Does a curved wall come near either side strip of a pan? The extent of each arc (its ends and
+ * the axis extremes its sweep passes), grown by half its thickness, against the strips' bounds.
+ * The WC rule then declines the pan with a `curved-wc-wall` coverage skip rather than measure
+ * one side and not the other.
+ */
+export function curvedNear(wallSegs: readonly WallSegment[], strips: readonly Strip[]): boolean {
+  const arcs = wallSegs.filter((s) => s.arc);
+  if (arcs.length === 0) return false;
+  const boxes = strips.map(stripBox);
+  for (const s of arcs) {
+    const a = s.arc!;
+    const pts = [a.a, a.b];
+    for (const k of [0, 1, 2, 3]) {
+      const ang = (k * Math.PI) / 2;
+      if (withinSweep(ang, a.start, a.sweep))
+        pts.push({ x: a.center.x + a.r * Math.cos(ang), y: a.center.y + a.r * Math.sin(ang) });
+    }
+    const h = s.thickness / 2;
+    const x0 = Math.min(...pts.map((p) => p.x)) - h;
+    const x1 = Math.max(...pts.map((p) => p.x)) + h;
+    const y0 = Math.min(...pts.map((p) => p.y)) - h;
+    const y1 = Math.max(...pts.map((p) => p.y)) + h;
+    if (boxes.some((b) => b.x < x1 && x0 < b.x + b.w && b.y < y1 && y0 < b.y + b.h)) return true;
+  }
+  return false;
+}
+
+/** Is the angle `ang` on the arc that starts at `start` and sweeps `sweep` (signed) radians? */
+function withinSweep(ang: number, start: number, sweep: number): boolean {
+  const tau = 2 * Math.PI;
+  const rel = (((sweep >= 0 ? ang - start : start - ang) % tau) + tau) % tau;
+  return rel <= Math.abs(sweep) + 1e-12;
+}
+
+/** A strip as a plan rectangle. */
+function stripBox(s: Strip): BBox {
+  const a = s.face;
+  const b = s.face + s.depth * (s.u.x !== 0 ? s.u.x : s.u.y);
+  const n0 = Math.min(a, b);
+  const n1 = Math.max(a, b);
+  return s.u.x !== 0 ? { x: n0, y: s.lo, w: n1 - n0, h: s.hi - s.lo } : { x: s.lo, y: n0, w: s.hi - s.lo, h: n1 - n0 };
 }
 
 /** One side of a WC as measured: its strip and what stands in it (`by: null`: nothing within). */
@@ -165,10 +264,13 @@ export function windowCover(band: WindowBand, r: BBox, tol: number): WindowCover
 }
 
 /**
- * Would a piece of `category` at footprint `fr` and turn `rotate` raise or worsen a clearance
+ * Would a piece of `category` at footprint `fr` and turn `rotate` raise or change a clearance
  * finding? A WC whose own side is short; a piece standing nearer a WC's centreline than the
- * figure and nearer than what already stands there; a tall unit in front of a window. `self` is
- * the piece being moved, left out of every measure. The placement check behind quoted positions.
+ * figure and no farther than what already stands on that side (`<=`, deliberately: at an equal
+ * distance the new piece can become the obstacle the warning names, which changes the warning's
+ * words, so the conservative test refuses the tie too); a tall unit in front of a window. `self`
+ * is the piece being moved, left out of every measure. The placement check behind quoted
+ * positions.
  */
 export function clearancesClear(
   ctx: LintContext,

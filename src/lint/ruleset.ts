@@ -313,9 +313,10 @@ export interface LintRuleset {
    * PS2.11a). Measured square to the centreline from the pan's drawn footprint to the drawn
    * shapes beside it, over the pan's depth, never from bounding boxes. `null` turns the rule off.
    *
-   * **Default 400:** the low end of the 400–500 mm Lifetime Homes criterion 10 gives for an
-   * entrance-level WC's centreline to the adjacent wall (Centre for Accessible Environments,
-   * `cae.org.uk`, second-hand [S]), between the US code minimum of 15 in (381 mm, IRC P2705.1)
+   * **Default 400:** the low end of the 400–500 mm Approved Document M Vol 1 (2015) Diagram 2.5
+   * gives for an accessible-and-adaptable dwelling's WC centreline to the adjacent wall (M4(2);
+   * read in the gov.uk PDF, "all dimensions are minimum except where noted" [V]; it superseded
+   * Lifetime Homes criterion 10's same 400–500), between the US code minimum of 15 in (381 mm, IRC P2705.1)
    * and the NKBA's recommended 18 in (457 mm) [S] (`docs/plans/plan-soundness/research/
    * prior-art.md` §3.3, `design-taste.md` R10). The `us`, `uk` and accessibility profiles set
    * their own figures; `cn` keeps this one, since GB 50096-2011 gives none.
@@ -456,7 +457,7 @@ export const LINT_PROFILES: Readonly<Record<string, Partial<LintRuleset>>> = Obj
     },
     minDoubleBedroomShortSideMm: 2550, // NDSS 10(e): every other double (or twin) bedroom at least 2.55 m wide [V]
     minMainDoubleBedroomShortSideMm: 2750, // NDSS 10(e): one double (or twin) bedroom at least 2.75 m wide [V]
-    wcSideClearanceMm: 400, // Lifetime Homes criterion 10, M4(2)'s predecessor: WC centreline 400–500 mm from the adjacent wall; the low end [S, cae.org.uk]
+    wcSideClearanceMm: 400, // Approved Document M Vol 1 (2015) M4(2) Diagram 2.5: WC centreline 400–500 mm from the adjacent wall; the low end [V]
   },
   /**
    * Room sizes and hallway widths read from the US model residential code, as ADVICE (ADR

@@ -559,7 +559,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["3178bf17a35411575182d95261c77e4ee39dc0ca79fc509992038aa93ec84f8c", "garden-house"], // PS2.17 source edit (a worktop), see above
         ["79d22abedbc14db24d5e603018106a153a137d1e740ec1b947eb198b2fe62064", "garden-loft"], // PS2.17 source edit (a worktop), see above
         ["57d4237846d3b666c6806da6ee2bf4cadeb68a2e1d39723c6a024e5b415d5faf", "hexagon-pavilion"],
-        ["bf07f7a9ef8989241f9456a3441689bba61ae8f6c614b204d84675b4e11346a8", "hillside-villa"], // PS2.1–PS2.3 and PS2.9 source edits, see above
+        ["cc3b57ded5c39ec855ee6b4081c8148d710d0581f176558479df39dd529ded97", "hillside-villa"], // PS2.1–PS2.3 and PS2.9 source edits, see above
         ["d90d58c40a4068427ef23c066acba5d50d8e99a801b6ce890da3ac9dc01a9554", "imports"],
         ["7bad5569d0a421afd18269f686830ad2f8dc217a5c3d5c3f6ea654d9c965152a", "laneway-house"], // PS2.17 source edit (a worktop), see above
         ["daec2640f58f23e22543d3d1d0f2875926409bbe817dac218bd2829cd4df4419", "library"],
@@ -573,7 +573,7 @@ suite("furnish law — fill only: a partly furnished room is reported, never top
         ["d58bfbf0a25a5b70b7bdfdd1a8ef7b0fb8912f88ebb5cf631da3efe8268015e4", "sheet-notes"], // first measurement, added with the example
         ["324269a53206201f470d727c6b29f3b7cce19f58f3d99822f474be1901503675", "practice-office"], // first measurement with the example; PS2.9 source edit, see above
         ["147ce7e23f6f2a403d2d269cc0e68b678cab850e0d3a641287ef50bced7c76d3", "studio"],
-        ["51377b98f50125a6c9d72a086fff45025b8c792bbe9e1d6a8c6b366d8608259d", "terrace-row"], // PS2.1–PS2.3 and PS2.9 source edits; PS2.17 source edit (a worktop), see above
+        ["e6ebea8b9816dc6c0dba817b2138bb4dcda276e1f0fa4ae17f75bcc4b162fb63", "terrace-row"], // PS2.1–PS2.3 and PS2.9 source edits; PS2.17 source edit (a worktop), see above
         ["4607ea41ae2417d9972689aa59285c843bed4f7140ba44184c9f7fdefc492ef2", "themed"],
         ["992aa179d4175e6ea64564be91898ff6d5b3b161ed1a4b8070e5c11fde0373e0", "tiny-house"], // PS2.17 source edit (a worktop), see above
         ["c251b2227e4f794ebdd5db387fd2034682b4cd909a7d8d8340ce56518800c05b", "townhouse"], // PS2.17 source edit (a worktop), see above

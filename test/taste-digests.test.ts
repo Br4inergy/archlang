@@ -36,13 +36,14 @@
  * caps). The four new rows are the radius pairs; each defect case lists one
  * `W_ANNOTATION_OVERLAP` under `validity.drafting`, each twin none.
  *
- * PS2.11a/b (2026-10-25) moved 27 rows, under `generic`, `cn-` and `us-residential-advisory`
- * alike, each checked key by key against the report on `origin/main`. Eight defect-corpus rows
+ * PS2.11a/b (2026-10-25) moved 15 rows, under `generic`, `cn-` and `us-residential-advisory`
+ * alike, each checked key by key against the report on `origin/main`. Three defect-corpus cases
  * gained one validity warning (`W_WC_SIDE_CLEARANCE` or `W_FURNITURE_OVER_WINDOW`) in
- * `validity.warnings`/`codes` and nothing else, being capped already (`wc-off-servery` and its
- * twin, `fridge-over-window`, `fridge-over-window-end`, `wc-side-clearance`, `bath-open-side` and
- * its twin); `wc-centre-to-basin` was uncapped and is now capped (`score` 0.9375 → 0.5,
- * `validity.pass` false), the one new cap. `examples/hillside-villa` moved in its criteria: its
+ * `validity.warnings`/`codes` and nothing else, being capped already (`fridge-over-window`,
+ * `fridge-over-window-end`, `wc-side-clearance`); `wc-centre-to-basin` was uncapped and is now
+ * capped (`score` 0.9375 → 0.5, `validity.pass` false), the one new cap. `wc-off-servery` and
+ * `bath-open-side` (both twins) had the defect too and were fixed in their source (the basin, or
+ * the pan, moved clear), so their rows read as on `origin/main` again. `examples/hillside-villa` moved in its criteria: its
  * east kitchen window was narrowed (1200 → 1000 mm) and moved clear of the fridge, so R7's
  * daylight ratio for the kitchen falls (`light` 0.9091 → 0.9035 under `cn`); its WCs moved, which no
  * criterion reads. No other example's report moved: the other eleven fixes move a fixture or a
@@ -309,12 +310,12 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/circulation-privacy/wc-off-dining.clean.arch",
   ],
   [
-    "31ea3601adb18246da79e90d3f536f680b2cbfbb49ca967836645a3450216d01",
+    "e39e83d31ddeb9399a902734f8b6873f732bffc6d29ac00bea271222466d08b4",
     "generic",
     "test/defect-corpus/circulation-privacy/wc-off-servery.arch",
   ],
   [
-    "ff9f52495a1fc030420f26a5e898486a8a85d8386f7a677a0f96079e2c84b36e",
+    "ee9a7aa75e6a8625884728667c65f492f6063f63d99cd9814feb97d731f5ed43",
     "generic",
     "test/defect-corpus/circulation-privacy/wc-off-servery.clean.arch",
   ],
@@ -759,12 +760,12 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/openings-ignore-walls/window-straddles-tee.clean.arch",
   ],
   [
-    "c4aa916600e94e6cb641a3734a678fc5237629e4bdf9bf703248c814e5225f2e",
+    "ebdfd922add920cd3b97d4c21716f646347d4f8fccad1fc45d37692c273af3b6",
     "generic",
     "test/defect-corpus/space-not-enclosed/bath-open-side.arch",
   ],
   [
-    "4e75ac1f6f5d8c3cf8ebc79de0efff6924980480287de3c3cd4d59e2d3f29f8e",
+    "6b520d00deb6f159f3fddf3ac2dfff65fffb1aef287ed82616e2d734864a583b",
     "generic",
     "test/defect-corpus/space-not-enclosed/bath-open-side.clean.arch",
   ],
@@ -1309,12 +1310,12 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/circulation-privacy/wc-off-dining.clean.arch",
   ],
   [
-    "6261f5c3636d95da09bc131c5c5aeedcc6cb9a6f982cd7bdbf79e63c6bedddb5",
+    "ceec8bd478a2788ea39a5af64975079574216f82b1b8c7f5a900b365881e0084",
     "cn-residential-advisory",
     "test/defect-corpus/circulation-privacy/wc-off-servery.arch",
   ],
   [
-    "f420017c33d31d30c9c23724b0f1d3afac8f89336a869eb1b36c963aa169544f",
+    "365eb749dc40d9cb003760c3cbc53926b21dbadc7f9b8b556a445247057428ea",
     "cn-residential-advisory",
     "test/defect-corpus/circulation-privacy/wc-off-servery.clean.arch",
   ],
@@ -1759,12 +1760,12 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/openings-ignore-walls/window-straddles-tee.clean.arch",
   ],
   [
-    "fcf80dab89e699a85d79d90c4e7e56b01ee80a2f362fcc68db840f53a4cc938e",
+    "4c79bd6b8762364dbe359cb7dbf4b3b6e357cf173e0c2272c911a9c1b5e4bfba",
     "cn-residential-advisory",
     "test/defect-corpus/space-not-enclosed/bath-open-side.arch",
   ],
   [
-    "8d6dd63bd4b7ad5912c534965975318a499b2a555ba6a3bf045cfba2bffb0723",
+    "d7fb314f9a048368e88e02eaf2d8778d60fd30f79487402bb60734f1cb3a25fb",
     "cn-residential-advisory",
     "test/defect-corpus/space-not-enclosed/bath-open-side.clean.arch",
   ],
@@ -2309,12 +2310,12 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/circulation-privacy/wc-off-dining.clean.arch",
   ],
   [
-    "edbd90f50a9aaa5d8adfe734a39754fdd51f04aa5b62e929db8a5e47c75e2f59",
+    "8bfa8f45b8497b4485cd72e8d3be2b2daf30e77b842d86f35d75e41b37ecd92b",
     "us-residential-advisory",
     "test/defect-corpus/circulation-privacy/wc-off-servery.arch",
   ],
   [
-    "d244eaddc3e37bf1be9bb70b423dcc0dd9385489930282ee0b97d6ad0bdc1523",
+    "9e0a733f8297637060d61ad369fd335aa0982793d5b0c0024439be42e22a1895",
     "us-residential-advisory",
     "test/defect-corpus/circulation-privacy/wc-off-servery.clean.arch",
   ],
@@ -2759,12 +2760,12 @@ const TABLE: ReadonlyArray<[string, string, string]> = [
     "test/defect-corpus/openings-ignore-walls/window-straddles-tee.clean.arch",
   ],
   [
-    "b7bc22418f76ead61d85a0f0bc29e95268a400ccdf277a127af9f1c7c9e0df6d",
+    "df6c6362363ca15b17d2cd87c545472e5c9c23aa5d6b55f09ce670f9e2d333e6",
     "us-residential-advisory",
     "test/defect-corpus/space-not-enclosed/bath-open-side.arch",
   ],
   [
-    "8ff9f389dc4094713ddab923124eaaa7589ad95f8aa2ae1060e0d574632291cd",
+    "5f9197353b970bc53e51891014211ccf12e4117366168ec77c59bd9b6318a719",
     "us-residential-advisory",
     "test/defect-corpus/space-not-enclosed/bath-open-side.clean.arch",
   ],
