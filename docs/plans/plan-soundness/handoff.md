@@ -2,7 +2,7 @@
 
 This page is the resume point for a new session. It says where the programme stands, what is open,
 in which order, and how the work is run. It is re-written at every stage end; the dated history is
-in `research/` and `audits/`. Decisions are in `README.md` §3 (D1–D18); cards are in `cards.md`.
+in `research/` and `audits/`. Decisions are in `README.md` §3 (D1–D19); cards are in `cards.md`.
 Nothing here is private: the companion material the owner keeps outside this repository stays there
 (D4).
 
@@ -13,11 +13,11 @@ language's own guidance, checks and reasoning, writes plans that follow architec
 logic and show professional taste. The yardstick is the first-contact re-measure (D7): six briefs
 cold-authored from `spec.llm.md` alone, audited by hand.
 
-| Re-measure | Verified defects | Blockers | Rooms-first | Lint caught before fixing | Taste report used |
+| Re-measure | Verified defects (lint caught in that run's own plans) | Blockers | Rooms-first | 2026-10-18 plans caught by that day's lint (partial) | Taste report used |
 |---|---|---|---|---|---|
-| 2026-10-18 (`audits/2026-10-18-first-contact.md`) | 57 | 4 | 0/6 | 0 | n/a |
-| 2026-10-24 (`audits/2026-10-24-first-contact-rerun.md`) | 48 | 2 | 6/6 | 17/57 of the old defects | n/a |
-| 2026-10-25 (`audits/2026-10-25-first-contact-rerun-row5.md`) | 49 (46 without area basis) | 0 | 6/6 | 19/57 of the old defects | 0/6 |
+| 2026-10-18 (`audits/2026-10-18-first-contact.md`) | 57 (0) | 4 | 0/6 | 0 | n/a |
+| 2026-10-24 (`audits/2026-10-24-first-contact-rerun.md`) | 48 (1) | 2 | 6/6 | 17 (6) of 57 | n/a |
+| 2026-10-25 (`audits/2026-10-25-first-contact-rerun-row5.md`) | 49, 46 without area basis (0) | 0 | 6/6 | 19 (7) of 57 | 0/6 |
 
 **Not met.** Blockers are gone and rooms-first authoring is the norm, but 49 defects still pass lint.
 The 10-25 run predates the four clearance rules (PS2.11a–d, PRs #252/#253), whose first-contact hits
@@ -34,7 +34,7 @@ The means, tracked in `README.md` §7: defect-corpus catch rate 7/53 (10-18) →
 |---|---|---|
 | 1 | PS0.1, PS0.7, PS1.1 | met 2026-10-18 |
 | 2 | PS2.1–PS2.9, PS2.13 | met 2026-10-20 |
-| 3 | PS3.0–PS3.4, PS3.6 | met 2026-10-23 (ADR 0028, 0029) |
+| 3 | PS3.0–PS3.4, PS3.6 | met 2026-10-23 (ADR 0028) |
 | 3a | PS3.5, PS3.7–PS3.9, PS0.19 | unplanned, recorded by D7 |
 | 4 | PS0.4, PS4.1, PS4.2 | met in part 2026-10-24: `held` is empty (PS4.5 open) |
 | 5 | PS5.1–PS5.3, PS2.10–PS2.12 | met 2026-10-25 (D14; PS2.11e moved to row 6) |
@@ -43,10 +43,13 @@ The means, tracked in `README.md` §7: defect-corpus catch rate 7/53 (10-18) →
 
 ## 3. What shipped (2026-10-18 → 10-25, PRs #195–#254)
 
-Everything below is on `main` and **unreleased**: npm `latest` and `package.json` are 1.43.1 (tagged
-2026-10-17, before the programme). Releasing is the owner's (`AGENTS.md`). Totals: 22 new `W_*` codes
-(52 → 74), 31 new `E_*` codes (103 → 134), 11 `A_*` taste advice codes, `LINT_RULES` 45 entries;
-119 cards, 46 done, 1 doing, 2 parked, 70 todo.
+Everything below is on `main` and **unreleased**: the last `v*` tag predates PR #195 (check with
+`git describe --tags --abbrev=0` and `npm view @chanmeng666/archlang version`). A release starts only
+when the owner asks; the agent then runs the chain (`docs/agents/iron-laws.md` § Owner policies).
+`CHANGELOG.md` `[Unreleased]` is the release record; PR #255 backfilled the 24 programme PRs it was
+missing. Totals at 1f7c544d: 22 new `W_*` codes (52 → 74), 31 new `E_*` codes (103 → 134), 11 `A_*`
+taste advice codes, `LINT_RULES` 45 entries; after PR #256, 121 cards: 46 done, 1 doing, 2 parked,
+72 todo.
 
 | Surface | Card | PR | Merge |
 |---|---|---|---|
@@ -83,12 +86,12 @@ Everything below is on `main` and **unreleased**: npm `latest` and `package.json
 | `taste()`, `score --taste` (R3, R7, R14), `LintRule.layer`/`codes` | PS5.1a / D11 | #244 | 3a262a00 |
 | `W_ANNOTATION_OVERLAP`, `W_TITLE_OVERFLOW`; `finish` drafting exemption | PS2.12 / D12, D17 | #245 | cbf6701f |
 | `validate --json` `next`, `--profile`, `--taste` | PS5.3 / D13 | #246 | c54cdfbc |
-| Taste R6, R9, R11, R12, R15–R18 (44 pairs: 40 ordered, 0 reversed, 4 unjudged) | PS5.1b | #247 | 9cc29c7e |
+| Taste R6, R9, R11, R12, R15–R18 (concordance 41 pairs / 37 ordered at #247; 44 / 40 / 0 tied / 0 reversed / 4 unjudged at 1f7c544d) | PS5.1b | #247 | 9cc29c7e |
 | cn/uk/us residential advisory profiles; `W_ROOM_TOO_NARROW` (profile-only); never-worse law scoped | PS5.2 / D12 | #248 | f60636d6 |
 | Authoring loop taught in the spec, SKILL and `arch-author.md` | PS7.4 (`doing`) | #250 | 6e0aa520 |
 | `W_WC_SIDE_CLEARANCE`, `W_FURNITURE_OVER_WINDOW`; `finish` WC 450 mm off the side face; cursor clauses | PS2.11a/b | #252 | 486c9cb7 |
 | `W_FOOTPRINT_TRANSPOSED`, `W_LEAF_ACROSS_DOORWAY` | PS2.11c/d | #253 | 43fe7fd6 |
-| Housekeeping: D7–D19, ADR 0029/0032 Accepted, cards moved to `cards.md`, this page | — | #237, #241, #242, #249, #251, #254 | — |
+| Housekeeping: D7–D19, ADR 0029/0032 Accepted, cards moved to `cards.md`, CHANGELOG backfill, this page | — | #237, #241, #242, #249, #251, #254, #255, #256 | — |
 
 Recorded practice a reader must know: lint PRs bump the `lintWarnings` counts in `eval/judge-fixture.json`
 when a new rule fires on an eval golden (judgment fields untouched, `JUDGE_VERSION` unchanged; D19).
@@ -103,13 +106,15 @@ on 2026-10-25. Each item names its card; the card holds goal, design, acceptance
    #248, #250, #252 and #253, so it is still owed (D19). Same six briefs; arm A = spec text only with
    the pre-#250 role text (`git show 6e0aa520^1:.claude/agents/arch-author.md`), arm B = the current
    role; count `score --taste`, `validate --json` and `describe` calls, and the defects per class.
-   Protocol and briefs: `audits/first-contact-protocol.md` (being written; until it lands,
-   `audits/2026-10-25-first-contact-rerun-row5.md` § Protocol). First task of the next session.
+   Protocol and briefs: `audits/first-contact-protocol.md` (PR in flight on 2026-10-25; until it
+   lands, `audits/2026-10-25-first-contact-rerun-row5.md` § Method and commands has the method only,
+   and the brief texts are not in the repo). First task of the next session.
 2. **PS2.45** `finish` leaves small wet rooms empty rather than place a pan the WC rule refuses (30 of
    276 WC rooms and 16 of 144 baths in the 918-room probe). User-visible; first in row 6.
 3. **PS2.50** `W_FIXTURE_BACK_TO_ROOM` has no correct reading for a bed or wardrobe side-on to a wall;
-   `examples/tiny-house.arch` and `examples/hillside-villa.arch` each carry one honest warning until
-   it is fixed. User-visible (the flagship examples lint dirty).
+   `examples/tiny-house.arch` and `examples/hillside-villa.arch` each carry one `W_FIXTURE_BACK_TO_ROOM`
+   that is the rule's fault, not the plan's (both examples also carry their own `W_PATH_TOO_NARROW`
+   and, for hillside-villa, `W_ROOM_NOT_EQUATOR_FACING` warnings, which are the plans').
 4. **PS2.22, PS2.29** id-free lint messages. An owner rule from 2026-10-18 ("lint 消息里不出现 id")
    that the code still breaks through `labelOf`'s id fallback. Small; do it before new rules.
 5. **PS4.3** `keep` invariants checked by `validate` (ADR addendum first), **PS4.4** brief-bound
@@ -121,19 +126,21 @@ on 2026-10-25. Each item names its card; the card holds goal, design, acceptance
 9. **PS1.3** walls-first control arm (§8 Q1) and **PS1.4** diagnostic-wording study (§8 Q3): owner asks
    from 2026-10-18 found undone by the 2026-10-25 transcript audit; run PS1.3 with item 1 (same
    harness) if the budget allows.
-10. Everything else in `cards.md` by family: PS0 15 todo, PS2 40 todo, PS3 4, PS4 5, PS5 4, PS7 2;
-    pick by first-contact evidence, not by number.
+10. Everything else in `cards.md` by family: PS0 15 todo, PS1 2, PS2 40 todo, PS3 4, PS4 5, PS5 4,
+    PS7 2; pick by first-contact evidence, not by number.
 
-**Open cards by family (2026-10-25 audit; "ready" = no stated dependency outstanding).**
+**Open cards by family (2026-10-25 audit; "ready" = no stated dependency outstanding; every card
+that changes what an author sees in `lint`, `validate`, `finish` or the spec waits for item 1, D19).**
 
 | Family | Open | Ready now | Waiting on something |
 |---|---|---|---|
+| PS1 | 2 | — | 1.3 and 1.4 (item 1's harness) |
 | PS0 | 15 | PS0.15 (net-area bound), 0.2, 0.3, 0.6, 0.9, 0.17, 0.22, 0.23, 0.25 | 0.8 (re-measure), 0.16/0.18/0.20/0.21 (a decision each), 0.24 (code landed in #252; only a `clear front\|sides` test is left) |
 | PS2 | 40 | 2.21, 2.23, 2.25, 2.27, 2.29, 2.30–2.35, 2.41–2.45, 2.47–2.49, 2.51, 2.52, 2.54 | 2.11e (row 6), 2.14 (ADR), 2.15 (2.11e), 2.16/2.36 (facts), 2.20/2.28 (measure first), 2.22 (fold into 2.29), 2.24/2.26/2.37/2.38/2.46/2.50/2.55 (a decision each), 2.39 (drawing decision), 2.40 and 5.6 (fire D12's reverse-if), 2.53 (a sourced ceiling) |
 | PS3 | 4 | 3.12 | 3.10 (decision; moves digests, D8), 3.11 (corpus sweep), 3.13 (proof first) |
 | PS4 | 5 | 4.5, 4.6, 4.7 | 4.3 (ADR addendum, row 6), 4.4 (row 6) |
 | PS5 | 4 | 5.5 | 5.3a (MCP version bump), 5.4 (row 6), 5.6 (D12) |
-| PS6/PS7 | 1 parked; 2 todo, 1 doing, 1 parked | 7.2 | 6.1 (until `keep` is used), 7.1 ("after PS2" is ambiguous; read it as after row 6), 7.4 (D15) |
+| PS6/PS7 | 1 parked; 2 todo, 1 doing, 1 parked | 7.2 | 6.1 (until `keep` is used), 7.1 ("after PS2" is ambiguous; read it as after row 6), 7.3 (parked: only if rule packs outgrow code), 7.4 (D15) |
 
 Facts a reader would otherwise miss: the dwelling reading (D6) now has six consumers (three lint
 arms, taste R6/R11/R12), so D6's reverse-if has fired and is re-stated in D6; `spec.llm.md` has 136
@@ -146,21 +153,22 @@ items 3.1(b), M.8, M.9, M.14 and D.7 wait on the owner's answers and are not cov
 
 - Walls-first vs rooms-first comparison (PS1.3) and diagnostic wording (PS1.4): cards filed, not run.
 - Id-free lint messages: PS2.22/PS2.29 open; the rule is in `README.md` §5.
-- Fuzz, timing and red-team probes were to run in `claude --cloud` sessions on the prepaid credit
-  (owner, 2026-10-20; credit expires about 2026-11-04). One probe ran; the rest ran locally. If the
-  credit still exists, use it for item 1's authoring arms and the red-team rounds.
-- Executors on a mix of models and effort levels: 88 of 93 dispatches so far went to one model. The
-  mix rule is in `README.md` §5.
-- Stage reports in Chinese must quote raw verification output; the reports after 2026-10-20 stopped
-  doing so.
+- Fuzz, timing and red-team probes were to run in the owner's prepaid `claude --cloud` sessions
+  (owner, in conversation, 2026-10-20). One probe ran; the rest ran locally. If the sessions are
+  still available, use them for item 1's authoring arms and the red-team rounds.
+- Executors on a mix of models and effort levels: the 2026-10-25 transcript audit (outside the
+  repo) found nearly every dispatch went to one model. The mix rule is in `README.md` §5.
+- Stage reports in Chinese must quote raw verification output; the same audit found the reports
+  after 2026-10-20 stopped doing so.
 
 Owner-reserved and untouched: the remote branch `docs/archlang-3d-plan` and the primary checkout on
-it; the directory `.claude/worktrees/agent-a1314d858f0b8b0cb`; Dependabot PRs; releases; the paid eval.
+it; Dependabot major bumps (patch/minor bumps follow `docs/agents/iron-laws.md` § Owner policies);
+starting a release; the paid eval; `docs/backlog.md`'s owner-blocked items.
 
 ## 6. How the work is run
 
 The rules are in `README.md` §5 (working rules) and §8; `AGENTS.md`, `CLAUDE.md`, `docs/agents/*`
-apply. The shape that worked for 53 PRs:
+apply. The shape that worked for the 49 programme PRs merged between #195 and #254:
 
 1. The coordinating session reads this page, `README.md` §3/§7 and the card, then writes a brief
    (template below) and dispatches an executor in a worktree branched from `main`.

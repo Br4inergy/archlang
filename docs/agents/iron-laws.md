@@ -1,7 +1,7 @@
 # Standing decisions & iron laws (never re-litigate)
 
-Owner decisions and laws that no test fully states. Do not re-propose, re-open or contradict them.
-A change to one is proposed in a PR, recorded as a decision with its reverse-if in the owning
+Owner decisions and laws that no test fully states. Do not contradict them or re-open them outside
+the process below. A change to one is proposed in a PR, recorded as a decision with its reverse-if in the owning
 programme's README §3, marked *awaiting ratification* until the owner ratifies it in words, and
 listed in the stage report (`docs/plans/plan-soundness/README.md` D18).
 
@@ -21,8 +21,8 @@ listed in the stage report (`docs/plans/plan-soundness/README.md` D18).
 - **Judge comparability**: never compare eval rates across a `JUDGE_VERSION`/`SYNONYMS_VERSION`
   change. Regenerate `eval/judge-fixture.json` only for an approved bump, never to green a suite.
   Its `lintWarnings` counts are a side count, not a judgment: a lint PR whose new rule fires on an
-  eval golden bumps that count with a per-row reason in the PR body and touches no judgment field
-  (`valid`, `semanticPass`, `failures`, `physicalWarnings`); plan-soundness D19, awaiting ratification.
+  eval golden bumps that count with a per-row reason in the PR body and touches no field other than
+  `lintWarnings`; plan-soundness D19, awaiting ratification.
 - **`eval/rubric.md` is frozen; `npm run eval:live` is paid and owner-only.** CI runs `eval:ci`.
 
 ## Releases

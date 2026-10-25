@@ -86,6 +86,10 @@ not checked. Today's state is `handoff.md` § 1 and § 3.*
 
 ## 2. Diagnosis: three layers, one loop
 
+*Written 2026-10-18 and kept as the diagnosis the plan rests on. Its present-tense gaps ("25 lint
+rules exist", `between` read from the centre point, `freedom` without "on what", `diffPlans()`
+calling a move a resize) are the state before PRs #196–#254; today's state is `handoff.md` § 3.*
+
 1. **Authoring model: coordinates first, relations absent.**
    - Walls and rooms do not know each other ("Rooms describe space; walls are drawn separately").
    - An opening is a centre point plus a width and never names the rooms it joins.
@@ -195,8 +199,9 @@ non-residential, not by choosing a profile.** (2026-10-20, amends PS2.18's card;
   not a PS2.18 private; it stays heuristic (no declaration) until PS2.14's dwelling marker exists,
   and every new consumer is listed here. PS5.5's text is widened to R12.
 - *Reverse if:* PS2.14's dwelling declaration lands (the declaration then decides and the word list
-  is retired), or the word list misreads a residential plan in the corpus or the fuzz, or a third
-  rule needs the reading (then it belongs in a declaration, not a heuristic).
+  is retired), or the word list misreads a residential plan in the corpus or the fuzz, or a consumer
+  needs a dwelling boundary the heuristic cannot give (then it belongs in a declaration, not a
+  heuristic). The former trigger "a third rule needs the reading" fired (see above) and was replaced.
 
 **D7. After §7 row 3, four PS3 cards outside any row ran before rows 4 and 5; and a met row is
 followed by a first-contact re-measure.** (2026-10-24, recorded after the fact; amends §7's order.)
@@ -376,19 +381,20 @@ pending rulings to the coordinator and asked for the best decision; the reasons 
 repo-truth audit before the handoff.) *The first bullet touches an iron law's wording and is awaiting
 ratification (D18).*
 - *`eval/judge-fixture.json`:* the iron law says regenerate it only for an approved bump. Since
-  PS2.8/2.9 (PR #200) every lint PR whose new rule fires on an eval golden has hand-edited that
-  golden's `lintWarnings` count (PRs #200, #217, #245, #248, #252, #253), touching no judgment
-  field and leaving `JUDGE_VERSION` at "2". Reading: `lintWarnings` is a side count that moves
-  with every new rule, not a judgment; bumping it with a per-row reason in the PR body is allowed;
-  the judgment fields (`valid`, `semanticPass`, `failures`, `physicalWarnings`) are not. The
-  iron-law text says so from this PR on. *Reverse if:* a bump ever hides a judgment change, or the
+  PS2.5–2.7 (PR #199) every lint PR whose new rule fires on an eval golden has hand-edited that
+  golden's `lintWarnings` count (PRs #199, #200, #201, #217, #245, #252, #253; every changed line
+  in those diffs is a `lintWarnings` line), touching no other field and leaving `JUDGE_VERSION` at
+  "2". Reading: `lintWarnings` is a side count that moves with every new rule, not a judgment;
+  bumping it with a per-row reason in the PR body is allowed; no other field of the fixture is
+  touched. The iron-law text says so from this PR on. *Reverse if:* a bump ever hides a judgment change, or the
   owner declines the reading; then the counts are frozen and new rules are excluded from the
   fixture's lint count instead.
 - *Re-measure order:* D10 makes a first-contact re-measure mandatory after row 5 and before row 6
   starts. The only row-5 run (#249) predates #248, #250, #252 and #253, so the row-5 re-measure is
   still owed; it runs as D15's two arms and is the first item of `handoff.md` § 4, before any
   row-6 card. PS2.45, PS2.50 and PS2.22/PS2.29 are row-5 residue and may land before it only if
-  they change no measured surface the authors see (they change lint output, so they wait too).
+  they change no measured surface the authors see (PS2.50 and PS2.22/PS2.29 change lint output and
+  PS2.45 changes `finish` output, so all of them wait too).
   *Reverse if:* the owner asks for row 6 to start first; then this bullet records the waiver.
 
 ## 4. Principles: what "professional rules and taste" means here
@@ -448,8 +454,10 @@ ratification (D18).*
   reviews and dispatches; executors on other models and effort levels do the work in worktrees
   branched from `main`, and the mix is deliberate (sonnet for mechanical edits and docs, haiku for
   gate runs, opus for rule design and red team), stated in the stage report. Executors run build,
-  typecheck, the touched tests and the digest suites locally; CI is the full gate; editing an
-  example touches every corpus-wide suite (see `handoff.md` § Brief template). At most two red-team
+  typecheck, the touched tests and the digest suites locally, plus `typecheck:all` when `test/`
+  changes and `check:drift` when a generator input changes; the `CLAUDE.md` floor (`check` +
+  `check:drift`) is met by CI, which is the full gate; editing an example touches every corpus-wide
+  suite (see `handoff.md` § Brief template). At most two red-team
   rounds per PR; residue becomes cards; repo tests are never removed to go green. PRs merge on green
   CI plus a reviewed diff, pinned to the reviewed commit. Every completion claim is checked against
   raw `git`/test output. Each stage ends with a report to the owner in Chinese that quotes the raw
@@ -508,7 +516,7 @@ The cards themselves live in `cards.md` (D16); each family below keeps one count
 | 3a | PS3.7, PS3.8, PS3.5, PS3.9 (and PS0.19) | Unplanned, after row 3 (D7): PRs #228–#232. Re-measure PR #233: defects 57 → 48, blockers 4 → 2; corpus 47/70 |
 | 4 | PS0.4, PS4.1, PS4.2 | The widening drill's `impact` names every moved, held and broken item correctly. *Status:* met in part 2026-10-24 by PS4.2 (PR #240, 7954f252); `held` is empty (PS4.5) |
 | 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically; the clearances corpus class reaches ≥ 10/18. *Status:* met 2026-10-25 (D14): the taste acceptance holds as worded (44 pairs on 2026-10-25: 40 ordered / 0 tied / 0 reversed / 4 unjudged, ledger empty; 41/37 when #249 ran; caveats in D14); PS2.11a–d merged (PRs #252, #253); clearances 11/19; corpus 59/73. *Re-measure:* `audits/2026-10-25-first-contact-rerun-row5.md` (PR #249; ran before #248, #250, #252 and #253 merged, so the row-5 re-measure is still owed, D19): defects 48 → 49, blockers 2 → 0 (by authoring chance: no row-5 rule touches a stair), 0/6 authors ran taste or `next`. Status history verbatim: `research/2026-10-25-ps5-as-built.md` § §7 row 5 |
-| 6 | PS4.3, PS4.4, PS5.4, PS7.x, PS2.11e | **Current** (row 5 closed 2026-10-25). Starts with the owed row-5 re-measure, run as D15's two arms (D19), then PS2.45/PS2.50/PS2.29 as row-5 residue, then: `keep` invariants and brief-bound sizes are checked by `validate`, the widening drill reports a broken `keep` with its signed residual, and `preview --review` rings every flagged element; a re-measure closes the row (D10). Order and the open-card map: `handoff.md` § 4. (PS3.5 and PS3.6 already landed, rows 3a and 3) |
+| 6 | PS4.3, PS4.4, PS5.4, PS7.x, PS2.11e | **Current** (row 5 closed 2026-10-25). Starts with the owed row-5 re-measure, run as D15's two arms (D19), then PS2.45/PS2.50/PS2.22/PS2.29 as row-5 residue, then: `keep` invariants and brief-bound sizes are checked by `validate`, the widening drill reports a broken `keep` with its signed residual, and `preview --review` rings every flagged element; a re-measure closes the row (D10). Order and the open-card map: `handoff.md` § 4. (PS3.5 and PS3.6 already landed, rows 3a and 3) |
 | 7 | PS6.1 | — |
 
 Rows 1–4 as they stood before this pruning, verbatim: `research/2026-10-25-ps5-as-built.md` § §7 rows 1–4.
@@ -583,9 +591,10 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
   correct its conclusions here in the card it affects, with a one-line reason.
 - **A new idea:** add a card in the right workstream of `cards.md` with goal, design, acceptance and open
   questions, and mark which prior evidence supports it. If it changes a decision in §3, add a new
-  decision (D5, …) that names what it supersedes and why. Releases and the paid eval stay with the
-  owner. An iron-law change is proposed in a PR, recorded here as a decision with its reverse-if and
-  marked *awaiting ratification* until the owner ratifies it in words (D18).
+  decision (D5, …) that names what it supersedes and why. The paid eval stays with the owner; a
+  release starts only when the owner asks (`docs/agents/iron-laws.md` § Owner policies). An
+  iron-law change is proposed in a PR, recorded here as a decision with its reverse-if and marked
+  *awaiting ratification* until the owner ratifies it in words (D18).
 - **Size limit (D16):** README ≤ 60,000 bytes (`wc -c`); `cards.md` unbounded. New cards go in
   `cards.md`; update the family's count line in §6.
 - **A card lands:** in `cards.md`, cut it to its `done` line (PR and commit), move any as-built
