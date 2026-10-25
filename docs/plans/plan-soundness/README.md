@@ -279,6 +279,16 @@ evidence `audits/2026-10-25-first-contact-rerun-row5.md`, PR #249.)
 - *Reverse if:* PS2.11a–d merge and the clearances class stays under 10/18 (then the threshold or
   the split is wrong, and this entry is re-stated), or a re-measure shows the remainder carrying
   more first-contact hits than the four (then those bullets come back into row 5).
+- *Closed 2026-10-25:* PS2.11a/b merged as PR #252 (486c9cb7) and PS2.11c/d as PR #253
+  (43fe7fd6); the defect corpus reads 59/73 with the clearances class at 11/19 (two plans added
+  for `sofa-l-transposed`), so the threshold is met and row 5 is met in full. Checked card by card:
+  PS5.1–PS5.3, PS2.10, PS2.12 and PS2.11a–d are done; PS2.11e sits in row 6 with its reason. The
+  first-contact hits are in the as-built records (`research/2026-10-25-ps211ab-as-built.md`,
+  `research/2026-10-25-ps211cd-as-built.md`); the first-contact plans themselves are not re-run
+  here, that is D15's two-arm re-measure. Costs recorded there and carried as cards: `finish`
+  leaves 30 WC rooms and 16 baths of the 918-room probe empty rather than place a pan the WC rule
+  refuses (PS2.45), and two examples (`tiny-house`, `hillside-villa`) carry one honest
+  `W_FIXTURE_BACK_TO_ROOM` each until PS2.50 teaches that rule side-on pieces.
 
 **D15. D2's and ADR 0032's reverse-if was hit and is not yet assessed.** (2026-10-25, stage-end
 drift audit.)
@@ -305,16 +315,34 @@ drift audit.)
   duplicate card); then move the `todo` tables back.
 
 **D17. The drawing-change iron law gains a drafting-layer carve-out.** (PR #245, 2026-10-24;
-`AGENTS.md` and `docs/agents/iron-laws.md`.) *Owner ratification pending: iron laws are
-owner-reserved (§8).*
+`AGENTS.md` and `docs/agents/iron-laws.md`.) *Ratified 2026-10-25 under D18: the owner delegated the
+pending rulings to the coordinator and asked for the best decision; the reasons are below.*
 - "A drawing change never moves `describe()`/`lint()` over the corpus" now has the exception
   "except drafting-layer lint rules, which read the sheet". `W_ANNOTATION_OVERLAP` and
   `W_TITLE_OVERFLOW` build the storey's Scene, so a renderer change can move them; such a PR lists
   each moved plan, says whether plan or renderer was wrong, and proves nothing else moved (the
   swap-back law in `test/byte-identity-baseline.ts`).
 - *Why:* those defects exist only on the sheet; no plan fact can see a label printed over a bed.
-- *Reverse if:* the owner declines the carve-out; then the two codes leave `lint()` for a separate
-  sheet check (as taste left it) and PS2.12 is re-scoped.
+  Ratified rather than rolled back because the alternative, a separate sheet check, would split the
+  author's loop into two tools, against D2 and the `validate --json` `next` design (PS5.3), and
+  because the carve-out is narrow and mechanical: it applies by `LintRule.layer` only, never by
+  code list, and every such movement is listed plan by plan under the swap-back law.
+- *Reverse if:* a drafting-layer code moves on a change that is not a renderer change, or a PR
+  excuses a non-drafting movement under this clause; then the two codes leave `lint()` for a
+  separate sheet check (as taste left it) and PS2.12 is re-scoped.
+
+**D18. Pending owner rulings are taken by delegation.** (2026-10-25; owner: "关于那些待我裁定的事项，
+请你帮我做出最佳决策，然后实施".)
+- The coordinator takes the rulings that were waiting on the owner and records each as a decision
+  here with its reasons and reverse-if, so the owner reviews a written ruling instead of a
+  question. Taken under this entry: D17 ratified; the executor and red-team scratch folders of
+  merged PRs (2026-10-23 to 2026-10-25, 45 folders) deleted because their evidence lives in the
+  dated `research/` and `audits/` files and the PR bodies; the 2026-10-18 audit scratch kept as
+  instructed. §8's "iron laws are owner-reserved" now reads: an iron-law change is proposed in a PR,
+  recorded here as a D-entry with reverse-if, and stands unless the owner objects.
+- *Why:* the owner is not at the keyboard during these runs; a ruling that waits blocks the row.
+- *Reverse if:* the owner overturns one of these rulings; then the overturned entry is re-stated and
+  this entry narrows to the rulings the owner names as theirs alone.
 
 ## 4. Principles: what "professional rules and taste" means here
 
@@ -388,7 +416,7 @@ The cards themselves live in `cards.md` (D16); each family below keeps one count
 
 ### PS2 · Validity checks that read existing facts (small, high yield)
 
-48 cards: 15 done, 33 todo. Cards, tables and as-built pointers: `cards.md` § PS2.
+59 cards: 19 done, 40 todo. Cards, tables and as-built pointers: `cards.md` § PS2.
 
 ### PS3 · Relation-first authoring (D1 + D5; needs an ADR)
 
@@ -419,8 +447,8 @@ The cards themselves live in `cards.md` (D16); each family below keeps one count
 | 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the widening drill moves walls and doors with the room; the class-2 cases are unwritable in the D5 form. *Status:* met 2026-10-23 by PS3.6 (PR #227) |
 | 3a | PS3.7, PS3.8, PS3.5, PS3.9 (and PS0.19) | Unplanned, after row 3 (D7): PRs #228–#232. Re-measure PR #233: defects 57 → 48, blockers 4 → 2; corpus 47/70 |
 | 4 | PS0.4, PS4.1, PS4.2 | The widening drill's `impact` names every moved, held and broken item correctly. *Status:* met in part 2026-10-24 by PS4.2 (PR #240, 7954f252); `held` is empty (PS4.5) |
-| 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically; the clearances corpus class reaches ≥ 10/18. **Current.** *Status:* met in part (D14); current: PS2.11a–d. The taste acceptance holds as worded (41 pairs: 37 ordered / 0 tied / 0 reversed, ledger empty / 4 unjudged; caveats in D14); PS2.11 is outstanding (clearances 5/18); corpus 53/72. *Re-measure:* `audits/2026-10-25-first-contact-rerun-row5.md` (PR #249; ran before #248 and #250 merged): defects 48 → 49, blockers 2 → 0, 0/6 authors ran taste or `next`. Status history verbatim: `research/2026-10-25-ps5-as-built.md` § §7 row 5 |
-| 6 | PS4.3, PS4.4, PS5.4, PS7.x, PS2.11e | After row 5 closes. `keep` invariants and brief-bound sizes are checked by `validate`, the widening drill reports a broken `keep` with its signed residual, and `preview --review` rings every flagged element; then the D7 re-measure, run as D15's two arms. (PS3.5 and PS3.6 already landed, rows 3a and 3) |
+| 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically; the clearances corpus class reaches ≥ 10/18. *Status:* met 2026-10-25 (D14): the taste acceptance holds as worded (41 pairs: 37 ordered / 0 tied / 0 reversed, ledger empty / 4 unjudged; caveats in D14); PS2.11a–d merged (PRs #252, #253); clearances 11/19; corpus 59/73. *Re-measure:* `audits/2026-10-25-first-contact-rerun-row5.md` (PR #249; ran before #248 and #250 merged): defects 48 → 49, blockers 2 → 0, 0/6 authors ran taste or `next`. Status history verbatim: `research/2026-10-25-ps5-as-built.md` § §7 row 5 |
+| 6 | PS4.3, PS4.4, PS5.4, PS7.x, PS2.11e | **Current** (row 5 closed 2026-10-25). `keep` invariants and brief-bound sizes are checked by `validate`, the widening drill reports a broken `keep` with its signed residual, and `preview --review` rings every flagged element; then the D7 re-measure, run as D15's two arms. (PS3.5 and PS3.6 already landed, rows 3a and 3) |
 | 7 | PS6.1 | — |
 
 Rows 1–4 as they stood before this pruning, verbatim: `research/2026-10-25-ps5-as-built.md` § §7 rows 1–4.
@@ -493,8 +521,9 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
   correct its conclusions here in the card it affects, with a one-line reason.
 - **A new idea:** add a card in the right workstream of `cards.md` with goal, design, acceptance and open
   questions, and mark which prior evidence supports it. If it changes a decision in §3, add a new
-  decision (D5, …) that names what it supersedes and why. Owner-reserved choices (iron laws,
-  releases, paid eval) still go to the owner.
+  decision (D5, …) that names what it supersedes and why. Releases and the paid eval stay with the
+  owner. An iron-law change is proposed in a PR and recorded here as a decision with its reverse-if;
+  it stands unless the owner objects (D18).
 - **Size limit (D16):** README ≤ 60,000 bytes (`wc -c`); `cards.md` unbounded. New cards go in
   `cards.md`; update the family's count line in §6.
 - **A card lands:** in `cards.md`, cut it to its `done` line (PR and commit), move any as-built
