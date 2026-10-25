@@ -2441,13 +2441,14 @@ policy review, and may ask for a privacy-policy page. The OpenAI plugin director
 needs a privacy-policy page and a terms page too; both now exist, at https://archlang.uk/privacy and
 https://archlang.uk/terms. The OpenAI submission's state is O.7 and `docs/seo.md` section 8.
 
-### O.4 · Open VSX trusted publishing — `todo`
+### O.4 · Open VSX trusted publishing — `done`
 
-The namespace `ChanMeng` is verified (EclipseFdn/open-vsx.org#14189 closed 2026-10-15) and
-`archlang` 0.31.0 is live. `.github/workflows/publish-openvsx.yml` publishes by manual dispatch with
-`ovsx publish --trusted-publishing` (no token). Left: the owner registers it as a trusted publisher
-on open-vsx.org (repository `ChanMeng666/archlang`, workflow `publish-openvsx.yml`), then a first
-dispatch proves it.
+`.github/workflows/publish-openvsx.yml` publishes by manual dispatch with `ovsx publish
+--trusted-publishing` (no token), registered on open-vsx.org as the trusted publisher of
+`ChanMeng.archlang` (repository `ChanMeng666/archlang`, workflow `publish-openvsx.yml`).
+
+**Done 2026-10-25:** the first dispatch published 0.31.1 ("Published ChanMeng.archlang v0.31.1");
+Open VSX holds a new version "Under review" for a while, and the public API answers 404 until then.
 
 ### O.5 · `@chanmeng666/arch-plan` publishing in `release.yml` — `done`
 
