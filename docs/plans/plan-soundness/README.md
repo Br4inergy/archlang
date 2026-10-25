@@ -9,15 +9,26 @@ that compile, lint clean and are still wrong: a door across a wall junction, two
 between them, a living room reached through two bedrooms, a dimension whose text lies. This programme
 makes ArchLang itself carry the profession's rules and taste, so the language **guides** (forms that
 make the wrong thing hard to write), **checks** (rules that read the facts it already computes),
-**reasons about change** (what follows an edit, what must stay, what must be re-checked) and
-**judges quality** (a scored, sourced taste report), while keeping every iron law.
+**reasons** (about what a plan means, what follows an edit, what must stay, what must be re-checked)
+and **judges quality** (a scored, sourced taste report), while keeping every iron law.
+
+**The outcome this is measured by** (the owner's words, 2026-10-18: 让一个第一次接触 ArchLang 的 AI，
+在语言自身的引导、检查和推理帮助下，写出符合建筑逻辑和使用逻辑、具有专业品味的平面图): an AI meeting
+ArchLang for the first time, helped only by the language's own guidance, checks and reasoning, writes
+plans that follow architectural logic and usage logic and show professional taste. The yardstick is
+the first-contact re-measure (six briefs cold-authored from `spec.llm.md`, audited by hand, D7): verified
+defects 57 (2026-10-18) → 48 (10-24) → 49 (10-25), blockers 4 → 2 → 0, rooms-first 6/6, taste report
+used by 0/6 authors. Corpus catch rates (§7) are the means; this number is the end. It is not yet met:
+49 defects still pass lint, and the 10-25 run predates the clearance rules (PS2.11a–d).
 
 **How to use this document (for a new session).**
 
+0. Read `handoff.md` first: where the programme stands, what is open, and how to resume.
 1. Read §1–§5 here (about 15 minutes). Read `evidence.md` before touching code.
 2. The research behind each decision is in `research/`, and the per-plan defect audits are in `audits/`.
    Minimal reproductions are in `repro/` (see `repro/README.md`).
-3. Pick the first card in `cards.md` (§6 summarises it, D16) whose status is `todo` and whose
+3. Take the next item of `handoff.md` § 4 (it orders §7's current row and the owner asks); only
+   when that list is empty, pick the first `todo` card in `cards.md` (§6 summarises it, D16) whose
    dependencies are done. Each card states its goal, design, acceptance and open questions.
 4. You are expected to **think, not just execute**. §8 lists what is still unknown and how to extend
    this plan. If the evidence contradicts a card, correct the card in `cards.md`, say why, and
@@ -28,6 +39,12 @@ make the wrong thing hard to write), **checks** (rules that read the facts it al
 ---
 
 ## 1. The evidence in one page (detail: `evidence.md`)
+
+*This section is the 2026-10-18 baseline, kept as written because it is the evidence the plan was
+made from. Much of it is no longer true of `main`: the rules it says are missing now exist (45 lint
+rules, 22 new `W_*` codes), the dimension that "lints clean" raises `W_DIM_TEXT_MISMATCH`, the
+family-apartment reconstruction lints 34 warnings over 11 codes, and the coverage report says what was
+not checked. Today's state is `handoff.md` § 1 and § 3.*
 
 - **About 120 verified defects across about 30 plans; lint caught a handful.** The plans audited:
   - the ArchCanvas public examples (10 plans), with 6 blockers;
@@ -68,6 +85,10 @@ make the wrong thing hard to write), **checks** (rules that read the facts it al
   8. annotation collisions: auto dimensions inside rooms, title-block overflow.
 
 ## 2. Diagnosis: three layers, one loop
+
+*Written 2026-10-18 and kept as the diagnosis the plan rests on. Its present-tense gaps ("25 lint
+rules exist", `between` read from the centre point, `freedom` without "on what", `diffPlans()`
+calling a move a resize) are the state before PRs #196–#254; today's state is `handoff.md` § 3.*
 
 1. **Authoring model: coordinates first, relations absent.**
    - Walls and rooms do not know each other ("Rooms describe space; walls are drawn separately").
@@ -171,9 +192,16 @@ non-residential, not by choosing a profile.** (2026-10-20, amends PS2.18's card;
 - *Why:* the two first-contact plans the card cites (4-cafe, 6-clinic) both carry that evidence, and
   no residential example or eval golden does; the heuristic is therefore decided by measurement, and
   the acceptance for PS2.18 is that no residential corpus row loses a warning.
+- *Reverse-if fired, re-stated 2026-10-25:* the entry said to revisit the reading if a third rule
+  needed it. It now has six consumers: the three lint arms above and taste criteria R6, R11 and R12
+  (PS5.1b, PR #247; `src/taste/criteria.ts`). The 2026-10-25 audit found R12's dependence recorded
+  nowhere (PS5.5 names R6 and R11 only). Re-statement: the dwelling reading is a shared plan fact,
+  not a PS2.18 private; it stays heuristic (no declaration) until PS2.14's dwelling marker exists,
+  and every new consumer is listed here. PS5.5's text is widened to R12.
 - *Reverse if:* PS2.14's dwelling declaration lands (the declaration then decides and the word list
-  is retired), or the word list misreads a residential plan in the corpus or the fuzz, or a third
-  rule needs the reading (then it belongs in a declaration, not a heuristic).
+  is retired), or the word list misreads a residential plan in the corpus or the fuzz, or a consumer
+  needs a dwelling boundary the heuristic cannot give (then it belongs in a declaration, not a
+  heuristic). The former trigger "a third rule needs the reading" fired (see above) and was replaced.
 
 **D7. After §7 row 3, four PS3 cards outside any row ran before rows 4 and 5; and a met row is
 followed by a first-contact re-measure.** (2026-10-24, recorded after the fact; amends §7's order.)
@@ -333,16 +361,41 @@ pending rulings to the coordinator and asked for the best decision; the reasons 
 
 **D18. Pending owner rulings are taken by delegation.** (2026-10-25; owner: "关于那些待我裁定的事项，
 请你帮我做出最佳决策，然后实施".)
-- The coordinator takes the rulings that were waiting on the owner and records each as a decision
-  here with its reasons and reverse-if, so the owner reviews a written ruling instead of a
-  question. Taken under this entry: D17 ratified; the executor and red-team scratch folders of
+- The coordinator took the rulings that were waiting on the owner on 2026-10-25 and recorded each
+  as a decision here with its reasons and reverse-if, so the owner reviews a written ruling instead
+  of a question. Taken under this entry: D17 ratified; the executor and red-team scratch folders of
   merged PRs (2026-10-23 to 2026-10-25, 45 folders) deleted because their evidence lives in the
   dated `research/` and `audits/` files and the PR bodies; the 2026-10-18 audit scratch kept as
-  instructed. §8's "iron laws are owner-reserved" now reads: an iron-law change is proposed in a PR,
-  recorded here as a D-entry with reverse-if, and stands unless the owner objects.
-- *Why:* the owner is not at the keyboard during these runs; a ruling that waits blocks the row.
-- *Reverse if:* the owner overturns one of these rulings; then the overturned entry is re-stated and
-  this entry narrows to the rulings the owner names as theirs alone.
+  instructed. Not ruled on (not named by the owner): the remote branch `docs/archlang-3d-plan` and
+  the stray worktree directory `.claude/worktrees/agent-a1314d858f0b8b0cb`, both the owner's.
+- The owner's sentence named the items pending that day; it is not read as a standing delegation.
+  Going forward, an iron-law change is proposed in a PR, recorded here as a D-entry with reverse-if,
+  marked *awaiting ratification*, and listed in the stage report; it is applied in code (the law is
+  enforced by tests either way) but not cited as precedent until the owner ratifies it.
+- *Why:* the owner is not at the keyboard during these runs; a ruling that waits blocks the row, and
+  a written ruling is cheaper to overturn than a question is to answer.
+- *Reverse if:* the owner overturns one of these rulings; then the overturned entry is re-stated. If
+  the owner extends the delegation in words, this entry is widened and says so.
+
+**D19. Two unrecorded practices, written down; one owed measurement.** (2026-10-25, from the
+repo-truth audit before the handoff.) *The first bullet touches an iron law's wording and is awaiting
+ratification (D18).*
+- *`eval/judge-fixture.json`:* the iron law says regenerate it only for an approved bump. Since
+  PS2.5–2.7 (PR #199) every lint PR whose new rule fires on an eval golden has hand-edited that
+  golden's `lintWarnings` count (PRs #199, #200, #201, #217, #245, #252, #253; every changed line
+  in those diffs is a `lintWarnings` line), touching no other field and leaving `JUDGE_VERSION` at
+  "2". Reading: `lintWarnings` is a side count that moves with every new rule, not a judgment;
+  bumping it with a per-row reason in the PR body is allowed; no other field of the fixture is
+  touched. The iron-law text says so from this PR on. *Reverse if:* a bump ever hides a judgment change, or the
+  owner declines the reading; then the counts are frozen and new rules are excluded from the
+  fixture's lint count instead.
+- *Re-measure order:* D10 makes a first-contact re-measure mandatory after row 5 and before row 6
+  starts. The only row-5 run (#249) predates #248, #250, #252 and #253, so the row-5 re-measure is
+  still owed; it runs as D15's two arms and is the first item of `handoff.md` § 4, before any
+  row-6 card. PS2.45, PS2.50 and PS2.22/PS2.29 are row-5 residue and may land before it only if
+  they change no measured surface the authors see (PS2.50 and PS2.22/PS2.29 change lint output and
+  PS2.45 changes `finish` output, so all of them wait too).
+  *Reverse if:* the owner asks for row 6 to start first; then this bullet records the waiver.
 
 ## 4. Principles: what "professional rules and taste" means here
 
@@ -396,6 +449,21 @@ pending rulings to the coordinator and asked for the best decision; the reasons 
   rule in the commit and test ledger, never blessed.
 - Lint messages name things as a person would and never quote ids; ids go only in `hint`.
 - Intent adjacency and reachability assertions stay advisory (`gate: false`).
+- **Working rules the owner set in words (2026-10-18 to 10-25; the transcript audit of 10-25 found
+  them kept in memory files only, so they live here now):** the coordinating session plans,
+  reviews and dispatches; executors on other models and effort levels do the work in worktrees
+  branched from `main`, and the mix is deliberate (sonnet for mechanical edits and docs, haiku for
+  gate runs, opus for rule design and red team), stated in the stage report. Executors run build,
+  typecheck, the touched tests and the digest suites locally, plus `typecheck:all` when `test/`
+  changes and `check:drift` when a generator input changes; the `CLAUDE.md` floor (`check` +
+  `check:drift`) is met by CI, which is the full gate; editing an example touches every corpus-wide
+  suite (see `handoff.md` § Brief template). At most two red-team
+  rounds per PR; residue becomes cards; repo tests are never removed to go green. PRs merge on green
+  CI plus a reviewed diff, pinned to the reviewed commit. Every completion claim is checked against
+  raw `git`/test output. Each stage ends with a report to the owner in Chinese that quotes the raw
+  verification output. When the owner says stop, work that cannot be paused (an open PR under
+  review, a running CI) is finished and the rest paused, with the resume point written to
+  `handoff.md`.
 - Never claim a model-loop gain or its absence, and never run the paid eval (T3 is declined for good).
 - Never fix a defect by editing a golden. A new rule that fires on an example is either a real defect
   in the example (fix the example, explain it) or a false positive (fix the rule).
@@ -412,7 +480,7 @@ The cards themselves live in `cards.md` (D16); each family below keeps one count
 
 ### PS1 · The defect corpus (do this before PS2; it is the yardstick)
 
-2 cards: 2 done. Cards, tables and as-built pointers: `cards.md` § PS1.
+4 cards: 2 done, 2 todo (PS1.3 walls-first control arm, PS1.4 diagnostic wording; both filed 2026-10-25 from the owner's 2026-10-18 asks). Cards, tables and as-built pointers: `cards.md` § PS1.
 
 ### PS2 · Validity checks that read existing facts (small, high yield)
 
@@ -447,8 +515,8 @@ The cards themselves live in `cards.md` (D16); each family below keeps one count
 | 3 | PS3.1, PS3.2, PS3.0, PS3.3, PS3.4 | ADR merged; byte-identity law green; `relational.arch` lints clean with walls derived; the widening drill moves walls and doors with the room; the class-2 cases are unwritable in the D5 form. *Status:* met 2026-10-23 by PS3.6 (PR #227) |
 | 3a | PS3.7, PS3.8, PS3.5, PS3.9 (and PS0.19) | Unplanned, after row 3 (D7): PRs #228–#232. Re-measure PR #233: defects 57 → 48, blockers 4 → 2; corpus 47/70 |
 | 4 | PS0.4, PS4.1, PS4.2 | The widening drill's `impact` names every moved, held and broken item correctly. *Status:* met in part 2026-10-24 by PS4.2 (PR #240, 7954f252); `held` is empty (PS4.5) |
-| 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically; the clearances corpus class reaches ≥ 10/18. *Status:* met 2026-10-25 (D14): the taste acceptance holds as worded (41 pairs: 37 ordered / 0 tied / 0 reversed, ledger empty / 4 unjudged; caveats in D14); PS2.11a–d merged (PRs #252, #253); clearances 11/19; corpus 59/73. *Re-measure:* `audits/2026-10-25-first-contact-rerun-row5.md` (PR #249; ran before #248 and #250 merged): defects 48 → 49, blockers 2 → 0, 0/6 authors ran taste or `next`. Status history verbatim: `research/2026-10-25-ps5-as-built.md` § §7 row 5 |
-| 6 | PS4.3, PS4.4, PS5.4, PS7.x, PS2.11e | **Current** (row 5 closed 2026-10-25). `keep` invariants and brief-bound sizes are checked by `validate`, the widening drill reports a broken `keep` with its signed residual, and `preview --review` rings every flagged element; then the D7 re-measure, run as D15's two arms. (PS3.5 and PS3.6 already landed, rows 3a and 3) |
+| 5 | PS5.1–PS5.3, PS2.10–PS2.12 | The taste score separates the corpus's known-bad from known-good plans monotonically; the clearances corpus class reaches ≥ 10/18. *Status:* met 2026-10-25 (D14): the taste acceptance holds as worded (44 pairs on 2026-10-25: 40 ordered / 0 tied / 0 reversed / 4 unjudged, ledger empty; 41/37 when #249 ran; caveats in D14); PS2.11a–d merged (PRs #252, #253); clearances 11/19; corpus 59/73. *Re-measure:* `audits/2026-10-25-first-contact-rerun-row5.md` (PR #249; ran before #248, #250, #252 and #253 merged, so the row-5 re-measure is still owed, D19): defects 48 → 49, blockers 2 → 0 (by authoring chance: no row-5 rule touches a stair), 0/6 authors ran taste or `next`. Status history verbatim: `research/2026-10-25-ps5-as-built.md` § §7 row 5 |
+| 6 | PS4.3, PS4.4, PS5.4, PS7.x, PS2.11e | **Current** (row 5 closed 2026-10-25). Starts with the owed row-5 re-measure, run as D15's two arms (D19), then PS2.45/PS2.50/PS2.22/PS2.29 as row-5 residue, then: `keep` invariants and brief-bound sizes are checked by `validate`, the widening drill reports a broken `keep` with its signed residual, and `preview --review` rings every flagged element; a re-measure closes the row (D10). Order and the open-card map: `handoff.md` § 4. (PS3.5 and PS3.6 already landed, rows 3a and 3) |
 | 7 | PS6.1 | — |
 
 Rows 1–4 as they stood before this pruning, verbatim: `research/2026-10-25-ps5-as-built.md` § §7 rows 1–4.
@@ -465,7 +533,8 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
    experiment can test it: author the corpus briefs both ways with the CLI loop and compare defect
    counts on the PS1 corpus. Do not run or cite the paid eval. *Scheduled:* it needs the PS3 forms
    to exist, so it runs after row 3 of §7. Until then the first-contact experiment under question 8
-   measures the wall-first baseline (`audits/2026-10-18-first-contact.md`, once written).
+   measures the wall-first baseline (`audits/2026-10-18-first-contact.md`). The walls-first control
+   arm is card PS1.3 (filed 2026-10-25).
    *Measured 2026-10-24, see `audits/2026-10-24-first-contact-rerun.md`:* six cold authors on
    today's spec wrote rooms-first unprompted (6/6, 0 `wall` statements); class-1 defects fell 4 → 0
    and surviving defects 57 → 48 (area basis judged as in the baseline; 54 → 45 without it). There
@@ -492,7 +561,7 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
    `research/adai-sketchup.md` idea 7). *Researched 2026-10-18* (same file, Part A): became card
    PS3.7. Still open: no evidence on how often agents get a furniture turn wrong; the first-contact
    audit should count it.
-8. **Anything the audits missed.** Run a fresh audit on new plans after PS2 lands. The defect classes
+8. **Anything the audits missed.** Run a fresh audit on new plans after each §7 row (D7, D10; done 2026-10-24 and 2026-10-25, next as D15's two arms). The defect classes
    in §1 came from about 30 plans and are surely incomplete. *First round done 2026-10-18*
    (`audits/2026-10-18-first-contact.md`): six briefs written cold by an AI author from
    `spec.llm.md` alone, all six lint-clean and strict-clean, carry 57 verified defects (4 blockers),
@@ -503,7 +572,8 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
    order "land PS2.1 before more corner fixes are suggested"). Still uncarded: context modelled
    inside the plan (a common corridor as paving; PS2.14's dwelling work should give it a home),
    vertical stacking of partitions, oblique joins inflating `bbox_outer`, circulation share (taste).
-   Re-run after PS2 lands, and count the furniture turn.
+   Re-run with each first-contact re-measure, and count the furniture turn (PS2.11c's
+   `W_FOOTPRINT_TRANSPOSED` now catches the turned-footprint half; the `rotate` half is PS2.50).
    *Measured 2026-10-24, see `audits/2026-10-24-first-contact-rerun.md`:*
    - The old plans re-linted: 17/57 caught, 6 of them partially (14/57 counting halves), and 0 false positives.
    - The briefs re-authored cold: 48 defects (2 B), final lint 1.
@@ -521,9 +591,10 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
   correct its conclusions here in the card it affects, with a one-line reason.
 - **A new idea:** add a card in the right workstream of `cards.md` with goal, design, acceptance and open
   questions, and mark which prior evidence supports it. If it changes a decision in §3, add a new
-  decision (D5, …) that names what it supersedes and why. Releases and the paid eval stay with the
-  owner. An iron-law change is proposed in a PR and recorded here as a decision with its reverse-if;
-  it stands unless the owner objects (D18).
+  decision (D5, …) that names what it supersedes and why. The paid eval stays with the owner; a
+  release starts only when the owner asks (`docs/agents/iron-laws.md` § Owner policies). An
+  iron-law change is proposed in a PR, recorded here as a decision with its reverse-if and marked
+  *awaiting ratification* until the owner ratifies it in words (D18).
 - **Size limit (D16):** README ≤ 60,000 bytes (`wc -c`); `cards.md` unbounded. New cards go in
   `cards.md`; update the family's count line in §6.
 - **A card lands:** in `cards.md`, cut it to its `done` line (PR and commit), move any as-built
@@ -536,7 +607,13 @@ This plan is a hypothesis about what will make AI-written plans professional. Tr
 ## 9. Files in this folder
 
 - `README.md`: this plan.
+- `handoff.md`: the resume point — state, open work in order, how the work is run (re-written at
+  every stage end).
 - `cards.md`: every card of §6, with its table, id and status (D16).
+- `research/2026-10-25-ps211ab-as-built.md`, `research/2026-10-25-ps211cd-as-built.md`: the four
+  clearance rules as built, their first-contact hits, corpus movements and the `finish` sweep.
+- `audits/first-contact-protocol.md`: the six briefs, the dispatch prompt, the rubric and the arm A
+  role-text pointer that D15 needs (PR in flight on 2026-10-25).
 - `evidence.md`: what was measured, the bug list and the defect taxonomy.
 - `research/checks-inventory.md`: every current check, the authoring-model facts, governing ADRs,
   and the gap list with code locations.
