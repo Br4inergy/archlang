@@ -11,7 +11,15 @@ import { roomNoClearPath } from "./circulation.js";
 import { dimInside, dimOverlap, dimTextMismatch, openingNotDimensioned } from "./dims.js";
 import { circuitousPath, pathTooNarrow } from "./circulation-facts.js";
 import { furnitureOverWindow, wcSideClearance } from "./clearances.js";
-import { doorClearance, doorNearCorner, doorwayBlocked, pocketRun, swingObstructed } from "./doors.js";
+import {
+  doorClearance,
+  doorNearCorner,
+  doorwayBlocked,
+  leafAcrossDoorway,
+  pocketRun,
+  swingObstructed,
+} from "./doors.js";
+import { footprintTransposed } from "./footprint.js";
 import { noEntrance } from "./entrance.js";
 import {
   fixtureBackToRoom,
@@ -133,6 +141,11 @@ export const LINT_RULES: readonly LintRule[] = [
   // order, so no existing diagnostic moves within the array.
   wcSideClearance,
   furnitureOverWindow,
+  // Clearances (plan-soundness PS2.11c, PS2.11d): a directional piece written with its depth on
+  // its long side, and a door's open leaf parked across another doorway's approach. Appended
+  // LAST, in this order, so no existing diagnostic moves within the array.
+  footprintTransposed,
+  leafAcrossDoorway,
 ];
 
 export type { LintContext, LintRule } from "../context.js";

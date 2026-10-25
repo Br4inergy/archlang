@@ -1415,6 +1415,40 @@
  * `hillside-villa`'s comments only (its `claude.ai` prefilled link had fallen under the 80
  * characters `playground/test/llm-prompt.test.ts` keeps spare), so its rows moved by `lint()`
  * spans alone; its drawing and `describe()` are unchanged.
+ * ## Three examples fixed: transposed footprints and a parked leaf (PS2.11c, PS2.11d)
+ *
+ * Two validity rules, `W_FOOTPRINT_TRANSPOSED` (`src/lint/rules/footprint.ts`) and
+ * `W_LEAF_ACROSS_DOORWAY` (`src/lint/rules/doors.ts`), found drawing defects in three examples,
+ * each FIXED in the source, never blessed (payloads compared with the new compiler on both sides):
+ *
+ *   - `tiny-house`: the bed, `size 2000x1400` with no turn, drew 2 m wide and 1.4 m long; now
+ *     `rotate 90`, lengthwise under the window, head east. SVG and `describe()` move; `lint()`
+ *     trades the new code for `W_FIXTURE_BACK_TO_ROOM`, that rule's reading of a bed side-on to
+ *     a wall as "back to the room" (card PS2.50). The example carries it rather than a fudged gap.
+ *   - `hillside-villa`: the two wardrobes, `550x1800` and `450x1800` unturned, drew one door wide
+ *     and 1.8 m deep. The final rule no longer judges a wardrobe (a family sold in both shapes),
+ *     but a 1.8 m-deep wardrobe is still a real drawing defect, so the turning edit stays:
+ *     Bedroom 3's `rotate 90` (back on the east shell), Bedroom 2's `rotate 270` (doors east, away
+ *     from the bed 150 mm off; no turn puts its back on a wall, since it touches the north wall
+ *     only with its end, and of the four turns only the unturned one is quiet). SVG and
+ *     `describe()` move; `lint()` gains `W_FIXTURE_BACK_TO_ROOM` on Bedroom 2's wardrobe (card
+ *     PS2.50), nothing else. Two comment lines elsewhere in the file were shortened to keep the
+ *     playground's prefilled chat link inside its budget (`playground/test/llm-prompt.test.ts`).
+ *   - `relational`: the front door's open leaf parked 100 mm in front of the bedroom door; now
+ *     `hinge right`, and the hand-typed twin `test/walls-from-rooms/relational.arch` with it,
+ *     which stays byte-identical to the example. Only the SVG moves: `describe()` reports no hinge,
+ *     and the new `lint()` is clean, as main's was; the old source under the new compiler raises
+ *     `W_LEAF_ACROSS_DOORWAY`, so it is clean only with that code stripped.
+ *
+ * Proof that nothing else moved: every row of `import-module-lets`' corpus table, measured on the
+ * pre-change source with the new compiler and `lint()` stripped of the two codes, reproduces its
+ * pin. The one plan whose rows moved without an edit gains the warning and nothing else:
+ * `eval/goldens/against-wall-bath` (a bed `1400x2000 rotate 90`, turned onto its side), a holdout
+ * golden never edited. Two overview permalinks (hillside-villa, tiny-house) were regenerated. Each
+ * new row is the measurement with that suite's digest body. Rebased onto PS2.11a/b (PR #252), which
+ * also edited `hillside-villa` and `tiny-house` and moved `against-wall-bath`'s row: those rows
+ * are the measurement of the merged sources, carrying both PRs' edits; the swap-back above, taken
+ * again on the merged base, reproduces every other pin.
  */
 
 /** SHA-256 over every storey's SVG + `describe()` + `lint()`, measured on `f4548db`. */
@@ -1432,7 +1466,7 @@ export const BASELINE: [string, string][] = [
   ["garden-house", "8dc93639c9a34a961d0864530394d40af97b17840cd0fb883d80dd714bb8f339"], // re-measured, see header
   ["garden-loft", "19d5cb4a8c197905cbb588d0a18d859d121c7edcc65f62176c62b78424084715"],
   ["hexagon-pavilion", "92d343afbb62315ad0014b95de9f4a8b26ccffbc14093b04c5956b689f850252"],
-  ["hillside-villa", "93adefd18737138987723854fe482bda2c9e8756b3570d404ddc6dc513aa8646"], // re-measured, see header
+  ["hillside-villa", "3d4ccb26675a84382affcdae0179a85e011973658c486a0ad1a3aa20e7412209"], // re-measured, see header
   ["imports", "4b0151513963a656e52ac84c6fd80eb35c9820ae101921420cb8d5c9c13c0b70"],
   ["laneway-house", "efd11c408cc1c0ab1c23ef1ef054b63ce3c86bd7024c06b3fc69654b602dcfff"],
   ["library", "3482b924cb35a47f09dec06bf46b3d0155bc2f7b07630fb76a1747c3456167e9"],
@@ -1443,12 +1477,12 @@ export const BASELINE: [string, string][] = [
   ["one-room", "9519d5c396d8644e840a1520e6d84f75a8306d1309abebcbd61aa59560fda364"],
   ["parametric", "e45fddefabb204b9470fd9b06f59c2aec440a8fd786773effc1334f1b7fb904c"],
   ["practice-office", "2a3b241c5897a154d937b8e1b392e8468812a1acafd8b8fafaee8ad478c5caa9"], // added with the example, re-measured for net area, see header
-  ["relational", "30b76e8a19ad8aad073f666bd19934ac382c7c6e301abd837a88f064ba73c3fa"], // re-measured for PS2.4, see header; PS3.6 source rewrite, see header
+  ["relational", "0b19721e0c2226a1b829fa6e439f5ac1169972a467904f10ba0d3e4a2acdf052"], // re-measured for PS2.4, see header; PS3.6 source rewrite, see header
   ["sheet-notes", "f4ab64ec80be43d25a5949c971b07b00696f8fc2ab3927af72442ab70e8f551f"], // re-measured, see header
   ["studio", "820d01bc49c948e62b0be9e6fd7d80334a312b5c9c5ff440bed4279b8638d75f"],
   ["terrace-row", "b0af69a10d91e8a7bb8c970e93203ca36b0a82148fee4716c5e04b198a8c6f22"], // re-measured, see header
   ["themed", "cc3a3b597d0a268b12b233bc82aa8b85eadd9232493962766a0d39b8d0a7b318"],
-  ["tiny-house", "16df554a470034de999d7f161896bdede03bf2c6d55082fc722e44386b4fcb89"],
+  ["tiny-house", "27d2ccd13f489970fe426ac65d3119825cbca73b051d77403fb49fb14b94baad"],
   ["townhouse", "133902baef39c683d1a3c179e6ec742a8ba93b63c8ae828cdc343b294e7e14c0"], // re-measured, see header
   ["transit-hall", "558cd626af15b0400cee0443d52a67b4d7a8a8b55aae4afd7b93372e59761841"],
   ["two-bed", "2dc668dc93aa6dd7e114715e593a87ec91b208ff60255b2d41bf20c585b3fa05"], // PS3.6 source rewrite, see header
@@ -1480,7 +1514,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["garden-house", "e5682c530681829e8b70a578429909629d24e4c6dbbee5017a3154f91280b5d2"], // re-measured, see header
   ["garden-loft", "82868ee4b98cfc0e45872c803153a34fc90cc699b022e6f8a12bcad0bdef2010"],
   ["hexagon-pavilion", "6e8005c3a0af9b80598574e77141301a957b4a293ba8d5de6cc1effb00693494"],
-  ["hillside-villa", "1699f2b83c7c6448e7fedf3034039943ffdc6de9d25dabda6356f3ba9209fcfb"], // re-measured, see header
+  ["hillside-villa", "10e0638e28f6f1623984a103a18884b4b3da9857049b26050064637359b9e1e5"], // re-measured, see header
   ["imports", "183bf4ec261e6650b21c4771b64fe924bf5c6eabd3ea1b8d3bbdac71b2900ac3"],
   ["laneway-house", "c8b08b3f3a1b0fc9f390a7be6f9e16a6bcd512df54db8fce74f06cf3fbd6e679"],
   ["library", "a17af1b3b0ac53ba1c8acf2a83b0f9556aa790ff23008c3cd149d501b8ff02c3"],
@@ -1496,7 +1530,7 @@ export const SEMANTIC_BASELINE: [string, string][] = [
   ["studio", "ff1227adbd85a5239306f8b1b2d6ef4359af324e8a334dca3b5d63a25361ee6a"],
   ["terrace-row", "2b74af640f769060a7054e227e7007144c94e879afd356e306aedda6a0eda84d"],
   ["themed", "b68f852d95fddacf8f5cd97228da4bd88054bd262a79dbd7083539a7e53605e0"],
-  ["tiny-house", "911169b866f202614cec7d8e4d3e4ff8ff42d9e4fcab384813c020ad54d7b290"],
+  ["tiny-house", "bb87214e92afbc6832cee13dee175301c7e8edc8665a82f927d75b5b34b96597"],
   ["townhouse", "afab30a8efdac3ddee689dee2889276cb8fed003a0bcb056c376133a3c0d8277"], // re-measured, see header
   ["transit-hall", "fce22abf9ad40aa1de121328a80e33120015b5a7a338d04a8d22d32153b12dab"],
   ["two-bed", "8c3bc146d49582bf1438d0b075c40f5aa80d24d9e8a5b9b52e9a75cc4d4b1cae"], // PS3.6 source rewrite, see header

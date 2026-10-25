@@ -169,6 +169,17 @@ export interface FixtureSpec {
    * the cut plane rather than standing in front of the glass.
    */
   tall?: boolean;
+  /**
+   * The family comes in ONE shape: whatever the model, its long side is on the same axis of its
+   * {@link footprint} (a bed is always longer than wide, a bath always longer than deep), and
+   * that footprint is oblong by at least 5:4. Read only by `W_FOOTPRINT_TRANSPOSED`
+   * (`src/lint/rules/footprint.ts`): a piece of such a family whose symbol frame has its long
+   * side on the other axis is drawn turned a quarter, not a different product. A family sold in
+   * both shapes (a wardrobe: a single door is deeper than wide; a filing cabinet: lateral or
+   * vertical; a locker, a shed, a sink) never carries it, so a standard product never warns.
+   * Each entry that sets it says why on the line above.
+   */
+  fixedAspect?: boolean;
 }
 
 /** A room zone a fixture can satisfy (see {@link FixtureSpec.zones}). */
@@ -177,14 +188,46 @@ export type FixtureZone = "wet" | "kitchen";
 /** Catalog entries, keyed by category (and its aliases). */
 const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // Wet-room plumbing fixtures — need a wall behind them.
-  wc: { requiresWall: true, clearanceMm: 450, footprint: { along: 400, depth: 700 }, zones: ["wet"] },
-  toilet: { requiresWall: true, clearanceMm: 450, footprint: { along: 400, depth: 700 }, zones: ["wet"] },
+  // fixedAspect: a pan projects from its cistern: always deeper than wide, whatever the model.
+  wc: {
+    requiresWall: true,
+    fixedAspect: true,
+    clearanceMm: 450,
+    footprint: { along: 400, depth: 700 },
+    zones: ["wet"],
+  },
+  toilet: {
+    requiresWall: true,
+    fixedAspect: true,
+    clearanceMm: 450,
+    footprint: { along: 400, depth: 700 },
+    zones: ["wet"],
+  },
   basin: { requiresWall: true, clearanceMm: 450, footprint: { along: 600, depth: 450 }, zones: ["wet"] },
   // No zone: lint's wet-fixture set never included `lavatory` (see FixtureSpec.zones).
   lavatory: { requiresWall: true, clearanceMm: 450, footprint: { along: 600, depth: 450 } },
-  bathtub: { requiresWall: true, clearanceMm: 550, footprint: { along: 1700, depth: 700 }, zones: ["wet"] },
-  tub: { requiresWall: true, clearanceMm: 550, footprint: { along: 1700, depth: 700 }, zones: ["wet"] },
-  bath: { requiresWall: true, clearanceMm: 550, footprint: { along: 1700, depth: 700 }, zones: ["wet"] },
+  // fixedAspect: a tub lies along its wall, always longer than deep (a deep soaking tub is still oblong).
+  bathtub: {
+    requiresWall: true,
+    fixedAspect: true,
+    clearanceMm: 550,
+    footprint: { along: 1700, depth: 700 },
+    zones: ["wet"],
+  },
+  tub: {
+    requiresWall: true,
+    fixedAspect: true,
+    clearanceMm: 550,
+    footprint: { along: 1700, depth: 700 },
+    zones: ["wet"],
+  },
+  bath: {
+    requiresWall: true,
+    fixedAspect: true,
+    clearanceMm: 550,
+    footprint: { along: 1700, depth: 700 },
+    zones: ["wet"],
+  },
   // The tray symbol is drawn symmetrically (outline + both diagonals + a centre
   // drain), so it has no back to face at a wall — see FixtureSpec.symmetric.
   shower: { requiresWall: true, footprint: { along: 900, depth: 900 }, zones: ["wet"], symmetric: true },
@@ -263,7 +306,8 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
 
   // Bedroom. Footprints are the conventional single/double mattress, laid head-to-wall:
   // `along` runs with the wall (the bed's width), `depth` into the room (its length).
-  bed: { requiresWall: false, directional: true, footprint: { along: 1500, depth: 2000 } },
+  // fixedAspect: a single bed is always longer than wide; the headboard is on a short side.
+  bed: { requiresWall: false, fixedAspect: true, directional: true, footprint: { along: 1500, depth: 2000 } },
   double_bed: { requiresWall: false, directional: true, footprint: { along: 1800, depth: 2000 }, serves: "bed" },
   nightstand: { requiresWall: false, directional: true, footprint: { along: 450, depth: 400 } },
   bedside_table: { requiresWall: false, directional: true, footprint: { along: 450, depth: 400 } },
@@ -368,8 +412,9 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // NOT `directional`, for the same reason `sofa` is not: seating is arranged rather than
   // installed, and an L-sofa floated as a room divider is a normal plan. Its footprint is
   // the bounding rectangle of the L, chairs-included in the same spirit as `dining_table`.
-  sofa_l: { requiresWall: false, footprint: { along: 2600, depth: 1600 }, serves: "sofa" },
-  corner_sofa: { requiresWall: false, footprint: { along: 2600, depth: 1600 }, serves: "sofa" },
+  // fixedAspect: an L is a run with a chaise return, always wider than deep (a square corner sofa is under 5:4).
+  sofa_l: { requiresWall: false, fixedAspect: true, footprint: { along: 2600, depth: 1600 }, serves: "sofa" },
+  corner_sofa: { requiresWall: false, fixedAspect: true, footprint: { along: 2600, depth: 1600 }, serves: "sofa" },
   piano: { requiresWall: false },
   grand_piano: { requiresWall: false },
   sun_lounger: { requiresWall: false },
@@ -512,7 +557,14 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // on purpose — a cupboard with a boiler in it is not a bathroom, and a mirror over a
   // console table is not one either. Adding either would silently green a
   // `W_ROOM_NO_FIXTURE` a plan deserves.
-  bidet: { requiresWall: true, clearanceMm: 450, footprint: { along: 400, depth: 700 }, zones: ["wet"] },
+  // fixedAspect: the same pan as a WC: always deeper than wide.
+  bidet: {
+    requiresWall: true,
+    fixedAspect: true,
+    clearanceMm: 450,
+    footprint: { along: 400, depth: 700 },
+    zones: ["wet"],
+  },
   // `serves: "wc"` in every wet room, a dwelling bath included — a judgement call (see `serves`).
   urinal: { requiresWall: true, clearanceMm: 450, footprint: { along: 400, depth: 350 }, zones: ["wet"], serves: "wc" },
   laundry_sink: { requiresWall: true, clearanceMm: 600, footprint: { along: 600, depth: 500 }, zones: ["wet"] },
@@ -524,10 +576,18 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // to raise `W_FURNITURE_OVERLAP` on a correct drawing, and both were left OUT of
   // `examples/furnished-flat.arch` rather than nudged somewhere false. See
   // {@link FixtureSpec.overhead} for why that is the only rule they change.
-  mirror: { requiresWall: true, overhead: true, footprint: { along: 900, depth: 50 } },
+  // fixedAspect: a wall mirror is a thin band along its wall, always far wider than deep.
+  mirror: { requiresWall: true, fixedAspect: true, overhead: true, footprint: { along: 900, depth: 50 } },
   range_hood: { requiresWall: true, overhead: true, footprint: { along: 900, depth: 500 }, zones: ["kitchen"] },
   microwave: { requiresWall: false, directional: true, footprint: { along: 500, depth: 400 }, zones: ["kitchen"] },
-  bar_counter: { requiresWall: false, directional: true, footprint: { along: 1800, depth: 600 }, zones: ["kitchen"] },
+  // fixedAspect: a counter with stools along its front: the stools need length, so always wider than deep.
+  bar_counter: {
+    requiresWall: false,
+    fixedAspect: true,
+    directional: true,
+    footprint: { along: 1800, depth: 600 },
+    zones: ["kitchen"],
+  },
   // -------------------------------------------------------------------------
   // ── living, bedroom, office ──
   //
@@ -571,9 +631,29 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   // for the size and not for a rotation.
 
   // Bedroom.
-  bunk_bed: { requiresWall: false, directional: true, footprint: { along: 1000, depth: 2000 }, serves: "bed" },
-  crib: { requiresWall: false, directional: true, footprint: { along: 700, depth: 1300 }, serves: "bed" },
-  cot: { requiresWall: false, directional: true, footprint: { along: 700, depth: 1300 }, serves: "bed" },
+  // fixedAspect: a bunk is a single bed stacked: always longer than wide.
+  bunk_bed: {
+    requiresWall: false,
+    fixedAspect: true,
+    directional: true,
+    footprint: { along: 1000, depth: 2000 },
+    serves: "bed",
+  },
+  // fixedAspect: a cot is always longer than wide, like the bed it is.
+  crib: {
+    requiresWall: false,
+    fixedAspect: true,
+    directional: true,
+    footprint: { along: 700, depth: 1300 },
+    serves: "bed",
+  },
+  cot: {
+    requiresWall: false,
+    fixedAspect: true,
+    directional: true,
+    footprint: { along: 700, depth: 1300 },
+    serves: "bed",
+  },
   dresser: { requiresWall: false, directional: true, clearanceMm: 600, footprint: { along: 1200, depth: 500 } },
   chest_of_drawers: {
     requiresWall: false,
@@ -594,10 +674,12 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   radiator: { requiresWall: false, directional: true, footprint: { along: 1000, depth: 100 } },
   sideboard: { requiresWall: false, directional: true, footprint: { along: 1600, depth: 450 } },
   buffet: { requiresWall: false, directional: true, footprint: { along: 1600, depth: 450 } },
-  loveseat: { requiresWall: false, footprint: { along: 1500, depth: 850 }, serves: "sofa" },
-  sofa_2: { requiresWall: false, footprint: { along: 1500, depth: 850 }, serves: "sofa" },
+  // fixedAspect: a two-seat sofa: seats along its back, always wider than deep.
+  loveseat: { requiresWall: false, fixedAspect: true, footprint: { along: 1500, depth: 850 }, serves: "sofa" },
+  sofa_2: { requiresWall: false, fixedAspect: true, footprint: { along: 1500, depth: 850 }, serves: "sofa" },
   chaise: { requiresWall: false, footprint: { along: 1600, depth: 800 } },
-  tv: { requiresWall: false, directional: true, footprint: { along: 1200, depth: 80 } },
+  // fixedAspect: a screen is a thin band, always far wider than deep.
+  tv: { requiresWall: false, fixedAspect: true, directional: true, footprint: { along: 1200, depth: 80 } },
   coat_rack: { requiresWall: false, symmetric: true, footprint: { along: 400, depth: 400 } },
   shoe_cabinet: { requiresWall: false, directional: true, footprint: { along: 800, depth: 300 } },
 
@@ -609,7 +691,14 @@ const CATALOG: Readonly<Record<string, FixtureSpec>> = Object.freeze({
   filing_cabinet: { requiresWall: false, directional: true, clearanceMm: 600, footprint: { along: 450, depth: 600 } },
   locker: { requiresWall: false, directional: true, tall: true, footprint: { along: 1200, depth: 450 } },
   pool_table: { requiresWall: false, symmetric: true, footprint: { along: 2500, depth: 1400 } },
-  treadmill: { requiresWall: false, directional: true, clearanceMm: 900, footprint: { along: 800, depth: 1800 } },
+  // fixedAspect: a belt you walk along: always longer than wide.
+  treadmill: {
+    requiresWall: false,
+    fixedAspect: true,
+    directional: true,
+    clearanceMm: 900,
+    footprint: { along: 800, depth: 1800 },
+  },
 });
 
 /** All catalogued categories (aliases included), in declaration order. */

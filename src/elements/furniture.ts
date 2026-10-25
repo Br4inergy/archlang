@@ -154,8 +154,10 @@ export const furniture: ElementDef = {
     // `size` is optional only for an `against wall` fixture with a catalogued default
     // footprint; resolve enforces that and errors otherwise.
     let size: FurnitureNode["size"];
+    let sizeSpan: Span | undefined;
     if (ctx.isKeyword("size")) {
       ctx.next();
+      if (ctx.isType("dimension")) sizeSpan = { start: ctx.peek().start, end: ctx.peek().end };
       size = ctx.parseDimensions();
     }
     const node: FurnitureNode = {
@@ -168,6 +170,7 @@ export const furniture: ElementDef = {
       ...(place ? { place } : {}),
       ...(room ? { room } : {}),
       ...(size ? { size } : {}),
+      ...(sizeSpan ? { sizeSpan } : {}),
       line: kw.line,
     };
     if (ctx.isKeyword("label")) {
@@ -420,6 +423,9 @@ export const furniture: ElementDef = {
       ...(roomOut ? { room: roomOut } : {}),
       ...(authored ? { _authored: authored } : {}),
       ...(n.rotateSpan ? { _rotateSpan: n.rotateSpan } : {}),
+      // The swap is written from the SNAPPED size (what is drawn), never the literal: on a grid
+      // the two can differ, and the fix quotes the size it proves.
+      ...(n.sizeSpan ? { _sizeSwap: { span: n.sizeSpan, text: `${fmt3(dh)}x${fmt3(dw)}` } } : {}),
       ...(n.againstEdge ? { _relation: againstText(n.againstEdge.edge, authored) } : {}),
       ...(facing !== undefined ? { _facing: facing, _facingSpan: n.facing!.span } : {}),
       ...(clear ? { _clear: clear } : {}),

@@ -825,6 +825,10 @@ describe("the four reworded hints' messages name things as a reader would; ids s
     // by its label (an unlabelled room is left out, never named by its id); ids in the hints.
     "W_WC_SIDE_CLEARANCE",
     "W_FURNITURE_OVER_WINDOW",
+    // The clearance rules (PS2.11c, PS2.11d): a piece by its label or category and its room by
+    // label; both doors by the rooms they open onto.
+    "W_FOOTPRINT_TRANSPOSED",
+    "W_LEAF_ACROSS_DOORWAY",
   ];
   type Storey = {
     rooms?: { id: string; label?: string }[];
@@ -848,8 +852,8 @@ describe("the four reworded hints' messages name things as a reader would; ids s
   });
   // The annotation-collision corpus is read too: after PS2.12 the shipped examples raise neither
   // of its codes, so without it the two would be unexercised here.
-  // The clearance cases likewise: the shipped examples raise neither PS2.11a/b code after the fixes
-  // that landed with them.
+  // The clearance cases likewise: the shipped examples raise none of the four PS2.11a–d codes after
+  // the fixes that landed with them.
   const cases = [
     ...corpus([
       "examples",
@@ -892,6 +896,9 @@ describe("the four reworded hints' messages name things as a reader would; ids s
       // And the clearance family (PS2.11a/b), from its defect-corpus cases and the fixtures.
       expect(seen.get("W_WC_SIDE_CLEARANCE") ?? 0).toBeGreaterThan(0);
       expect(seen.get("W_FURNITURE_OVER_WINDOW") ?? 0).toBeGreaterThan(0);
+      // And the clearance rules (PS2.11c, PS2.11d), from their defect-corpus cases.
+      expect(seen.get("W_FOOTPRINT_TRANSPOSED") ?? 0).toBeGreaterThan(0);
+      expect(seen.get("W_LEAF_ACROSS_DOORWAY") ?? 0).toBeGreaterThan(0);
     });
   }
 

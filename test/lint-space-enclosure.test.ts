@@ -281,8 +281,8 @@ describe("W_ROOM_OUTSIDE_SHELL", () => {
 });
 
 describe("the three rules' place in LINT_RULES", () => {
-  it("are appended in card order, followed only by the furniture-relation rules (ADR 0029), PS2.10's dimension text, the annotation-collision rules (PS2.12) and the clearance rules (PS2.11a/b)", () => {
-    expect(LINT_RULES.slice(-10).map((r) => r.name)).toEqual([
+  it("are appended in card order, followed only by the furniture-relation rules (ADR 0029), PS2.10's dimension text, the annotation-collision rules (PS2.12) and the clearance rules (PS2.11a–d)", () => {
+    expect(LINT_RULES.slice(-12).map((r) => r.name)).toEqual([
       "boundary-no-wall",
       "floor-unassigned",
       "room-outside-shell",
@@ -293,6 +293,8 @@ describe("the three rules' place in LINT_RULES", () => {
       "title-overflow",
       "wc-side-clearance",
       "furniture-over-window",
+      "footprint-transposed",
+      "leaf-across-doorway",
     ]);
   });
 });

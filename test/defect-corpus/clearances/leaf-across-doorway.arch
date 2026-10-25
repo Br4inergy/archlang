@@ -2,7 +2,7 @@
 # origin: audits/2026-10-18-first-contact.md A1 (first-contact-plans/1-apartment.arch d_front's open leaf across the
 #   d_bed2 doorway); K4 (first-contact-plans/6-clinic.arch d_corr's leaf across d_staff)
 # expect: W_LEAF_ACROSS_DOORWAY
-# status: todo
+# status: done
 # fact: d_front is hinged at (3250,0) and its open leaf lies along x 3250, y 0-900; d_bed spans y 250-1050 on w_mid,
 #   whose hall face is x 3050: the parked leaf stands 200 mm in front of 650 of the doorway's 800 mm
 plan "Front door leaf across a bedroom door" {

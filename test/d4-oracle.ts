@@ -437,6 +437,10 @@ export const RULE_CLASS: Readonly<Record<string, RuleClass>> = {
   // (a WC's sides follow its `rotate`, which `place` carries), never a compass or the sheet.
   "wc-side-clearance": "invariant",
   "furniture-over-window": "invariant",
+  // PS2.11c: read in the symbol's own frame, which a `place` turn or mirror carries unchanged.
+  "footprint-transposed": "invariant",
+  // PS2.11d: a leaf segment against an axis-aligned zone; the group permutes both alike.
+  "leaf-across-doorway": "invariant",
 };
 
 /**

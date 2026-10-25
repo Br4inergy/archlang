@@ -125,10 +125,10 @@ describe("composition is associative: placing a plan changes nothing but the nam
     expect(compile(ROOT_SPELLING, { noCache: true }).diagnostics).toEqual([]);
     // mid's body at the ROOT (reach-in that has always worked), carried by m's frame.
     // Left out: the keys that say where a statement was authored (the two sources differ in
-    // byte offsets and instance paths by construction), and a wall's `openings`, which the
+    // byte offsets and instance paths by construction; `_sizeSwap` carries a size literal's span), and a wall's `openings`, which the
     // ROOT spelling registers before this hand-applied frame could namespace their owners.
     const f = makeFrame({ origin: { x: 10000, y: 0 }, rotate: 90, prefix: "m", component: "mid" });
-    const where = ["_instance", "_component", "_zone", "span", "_rotateSpan", "openings"];
+    const where = ["_instance", "_component", "_zone", "span", "_rotateSpan", "_sizeSwap", "openings"];
     const expected = ir(ROOT_SPELLING).elements.map((e) => bare(transformElement(f, e), where));
     expect(ir(src).elements.map((e) => bare(e, where))).toEqual(expected);
     expect(byId(ir(src).elements, "wall", "m.i.shell")).toMatchObject({
