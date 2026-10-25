@@ -84,7 +84,8 @@ Owner decisions and laws that no test fully states. Do not re-propose, re-open o
   + `describe()` + `lint()` (add `compile().diagnostics` when the resolver is reachable), taking the
   baseline with the test's own digest body. A moved golden is a finding to explain first.
 - **A drawing change never moves `describe()`, and moves `lint()` only through its drafting-layer
-  rules** (ADR 0032). `W_ANNOTATION_OVERLAP` and `W_TITLE_OVERFLOW` (PS2.12,
+  rules** (ADR 0032; owner decision taken by delegation, `docs/plans/plan-soundness/README.md` § 3
+  D17/D18). `W_ANNOTATION_OVERLAP` and `W_TITLE_OVERFLOW` (PS2.12,
   `src/lint/rules/annotations.ts`) read the drawn sheet, because the defect they report (text
   printed over a symbol or a label; a title value wider than its row) exists only there: they build
   the storey's Scene and read where labels and `dims auto` numbers landed. So a renderer change that
