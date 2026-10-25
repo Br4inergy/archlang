@@ -142,8 +142,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   were skipped or ran only in part, with the reason (`no-uses`, `no-site`, `single-storey`,
   `arc-window-unattributed`, `non-rectangular-room`, `no-entrance`, `balcony-only-entrance`,
   `unsupported-host-geometry`, `no-kitchen-fixtures`, `enclosure-budget`, `no-main-entrance`,
-  `non-dwelling`, `hint-budget`, and the reserved `no-brief`, `no-dwelling` and
-  `no-operable-window-data`), and the rooms the vocabulary could not classify
+  `non-dwelling`, `hint-budget`, `no-dwelling` (filed since the residential-advisory profiles), and
+  the reserved `no-brief` and `no-operable-window-data`), and the rooms the vocabulary could not classify
   (`unclassifiedRooms`). A human `lint` prints one line on stderr when something was skipped,
   never under `--quiet`. `lint()` returns exactly what it did. The MCP server and the VS Code
   extension do not show `coverage` yet.
@@ -165,7 +165,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `W_ENTRANCE_INTO_PRIVATE` decline and file the coverage skip `non-dwelling`;
   `W_WET_ROOM_DOOR`'s kitchen arm judges every plan. `residential-basic` sets `assumeDwelling` and
   judges every plan as a home, so it now differs from the default ruleset, and the playground's
-  profile selector starts on the default ruleset. A first-contact cafe plan, a cafe fixture and
+  profile selector starts on the default ruleset. A cafe audit plan, a cafe test fixture and
   four eval office plans lose their dwelling-only warnings; no example moves.
 - `describe().access.mainEntrance` and `depthFromMainEntrance`, on a storey with more than one way
   in: the one door the plan is entered by, with its `basis`. A door into a bedroom, bathroom or WC
@@ -318,8 +318,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dressing, linen, cellar), office (office, study, consulting), utility (utility, laundry, plant,
   boiler), bedroom (nursery, guest room, kids room, children's room, master suite, master), WC
   (water closet) and living (great room, reception room, drawing room, snug, den). `room_type`
-  gains `LivingRoom`, `Storage` and `StudyRoom` for those rooms in `describe()` and Plan JSON, and
-  `finish` furnishes label-only living rooms, studies and nurseries. Rooms the vocabulary still
+  gains `LivingRoom`, `Storage` and `StudyRoom` for those rooms in `describe()` and Plan JSON (a
+  label-only nursery reads as a bedroom, `MasterRoom`), and `finish` furnishes label-only living
+  rooms, studies and nurseries. Rooms the vocabulary still
   cannot read are listed in `lint --json`'s `coverage.unclassifiedRooms`.
 - The examples teach the room graph first. `spec.llm.md` and the `archlang` skill lead with a
   three-room example (rooms, `walls from rooms ... { open between living and hall }`, a front
