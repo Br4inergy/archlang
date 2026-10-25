@@ -37,6 +37,17 @@ Non-obvious traps that no test catches, or whose symptom points the wrong way. E
 - **A lint fix inside a turned or mirrored `place` must pull its value back through the instance
   frame before writing it** (`LintContext.frameOf`, `src/lint.ts`), or the machine-applicable edit
   is correct in plan coordinates and wrong once `arch fix` writes it back into the component body.
+- **Editing any `examples/*.arch` moves many corpus-wide suites.** Expect `cursor-exhaustive`,
+  `iso-snapshot`, `snapshot`, `visual`, `opening-tags-corpus`, `readme-permalink`,
+  `docs-examples-figures`, `example-svgs-drift`, `rooms-tiling-probe`, `taste-digests`, the
+  `*-digests` and `*-byte-identity` suites and `playground/test/llm-prompt.test.ts` to react; run the
+  lot, and explain each moved golden rather than re-pin it. A new lint rule moves a different set:
+  `compose-assoc`, `lint-file-provenance`. `hillside-villa`'s prefilled-link budget in the playground
+  test is the tightest constraint on that example: deflate output differs by zlib implementation (pako
+  and zlib-ng measure 26–35 characters longer than Node/Chromium; the test is skipped on Node 18), so
+  trim comments, never plan content.
+- **`spec.llm.md` is capped below 30,000 UTF-16 units** (`test/llm-spec-drift.test.ts`) with little
+  headroom, so new spec text must be paid for by cuts elsewhere in the file.
 
 ## Drawing (symbols)
 
