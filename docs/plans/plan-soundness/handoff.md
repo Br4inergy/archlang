@@ -106,9 +106,10 @@ on 2026-10-25. Each item names its card; the card holds goal, design, acceptance
    #248, #250, #252 and #253, so it is still owed (D19). Same six briefs; arm A = spec text only with
    the pre-#250 role text (`git show 6e0aa520^1:.claude/agents/arch-author.md`), arm B = the current
    role; count `score --taste`, `validate --json` and `describe` calls, and the defects per class.
-   Protocol and briefs: `audits/first-contact-protocol.md` (PR in flight on 2026-10-25; until it
-   lands, `audits/2026-10-25-first-contact-rerun-row5.md` § Method and commands has the method only,
-   and the brief texts are not in the repo). First task of the next session.
+   Protocol, briefs, dispatch prompts, rubric and the arm A/arm B loading check:
+   `audits/first-contact-protocol.md` (PR #257, 053ba3f8). Arm A's role file is only loaded by a
+   dispatching session started in the worktree that holds it; confirm with `/agents` before
+   dispatching, as the protocol's step 2 says. First task of the next session.
 2. **PS2.45** `finish` leaves small wet rooms empty rather than place a pan the WC rule refuses (30 of
    276 WC rooms and 16 of 144 baths in the 918-room probe). User-visible; first in row 6.
 3. **PS2.50** `W_FIXTURE_BACK_TO_ROOM` has no correct reading for a bed or wardrobe side-on to a wall;
