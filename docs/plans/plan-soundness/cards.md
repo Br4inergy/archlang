@@ -348,7 +348,7 @@ PS5.1b: PR #247, 9cc29c7e)
   sources, and draft/verified-on-corpus state.
 - Only if PS5 shows the rule count outgrowing code-defined profiles.
 
-**PS7.4 · Teach the taste step where cold authors read.** `done` (PR #250, 6e0aa520; measured in PR #PRNUM, commit filled at merge)
+**PS7.4 · Teach the taste step where cold authors read.** `done` (PR #250, 6e0aa520; measured in PR #261, commit filled at merge)
 - As built: `research/2026-10-25-ps5-as-built.md` § PS7.4. Measured 2026-10-26 (`audits/2026-10-26-first-contact-rerun-d15.md`, D20): teaching the step where cold authors read did not change behaviour (arm B over arm A: +1 `validate`, +1 `describe`, 0 `score`); taste is a reviewer's tool, PS7.5.
 
 **PS7.5 · Move the taste step out of the author loop.** `todo` (one PR, after the 2026-10-26 audit merges; D20)

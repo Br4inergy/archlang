@@ -1,4 +1,4 @@
-# Plan-soundness programme: handoff (state as of 2026-10-26, audit PR head `HEADSHA`)
+# Plan-soundness programme: handoff (state as of 2026-10-26, audit PR #261 at `619b7bde`)
 
 This page is the resume point for a new session. It says where the programme stands, what is open,
 in which order, and how the work is run. It is re-written at every stage end; the dated history is
@@ -47,7 +47,7 @@ The means, tracked in `README.md` §7: defect-corpus catch rate 7/53 (10-18) →
 | 6 | PS4.3, PS4.4, PS5.4, PS7.x, PS2.11e | **current** (the owed re-measure ran 2026-10-26, D20; the row's cards may start) |
 | 7 | PS6.1 | parked |
 
-## 3. What shipped (2026-10-18 → 10-26, PRs #195–#PRNUM)
+## 3. What shipped (2026-10-18 → 10-26, PRs #195–#261)
 
 Everything below is on `main` and **unreleased**: the last `v*` tag predates PR #195 (check with
 `git describe --tags --abbrev=0` and `npm view @chanmeng666/archlang version`). A release starts only
@@ -98,7 +98,7 @@ taste advice codes, `LINT_RULES` 45 entries; after this PR, 124 cards: 47 done, 
 | `W_WC_SIDE_CLEARANCE`, `W_FURNITURE_OVER_WINDOW`; `finish` WC 450 mm off the side face; cursor clauses | PS2.11a/b | #252 | 486c9cb7 |
 | `W_FOOTPRINT_TRANSPOSED`, `W_LEAF_ACROSS_DOORWAY` | PS2.11c/d | #253 | 43fe7fd6 |
 | Housekeeping: D7–D19, ADR 0029/0032 Accepted, cards moved to `cards.md`, CHANGELOG backfill, this page | — | #237, #241, #242, #249, #251, #254, #255, #256 | — |
-| First-contact re-measure, D15's two arms; D20; ADR 0032 addendum; PS2.56, PS7.5, PS7.6 filed | PS7.4 | #PRNUM | — |
+| First-contact re-measure, D15's two arms; D20; ADR 0032 addendum; PS2.56, PS7.5, PS7.6 filed | PS7.4 | #261 | — |
 
 Recorded practice a reader must know: lint PRs bump the `lintWarnings` counts in `eval/judge-fixture.json`
 when a new rule fires on an eval golden (judgment fields untouched, `JUDGE_VERSION` unchanged; D19).
@@ -109,7 +109,7 @@ The order below is the coordinator's reading of §7 row 6 plus the costs and own
 on 2026-10-25. Each item names its card; the card holds goal, design, acceptance and open questions.
 
 1. **The row-5 re-measure, run as D15's two arms: done 2026-10-26** (`audits/2026-10-26-first-contact-rerun-d15.md`,
-   PR #PRNUM; D20). Sonnet authors, six briefs per arm; arm A (pre-#250 role) made 0 `score --taste`
+   PR #261; D20). Sonnet authors, six briefs per arm; arm A (pre-#250 role) made 0 `score --taste`
    and 0 `validate` calls in 65, arm B (current role) 0 and 1 in 77; defects 52 and 54, blockers 1 and
    1 (both the townhouse stair). D2's reverse-if is met: taste is a reviewer's tool, PS7.4 is done and
    PS7.5 moves the step out of the author loop. The row-5 residue and row 6 may start: item 2 is next.
