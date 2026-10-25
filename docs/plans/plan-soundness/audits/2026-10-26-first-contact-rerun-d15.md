@@ -841,7 +841,9 @@ taste concordance (A ∪ B ∪ C): 44 pairs — 40 ordered, 0 tied, 0 reversed (
 
 - `first-contact-plans/2026-10-26-rerun-armA/<n>-<brief>.arch` and
   `first-contact-plans/2026-10-26-rerun-armB/<n>-<brief>.arch`: the twelve final plans as the cold
-  authors left them (byte-exact copies).
+  authors left them. They are copies of the authors' files; the authors wrote CRLF line endings on
+  Windows and git stores LF (`.gitattributes`), so the committed bytes differ from the originals only in
+  line endings.
 - The lint, taste, validate, describe and Plan JSON outputs, the renders, the transcripts, the shim call
   logs and the scripts were kept outside the repository.
 
