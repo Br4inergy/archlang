@@ -12,6 +12,8 @@ source (.arch)
                          relational placement (src/layout.ts), the frozen datum table
                          (src/room-datums.ts; read by `hall.top`-style datums through the
                          evaluator's reader, `withDatumReader`), walls, host openings → ResolvedPlan
+                         (`walls from rooms` derives a group's walls from its rooms,
+                         src/room-tiling.ts, ADR 0028)
   └─ src/scene-build.ts  toScene() → Scene (src/scene.ts)
        └─ src/wall-lowering.ts  every wall in one joinery pass (geometry/band, intersect, joinery)
   └─ src/view/           toIso(): the axonometric, a sibling of toScene (DEPRECATED, ADR 0021)
@@ -55,8 +57,25 @@ source (.arch)
 
 - `describe.ts` semantic summary · `lint.ts` + `lint/` soundness rules · `analyze.ts` +
   `analyze/` shared resolve + circulation/occupancy grids
+- `lint/context.ts` the shared per-run `LintContext` and `LintRule` (`family`, `layer`: `validity` or
+  `drafting`, and every `codes` it may emit); `lint/rules/index.ts` the ordered rule list (order is
+  contract); `lint/coverage.ts` which families ran or were skipped and why (`ctx.skip`), beside the
+  diagnostics and never inside them
+- `lint/rules/clearances.ts` WC side clearance and a tall unit in front of a window;
+  `lint/rules/footprint.ts` `W_FOOTPRINT_TRANSPOSED`; `lint/clearance-measure.ts` the shape measures
+  both read, shared with the placement check `lint/fixture-paste.ts` quotes positions through
+- `room-tiling.ts` the exact derivation behind `walls from rooms` (rectangular rooms in, rings and
+  partitions out, or a refusal); `wall-relation.ts` the pairwise forms `wall … between|around`, on the
+  same sweep; `opening-junctions.ts` where other walls meet a host wall, shared by
+  `W_OPENING_AT_JUNCTION` and `E_OPENING_NIB`
+- `impact.ts` `impact(before, after)`: what changed, what stayed and what broke between two sources,
+  over one pipeline; `analyze/depends.ts` `describe --facts depends`, what each element derives from
+- `analyze/dwelling.ts` whether the plan reads as a dwelling, the gate of the home-only lint arms
 - `taste/` the taste score (ADR 0032): reads `describe()`, `lintWithCoverage()` and the IR, never
   read by them; integer permyriads; the validity cap reads each rule's `layer`
+  (`taste/index.ts` the entry, `criteria.ts` the judges and their counted costs, `profiles.ts` the
+  sourced numbers per profile, `advice.ts` the `A_*` rows, `report.ts` the report shape, `arith.ts` the
+  exact `BigInt` arithmetic)
 - `geometry.ts` `doorSwing` (the leaf's sector) shared by `door.render()` and `W_SWING_OBSTRUCTED`;
   `sectorsObstruct` is the exact two-sector test (separating axes, no sampling)
 - `geometry/` band, intersect, joinery (the wall outline); `union.ts`/`clipper.ts` are test oracles only;
